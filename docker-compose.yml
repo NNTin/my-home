@@ -1,0 +1,48 @@
+# Full stack: postgres + api + web (nginx serving the SPA and proxying /api).
+#   docker compose up --build              build images locally
+#   docker compose pull && docker compose up --no-build   use published GHCR images
+# IMAGE_TAG selects the image tag (default: main), WEB_PORT the published port (default: 8080).
+name: my-home
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: myhome
+      POSTGRES_PASSWORD: myhome
+      POSTGRES_DB: myhome
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U myhome -d myhome']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    image: ghcr.io/nntin/my-home-api:${IMAGE_TAG:-main}
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      DATABASE_URL: postgres://myhome:myhome@postgres:5432/myhome
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      MIGRATE_ON_START: 'true'
+      SEED_ON_START: 'true'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    image: ghcr.io/nntin/my-home-web:${IMAGE_TAG:-main}
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - '${WEB_PORT:-8080}:80'
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pgdata:
