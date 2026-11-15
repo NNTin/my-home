@@ -14,6 +14,11 @@ import * as schema from './schema';
 export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
 export type DbDriver = 'pglite' | 'postgres';
 
+/** The subset of a pino logger the database layer needs. */
+export interface DbLogger {
+  error(obj: object, msg: string): void;
+}
+
 export interface Database {
   db: Db;
   driver: DbDriver;
@@ -23,9 +28,15 @@ export interface Database {
 }
 
 /** node-postgres when DATABASE_URL is set, otherwise PGlite (a directory or `memory://`). */
-export function createDatabase(config: Pick<Config, 'databaseUrl' | 'pgliteDir'>): Database {
+export function createDatabase(
+  config: Pick<Config, 'databaseUrl' | 'pgliteDir'>,
+  logger: DbLogger,
+): Database {
   if (config.databaseUrl) {
     const pool = new pg.Pool({ connectionString: config.databaseUrl, max: 10 });
+    // An idle client losing its connection emits `error` on the pool; without a listener that
+    // crashes the process. The pool discards the broken client and /api/health reports outages.
+    pool.on('error', (err) => logger.error({ err }, 'idle postgres client error'));
     const db = drizzlePg({ client: pool, schema });
     return {
       db: db as unknown as Db,

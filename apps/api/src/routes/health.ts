@@ -27,7 +27,8 @@ export const healthRoutes =
           return reply.code(503).send({
             status: 'error',
             uptime,
-            db: { status: 'error', driver: database.driver, error: (err as Error).message },
+            // Details are logged above; never expose driver messages to callers.
+            db: { status: 'error', driver: database.driver, error: 'database unavailable' },
           });
         }
       },

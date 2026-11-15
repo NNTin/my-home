@@ -1,15 +1,16 @@
-import Fastify, { type FastifyServerOptions } from 'fastify';
+import Fastify from 'fastify';
 import {
   serializerCompiler,
   validatorCompiler,
   type ZodTypeProvider,
 } from 'fastify-type-provider-zod';
+import type { Logger, LoggerOptions } from 'pino';
 import type { Config } from './config';
 import type { Database } from './db/client';
 import { healthRoutes } from './routes/health';
 import { homeRoutes } from './routes/homes';
 
-function loggerOptions(config: Config): FastifyServerOptions['logger'] {
+export function loggerOptions(config: Config): LoggerOptions {
   const pretty = config.env === 'development' && process.stdout.isTTY;
   return {
     level: config.logLevel,
@@ -17,8 +18,8 @@ function loggerOptions(config: Config): FastifyServerOptions['logger'] {
   };
 }
 
-export async function buildApp(config: Config, database: Database) {
-  const app = Fastify({ logger: loggerOptions(config) }).withTypeProvider<ZodTypeProvider>();
+export async function buildApp(config: Config, database: Database, logger: Logger) {
+  const app = Fastify({ loggerInstance: logger }).withTypeProvider<ZodTypeProvider>();
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 

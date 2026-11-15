@@ -1,11 +1,13 @@
-import { buildApp } from './app';
+import { pino } from 'pino';
+import { buildApp, loggerOptions } from './app';
 import { loadConfig } from './config';
 import { createDatabase } from './db/client';
 import { seed } from './db/seed';
 
 const config = loadConfig();
-const database = createDatabase(config);
-const app = await buildApp(config, database);
+const logger = pino(loggerOptions(config));
+const database = createDatabase(config, logger);
+const app = await buildApp(config, database, logger);
 app.addHook('onClose', () => database.close());
 
 try {

@@ -1,3 +1,4 @@
+import { pino } from 'pino';
 import { buildApp } from '../src/app';
 import { loadConfig } from '../src/config';
 import { createDatabase } from '../src/db/client';
@@ -14,10 +15,11 @@ export async function createTestApp() {
     LOG_LEVEL: 'silent',
     PGLITE_DIR: 'memory://',
   });
-  const database = createDatabase(config);
+  const logger = pino({ level: 'silent' });
+  const database = createDatabase(config, logger);
   await database.migrate();
   await database.db.delete(homes);
-  const app = await buildApp(config, database);
+  const app = await buildApp(config, database, logger);
   app.addHook('onClose', () => database.close());
   await app.ready();
   return { app, database };
