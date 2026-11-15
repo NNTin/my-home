@@ -35,6 +35,9 @@ api (environment variables, validated at start-up):
 | `MIGRATE_ON_START` | `true`               | apply Drizzle migrations before listening             |
 | `SEED_ON_START`    | `false` in the image | insert sample data when the table is empty            |
 
+`docker-compose.yml` sets `SEED_ON_START=true` so the demo stack shows data. That is for demo and
+smoke-test use only; leave it unset for real deployments.
+
 Migrations can also run as a separate step, for example as a Kubernetes init container or job:
 
 ```sh

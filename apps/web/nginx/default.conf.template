@@ -1,6 +1,6 @@
 server {
+    # IPv4 only, so the image also starts on hosts with IPv6 disabled.
     listen 80;
-    listen [::]:80;
     server_name _;
     root /usr/share/nginx/html;
 
