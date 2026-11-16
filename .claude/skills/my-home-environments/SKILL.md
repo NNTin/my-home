@@ -43,7 +43,8 @@ $S/raise-env-issue.sh --dry-run staging "health fails"   # what it would post; d
 - `with-site-token.sh <env> -- <command...>`: exports `SITE_TOKEN`, `SITE_BASE`, `SITE_HOST` and
   `SITE_TOKEN_EXPIRES_AT` to the command only, with at least 10 min of validity left.
 - `env-status.sh [staging|production|all]`: OK, DEPLOYING, PENDING, CI_FAILED or BROKEN per environment (see
-  below). Exit 1 only when one is BROKEN. The output names the PR or tag staging runs.
+  below). Exit 4 when one is BROKEN, 1 on a script
+  or tool error. The output names the PR or tag staging runs.
 - `screenshot.sh <env> [--path /?home=...] [--out file.png] [--wait ms] [--viewport WxH]`: waits for the canvas
   plus `--wait` (default 6000 ms) and prints the final host, status and console/page errors. It runs in the
   shared `ao-heavy` queue when available. Playwright (pinned) is installed outside the repository in

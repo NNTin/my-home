@@ -10,7 +10,8 @@
 #   BROKEN     down or unhealthy on every probe (ENV_STATUS_PROBES, default 4, every ENV_STATUS_PROBE_INTERVAL
 #              seconds, default 40), or the image was published more than STALE_MINUTES ago and the
 #              environment still runs another commit
-# Exits 1 when any environment is BROKEN, 2 on usage errors, otherwise 0. Prints no tokens.
+# Exits 4 when any environment is BROKEN, 0 when none is, 2 on usage errors and 1 on script or tool errors.
+# Prints no tokens.
 set -euo pipefail
 # shellcheck source=lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -21,7 +22,7 @@ PROBE_INTERVAL=${ENV_STATUS_PROBE_INTERVAL:-40}
 RUN_FIELDS=databaseId,event,headBranch,headSha,status,conclusion,createdAt,url
 
 usage() {
-  sed -n '2,13s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,14s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 
@@ -237,7 +238,7 @@ main() {
 
   if ((${#failures[@]})); then
     printf '\nBROKEN: %s\n' "${failures[*]}"
-    return 1
+    return 4
   fi
   printf '\nnot broken (see each result line)\n'
 }

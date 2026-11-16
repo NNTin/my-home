@@ -2,11 +2,12 @@
 # raise-env-issue.sh [--dry-run] [--force] <staging|production> <summary> [details-file]
 #
 # Reports a broken environment in NNTin/my-home. Runs env-status.sh first and refuses (exit 3) unless it
-# reports BROKEN: a slow or failed deploy within STALE_MINUTES of publishing, or a CI failure, is not an
-# environment issue. --force overrides that for a human decision. Looks for an open issue labelled
-# 'environment' whose title starts with '[env] <env>:' and comments there; otherwise creates
-# '[env] <env>: <summary>' (and the label if it is missing). The body is the summary, the details file and the
-# env-status.sh output, with everything token-shaped redacted. --dry-run only prints what it would do.
+# reports BROKEN: exit 4 plus a 'result BROKEN' line. A script or tool error, a slow or failed deploy within
+# STALE_MINUTES of publishing, or a CI failure is not an environment issue. --force overrides that for a human
+# decision. Looks for an open issue labelled 'environment' whose title starts with '[env] <env>:' and comments
+# there; otherwise creates '[env] <env>: <summary>' (and the label if it is missing). The body is the summary,
+# the details file and the env-status.sh output, with everything token-shaped redacted. --dry-run only prints
+# what it would do.
 set -euo pipefail
 # shellcheck source=lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -14,7 +15,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 LABEL=environment
 
 usage() {
-  sed -n '2,10s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,11s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 
@@ -41,7 +42,8 @@ if [[ -n $details_file ]]; then
 fi
 status_rc=0
 status=$("$(dirname "${BASH_SOURCE[0]}")/env-status.sh" "$SITE_ENV" 2>&1) || status_rc=$?
-if [[ $status_rc != 1 ]]; then
+# Exit 4 alone is not enough: also require the result line, so a script or tool error never files an issue.
+if [[ $status_rc != 4 ]] || ! grep -qE '^  result +BROKEN$' <<<"$status"; then
   if ((!force)); then
     redact <<<"$status" >&2
     warn "env-status.sh does not report $SITE_ENV as BROKEN, so this is not an environment issue (yet);" \
