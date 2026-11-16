@@ -1,8 +1,9 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import mockHome from '../../../data/homes/mock-home.json';
 import { App } from './App';
 import type { SceneProps } from './scene/Scene';
+import { fakeApi, homeSummary } from './test/fakeApi';
+import { mockHome } from './test/fixtures';
 
 // jsdom has no WebGL, so the R3F canvas is replaced with a stub that exposes what it would draw.
 let lastScene: SceneProps | undefined;
@@ -16,31 +17,11 @@ vi.mock('./scene/Scene', () => ({
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
-const summary = (id: string, name: string) => ({
-  id,
-  name,
-  schemaVersion: 1,
-  createdAt: '2026-01-01T00:00:00.000Z',
-  updatedAt: '2026-01-01T00:00:00.000Z',
-});
-
 function stubApi(
-  homes = [summary('mock-home', 'Mock home')],
+  homes = [homeSummary('mock-home', 'Mock home')],
   models: Record<string, unknown> = {},
 ) {
-  const fetchMock = vi.fn(async (url: string) => {
-    if (url === '/api/homes') return jsonResponse({ items: homes });
-    const id = decodeURIComponent(url.replace('/api/homes/', ''));
-    const model = id === 'mock-home' ? mockHome : models[id];
-    return model
-      ? jsonResponse(model)
-      : jsonResponse(
-          { statusCode: 404, error: 'Not Found', message: `Home "${id}" not found` },
-          404,
-        );
-  });
-  vi.stubGlobal('fetch', fetchMock);
-  return fetchMock;
+  return fakeApi({ homes, models }).fetch;
 }
 
 const levelsOf = () => new Set(lastScene?.scene.walls.map((w) => w.levelId));
@@ -48,6 +29,7 @@ const levelsOf = () => new Set(lastScene?.scene.walls.map((w) => w.levelId));
 describe('App', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    localStorage.clear();
     lastScene = undefined;
     window.history.replaceState(null, '', '/');
   });
@@ -102,7 +84,7 @@ describe('App', () => {
 
   it('renders whichever home is selected, with no renderer changes', async () => {
     const tiny = { ...mockHome, id: 'tiny', name: 'Tiny home', outdoorAreas: [] };
-    stubApi([summary('mock-home', 'Mock home'), summary('tiny', 'Tiny home')], { tiny });
+    stubApi([homeSummary('mock-home', 'Mock home'), homeSummary('tiny', 'Tiny home')], { tiny });
     render(<App />);
     fireEvent.change(await screen.findByLabelText('Home'), { target: { value: 'tiny' } });
     await vi.waitFor(() => expect(lastScene?.scene.outdoorAreas).toEqual([]));
