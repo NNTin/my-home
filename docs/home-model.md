@@ -115,7 +115,8 @@ Model levelled areas as flat patches and join them with sloped patches (ramps, e
 a lower patch next to a higher one form a retaining wall. Light wells and sunken entries are small
 low patches in a notch of the surrounding one.
 
-A sloped outdoor area is drawn with contour lines, one for every 0.2 m of fall, so slopes stand out
+A sloped outdoor area is drawn with contour lines, one for every 0.2 m of fall and clipped to its
+outline, so slopes stand out
 from levelled areas and a steep bank shows as tightly packed lines. Outdoor area kind `embankment`
 is a steep bank or retaining slope that divides two levels and is not walked on; `gravel` is a
 gravel or drainage strip such as the one along a facade.
@@ -254,7 +255,8 @@ and the seed script, not in the editor:
 - openings fit inside their wall (`offset + width <= length`, `sill + height <= wall height`) and do
   not overlap each other
 - walls have a non-zero length; terrain patches are above `bottomElevation`
-- an entrance's room belongs to its apartment and its `viaId` is an opening or a stair
+- an entrance's room belongs to its apartment, and its `viaId` is a door on a wall of that room
+  (not a window) or a stair that starts or ends in it
 - a stair leads up to a higher level, turns at right angles and its flights leave room for the
   landings; fence points are distinct
 

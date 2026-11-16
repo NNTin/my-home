@@ -408,4 +408,40 @@ describe('slope contours', () => {
     expect(east[0]!.outline.map((p) => p[1])).toEqual([0, 0, 3, 3]);
     expect(east[0]!.outline[0]![0]).toBeCloseTo(0.4 - 0.04);
   });
+
+  it('are clipped to the outline, not its bounding box', () => {
+    // A U-shaped area falling east: 4 m wide at the west, two 1 m prongs east of x = 1.
+    const u: Vec2[] = [
+      [0, 0],
+      [2, 0],
+      [2, 1],
+      [1, 1],
+      [1, 3],
+      [2, 3],
+      [2, 4],
+      [0, 4],
+    ];
+    const contours = slopeContours(u, { axis: 'x', from: 0, to: 2, high: 0, low: -0.6 });
+    const spans = contours.map((c) => {
+      const zs = c.outline.map((p) => p[1]);
+      return [c.outline[0]![0] + 0.04, Math.min(...zs), Math.max(...zs)];
+    });
+    // One full-width line in the base (x = 0.67), then one per prong (x = 1.33).
+    expect(spans).toEqual([
+      [expect.closeTo(2 / 3), 0, 4],
+      [expect.closeTo(4 / 3), 0, 1],
+      [expect.closeTo(4 / 3), 3, 4],
+    ]);
+    // A triangle narrows the lines towards its tip.
+    const triangle = slopeContours(
+      [
+        [0, 0],
+        [4, 2],
+        [0, 4],
+      ],
+      { axis: 'x', from: 0, to: 4, high: 0, low: -0.5 },
+    );
+    const widths = triangle.map((c) => c.outline[2]![1] - c.outline[0]![1]);
+    expect(widths).toEqual([expect.closeTo(2.4), expect.closeTo(0.8)]);
+  });
 });

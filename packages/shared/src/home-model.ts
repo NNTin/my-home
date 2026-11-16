@@ -398,6 +398,30 @@ const EPS = 1e-3;
 export const wallLength = (wall: Pick<Wall, 'start' | 'end'>) =>
   Math.hypot(wall.end.x.value - wall.start.x.value, wall.end.z.value - wall.start.z.value);
 
+/** Distance from a plan point to the nearest edge of a polygon. */
+function distanceToOutline(x: number, z: number, outline: Polygon): number {
+  return Math.min(
+    ...outline.map((a, i) => {
+      const b = outline[(i + 1) % outline.length]!;
+      const [ax, az, dx, dz] = [a.x.value, a.z.value, b.x.value - a.x.value, b.z.value - a.z.value];
+      const length2 = dx * dx + dz * dz;
+      const t = length2 ? Math.min(1, Math.max(0, ((x - ax) * dx + (z - az) * dz) / length2)) : 0;
+      return Math.hypot(x - ax - t * dx, z - az - t * dz);
+    }),
+  );
+}
+
+/** Whether a plan point lies inside a simple polygon. */
+function insideOutline(x: number, z: number, outline: Polygon): boolean {
+  let inside = false;
+  outline.forEach((a, i) => {
+    const b = outline[(i + 1) % outline.length]!;
+    const [ax, az, bx, bz] = [a.x.value, a.z.value, b.x.value, b.z.value];
+    if (az > z !== bz > z && x < ax + ((z - az) / (bz - az)) * (bx - ax)) inside = !inside;
+  });
+  return inside;
+}
+
 const fmt = (n: number) => `${Math.round(n * 1000) / 1000} m`;
 
 /** Cross-references and geometry checks that a JSON Schema cannot express. */
@@ -465,7 +489,31 @@ function checkSemantics(model: z.infer<typeof HomeModelShape>, ctx: z.Refinement
   );
 
   const rooms = new Map(model.rooms.map((r) => [r.id, r]));
-  const passages = new Set([...model.openings, ...(model.stairs ?? [])].map((e) => e.id));
+  const openings = new Map(model.openings.map((o) => [o.id, o]));
+  const stairs = new Map((model.stairs ?? []).map((s) => [s.id, s]));
+  /** Whether a door stands on a wall along the room's outline, so it leads into that room. */
+  const doorTouches = (door: Opening, room: Room) => {
+    const wall = walls.get(door.wallId);
+    if (!wall || wall.levelId !== room.levelId) return false;
+    const length = wallLength(wall);
+    const reach = wall.thickness.value / 2 + EPS;
+    return [door.offset.value, door.offset.value + door.width.value].every((along) => {
+      const t = length ? along / length : 0;
+      const x = wall.start.x.value + (wall.end.x.value - wall.start.x.value) * t;
+      const z = wall.start.z.value + (wall.end.z.value - wall.start.z.value) * t;
+      return distanceToOutline(x, z, room.outline) <= reach;
+    });
+  };
+  /** Whether a stair starts or arrives in the room. */
+  const stairTouches = (stair: Stair, room: Room) => {
+    const end =
+      stair.levelId === room.levelId
+        ? stair.path[0]
+        : stair.toLevelId === room.levelId
+          ? stair.path.at(-1)
+          : undefined;
+    return end !== undefined && insideOutline(end.x.value, end.z.value, room.outline);
+  };
   model.apartments.forEach((a, i) =>
     a.entrances?.forEach((e, j) => {
       const path = ['apartments', i, 'entrances', j];
@@ -474,7 +522,16 @@ function checkSemantics(model: z.infer<typeof HomeModelShape>, ctx: z.Refinement
       else if (room.apartmentId !== a.id) {
         issue([...path, 'roomId'], `Room "${room.id}" is not in apartment "${a.id}"`);
       }
-      if (!passages.has(e.viaId)) issue([...path, 'viaId'], missing('opening or stair', e.viaId));
+      const door = openings.get(e.viaId);
+      const stair = stairs.get(e.viaId);
+      if (!door && !stair) issue([...path, 'viaId'], missing('opening or stair', e.viaId));
+      else if (door?.type === 'window') {
+        issue([...path, 'viaId'], `Entrance "${e.id}" leads through "${door.id}", a window`);
+      } else if (room && door && !doorTouches(door, room)) {
+        issue([...path, 'viaId'], `Door "${door.id}" is not on a wall of room "${room.id}"`);
+      } else if (room && stair && !stairTouches(stair, room)) {
+        issue([...path, 'viaId'], `Stair "${stair.id}" does not start or end in room "${room.id}"`);
+      }
     }),
   );
 

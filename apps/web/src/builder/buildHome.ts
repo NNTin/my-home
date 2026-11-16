@@ -791,29 +791,41 @@ const CONTOUR_WIDTH = 0.08;
 
 /**
  * Contour lines across a sloped surface: thin strips at every `CONTOUR_INTERVAL` of fall, lying
- * on the slope just above the surface. They span the bounding box, like the slope itself.
+ * on the slope just above the surface. The slope runs across the bounding box, but each line is
+ * clipped to the outline, so a notched or L-shaped area gets a strip per stretch inside it.
  */
 export function slopeContours(outline: Vec2[], slope: PlaneSlope): Surface[] {
   const fall = slope.high - slope.low;
   const run = slope.to - slope.from;
-  const across = outline.map(([x, z]) => (slope.axis === 'x' ? z : x));
-  const [min, max] = [Math.min(...across), Math.max(...across)];
+  // Outline as [along the fall, across it].
+  const points = outline.map(([x, z]): Vec2 => (slope.axis === 'x' ? [x, z] : [z, x]));
   const lifted = { ...slope, high: slope.high + SURFACE_OFFSET, low: slope.low + SURFACE_OFFSET };
   const contours: Surface[] = [];
   for (let k = 1; k * CONTOUR_INTERVAL < fall - EPS; k++) {
     const at = slope.from + (run * k * CONTOUR_INTERVAL) / fall;
     const [a, b] = [at - CONTOUR_WIDTH / 2, at + CONTOUR_WIDTH / 2];
-    const corners: Vec2[] = [
-      [a, min],
-      [b, min],
-      [b, max],
-      [a, max],
-    ];
-    contours.push({
-      outline: slope.axis === 'x' ? corners : corners.map(([u, v]): Vec2 => [v, u]),
-      y: lifted.high,
-      slope: lifted,
-    });
+    // Where the line crosses the outline's edges; it is inside between each pair of crossings.
+    const crossings = points
+      .flatMap(([u0, v0], i) => {
+        const [u1, v1] = points[(i + 1) % points.length]!;
+        return u0 > at !== u1 > at ? [v0 + ((at - u0) / (u1 - u0)) * (v1 - v0)] : [];
+      })
+      .sort((p, q) => p - q);
+    for (let i = 0; i + 1 < crossings.length; i += 2) {
+      const [min, max] = [crossings[i]!, crossings[i + 1]!];
+      if (max - min < EPS) continue;
+      const corners: Vec2[] = [
+        [a, min],
+        [b, min],
+        [b, max],
+        [a, max],
+      ];
+      contours.push({
+        outline: slope.axis === 'x' ? corners : corners.map(([u, v]): Vec2 => [v, u]),
+        y: lifted.high,
+        slope: lifted,
+      });
+    }
   }
   return contours;
 }

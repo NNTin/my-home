@@ -623,6 +623,47 @@ describe('optional structures', () => {
     ]);
   });
 
+  it('rejects entrances through a window, a door of another room or a stair elsewhere', () => {
+    const home = realHome();
+    const [at, apartment] = byId(home.apartments, 'apt-souterrain');
+    const entrance = (id: string, roomId: string, viaId: string) => ({
+      id,
+      name: id,
+      roomId,
+      viaId,
+    });
+    apartment.entrances!.push(
+      entrance('e-window', 'souterrain-bed-room', 'window-souterrain-bed-room-east'),
+      entrance('e-other-room', 'souterrain-stair-hall', 'door-souterrain-corridor-bed-room'),
+      entrance('e-far-wall', 'souterrain-kitchen', 'door-souterrain-corridor-patio'),
+      entrance('e-stair', 'souterrain-corridor', 'stair-souterrain-stair-hall-ground-floor'),
+      // Fine: a door leads into the rooms on both sides of its wall, a stair into both its ends.
+      entrance('e-ok-door', 'souterrain-bed-room', 'door-souterrain-corridor-bed-room'),
+      entrance('e-ok-door-2', 'souterrain-corridor', 'door-souterrain-corridor-bed-room'),
+    );
+    expect(issuesOf(home)).toEqual([
+      {
+        path: `apartments[${at}].entrances[2].viaId`,
+        message: 'Entrance "e-window" leads through "window-souterrain-bed-room-east", a window',
+      },
+      {
+        path: `apartments[${at}].entrances[3].viaId`,
+        message:
+          'Door "door-souterrain-corridor-bed-room" is not on a wall of room "souterrain-stair-hall"',
+      },
+      {
+        path: `apartments[${at}].entrances[4].viaId`,
+        message:
+          'Door "door-souterrain-corridor-patio" is not on a wall of room "souterrain-kitchen"',
+      },
+      {
+        path: `apartments[${at}].entrances[5].viaId`,
+        message:
+          'Stair "stair-souterrain-stair-hall-ground-floor" does not start or end in room "souterrain-corridor"',
+      },
+    ]);
+  });
+
   it('rejects fences that repeat a point or reuse an id', () => {
     const home = realHome();
     const [at, fence] = byId(home.fences!, 'fence-north');
