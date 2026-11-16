@@ -30,11 +30,11 @@ run_json() {
 
 # jobs_json <publish status> <publish conclusion|""> <publish completed minutes ago|""> <deploy conclusion|"">
 jobs_json() {
-  local done=null
-  [[ -n $3 ]] && done="\"$(ago "$3")\""
-  jq -nc --arg ps "$1" --arg pc "$2" --argjson done "$done" --arg dc "$4" '{jobs: [
+  local completed=null
+  [[ -n $3 ]] && completed="\"$(ago "$3")\""
+  jq -nc --arg ps "$1" --arg pc "$2" --argjson completed "$completed" --arg dc "$4" '{jobs: [
       {name: "check", status: "completed", conclusion: "success"},
-      {name: "publish", status: $ps, conclusion: (if $pc == "" then null else $pc end), completedAt: $done},
+      {name: "publish", status: $ps, conclusion: (if $pc == "" then null else $pc end), completedAt: $completed},
       {name: "deploy", status: (if $dc == "" then "queued" else "completed" end),
        conclusion: (if $dc == "" then null else $dc end)}]}'
 }

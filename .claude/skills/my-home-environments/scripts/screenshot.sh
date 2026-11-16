@@ -59,7 +59,7 @@ fi
 [[ $# -ge 1 ]] || usage
 resolve_env "$1"
 shift
-target=/ out= wait_ms=6000 viewport=1440x900
+target=/ out='' wait_ms=6000 viewport=1440x900
 while [[ $# -gt 0 ]]; do
   [[ $# -ge 2 ]] || usage
   case "$1" in

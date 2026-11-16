@@ -216,7 +216,9 @@ main() {
       sleep "$PROBE_INTERVAL"
     done
     # A died exchange or login redirect leaves "env-status.sh: <message>"; show it as an auth line.
-    sed "s/^${0##*/}: /  auth     FAILED: /" <<<"$out" | redact
+    out=$'\n'"$out"
+    out=${out//$'\n'"${0##*/}: "/$'\n'"  auth     FAILED: "}
+    redact <<<"${out#$'\n'}"
     commit=$(<"$COMMIT_FILE")
 
     if [[ -n $commit && $have_gh == 1 ]]; then
