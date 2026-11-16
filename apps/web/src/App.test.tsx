@@ -126,4 +126,56 @@ describe('App', () => {
     render(<App />);
     expect(await screen.findByText(/API error: GET \/api\/homes failed: 500/)).toBeInTheDocument();
   });
+  describe('walking', () => {
+    it('starts walking in first person: the whole building, no panels, no room names', async () => {
+      stubApi();
+      render(<App />);
+      fireEvent.click(await screen.findByRole('button', { name: /Walk and take photos/ }));
+
+      expect(screen.getByRole('application', { name: 'Movement pad' })).toBeInTheDocument();
+      expect(screen.queryByRole('region', { name: 'View controls' })).not.toBeInTheDocument();
+      expect(lastScene?.walk?.view).toBe('first');
+      // The figure starts on the lowest level of the mock home, inside a room.
+      expect(lastScene?.walk?.figure.current).toMatchObject({ levelId: 'souterrain', y: -1.2 });
+      expect(screen.getByRole('status', { name: 'Figure location' })).toHaveTextContent(
+        /· Souterrain$/,
+      );
+      expect(levelsOf()).toEqual(new Set(['souterrain', 'ground-floor', 'first-floor']));
+      expect(lastScene?.scene.roofPlanes).toHaveLength(2);
+      expect(lastScene?.labels).toEqual([]);
+    });
+
+    it('cuts the building away at the level of the figure in the overview', async () => {
+      stubApi();
+      render(<App />);
+      fireEvent.click(await screen.findByRole('button', { name: /Walk and take photos/ }));
+      fireEvent.click(screen.getByRole('button', { name: 'Overview' }));
+
+      expect(lastScene?.walk?.view).toBe('third');
+      expect(levelsOf()).toEqual(new Set(['souterrain']));
+      expect(lastScene?.scene.roofPlanes).toHaveLength(0);
+      expect(lastScene?.labels.map((l) => l.name)).toContain('Hallway');
+    });
+
+    it('returns to the viewer as it was on exit', async () => {
+      stubApi();
+      render(<App />);
+      const cutaway = within(await screen.findByRole('group', { name: 'Show up to level' }));
+      fireEvent.click(cutaway.getByLabelText('Ground floor'));
+      fireEvent.click(screen.getByRole('button', { name: /Walk and take photos/ }));
+      fireEvent.click(screen.getByRole('button', { name: /Exit/ }));
+
+      expect(lastScene?.walk).toBeUndefined();
+      expect(screen.getByRole('region', { name: 'View controls' })).toBeInTheDocument();
+      expect(levelsOf()).toEqual(new Set(['souterrain', 'ground-floor']));
+    });
+
+    it('opens walking directly from the address: ?walk=third', async () => {
+      window.history.replaceState(null, '', '/?walk=third');
+      stubApi();
+      render(<App />);
+      expect(await screen.findByRole('application', { name: 'Movement pad' })).toBeInTheDocument();
+      expect(lastScene?.walk?.view).toBe('third');
+    });
+  });
 });

@@ -2,7 +2,8 @@
 
 The owner takes photos of the real home **inside the model's context**: each photo is stored with the pose it was
 taken from (where, on which level, in which room, looking which way). The photos are evidence for refining walls,
-rooms, openings and furniture, and an LLM agent that is unsure can [ask for a new one](#photo-requests).
+rooms, openings and furniture, and an LLM agent that is unsure can [ask for a new one](#photo-requests). How the
+figure is walked and a photo is taken is in [walking.md](walking.md).
 
 Photos and their metadata live only in the database. They never go into the repository or onto GitHub.
 

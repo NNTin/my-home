@@ -27,12 +27,32 @@ async function check() {
   await browser.close();
 }
 
-/** Runs `[{ click: selector } | { drag: [dx, dy] }]` in order; drags start at the canvas centre. */
+/**
+ * Runs `[{ click: selector } | { drag: [dx, dy] } | { pad: [dx, dy, ms] } | { key: [key, ms] }]` in order.
+ * Drags start at the canvas centre; `pad` holds the walk mode's movement pad deflected, `key` holds a key.
+ */
 async function runActions(page, actions) {
   for (const action of actions) {
     if (action.click !== undefined) {
       console.log(`click ${action.click}`);
       await page.locator(action.click).first().click({ timeout: 15_000 });
+    } else if (action.pad) {
+      const [dx, dy, ms] = action.pad;
+      const box = await page.locator('.joystick').first().boundingBox({ timeout: 15_000 });
+      const x = box.x + box.width / 2;
+      const y = box.y + box.height / 2;
+      console.log(`pad ${dx},${dy} for ${ms} ms`);
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      await page.mouse.move(x + dx, y + dy, { steps: 5 });
+      await page.waitForTimeout(ms);
+      await page.mouse.up();
+    } else if (action.key) {
+      const [key, ms] = action.key;
+      console.log(`key ${key} for ${ms} ms`);
+      await page.keyboard.down(key);
+      await page.waitForTimeout(Number(ms));
+      await page.keyboard.up(key);
     } else if (action.drag) {
       const [dx, dy] = action.drag;
       const box = await page.locator('canvas').first().boundingBox();

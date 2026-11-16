@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # screenshot.sh <staging|production> [--path /?home=...] [--out file.png] [--wait ms] [--viewport WxH]
-#               [--click <playwright selector>]... [--drag DX,DY]...
+#               [--click <playwright selector>]... [--drag DX,DY]... [--pad DX,DY,MS]... [--key KEY,MS]...
 # screenshot.sh --check
 #
 # Screenshots the 3D viewer in headless Chromium (Playwright, kept outside the repository in
@@ -9,7 +9,9 @@
 # status, title and console/page errors. Default --out: ${TMPDIR:-/tmp}/my-home-<env>-<time>.png.
 # --click and --drag run in the given order after the wait, each followed by a short settle: --click clicks a
 # Playwright selector (e.g. 'label:has-text("Souterrain")'), --drag drags DX,DY pixels from the canvas centre
-# (orbits the camera).
+# (orbits the camera). For walk mode (--path '/?walk=first' or '/?walk=third'): --pad holds the movement pad
+# deflected by DX,DY pixels (up to 44; up is negative DY and walks forward, left turns left) for MS
+# milliseconds, and --key holds a key (w, a, s, d, q, e, ArrowUp, ...) for MS milliseconds.
 # The site token is attached only to requests for the environment's own host and is never printed.
 # --check installs Playwright if missing and reports its version, the Chromium path and a headless launch.
 set -euo pipefail
@@ -22,7 +24,7 @@ MY_HOME_PLAYWRIGHT_DIR=${MY_HOME_PLAYWRIGHT_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}
 export MY_HOME_PLAYWRIGHT_DIR
 
 usage() {
-  sed -n '2,10s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,3s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 
@@ -75,6 +77,14 @@ while [[ $# -gt 0 ]]; do
     --drag)
       [[ $2 =~ ^-?[0-9]+,-?[0-9]+$ ]] || die "--drag must be DX,DY in pixels, e.g. -300,0"
       actions=$(jq -c --arg d "$2" '. + [{drag: ($d | split(",") | map(tonumber))}]' <<<"$actions")
+      ;;
+    --pad)
+      [[ $2 =~ ^-?[0-9]+,-?[0-9]+,[0-9]+$ ]] || die "--pad must be DX,DY,MS, e.g. 0,-44,2000"
+      actions=$(jq -c --arg d "$2" '. + [{pad: ($d | split(",") | map(tonumber))}]' <<<"$actions")
+      ;;
+    --key)
+      [[ $2 =~ ^[A-Za-z]+,[0-9]+$ ]] || die "--key must be KEY,MS, e.g. w,1500"
+      actions=$(jq -c --arg d "$2" '. + [{key: ($d | split(",") | [.[0], (.[1] | tonumber)])}]' <<<"$actions")
       ;;
     *) usage ;;
   esac

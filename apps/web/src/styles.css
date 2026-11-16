@@ -252,3 +252,267 @@ body {
   pointer-events: none;
   user-select: none;
 }
+
+/* Walking: the controls lie over the canvas and only their own parts take pointer events. */
+.walk-hud {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  font-size: 0.875rem;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.walk-hud > * {
+  pointer-events: auto;
+}
+
+/* Drag anywhere on the view to look around (first person). */
+.walk-look {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+  cursor: grab;
+}
+
+.walk-hud button,
+.walk-hud .shutter,
+.walk-hud .chip {
+  border: 1px solid rgb(255 255 255 / 0.35);
+  border-radius: 0.5rem;
+  background: rgb(0 0 0 / 0.6);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.walk-hud button {
+  min-height: 2.5rem;
+  padding: 0.25rem 0.75rem;
+}
+
+.walk-hud button[aria-pressed='true'],
+.walk-hud button.primary {
+  border-color: #a8d4ff;
+  background: rgb(40 90 140 / 0.85);
+}
+
+.walk-hud button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.walk-bar {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  /* Leaves the top right corner to the compass. */
+  right: 5.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.walk-bar > * {
+  pointer-events: auto;
+}
+
+.walk-where,
+.walk-notice,
+.walk-keys {
+  padding: 0.375rem 0.625rem;
+  border-radius: 0.5rem;
+  background: rgb(0 0 0 / 0.6);
+}
+
+.walk-where {
+  font-weight: 600;
+}
+
+.walk-notice {
+  position: absolute;
+  top: 7rem;
+  left: 1rem;
+  margin: 0;
+  color: #ffcc80;
+}
+
+.walk-controls {
+  position: absolute;
+  right: 1.25rem;
+  bottom: 1.5rem;
+  left: 1.25rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  pointer-events: none;
+}
+
+.walk-controls > * {
+  pointer-events: auto;
+}
+
+.walk-bar .walk-keys {
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+/* Keyboard hints make no sense on a touch screen. */
+@media (pointer: coarse), (max-width: 720px) {
+  .walk-keys {
+    display: none;
+  }
+}
+
+.joystick {
+  position: relative;
+  flex: none;
+  width: 8.25rem;
+  height: 8.25rem;
+  border: 2px solid rgb(255 255 255 / 0.4);
+  border-radius: 50%;
+  background: rgb(0 0 0 / 0.45);
+  touch-action: none;
+  cursor: grab;
+}
+
+.joystick-knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 3.5rem;
+  height: 3.5rem;
+  margin: -1.75rem 0 0 -1.75rem;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.85);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.5);
+  pointer-events: none;
+}
+
+.walk-hud .shutter {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: rgb(228 87 46 / 0.9);
+  font-size: 1.75rem;
+}
+
+.shutter input,
+.chip input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.capture-sheet {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  box-sizing: border-box;
+  max-width: 30rem;
+  max-height: 70%;
+  margin: 0 auto;
+  padding: 0.75rem 1rem 1rem;
+  overflow-y: auto;
+  border-radius: 0.75rem 0.75rem 0 0;
+  background: rgb(20 24 30 / 0.92);
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.capture-head {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.capture-head img {
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 0.375rem;
+  object-fit: cover;
+}
+
+.capture-sheet p {
+  margin: 0.25rem 0;
+}
+
+.capture-sheet .hint,
+.capture-sheet .where {
+  opacity: 0.8;
+}
+
+.capture-sheet .error {
+  color: #ff8a80;
+}
+
+.capture-note {
+  display: block;
+  margin-top: 0.5rem;
+}
+
+.capture-note textarea {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.375rem;
+  border: 1px solid rgb(255 255 255 / 0.3);
+  border-radius: 0.375rem;
+  background: rgb(0 0 0 / 0.4);
+  color: inherit;
+  /* 16px keeps iOS from zooming the page when the field is focused. */
+  font: inherit;
+  font-size: 1rem;
+}
+
+.capture-tags,
+.capture-actions,
+.nudges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin: 0.5rem 0;
+}
+
+.walk-hud .chip {
+  position: relative;
+  padding: 0.375rem 0.625rem;
+  border-radius: 1rem;
+}
+
+.walk-hud .chip.on {
+  border-color: #a8d4ff;
+  background: rgb(40 90 140 / 0.85);
+}
+
+.nudges {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.capture-actions {
+  justify-content: flex-end;
+}
+
+.capture-progress {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.capture-progress progress {
+  flex: 1;
+}

@@ -7,6 +7,7 @@ import type { CompassMarker } from '../compass/compass';
 import { CompassMarkers, CompassRose, CompassTracker } from '../compass/Compass';
 import { FurnitureLayer, type FurnitureHandlers, type FurnitureView } from './FurnitureLayer';
 import { HomeMeshes } from './HomeMeshes';
+import { WalkRig, type WalkRigProps } from './WalkRig';
 
 export interface SceneProps {
   scene: HomeScene;
@@ -20,6 +21,8 @@ export interface SceneProps {
   markers: CompassMarker[];
   /** Room names shown over their floors. */
   labels: RoomLabel[];
+  /** Set while walking: the figure to draw and whose eyes or overview the camera takes. */
+  walk?: WalkRigProps | undefined;
 }
 
 /** Initial camera: south-east of the building, far enough to see the whole plot. */
@@ -41,6 +44,7 @@ export function Scene({
   northBearing,
   markers,
   labels,
+  walk,
 }: SceneProps) {
   const roseRef = useRef<HTMLButtonElement>(null);
   const northUpRef = useRef<() => void>(undefined);
@@ -74,7 +78,14 @@ export function Scene({
             {l.name}
           </Html>
         ))}
-        <OrbitControls makeDefault target={target} maxPolarAngle={Math.PI * 0.95} />
+        <OrbitControls
+          makeDefault
+          target={target}
+          maxPolarAngle={Math.PI * 0.95}
+          // In first person the camera is the figure's eyes; dragging looks around instead.
+          enabled={walk?.view !== 'first'}
+        />
+        {walk && <WalkRig figure={walk.figure} view={walk.view} />}
         <CompassTracker northBearing={northBearing} roseRef={roseRef} northUpRef={northUpRef} />
       </Canvas>
       <CompassRose roseRef={roseRef} onNorthUp={() => northUpRef.current?.()} />
