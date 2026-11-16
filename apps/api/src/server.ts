@@ -16,8 +16,8 @@ try {
     app.log.info({ driver: database.driver }, 'migrations applied');
   }
   if (config.seedOnStart) {
-    const inserted = await seed(database.db);
-    app.log.info({ inserted }, 'seed finished');
+    const result = await seed(database.db, { file: config.seedFile });
+    app.log.info(result, 'seed finished');
   }
   await app.listen({ host: config.host, port: config.port });
 } catch (err) {

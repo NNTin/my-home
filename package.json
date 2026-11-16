@@ -18,6 +18,7 @@
     "db:generate": "pnpm --filter @my-home/api db:generate",
     "db:migrate": "pnpm --filter @my-home/api db:migrate",
     "db:seed": "pnpm --filter @my-home/api db:seed",
+    "schema:generate": "pnpm --filter @my-home/shared schema:generate",
     "prepare": "husky || true"
   },
   "devDependencies": {

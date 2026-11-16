@@ -1,8 +1,17 @@
-import { ListHomesResponse } from '@my-home/shared';
+import { ApiError, HomeModel, ListHomesResponse } from '@my-home/shared';
 
-/** Typed client for the sample endpoint; responses are validated with the shared schema. */
-export async function fetchHomes(signal?: AbortSignal): Promise<ListHomesResponse> {
-  const res = await fetch('/api/homes', { signal });
-  if (!res.ok) throw new Error(`GET /api/homes failed: ${res.status}`);
-  return ListHomesResponse.parse(await res.json());
+async function getJson<T>(url: string, schema: { parse(value: unknown): T }, signal?: AbortSignal) {
+  const res = await fetch(url, { signal });
+  if (!res.ok) {
+    const body = ApiError.safeParse(await res.json().catch(() => undefined));
+    throw new Error(`GET ${url} failed: ${body.success ? body.data.message : res.status}`);
+  }
+  return schema.parse(await res.json());
 }
+
+/** Typed API client; every response is validated with the shared schemas. */
+export const fetchHomes = (signal?: AbortSignal): Promise<ListHomesResponse> =>
+  getJson('/api/homes', ListHomesResponse, signal);
+
+export const fetchHome = (id: string, signal?: AbortSignal): Promise<HomeModel> =>
+  getJson(`/api/homes/${encodeURIComponent(id)}`, HomeModel, signal);

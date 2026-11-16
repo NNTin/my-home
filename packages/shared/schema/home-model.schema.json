@@ -1,0 +1,381 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/HomeModel",
+  "$defs": {
+    "HomeModel": {
+      "type": "object",
+      "properties": {
+        "$schema": {
+          "type": "string"
+        },
+        "schemaVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "building": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "footprint": {
+              "$ref": "#/$defs/Polygon"
+            },
+            "roofThickness": {
+              "$ref": "#/$defs/PositiveDimension"
+            }
+          },
+          "required": ["id", "name", "footprint", "roofThickness"],
+          "additionalProperties": false
+        },
+        "terrain": {
+          "type": "object",
+          "properties": {
+            "groundElevation": {
+              "$ref": "#/$defs/Dimension"
+            },
+            "bottomElevation": {
+              "$ref": "#/$defs/Dimension"
+            },
+            "patches": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/$defs/Id"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "outline": {
+                    "$ref": "#/$defs/Polygon"
+                  },
+                  "holes": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/Polygon"
+                    }
+                  },
+                  "elevation": {
+                    "$ref": "#/$defs/Dimension"
+                  }
+                },
+                "required": ["id", "name", "outline", "elevation"],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": ["groundElevation", "bottomElevation", "patches"],
+          "additionalProperties": false
+        },
+        "levels": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Id"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "elevation": {
+                "$ref": "#/$defs/Dimension"
+              },
+              "height": {
+                "$ref": "#/$defs/PositiveDimension"
+              },
+              "slabThickness": {
+                "$ref": "#/$defs/PositiveDimension"
+              }
+            },
+            "required": ["id", "name", "elevation", "height", "slabThickness"],
+            "additionalProperties": false
+          }
+        },
+        "apartments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Id"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "levelIds": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Id"
+                }
+              },
+              "description": {
+                "type": "string",
+                "maxLength": 2000
+              }
+            },
+            "required": ["id", "name", "levelIds"],
+            "additionalProperties": false
+          }
+        },
+        "rooms": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Id"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "levelId": {
+                "$ref": "#/$defs/Id"
+              },
+              "apartmentId": {
+                "$ref": "#/$defs/Id"
+              },
+              "outline": {
+                "$ref": "#/$defs/Polygon"
+              }
+            },
+            "required": ["id", "name", "levelId", "outline"],
+            "additionalProperties": false
+          }
+        },
+        "walls": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Id"
+              },
+              "levelId": {
+                "$ref": "#/$defs/Id"
+              },
+              "apartmentId": {
+                "$ref": "#/$defs/Id"
+              },
+              "kind": {
+                "type": "string",
+                "enum": ["exterior", "interior"]
+              },
+              "start": {
+                "$ref": "#/$defs/Point"
+              },
+              "end": {
+                "$ref": "#/$defs/Point"
+              },
+              "thickness": {
+                "$ref": "#/$defs/PositiveDimension"
+              },
+              "height": {
+                "$ref": "#/$defs/PositiveDimension"
+              }
+            },
+            "required": ["id", "levelId", "kind", "start", "end", "thickness", "height"],
+            "additionalProperties": false
+          }
+        },
+        "openings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Id"
+              },
+              "wallId": {
+                "$ref": "#/$defs/Id"
+              },
+              "type": {
+                "type": "string",
+                "enum": ["door", "window"]
+              },
+              "offset": {
+                "$ref": "#/$defs/NonNegativeDimension"
+              },
+              "width": {
+                "$ref": "#/$defs/PositiveDimension"
+              },
+              "height": {
+                "$ref": "#/$defs/PositiveDimension"
+              },
+              "sill": {
+                "$ref": "#/$defs/NonNegativeDimension"
+              }
+            },
+            "required": ["id", "wallId", "type", "offset", "width", "height", "sill"],
+            "additionalProperties": false
+          }
+        },
+        "outdoorAreas": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Id"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "kind": {
+                "type": "string",
+                "enum": ["garden", "driveway", "patio", "path"]
+              },
+              "ownerApartmentId": {
+                "$ref": "#/$defs/Id"
+              },
+              "outline": {
+                "$ref": "#/$defs/Polygon"
+              },
+              "elevation": {
+                "$ref": "#/$defs/Dimension"
+              }
+            },
+            "required": ["id", "name", "kind", "outline", "elevation"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "id",
+        "name",
+        "building",
+        "terrain",
+        "levels",
+        "apartments",
+        "rooms",
+        "walls",
+        "openings",
+        "outdoorAreas"
+      ],
+      "additionalProperties": false,
+      "title": "my-home home model",
+      "description": "A building with levels, apartments, rooms, walls, openings, terrain and outdoor areas. Units are metres; Y-up; ground level is y = 0."
+    },
+    "Id": {
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+    },
+    "Polygon": {
+      "minItems": 3,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Point"
+      },
+      "description": "A simple polygon on the plan, at least 3 points."
+    },
+    "Point": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "$ref": "#/$defs/Dimension"
+        },
+        "z": {
+          "$ref": "#/$defs/Dimension"
+        }
+      },
+      "required": ["x", "z"],
+      "additionalProperties": false,
+      "description": "A plan point (x east, z south) in metres."
+    },
+    "Dimension": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/DimensionSource"
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 500
+        }
+      },
+      "required": ["value", "source"],
+      "additionalProperties": false,
+      "description": "A value in metres with provenance."
+    },
+    "DimensionSource": {
+      "type": "string",
+      "enum": ["mock", "estimated-from-photo", "measured"],
+      "description": "Where a dimension value comes from."
+    },
+    "PositiveDimension": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "source": {
+          "$ref": "#/$defs/DimensionSource"
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 500
+        }
+      },
+      "required": ["value", "source"],
+      "additionalProperties": false,
+      "description": "A strictly positive value in metres with provenance."
+    },
+    "NonNegativeDimension": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number",
+          "minimum": 0
+        },
+        "source": {
+          "$ref": "#/$defs/DimensionSource"
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 500
+        }
+      },
+      "required": ["value", "source"],
+      "additionalProperties": false,
+      "description": "A non-negative value in metres with provenance."
+    }
+  }
+}

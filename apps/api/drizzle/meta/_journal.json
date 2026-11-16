@@ -8,6 +8,13 @@
       "when": 1794774349186,
       "tag": "0000_create_homes",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794788870542,
+      "tag": "0001_home_model_document",
+      "breakpoints": true
     }
   ]
 }

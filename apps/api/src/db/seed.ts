@@ -1,16 +1,42 @@
-import { sql } from 'drizzle-orm';
+import { readFile } from 'node:fs/promises';
+import { describeIssues, formatIssues, HomeModel } from '@my-home/shared';
+import { defaultHomeFile } from '../paths';
 import type { Db } from './client';
-import { homes } from './schema';
+import { homeStore } from './homes';
 
-export const sampleHomes = ['Mock home'];
+/** Reads and validates a home file; throws with path-based messages when it is invalid. */
+export async function readHomeFile(file: string): Promise<HomeModel> {
+  let json: unknown;
+  try {
+    json = JSON.parse(await readFile(file, 'utf8'));
+  } catch (err) {
+    throw new Error(`Cannot read home file ${file}: ${(err as Error).message}`, { cause: err });
+  }
+  const result = HomeModel.safeParse(json);
+  if (!result.success) {
+    throw new Error(`Invalid home file ${file}:\n${describeIssues(formatIssues(result.error))}`);
+  }
+  return result.data;
+}
 
-/** Inserts the sample rows when the table is empty. Safe to run repeatedly. */
-export async function seed(db: Db): Promise<number> {
-  const [row] = await db.select({ count: sql<number>`count(*)::int` }).from(homes);
-  if ((row?.count ?? 0) > 0) return 0;
-  const inserted = await db
-    .insert(homes)
-    .values(sampleHomes.map((name) => ({ name })))
-    .returning({ id: homes.id });
-  return inserted.length;
+export interface SeedResult {
+  id: string;
+  status: 'inserted' | 'replaced' | 'unchanged';
+}
+
+/**
+ * Loads a home file into the database. Idempotent: an existing home with the same id is left
+ * alone unless `replace` is set.
+ */
+export async function seed(
+  db: Db,
+  { file = defaultHomeFile, replace = false }: { file?: string; replace?: boolean } = {},
+): Promise<SeedResult> {
+  const model = await readHomeFile(file);
+  const store = homeStore(db);
+  if (replace) {
+    const status = await store.upsert(model);
+    return { id: model.id, status: status === 'created' ? 'inserted' : 'replaced' };
+  }
+  return { id: model.id, status: (await store.insert(model)) ? 'inserted' : 'unchanged' };
 }

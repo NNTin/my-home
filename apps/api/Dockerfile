@@ -31,6 +31,8 @@ COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=prod-deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY apps/api/package.json ./apps/api/
 COPY apps/api/drizzle ./apps/api/drizzle
+# Home files seeded on start (SEED_ON_START, SEED_FILE); resolved from dist/ as ../../../data.
+COPY data/homes ./data/homes
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 WORKDIR /app/apps/api
 # Writable PGlite directory, used only when DATABASE_URL is unset.

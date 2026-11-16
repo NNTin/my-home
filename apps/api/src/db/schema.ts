@@ -1,4 +1,5 @@
-import { pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import type { HomeModel } from '@my-home/shared';
+import { integer, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 
 const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -8,10 +9,12 @@ const timestamps = {
     .$onUpdate(() => new Date()),
 };
 
-/** Sample table for the boilerplate; Epic 2 replaces or extends it. */
+/** One row per home; `model` is the validated HomeModel document and `id` equals `model.id`. */
 export const homes = pgTable('homes', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: text('id').primaryKey(),
   name: text('name').notNull(),
+  schemaVersion: integer('schema_version').notNull(),
+  model: jsonb('model').$type<HomeModel>().notNull(),
   ...timestamps,
 });
 
