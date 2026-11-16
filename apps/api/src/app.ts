@@ -10,6 +10,7 @@ import type { Database } from './db/client';
 import { errorHandler } from './errors';
 import { healthRoutes } from './routes/health';
 import { homeRoutes } from './routes/homes';
+import { layoutRoutes } from './routes/layouts';
 
 export function loggerOptions(config: Config): LoggerOptions {
   const pretty = config.env === 'development' && process.stdout.isTTY;
@@ -33,6 +34,7 @@ export async function buildApp(config: Config, database: Database, logger: Logge
     async (api) => {
       await api.register(healthRoutes(database));
       await api.register(homeRoutes(database.db));
+      await api.register(layoutRoutes(database.db));
     },
     { prefix: '/api' },
   );

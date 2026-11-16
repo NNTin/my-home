@@ -31,7 +31,10 @@ pnpm dev
 The Vite dev server proxies `/api` to the api (`API_URL`). On start-up the api applies migrations and,
 outside production, seeds the mock home from `data/homes/mock-home.json`. The page renders the home
 loaded from the api (orbit with the mouse) with a panel for the per-level cutaway and visibility
-toggles. See [docs/home-model.md](docs/home-model.md) for the model and how to load other homes.
+toggles, and a **Furniture** panel to place, move and rotate furniture in named layouts that are
+saved to the api. See [docs/home-model.md](docs/home-model.md) for the model and how to load other
+homes, [docs/layouts.md](docs/layouts.md) for layouts and the editor, and
+[docs/adding-furniture-type.md](docs/adding-furniture-type.md) to add a furniture type.
 
 ## Database
 
@@ -71,8 +74,11 @@ A pre-commit hook (husky + lint-staged) lints and formats staged files.
 ```
 apps/web/            Vite + React + R3F viewer
   src/builder/       pure home model -> render descriptors (no three.js)
-  src/scene/         R3F components drawing the descriptors
-  src/overlay/       HTML overlay (view controls)
+  src/editor/        pure furniture logic: placement, snapping, collision, undo/redo
+  src/items/         item-type registry; one folder per furniture type
+  src/layouts/       layout persistence: auto-save, localStorage drafts
+  src/scene/         R3F components drawing the descriptors and the furniture
+  src/overlay/       HTML overlay (view controls, furniture panel)
   nginx/             nginx config template for the container image
 apps/api/            Fastify server
   src/routes/        route plugins (registered under /api)
@@ -104,7 +110,8 @@ verified in GitHub Actions (`.github/workflows/ci.yml`):
 
 - `check`: install, lint, format:check, typecheck, test (PGlite), build
 - `test-postgres`: api tests against a `postgres` service container
-- `docker`: build both images, `docker compose up`, smoke-test `/api/health` and `/`
+- `docker`: build both images, `docker compose up`, smoke-test `/api/health`, `/` and the layouts
+  API
 - `publish`: push images to GHCR on `main` and `v*` tags (never from pull requests)
 
 See [docs/container-images.md](docs/container-images.md) for image names, tags and the deployment

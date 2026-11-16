@@ -99,6 +99,31 @@ jobs:
             | jq -e '.schemaVersion == 1 and (.apartments | length) == 4 and (.outdoorAreas | length) == 3'
           curl -fsS http://localhost:8080/api/homes/mock-home/export | jq -e '.id == "mock-home"'
           curl -fsS http://localhost:8080/ | grep -q '<div id="root">'
+      - name: Smoke test layouts
+        run: |
+          set -euo pipefail
+          base=http://localhost:8080/api
+          bed='{"id":"bed-1","typeId":"bed","levelId":"souterrain","roomId":"souterrain-bedroom","position":{"x":-3,"z":2.5},"rotationY":0,"props":{}}'
+          layout=$(curl -fsS -X POST "$base/homes/mock-home/layouts" -H 'content-type: application/json' \
+            --data "{\"name\":\"Smoke test\",\"items\":[$bed]}")
+          echo "$layout" | jq -e '.version == 1 and (.items | length) == 1'
+          id=$(echo "$layout" | jq -er '.id')
+          curl -fsS "$base/homes/mock-home/layouts" \
+            | jq -e --arg id "$id" 'any(.items[]; .id == $id and .itemCount == 1)'
+          # Optimistic concurrency: the first update wins, a second one with the same version is a 409.
+          update='{"name":"Smoke test","items":[],"version":1}'
+          curl -fsS -X PUT "$base/layouts/$id" -H 'content-type: application/json' --data "$update" \
+            | jq -e '.version == 2 and (.items | length) == 0'
+          status=$(curl -sS -o /dev/null -w '%{http_code}' -X PUT "$base/layouts/$id" \
+            -H 'content-type: application/json' --data "$update")
+          test "$status" = 409
+          # Export, import as a new layout, clean up.
+          curl -fsS "$base/layouts/$id/export" -o layout.json
+          jq -e '.name == "Smoke test" and .schemaVersion == 1' layout.json
+          copy=$(curl -fsS -X POST "$base/homes/mock-home/layouts/import" \
+            -H 'content-type: application/json' --data @layout.json | jq -er '.id')
+          test "$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE "$base/layouts/$copy")" = 204
+          test "$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE "$base/layouts/$id")" = 204
       - name: Show logs
         if: failure()
         run: docker compose logs

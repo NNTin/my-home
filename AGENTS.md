@@ -8,6 +8,8 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - `apps/api`: Fastify + Drizzle (Postgres); schema in `src/db/schema.ts`, migrations in `drizzle/`
 - `packages/shared`: zod schemas and types shared by web and api (ships TS source)
 - `data/homes/`: home model documents (`mock-home.json`); model docs in `docs/home-model.md`
+- `apps/web/src/items/<type>/`: one furniture type per folder, auto-registered
+  (`docs/adding-furniture-type.md`); layouts and the editor in `docs/layouts.md`
 - `docs/`: project docs; `docker-compose.yml` runs postgres + api + web
 
 ## Commands

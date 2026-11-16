@@ -1,12 +1,15 @@
 import { OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import type { HomeScene, Vec3 } from '../builder/buildHome';
+import { FurnitureLayer, type FurnitureHandlers, type FurnitureView } from './FurnitureLayer';
 import { HomeMeshes } from './HomeMeshes';
 
 export interface SceneProps {
   scene: HomeScene;
   /** Orbit target; the viewer moves it to the top visible level. */
   target: Vec3;
+  furniture: FurnitureView[];
+  handlers: FurnitureHandlers;
 }
 
 /** Initial camera: south-east of the building, far enough to see the whole plot. */
@@ -20,12 +23,15 @@ export function initialCamera(bounds: HomeScene['bounds']): Vec3 {
 }
 
 /** Full-size canvas; R3F resizes the renderer and camera with its container. */
-export function Scene({ scene, target }: SceneProps) {
+export function Scene({ scene, target, furniture, handlers }: SceneProps) {
   return (
     <Canvas
       camera={{ position: initialCamera(scene.bounds), fov: 45, near: 0.1, far: 500 }}
       dpr={[1, 2]}
       shadows
+      // Clicking empty space clears the selection.
+      onPointerMissed={() => handlers.onSelect(undefined)}
+      style={{ touchAction: 'none' }}
     >
       <color attach="background" args={['#cfdde8']} />
       <hemisphereLight args={['#ffffff', '#5b5040', 0.8]} />
@@ -40,6 +46,7 @@ export function Scene({ scene, target }: SceneProps) {
         <orthographicCamera attach="shadow-camera" args={[-30, 30, 30, -30, 1, 100]} />
       </directionalLight>
       <HomeMeshes scene={scene} />
+      <FurnitureLayer items={furniture} handlers={handlers} />
       <OrbitControls makeDefault target={target} maxPolarAngle={Math.PI * 0.95} />
     </Canvas>
   );
