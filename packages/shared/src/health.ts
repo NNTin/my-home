@@ -14,3 +14,12 @@ export const HealthResponse = z.object({
   }),
 });
 export type HealthResponse = z.infer<typeof HealthResponse>;
+
+/** `GET /api/health/live`: process liveness only, never touches the database. */
+export const LiveResponse = z.object({
+  status: z.literal('ok'),
+  uptime: z.number().nonnegative(),
+  /** Git commit the running image was built from, or null outside a release. */
+  commit: z.string().nullable(),
+});
+export type LiveResponse = z.infer<typeof LiveResponse>;

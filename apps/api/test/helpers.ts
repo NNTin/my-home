@@ -9,9 +9,10 @@ import { homes } from '../src/db/schema';
  * Migrations run once per app; the tables are emptied so each test starts clean (deleting the
  * homes cascades to their layouts).
  */
-export async function createTestApp() {
+export async function createTestApp(env: NodeJS.ProcessEnv = {}) {
   const config = loadConfig({
     ...process.env,
+    ...env,
     NODE_ENV: 'test',
     LOG_LEVEL: 'silent',
     PGLITE_DIR: 'memory://',

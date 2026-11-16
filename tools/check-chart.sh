@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Lints and renders the chart, and asserts the deployment contract (charts/my-home).
+set -euo pipefail
+cd "$(dirname "$0")/.."
+chart=charts/my-home
+values=$chart/ci/values.json
+render() { helm template my-home "$chart" --namespace my-home --kube-version 1.36.4 -f "$values" "$@"; }
+fail() { echo "FAIL $*" >&2; exit 1; }
+
+helm lint "$chart" --strict --kube-version 1.36.4 -f "$values"
+rendered=$(render)
+if command -v kubeconform > /dev/null; then
+  kubeconform -strict -summary -kubernetes-version 1.36.4 <<<"$rendered"
+fi
+
+# Unstamped charts must not render: production always runs an immutable digest.
+! helm template my-home "$chart" > /dev/null 2>&1 || fail 'a chart without image digests rendered'
+grep -q 'image: "ghcr.io/nntin/my-home-api@sha256:1111' <<<"$rendered" || fail 'api image is not pinned by digest'
+grep -q 'image: "ghcr.io/nntin/my-home-web@sha256:2222' <<<"$rendered" || fail 'web image is not pinned by digest'
+
+# Migrations run in a pre-deploy hook, never at api start-up; liveness does not depend on the database.
+grep -q 'helm.sh/hook: pre-install,pre-upgrade' <<<"$rendered" || fail 'release hook missing'
+grep -q 'command: \[node, dist/migrate.js\]' <<<"$rendered" || fail 'production hook must only migrate'
+! grep -q 'ALLOW_DATABASE_RESET' <<<"$rendered" || fail 'reset allowed by default'
+grep -A1 'name: MIGRATE_ON_START' <<<"$rendered" | grep -q '"false"' || fail 'api migrates on start'
+grep -A1 'livenessProbe:' <<<"$rendered" | grep -q '/api/health/live' || fail 'api liveness must use /api/health/live'
+grep -A1 'readinessProbe:' <<<"$rendered" | grep -q 'path: /api/health,' || fail 'api readiness must use /api/health'
+
+# Staging resets its database on every deploy.
+staging=$(render --set database.resetOnDeploy=true)
+grep -q 'command: \[node, dist/reset.js\]' <<<"$staging" || fail 'staging hook does not reset'
+grep -A1 'name: ALLOW_DATABASE_RESET' <<<"$staging" | grep -q '"true"' || fail 'staging reset not allowed'
+
+# The infrastructure repository owns routes, policies and namespaces.
+! grep -qE 'kind: (NetworkPolicy|Namespace|HTTPRoute|Ingress)' <<<"$rendered" || fail 'chart renders infrastructure kinds'
+echo 'PASS chart contract'

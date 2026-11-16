@@ -11,6 +11,7 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - `apps/web/src/items/<type>/`: one furniture type per folder, auto-registered
   (`docs/adding-furniture-type.md`); layouts and the editor in `docs/layouts.md`
 - `docs/`: project docs; `docker-compose.yml` runs postgres + api + web
+- `charts/my-home`: Helm chart deployed to Kubernetes by CI + Flux (`docs/deployment.md`); `tools/check-chart.sh`
 
 ## Commands
 
@@ -30,4 +31,6 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - web tests run in jsdom: mock the R3F canvas, never require WebGL.
 - Keep changes scoped; conventional commit messages.
 
-More: `README.md` (setup, conventions) and `docs/container-images.md` (images, tags, deployment).
+More: `README.md` (setup, conventions), `docs/container-images.md` (images, tags) and
+`docs/deployment.md` (production/staging deploys, rollback). Production migrations must be forward-only and
+backward-compatible with the previous api version.

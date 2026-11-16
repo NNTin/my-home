@@ -1,0 +1,41 @@
+# Runs before any new pod receives traffic: migrations (production) or a full reset, migrate and seed (staging).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-release
+  labels:
+    {{- include "my-home.labels" . | nindent 4 }}
+    app.kubernetes.io/component: release
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: {{ .Values.release.activeDeadlineSeconds }}
+  template:
+    metadata:
+      labels:
+        {{- include "my-home.selector" (dict "root" . "component" "release") | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: release
+          image: {{ include "my-home.image" (dict "root" . "role" "api") }}
+          command: [node, {{ ternary "dist/reset.js" "dist/migrate.js" .Values.database.resetOnDeploy }}]
+          securityContext: {{ include "my-home.security" . | nindent 12 }}
+          resources: {{ toYaml .Values.release.resources | nindent 12 }}
+          env:
+            {{- include "my-home.apiEnv" . | nindent 12 }}
+            {{- if .Values.database.resetOnDeploy }}
+            - name: ALLOW_DATABASE_RESET
+              value: "true"
+            {{- end }}

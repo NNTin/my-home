@@ -1,0 +1,32 @@
+# CI stamps both digests (tools/stamp-chart-digests.py) before packaging; an empty digest does not render.
+images:
+  api:
+    repository: ghcr.io/nntin/my-home-api
+    digest: ''
+  web:
+    repository: ghcr.io/nntin/my-home-web
+    digest: ''
+imagePullSecrets: []
+database:
+  # Secret holding DATABASE_URL for this environment's database. The infrastructure repository provisions it.
+  secretName: my-home-db
+  # Staging only: every deploy empties the database, migrates and seeds the mock home (dist/reset.js).
+  resetOnDeploy: false
+release:
+  activeDeadlineSeconds: 600
+  resources:
+    requests: { cpu: 25m, memory: 96Mi }
+    limits: { cpu: 500m, memory: 256Mi }
+rollout:
+  progressDeadlineSeconds: 1800
+api:
+  replicas: 1
+  logLevel: info
+  resources:
+    requests: { cpu: 25m, memory: 96Mi }
+    limits: { cpu: 500m, memory: 256Mi }
+web:
+  replicas: 1
+  resources:
+    requests: { cpu: 10m, memory: 16Mi }
+    limits: { cpu: 200m, memory: 64Mi }
