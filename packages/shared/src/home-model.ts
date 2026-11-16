@@ -464,6 +464,10 @@ function checkSemantics(model: z.infer<typeof HomeModelShape>, ctx: z.Refinement
         issue([...path, 'edge'], `Outbuilding "${b.id}" has no edge ${o.edge}`);
         return;
       }
+      if (b.openEdges?.includes(o.edge)) {
+        issue([...path, 'edge'], `Opening "${o.id}" is on open edge ${o.edge} of "${b.id}"`);
+        return;
+      }
       const length = wallLength({ start, end });
       const from = o.offset.value;
       const to = from + o.width.value;

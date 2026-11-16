@@ -104,7 +104,7 @@ low patches in a notch of the surrounding one.
 ```
 
 A wall stands on every footprint edge (from point `edge` to the next) except those in `openEdges`,
-for example a carport's sides or a porch against the house. Openings are placed like wall openings,
+for example a carport's sides or a porch against the house. Openings are placed like wall openings (never on an open edge),
 measured from the edge's start point. Outbuildings have no levels or rooms and are always shown.
 
 ### Roof and attic

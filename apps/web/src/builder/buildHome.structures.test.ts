@@ -47,10 +47,12 @@ describe('slopes', () => {
 });
 
 describe('outbuildings', () => {
-  const [garage, passage] = home().outbuildings!;
+  const outbuilding = (id: string) => home().outbuildings!.find((b) => b.id === id)!;
+  const garage = outbuilding('garage');
+  const passage = outbuilding('entrance-passage');
 
   it('draws a wall on every edge, split around its openings, and a flat roof', () => {
-    const b = buildOutbuilding(garage!);
+    const b = buildOutbuilding(garage);
     expect(b.walls.filter((w) => w.id.startsWith('garage:0:')).map((w) => w.id)).toEqual([
       'garage:0:0:full',
       'garage:0:1:above',
@@ -68,7 +70,7 @@ describe('outbuildings', () => {
   });
 
   it('runs walls half a thickness past the corners so they close', () => {
-    const b = buildOutbuilding(garage!);
+    const b = buildOutbuilding(garage);
     const lengths = b.walls
       .filter((w) => w.id.endsWith(':full') && w.id.split(':')[1] === '1')
       .map((w) => w.size[0]);
@@ -76,7 +78,7 @@ describe('outbuildings', () => {
   });
 
   it('leaves open edges without walls', () => {
-    const b = buildOutbuilding(passage!);
+    const b = buildOutbuilding(passage);
     expect(new Set(b.walls.map((w) => w.id.split(':')[1]))).toEqual(new Set(['0']));
     expect(b.openings.map((o) => o.id)).toEqual(['passage-arch']);
   });
@@ -105,7 +107,7 @@ describe('roof windows', () => {
     const model = home();
     const scene = buildHome(model);
     const gable = gableOf(model, scene.levels.at(-1))!;
-    const [w] = scene.roofWindows;
+    const w = scene.roofWindows.find((r) => r.id === 'roof-window-south');
     expect(w).toMatchObject({ id: 'roof-window-south', levelId: 'first-floor', rotationY: 0 });
     expect(w!.tilt).toBeCloseTo((29 * Math.PI) / 180);
     expect(w!.size).toEqual([0.8, expect.any(Number), 1]);

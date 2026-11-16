@@ -18,6 +18,8 @@ const readJson = (path: string): unknown =>
 const mockHome = () => structuredClone(readJson('../../../data/homes/mock-home.json')) as HomeModel;
 const realHome = () => structuredClone(readJson('../../../data/homes/home.json')) as HomeModel;
 
+const d = (value: number) => ({ value, source: 'mock' as const });
+
 const issuesOf = (input: unknown): ValidationIssue[] => {
   const result = HomeModel.safeParse(input);
   if (result.success) throw new Error('expected the model to be invalid');
@@ -230,40 +232,57 @@ describe('the real home', () => {
 });
 
 describe('optional structures', () => {
+  /** Index and element of the entry with `id` (paths in issues use indexes). */
+  const byId = <T extends { id: string }>(list: T[], id: string) => {
+    const index = list.findIndex((e) => e.id === id);
+    if (index < 0) throw new Error(`no fixture "${id}"`);
+    return [index, list[index]!] as const;
+  };
+
   it('rejects slopes that do not fall or reach below the terrain bottom', () => {
     const home = realHome();
-    home.terrain.patches[4]!.slope!.lowElevation.value = 1;
-    home.terrain.patches[10]!.slope!.lowElevation.value = -10;
-    home.outdoorAreas[3]!.slope!.lowElevation.value = 5;
+    const [slopeAt, slope] = byId(home.terrain.patches, 'terrain-entrance-slope');
+    const [laneAt, lane] = byId(home.terrain.patches, 'terrain-lane');
+    const [pathAt, path] = byId(home.outdoorAreas, 'entrance-souterrain');
+    slope.slope!.lowElevation.value = 1;
+    lane.slope!.lowElevation.value = -10;
+    path.slope!.lowElevation.value = 5;
     expect(issuesOf(home).map((i) => i.path)).toEqual([
-      'terrain.patches[4].slope.lowElevation',
-      'terrain.patches[10].elevation',
-      'outdoorAreas[3].slope.lowElevation',
+      `terrain.patches[${slopeAt}].slope.lowElevation`,
+      `terrain.patches[${laneAt}].elevation`,
+      `outdoorAreas[${pathAt}].slope.lowElevation`,
     ]);
   });
 
-  it('rejects outbuilding openings that do not fit and unknown edges', () => {
+  it('rejects outbuilding openings that do not fit, unknown edges and openings on open edges', () => {
     const home = realHome();
-    const garage = home.outbuildings![0]!;
-    garage.openings![0]!.width.value = 9;
-    garage.openings!.push({ ...structuredClone(garage.openings![0]!), id: 'x', edge: 7 });
-    garage.openEdges = [9];
-    const paths = issuesOf(home).map((i) => i.path);
-    expect(paths).toEqual([
-      'outbuildings[0].openEdges[0]',
-      'outbuildings[0].openings[0].width',
-      'outbuildings[0].openings[1].edge',
+    const [at, garage] = byId(home.outbuildings!, 'garage');
+    const [doorAt, door] = byId(garage.openings!, 'garage-door');
+    door.width.value = 9;
+    garage.openings!.push({ ...structuredClone(door), id: 'x', edge: 7 });
+    garage.openings!.push({ ...structuredClone(door), id: 'y', edge: 2, width: d(1) });
+    garage.openEdges = [9, 2];
+    const n = garage.openings!.length;
+    expect(issuesOf(home).map((i) => i.path)).toEqual([
+      `outbuildings[${at}].openEdges[0]`,
+      `outbuildings[${at}].openings[${doorAt}].width`,
+      `outbuildings[${at}].openings[${n - 2}].edge`,
+      `outbuildings[${at}].openings[${n - 1}].edge`,
     ]);
   });
 
   it('rejects roof windows past the ridge and duplicate ids', () => {
     const home = realHome();
     const roof = home.building.roof as Extract<HomeModel['building']['roof'], { type: 'gable' }>;
-    roof.windows![0]!.fromEave.value = 6;
-    home.outbuildings![1]!.id = 'garage';
-    const issues = issuesOf(home);
-    expect(issues.map((i) => i.path)).toEqual(
-      expect.arrayContaining(['outbuildings[1].id', 'building.roof.windows[0].length']),
+    const [windowAt, window] = byId(roof.windows!, 'roof-window-south');
+    const [passageAt, passage] = byId(home.outbuildings!, 'entrance-passage');
+    window.fromEave.value = 6;
+    passage.id = 'garage';
+    expect(issuesOf(home).map((i) => i.path)).toEqual(
+      expect.arrayContaining([
+        `outbuildings[${passageAt}].id`,
+        `building.roof.windows[${windowAt}].length`,
+      ]),
     );
   });
 });
