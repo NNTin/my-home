@@ -192,11 +192,27 @@ export const Level = z.strictObject({
 });
 export type Level = z.infer<typeof Level>;
 
+/** A way into an apartment: the door or stair it leads through and the room it arrives in. */
+export const Entrance = z
+  .strictObject({
+    id: Id,
+    name: Name,
+    /** The apartment's room this entrance leads into. */
+    roomId: Id,
+    /** The opening (door) or stair that is passed to get in. */
+    viaId: Id,
+    description: z.string().max(2000).optional(),
+  })
+  .meta({ id: 'Entrance' });
+export type Entrance = z.infer<typeof Entrance>;
+
 export const Apartment = z.strictObject({
   id: Id,
   name: Name,
   levelIds: z.array(Id).min(1),
   description: z.string().max(2000).optional(),
+  /** Every way into the apartment; omitted means not recorded. */
+  entrances: z.array(Entrance).optional(),
 });
 export type Apartment = z.infer<typeof Apartment>;
 
@@ -243,7 +259,19 @@ export const Opening = z.strictObject({
 });
 export type Opening = z.infer<typeof Opening>;
 
-export const OutdoorAreaKind = z.enum(['garden', 'driveway', 'patio', 'path', 'road']);
+/**
+ * `gravel` is a gravel or drainage strip, such as the one along a facade; `embankment` a steep
+ * bank or retaining slope that divides two levels and is not walked on.
+ */
+export const OutdoorAreaKind = z.enum([
+  'garden',
+  'driveway',
+  'patio',
+  'path',
+  'road',
+  'gravel',
+  'embankment',
+]);
 export type OutdoorAreaKind = z.infer<typeof OutdoorAreaKind>;
 
 export const OutdoorArea = z.strictObject({
@@ -259,7 +287,8 @@ export const OutdoorArea = z.strictObject({
 });
 export type OutdoorArea = z.infer<typeof OutdoorArea>;
 
-export const OutbuildingKind = z.enum(['garage', 'carport', 'shed', 'porch']);
+/** A `compost` is a closed compost bin: a low box with a lid. */
+export const OutbuildingKind = z.enum(['garage', 'carport', 'shed', 'porch', 'compost']);
 export type OutbuildingKind = z.infer<typeof OutbuildingKind>;
 
 /** An opening in an outbuilding wall: the footprint edge from point `edge` to the next one. */
@@ -301,6 +330,46 @@ export const Outbuilding = z
   .meta({ id: 'Outbuilding' });
 export type Outbuilding = z.infer<typeof Outbuilding>;
 
+/**
+ * A stair from one level up to another. `path` is its walking line going up: straight flights
+ * between consecutive points, with a square landing (`width` on each side) at every turning
+ * point, so turns must be right angles. The builder spreads the steps over the rise.
+ */
+export const Stair = z
+  .strictObject({
+    id: Id,
+    name: Name,
+    /** Level the stair starts on; it is shown and hidden with this level. */
+    levelId: Id,
+    /** Level it leads up to; that level's floor gets a stairwell opening. */
+    toLevelId: Id,
+    apartmentId: Id.optional(),
+    path: z.array(Point).min(2),
+    width: PositiveDimension,
+  })
+  .meta({ id: 'Stair' });
+export type Stair = z.infer<typeof Stair>;
+
+/** `privacy` is a mesh fence with a privacy screen; a `gate` is a framed leaf in a fence line. */
+export const FenceKind = z.enum(['chain-link', 'privacy', 'trellis', 'gate']);
+export type FenceKind = z.infer<typeof FenceKind>;
+
+/** A fence along a line on the plan, standing on the ground. */
+export const Fence = z
+  .strictObject({
+    id: Id,
+    name: Name,
+    kind: FenceKind,
+    path: z.array(Point).min(2),
+    /** Ground height at the start of `path`. */
+    elevation: Dimension,
+    /** Ground height at the end of `path` when the ground falls or rises along the fence. */
+    endElevation: Dimension.optional(),
+    height: PositiveDimension,
+  })
+  .meta({ id: 'Fence' });
+export type Fence = z.infer<typeof Fence>;
+
 const HomeModelShape = z.strictObject({
   $schema: z.string().optional(),
   schemaVersion: z.literal(HOME_SCHEMA_VERSION),
@@ -317,6 +386,10 @@ const HomeModelShape = z.strictObject({
   outdoorAreas: z.array(OutdoorArea),
   /** Garages, sheds and carports; omitted means none. */
   outbuildings: z.array(Outbuilding).optional(),
+  /** Omitted means none. */
+  stairs: z.array(Stair).optional(),
+  /** Omitted means none. */
+  fences: z.array(Fence).optional(),
 });
 
 /** Tolerance for comparing lengths (1 mm). */
@@ -324,6 +397,30 @@ const EPS = 1e-3;
 
 export const wallLength = (wall: Pick<Wall, 'start' | 'end'>) =>
   Math.hypot(wall.end.x.value - wall.start.x.value, wall.end.z.value - wall.start.z.value);
+
+/** Distance from a plan point to the nearest edge of a polygon. */
+function distanceToOutline(x: number, z: number, outline: Polygon): number {
+  return Math.min(
+    ...outline.map((a, i) => {
+      const b = outline[(i + 1) % outline.length]!;
+      const [ax, az, dx, dz] = [a.x.value, a.z.value, b.x.value - a.x.value, b.z.value - a.z.value];
+      const length2 = dx * dx + dz * dz;
+      const t = length2 ? Math.min(1, Math.max(0, ((x - ax) * dx + (z - az) * dz) / length2)) : 0;
+      return Math.hypot(x - ax - t * dx, z - az - t * dz);
+    }),
+  );
+}
+
+/** Whether a plan point lies inside a simple polygon. */
+function insideOutline(x: number, z: number, outline: Polygon): boolean {
+  let inside = false;
+  outline.forEach((a, i) => {
+    const b = outline[(i + 1) % outline.length]!;
+    const [ax, az, bx, bz] = [a.x.value, a.z.value, b.x.value, b.z.value];
+    if (az > z !== bz > z && x < ax + ((z - az) / (bz - az)) * (bx - ax)) inside = !inside;
+  });
+  return inside;
+}
 
 const fmt = (n: number) => `${Math.round(n * 1000) / 1000} m`;
 
@@ -351,10 +448,15 @@ function checkSemantics(model: z.infer<typeof HomeModelShape>, ctx: z.Refinement
     'outdoorAreas',
   ] as const;
   for (const key of collections) model[key].forEach((e, i) => claim(e.id, [key, i, 'id']));
+  model.apartments.forEach((a, i) =>
+    a.entrances?.forEach((e, j) => claim(e.id, ['apartments', i, 'entrances', j, 'id'])),
+  );
   model.outbuildings?.forEach((b, i) => {
     claim(b.id, ['outbuildings', i, 'id']);
     b.openings?.forEach((o, j) => claim(o.id, ['outbuildings', i, 'openings', j, 'id']));
   });
+  model.stairs?.forEach((s, i) => claim(s.id, ['stairs', i, 'id']));
+  model.fences?.forEach((f, i) => claim(f.id, ['fences', i, 'id']));
   const roof = model.building.roof;
   if (roof?.type === 'gable') {
     roof.windows?.forEach((w, i) => claim(w.id, ['building', 'roof', 'windows', i, 'id']));
@@ -383,6 +485,53 @@ function checkSemantics(model: z.infer<typeof HomeModelShape>, ctx: z.Refinement
   model.apartments.forEach((a, i) =>
     a.levelIds.forEach((id, j) => {
       if (!levels.has(id)) issue(['apartments', i, 'levelIds', j], missing('level', id));
+    }),
+  );
+
+  const rooms = new Map(model.rooms.map((r) => [r.id, r]));
+  const openings = new Map(model.openings.map((o) => [o.id, o]));
+  const stairs = new Map((model.stairs ?? []).map((s) => [s.id, s]));
+  /** Whether a door stands on a wall along the room's outline, so it leads into that room. */
+  const doorTouches = (door: Opening, room: Room) => {
+    const wall = walls.get(door.wallId);
+    if (!wall || wall.levelId !== room.levelId) return false;
+    const length = wallLength(wall);
+    const reach = wall.thickness.value / 2 + EPS;
+    return [door.offset.value, door.offset.value + door.width.value].every((along) => {
+      const t = length ? along / length : 0;
+      const x = wall.start.x.value + (wall.end.x.value - wall.start.x.value) * t;
+      const z = wall.start.z.value + (wall.end.z.value - wall.start.z.value) * t;
+      return distanceToOutline(x, z, room.outline) <= reach;
+    });
+  };
+  /** Whether a stair starts or arrives in the room. */
+  const stairTouches = (stair: Stair, room: Room) => {
+    const end =
+      stair.levelId === room.levelId
+        ? stair.path[0]
+        : stair.toLevelId === room.levelId
+          ? stair.path.at(-1)
+          : undefined;
+    return end !== undefined && insideOutline(end.x.value, end.z.value, room.outline);
+  };
+  model.apartments.forEach((a, i) =>
+    a.entrances?.forEach((e, j) => {
+      const path = ['apartments', i, 'entrances', j];
+      const room = rooms.get(e.roomId);
+      if (!room) issue([...path, 'roomId'], missing('room', e.roomId));
+      else if (room.apartmentId !== a.id) {
+        issue([...path, 'roomId'], `Room "${room.id}" is not in apartment "${a.id}"`);
+      }
+      const door = openings.get(e.viaId);
+      const stair = stairs.get(e.viaId);
+      if (!door && !stair) issue([...path, 'viaId'], missing('opening or stair', e.viaId));
+      else if (door?.type === 'window') {
+        issue([...path, 'viaId'], `Entrance "${e.id}" leads through "${door.id}", a window`);
+      } else if (room && door && !doorTouches(door, room)) {
+        issue([...path, 'viaId'], `Door "${door.id}" is not on a wall of room "${room.id}"`);
+      } else if (room && stair && !stairTouches(stair, room)) {
+        issue([...path, 'viaId'], `Stair "${stair.id}" does not start or end in room "${room.id}"`);
+      }
     }),
   );
 
@@ -489,6 +638,45 @@ function checkSemantics(model: z.infer<typeof HomeModelShape>, ctx: z.Refinement
       list.push({ from, to, id: o.id });
       byEdge.set(o.edge, list);
     });
+  });
+
+  const elevations = new Map(model.levels.map((l) => [l.id, l.elevation.value]));
+  model.stairs?.forEach((s, i) => {
+    const path = ['stairs', i];
+    const from = elevations.get(s.levelId);
+    const to = elevations.get(s.toLevelId);
+    if (from === undefined) issue([...path, 'levelId'], missing('level', s.levelId));
+    if (to === undefined) issue([...path, 'toLevelId'], missing('level', s.toLevelId));
+    else if (from !== undefined && to <= from) {
+      issue([...path, 'toLevelId'], `Stair "${s.id}" must lead up to a higher level`);
+    }
+    if (s.apartmentId !== undefined && !apartments.has(s.apartmentId)) {
+      issue([...path, 'apartmentId'], missing('apartment', s.apartmentId));
+    }
+    const last = s.path.length - 2;
+    for (let j = 0; j <= last; j++) {
+      const [a, b, c] = [s.path[j]!, s.path[j + 1]!, s.path[j + 2]];
+      // A landing takes half the stair width from each end of a flight that meets one.
+      const landings = (j > 0 ? 1 : 0) + (j < last ? 1 : 0);
+      if (wallLength({ start: a, end: b }) < (landings * s.width.value) / 2 + EPS) {
+        issue([...path, 'path', j + 1], `Stair "${s.id}" has a flight too short for its landings`);
+      }
+      if (!c) continue;
+      const dot =
+        (b.x.value - a.x.value) * (c.x.value - b.x.value) +
+        (b.z.value - a.z.value) * (c.z.value - b.z.value);
+      if (Math.abs(dot) > EPS) {
+        issue([...path, 'path', j + 1], `Stair "${s.id}" must turn at right angles`);
+      }
+    }
+  });
+
+  model.fences?.forEach((f, i) => {
+    for (let j = 0; j + 1 < f.path.length; j++) {
+      if (wallLength({ start: f.path[j]!, end: f.path[j + 1]! }) < EPS) {
+        issue(['fences', i, 'path', j + 1], `Fence "${f.id}" repeats a point`);
+      }
+    }
   });
 
   if (roof?.type === 'gable' && roof.windows?.length) {

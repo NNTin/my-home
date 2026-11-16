@@ -3,7 +3,7 @@
   "schemaVersion": 1,
   "id": "home",
   "name": "Our home",
-  "description": "The real house: footprint, roof and terrain levels from official geodata (Datenquelle: Bayerische Vermessungsverwaltung, CC BY 4.0), windows and levels estimated from street-level photos. Terrain is simplified to levelled areas and slopes. Heights are relative to the ground-floor finished floor (0).",
+  "description": "The real house: footprint, roof and terrain levels from official geodata (Datenquelle: Bayerische Vermessungsverwaltung, CC BY 4.0), windows and levels estimated from street-level photos, the souterrain rooms from the owner's plan sketch. Terrain is simplified to levelled areas and slopes. Heights are relative to the ground-floor finished floor (0).",
   "building": {
     "id": "building",
     "name": "House",
@@ -139,6 +139,46 @@
           {
             "x": {
               "value": -9,
+              "source": "geodata"
+            },
+            "z": {
+              "value": 10.3,
+              "source": "geodata"
+            }
+          },
+          {
+            "x": {
+              "value": 15.5,
+              "source": "geodata"
+            },
+            "z": {
+              "value": 10.3,
+              "source": "geodata"
+            }
+          },
+          {
+            "x": {
+              "value": 15.5,
+              "source": "geodata"
+            },
+            "z": {
+              "value": 8.0,
+              "source": "geodata"
+            }
+          },
+          {
+            "x": {
+              "value": 19.3,
+              "source": "geodata"
+            },
+            "z": {
+              "value": 8.0,
+              "source": "geodata"
+            }
+          },
+          {
+            "x": {
+              "value": 19.3,
               "source": "geodata"
             },
             "z": {
@@ -364,7 +404,7 @@
               "source": "geodata"
             },
             "z": {
-              "value": 2.5,
+              "value": 0.5,
               "source": "geodata"
             }
           },
@@ -374,13 +414,33 @@
               "source": "geodata"
             },
             "z": {
-              "value": 2.5,
+              "value": 0.5,
               "source": "geodata"
             }
           },
           {
             "x": {
               "value": 19.3,
+              "source": "geodata"
+            },
+            "z": {
+              "value": 8.0,
+              "source": "geodata"
+            }
+          },
+          {
+            "x": {
+              "value": 15.5,
+              "source": "geodata"
+            },
+            "z": {
+              "value": 8.0,
+              "source": "geodata"
+            }
+          },
+          {
+            "x": {
+              "value": 15.5,
               "source": "geodata"
             },
             "z": {
@@ -457,8 +517,8 @@
         }
       },
       {
-        "id": "terrain-entrance-slope",
-        "name": "Entrance slope",
+        "id": "terrain-garden-divider",
+        "name": "Garden divider wall",
         "outline": [
           {
             "x": {
@@ -466,7 +526,7 @@
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -1.5,
+              "value": -0.5,
               "source": "estimated-from-photo"
             }
           },
@@ -476,7 +536,7 @@
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -1.5,
+              "value": -0.5,
               "source": "estimated-from-photo"
             }
           },
@@ -486,7 +546,7 @@
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": 2.5,
+              "value": 0.5,
               "source": "estimated-from-photo"
             }
           },
@@ -496,7 +556,7 @@
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": 2.5,
+              "value": 0.5,
               "source": "estimated-from-photo"
             }
           }
@@ -544,7 +604,7 @@
               "source": "geodata"
             },
             "z": {
-              "value": -1.5,
+              "value": -0.5,
               "source": "geodata"
             }
           },
@@ -554,7 +614,7 @@
               "source": "geodata"
             },
             "z": {
-              "value": -1.5,
+              "value": -0.5,
               "source": "geodata"
             }
           },
@@ -564,7 +624,7 @@
               "source": "geodata"
             },
             "z": {
-              "value": -6.6,
+              "value": -4.8,
               "source": "geodata"
             }
           },
@@ -574,7 +634,7 @@
               "source": "geodata"
             },
             "z": {
-              "value": -6.6,
+              "value": -4.8,
               "source": "geodata"
             }
           },
@@ -584,7 +644,7 @@
               "source": "geodata"
             },
             "z": {
-              "value": -9.0,
+              "value": -7.2,
               "source": "geodata"
             }
           },
@@ -594,7 +654,7 @@
               "source": "geodata"
             },
             "z": {
-              "value": -9.0,
+              "value": -7.2,
               "source": "geodata"
             }
           },
@@ -627,7 +687,7 @@
       },
       {
         "id": "terrain-entry",
-        "name": "Sunken souterrain entry",
+        "name": "Patio entrance: sunken landing at the souterrain door",
         "outline": [
           {
             "x": {
@@ -635,7 +695,7 @@
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -9.0,
+              "value": -7.2,
               "source": "estimated-from-photo"
             }
           },
@@ -645,7 +705,7 @@
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -9.0,
+              "value": -7.2,
               "source": "estimated-from-photo"
             }
           },
@@ -655,7 +715,7 @@
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -6.6,
+              "value": -4.8,
               "source": "estimated-from-photo"
             }
           },
@@ -665,7 +725,7 @@
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -6.6,
+              "value": -4.8,
               "source": "estimated-from-photo"
             }
           }
@@ -678,7 +738,7 @@
       },
       {
         "id": "terrain-entry-step-1",
-        "name": "Entry step",
+        "name": "Patio entrance step",
         "outline": [
           {
             "x": {
@@ -686,7 +746,7 @@
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -9.0,
+              "value": -7.2,
               "source": "estimated-from-photo"
             }
           },
@@ -696,7 +756,7 @@
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -9.0,
+              "value": -7.2,
               "source": "estimated-from-photo"
             }
           },
@@ -706,7 +766,7 @@
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -6.6,
+              "value": -4.8,
               "source": "estimated-from-photo"
             }
           },
@@ -716,7 +776,7 @@
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -6.6,
+              "value": -4.8,
               "source": "estimated-from-photo"
             }
           }
@@ -729,7 +789,7 @@
       },
       {
         "id": "terrain-entry-step-2",
-        "name": "Entry step",
+        "name": "Patio entrance step",
         "outline": [
           {
             "x": {
@@ -737,7 +797,7 @@
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -9.0,
+              "value": -7.2,
               "source": "estimated-from-photo"
             }
           },
@@ -747,7 +807,7 @@
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -9.0,
+              "value": -7.2,
               "source": "estimated-from-photo"
             }
           },
@@ -757,7 +817,7 @@
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -6.6,
+              "value": -4.8,
               "source": "estimated-from-photo"
             }
           },
@@ -767,7 +827,7 @@
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -6.6,
+              "value": -4.8,
               "source": "estimated-from-photo"
             }
           }
@@ -950,7 +1010,23 @@
       "id": "apt-souterrain",
       "name": "Souterrain apartment",
       "levelIds": ["souterrain"],
-      "description": "Entrance from the east patio; garden on the north side."
+      "description": "Two entrances: through the stair hall, and from the souterrain patio into the corridor. Patio on the east side, garden on the north side.",
+      "entrances": [
+        {
+          "id": "entrance-souterrain-stair-hall",
+          "name": "Stair hall entrance",
+          "roomId": "souterrain-stair-hall",
+          "viaId": "stair-souterrain-stair-hall-ground-floor",
+          "description": "From the house's entrance on the ground floor down the stair into the stair hall."
+        },
+        {
+          "id": "entrance-souterrain-patio",
+          "name": "Patio entrance",
+          "roomId": "souterrain-corridor",
+          "viaId": "door-souterrain-corridor-patio",
+          "description": "From the lane through the gate at the north end of the souterrain patio, across the patio and down the entry steps to the exterior door at the east end of the corridor."
+        }
+      ]
     },
     {
       "id": "apt-ground-floor",
@@ -967,8 +1043,8 @@
   ],
   "rooms": [
     {
-      "id": "souterrain-interior",
-      "name": "Souterrain apartment (layout not modelled yet)",
+      "id": "souterrain-stair-hall",
+      "name": "Stair hall",
       "levelId": "souterrain",
       "apartmentId": "apt-souterrain",
       "outline": [
@@ -984,6 +1060,150 @@
         },
         {
           "x": {
+            "value": 3.45,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -10.59,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 3.45,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -5.4,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 0.36,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -5.4,
+            "source": "estimated-from-photo"
+          }
+        }
+      ]
+    },
+    {
+      "id": "souterrain-work-room",
+      "name": "Work room",
+      "levelId": "souterrain",
+      "apartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 3.45,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -10.59,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 6.25,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -10.59,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 6.25,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.6,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 3.45,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.6,
+            "source": "estimated-from-photo"
+          }
+        }
+      ]
+    },
+    {
+      "id": "souterrain-bath-room",
+      "name": "Bath room",
+      "levelId": "souterrain",
+      "apartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 6.25,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -10.59,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 9.35,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -10.59,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 9.35,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.6,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 6.25,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.6,
+            "source": "estimated-from-photo"
+          }
+        }
+      ]
+    },
+    {
+      "id": "souterrain-kitchen",
+      "name": "Kitchen",
+      "levelId": "souterrain",
+      "apartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 9.35,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -10.59,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
             "value": 13.06,
             "source": "estimated-from-photo"
           },
@@ -998,7 +1218,83 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": -1.56,
+            "value": -6.6,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 9.35,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.6,
+            "source": "estimated-from-photo"
+          }
+        }
+      ]
+    },
+    {
+      "id": "souterrain-corridor",
+      "name": "Corridor",
+      "levelId": "souterrain",
+      "apartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 3.45,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.6,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 13.06,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.6,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 13.06,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -5.4,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 3.45,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -5.4,
+            "source": "estimated-from-photo"
+          }
+        }
+      ]
+    },
+    {
+      "id": "souterrain-living-room",
+      "name": "Living room",
+      "levelId": "souterrain",
+      "apartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 0.36,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -5.4,
             "source": "estimated-from-photo"
           }
         },
@@ -1008,7 +1304,7 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": -1.56,
+            "value": -5.4,
             "source": "estimated-from-photo"
           }
         },
@@ -1029,6 +1325,102 @@
           },
           "z": {
             "value": -0.36,
+            "source": "estimated-from-photo"
+          }
+        }
+      ]
+    },
+    {
+      "id": "souterrain-boiler-room",
+      "name": "Boiler room",
+      "levelId": "souterrain",
+      "apartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 6.1,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -5.4,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 8.55,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -5.4,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 8.55,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -1.56,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 6.1,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -1.56,
+            "source": "estimated-from-photo"
+          }
+        }
+      ]
+    },
+    {
+      "id": "souterrain-bed-room",
+      "name": "Bed room",
+      "levelId": "souterrain",
+      "apartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 8.55,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -5.4,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 13.06,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -5.4,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 13.06,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -1.56,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 8.55,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -1.56,
             "source": "estimated-from-photo"
           }
         }
@@ -1386,6 +1778,438 @@
         "value": 2.6,
         "source": "estimated-from-photo",
         "note": "Clear height plus the slab above"
+      }
+    },
+    {
+      "id": "souterrain-wall-stair-hall-work-room",
+      "levelId": "souterrain",
+      "apartmentId": "apt-souterrain",
+      "kind": "interior",
+      "start": {
+        "x": {
+          "value": 3.45,
+          "source": "estimated-from-photo"
+        },
+        "z": {
+          "value": -10.59,
+          "source": "estimated-from-photo"
+        }
+      },
+      "end": {
+        "x": {
+          "value": 3.45,
+          "source": "estimated-from-photo"
+        },
+        "z": {
+          "value": -6.6,
+          "source": "estimated-from-photo"
+        }
+      },
+      "thickness": {
+        "value": 0.12,
+        "source": "mock",
+        "note": "Assumed interior wall thickness"
+      },
+      "height": {
+        "value": 2.35,
+        "source": "estimated-from-photo",
+        "note": "Clear height of the level"
+      }
+    },
+    {
+      "id": "souterrain-wall-stair-hall-corridor",
+      "levelId": "souterrain",
+      "apartmentId": "apt-souterrain",
+      "kind": "interior",
+      "start": {
+        "x": {
+          "value": 3.45,
+          "source": "estimated-from-photo"
+        },
+        "z": {
+          "value": -6.6,
+          "source": "estimated-from-photo"
+        }
+      },
+      "end": {
+        "x": {
+          "value": 3.45,
+          "source": "estimated-from-photo"
+        },
+        "z": {
+          "value": -5.4,
+          "source": "estimated-from-photo"
+        }
+      },
+      "thickness": {
+        "value": 0.12,
+        "source": "mock",
+        "note": "Assumed interior wall thickness"
+      },
+      "height": {
+        "value": 2.35,
+        "source": "estimated-from-photo",
+        "note": "Clear height of the level"
+      }
+    },
+    {
+      "id": "souterrain-wall-stair-hall-living-room",
+      "levelId": "souterrain",
+      "apartmentId": "apt-souterrain",
+      "kind": "interior",
+      "start": {
+        "x": {
+          "value": 0.36,
+          "source": "estimated-from-photo"
+        },
+        "z": {
+          "value": -5.4,
+          "source": "estimated-from-photo"
+        }
+      },
+      "end": {
+        "x": {
+          "value": 3.45,
+          "source": "estimated-from-photo"
+        },
+        "z": {
+          "value": -5.4,
+          "source": "estimated-from-photo"
+        }
+      },
+      "thickness": {
+        "value": 0.12,
+        "source": "mock",
+        "note": "Assumed interior wall thickness"
+      },
+      "height": {
+        "value": 2.35,
+        "source": "estimated-from-photo",
+        "note": "Clear height of the level"
+      }
+    },
+    {
+      "id": "souterrain-wall-work-room-bath-room",
+      "levelId": "souterrain",
+      "apartmentId": "apt-souterrain",
+      "kind": "interior",
+      "start": {
+        "x": {
+          "value": 6.25,
+          "source": "estimated-from-photo"
+        },
+        "z": {
+          "value": -10.59,
+          "source": "estimated-from-photo"
+        }
+      },
+      "end": {
+        "x": {
+          "value": 6.25,
+          "source": "estimated-from-photo"
+        },
+        "z": {
+          "value": -6.6,
+          "source": "estimated-from-photo"
+        }
+      },
+      "thickness": {
+        "value": 0.12,
+        "source": "mock",
+        "note": "Assumed interior wall thickness"
+      },
+      "height": {
+        "value": 2.35,
+        "source": "estimated-from-photo",
+        "note": "Clear height of the level"
+      }
+    },
+    {
+      "id": "souterrain-wall-bath-room-kitchen",
+      "levelId": "souterrain",
+      "apartmentId": "apt-souterrain",
+      "kind": "interior",
+      "start": {
+        "x": {
+          "value": 9.35,
+          "source": "estimated-from-photo"
+        },
+        "z": {
+          "value": -10.59,
+          "source": "estimated-from-photo"
+        }
+      },
+      "end": {
+        "x": {
+          "value": 9.35,
+          "source": "estimated-from-photo"
+        },
+        "z": {
+          "value": -6.6,
+          "source": "estimated-from-photo"
+        }
+      },
+      "thickness": {
+        "value": 0.12,
+        "source": "mock",
+        "note": "Assumed interior wall thickness"
+      },
+      "height": {
+        "value": 2.35,
+        "source": "estimated-from-photo",
+        "note": "Clear height of the level"
+      }
+    },
+    {
+      "id": "souterrain-wall-work-room-corridor",
+      "levelId": "souterrain",
+      "apartmentId": "apt-souterrain",
+      "kind": "interior",
+      "start": {
+        "x": {
+          "value": 3.45,
+          "source": "estimated-from-photo"
+        },
+        "z": {
+          "value": -6.6,
+          "source": "estimated-from-photo"
+        }
+      },
+      "end": {
+        "x": {
+          "value": 6.25,
+          "source": "estimated-from-photo"
+        },
+        "z": {
+          "value": -6.6,
+          "source": "estimated-from-photo"
+        }
+      },
+      "thickness": {
+        "value": 0.12,
+        "source": "mock",
+        "note": "Assumed interior wall thickness"
+      },
+      "height": {
+        "value": 2.35,
+        "source": "estimated-from-photo",
+        "note": "Clear height of the level"
+      }
+    },
+    {
+      "id": "souterrain-wall-bath-room-corridor",
+      "levelId": "souterrain",
+      "apartmentId": "apt-souterrain",
+      "kind": "interior",
+      "start": {
+        "x": {
+          "value": 6.25,
+          "source": "estimated-from-photo"
+        },
+        "z": {
+          "value": -6.6,
+          "source": "estimated-from-photo"
+        }
+      },
+      "end": {
+        "x": {
+          "value": 9.41,
+          "source": "estimated-from-photo"
+        },
+        "z": {
+          "value": -6.6,
+          "source": "estimated-from-photo"
+        }
+      },
+      "thickness": {
+        "value": 0.12,
+        "source": "mock",
+        "note": "Assumed interior wall thickness"
+      },
+      "height": {
+        "value": 2.35,
+        "source": "estimated-from-photo",
+        "note": "Clear height of the level"
+      }
+    },
+    {
+      "id": "souterrain-wall-corridor-living-room",
+      "levelId": "souterrain",
+      "apartmentId": "apt-souterrain",
+      "kind": "interior",
+      "start": {
+        "x": {
+          "value": 3.45,
+          "source": "estimated-from-photo"
+        },
+        "z": {
+          "value": -5.4,
+          "source": "estimated-from-photo"
+        }
+      },
+      "end": {
+        "x": {
+          "value": 6.1,
+          "source": "estimated-from-photo"
+        },
+        "z": {
+          "value": -5.4,
+          "source": "estimated-from-photo"
+        }
+      },
+      "thickness": {
+        "value": 0.12,
+        "source": "mock",
+        "note": "Assumed interior wall thickness"
+      },
+      "height": {
+        "value": 2.35,
+        "source": "estimated-from-photo",
+        "note": "Clear height of the level"
+      }
+    },
+    {
+      "id": "souterrain-wall-corridor-boiler-room",
+      "levelId": "souterrain",
+      "apartmentId": "apt-souterrain",
+      "kind": "interior",
+      "start": {
+        "x": {
+          "value": 6.1,
+          "source": "estimated-from-photo"
+        },
+        "z": {
+          "value": -5.4,
+          "source": "estimated-from-photo"
+        }
+      },
+      "end": {
+        "x": {
+          "value": 8.55,
+          "source": "estimated-from-photo"
+        },
+        "z": {
+          "value": -5.4,
+          "source": "estimated-from-photo"
+        }
+      },
+      "thickness": {
+        "value": 0.12,
+        "source": "mock",
+        "note": "Assumed interior wall thickness"
+      },
+      "height": {
+        "value": 2.35,
+        "source": "estimated-from-photo",
+        "note": "Clear height of the level"
+      }
+    },
+    {
+      "id": "souterrain-wall-corridor-bed-room",
+      "levelId": "souterrain",
+      "apartmentId": "apt-souterrain",
+      "kind": "interior",
+      "start": {
+        "x": {
+          "value": 8.55,
+          "source": "estimated-from-photo"
+        },
+        "z": {
+          "value": -5.4,
+          "source": "estimated-from-photo"
+        }
+      },
+      "end": {
+        "x": {
+          "value": 13.06,
+          "source": "estimated-from-photo"
+        },
+        "z": {
+          "value": -5.4,
+          "source": "estimated-from-photo"
+        }
+      },
+      "thickness": {
+        "value": 0.12,
+        "source": "mock",
+        "note": "Assumed interior wall thickness"
+      },
+      "height": {
+        "value": 2.35,
+        "source": "estimated-from-photo",
+        "note": "Clear height of the level"
+      }
+    },
+    {
+      "id": "souterrain-wall-living-room-boiler-room",
+      "levelId": "souterrain",
+      "apartmentId": "apt-souterrain",
+      "kind": "interior",
+      "start": {
+        "x": {
+          "value": 6.1,
+          "source": "estimated-from-photo"
+        },
+        "z": {
+          "value": -5.4,
+          "source": "estimated-from-photo"
+        }
+      },
+      "end": {
+        "x": {
+          "value": 6.1,
+          "source": "estimated-from-photo"
+        },
+        "z": {
+          "value": -1.56,
+          "source": "estimated-from-photo"
+        }
+      },
+      "thickness": {
+        "value": 0.12,
+        "source": "mock",
+        "note": "Assumed interior wall thickness"
+      },
+      "height": {
+        "value": 2.35,
+        "source": "estimated-from-photo",
+        "note": "Clear height of the level"
+      }
+    },
+    {
+      "id": "souterrain-wall-boiler-room-bed-room",
+      "levelId": "souterrain",
+      "apartmentId": "apt-souterrain",
+      "kind": "interior",
+      "start": {
+        "x": {
+          "value": 8.55,
+          "source": "estimated-from-photo"
+        },
+        "z": {
+          "value": -5.4,
+          "source": "estimated-from-photo"
+        }
+      },
+      "end": {
+        "x": {
+          "value": 8.55,
+          "source": "estimated-from-photo"
+        },
+        "z": {
+          "value": -1.56,
+          "source": "estimated-from-photo"
+        }
+      },
+      "thickness": {
+        "value": 0.12,
+        "source": "mock",
+        "note": "Assumed interior wall thickness"
+      },
+      "height": {
+        "value": 2.35,
+        "source": "estimated-from-photo",
+        "note": "Clear height of the level"
       }
     },
     {
@@ -1823,7 +2647,7 @@
   ],
   "openings": [
     {
-      "id": "souterrain-window-south",
+      "id": "window-souterrain-living-room-south",
       "wallId": "souterrain-wall-south-west",
       "type": "window",
       "offset": {
@@ -1845,13 +2669,13 @@
       }
     },
     {
-      "id": "souterrain-window-east",
+      "id": "window-souterrain-bed-room-east",
       "wallId": "souterrain-wall-east",
       "type": "window",
       "offset": {
-        "value": 4.3,
+        "value": 3.4,
         "source": "estimated-from-photo",
-        "note": "On the east patio"
+        "note": "Bed room window on the east patio"
       },
       "width": {
         "value": 1.0,
@@ -1867,13 +2691,13 @@
       }
     },
     {
-      "id": "souterrain-door-east",
+      "id": "door-souterrain-corridor-patio",
       "wallId": "souterrain-wall-east",
       "type": "door",
       "offset": {
-        "value": 7.2,
+        "value": 5.55,
         "source": "estimated-from-photo",
-        "note": "Souterrain entrance, reached by steps down from the patio"
+        "note": "Patio entrance: exterior door at the east end of the corridor, reached by steps down from the souterrain patio"
       },
       "width": {
         "value": 0.9,
@@ -1889,7 +2713,7 @@
       }
     },
     {
-      "id": "souterrain-window-north-1",
+      "id": "window-souterrain-kitchen-north",
       "wallId": "souterrain-wall-north",
       "type": "window",
       "offset": {
@@ -1911,7 +2735,7 @@
       }
     },
     {
-      "id": "souterrain-window-north-2",
+      "id": "window-souterrain-bath-room-north",
       "wallId": "souterrain-wall-north",
       "type": "window",
       "offset": {
@@ -1933,7 +2757,7 @@
       }
     },
     {
-      "id": "souterrain-window-north-3",
+      "id": "window-souterrain-work-room-north",
       "wallId": "souterrain-wall-north",
       "type": "window",
       "offset": {
@@ -1952,6 +2776,138 @@
       "sill": {
         "value": 1.1,
         "source": "estimated-from-photo"
+      }
+    },
+    {
+      "id": "door-souterrain-corridor-stair-hall",
+      "wallId": "souterrain-wall-stair-hall-corridor",
+      "type": "door",
+      "offset": {
+        "value": 0.15,
+        "source": "mock",
+        "note": "Assumed position along the wall"
+      },
+      "width": {
+        "value": 0.9,
+        "source": "mock"
+      },
+      "height": {
+        "value": 2.0,
+        "source": "mock"
+      },
+      "sill": {
+        "value": 0,
+        "source": "mock"
+      }
+    },
+    {
+      "id": "door-souterrain-work-room-corridor",
+      "wallId": "souterrain-wall-work-room-corridor",
+      "type": "door",
+      "offset": {
+        "value": 1.0,
+        "source": "mock",
+        "note": "Assumed position along the wall"
+      },
+      "width": {
+        "value": 0.85,
+        "source": "mock"
+      },
+      "height": {
+        "value": 2.0,
+        "source": "mock"
+      },
+      "sill": {
+        "value": 0,
+        "source": "mock"
+      }
+    },
+    {
+      "id": "door-souterrain-corridor-bath-room",
+      "wallId": "souterrain-wall-bath-room-corridor",
+      "type": "door",
+      "offset": {
+        "value": 1.2,
+        "source": "mock",
+        "note": "Assumed position along the wall"
+      },
+      "width": {
+        "value": 0.85,
+        "source": "mock"
+      },
+      "height": {
+        "value": 2.0,
+        "source": "mock"
+      },
+      "sill": {
+        "value": 0,
+        "source": "mock"
+      }
+    },
+    {
+      "id": "door-souterrain-corridor-living-room",
+      "wallId": "souterrain-wall-corridor-living-room",
+      "type": "door",
+      "offset": {
+        "value": 0.9,
+        "source": "mock",
+        "note": "Assumed position along the wall"
+      },
+      "width": {
+        "value": 0.85,
+        "source": "mock"
+      },
+      "height": {
+        "value": 2.0,
+        "source": "mock"
+      },
+      "sill": {
+        "value": 0,
+        "source": "mock"
+      }
+    },
+    {
+      "id": "door-souterrain-corridor-boiler-room",
+      "wallId": "souterrain-wall-corridor-boiler-room",
+      "type": "door",
+      "offset": {
+        "value": 0.8,
+        "source": "mock",
+        "note": "Assumed position along the wall"
+      },
+      "width": {
+        "value": 0.85,
+        "source": "mock"
+      },
+      "height": {
+        "value": 2.0,
+        "source": "mock"
+      },
+      "sill": {
+        "value": 0,
+        "source": "mock"
+      }
+    },
+    {
+      "id": "door-souterrain-corridor-bed-room",
+      "wallId": "souterrain-wall-corridor-bed-room",
+      "type": "door",
+      "offset": {
+        "value": 1.8,
+        "source": "mock",
+        "note": "Assumed position along the wall"
+      },
+      "width": {
+        "value": 0.85,
+        "source": "mock"
+      },
+      "height": {
+        "value": 2.0,
+        "source": "mock"
+      },
+      "sill": {
+        "value": 0,
+        "source": "mock"
       }
     },
     {
@@ -2281,7 +3237,7 @@
         },
         {
           "x": {
-            "value": 0,
+            "value": -0.8,
             "source": "estimated-from-photo"
           },
           "z": {
@@ -2291,11 +3247,11 @@
         },
         {
           "x": {
-            "value": 0,
+            "value": -0.8,
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": 0,
+            "value": 0.8,
             "source": "estimated-from-photo"
           }
         },
@@ -2305,7 +3261,7 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": 0,
+            "value": 0.8,
             "source": "estimated-from-photo"
           }
         },
@@ -2347,6 +3303,16 @@
             "source": "estimated-from-photo"
           },
           "z": {
+            "value": 0.8,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 1.9,
+            "source": "estimated-from-photo"
+          },
+          "z": {
             "value": 0,
             "source": "estimated-from-photo"
           }
@@ -2387,7 +3353,7 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": 0,
+            "value": 0.8,
             "source": "estimated-from-photo"
           }
         },
@@ -2397,7 +3363,7 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": 0,
+            "value": 0.8,
             "source": "estimated-from-photo"
           }
         },
@@ -2427,7 +3393,7 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": 2.5,
+            "value": 0.5,
             "source": "estimated-from-photo"
           }
         },
@@ -2437,13 +3403,33 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": 2.5,
+            "value": 0.5,
             "source": "estimated-from-photo"
           }
         },
         {
           "x": {
             "value": 19.3,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 8.0,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 15.5,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 8.0,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 15.5,
             "source": "estimated-from-photo"
           },
           "z": {
@@ -2464,7 +3450,8 @@
       ],
       "elevation": {
         "value": -0.05,
-        "source": "estimated-from-photo"
+        "source": "estimated-from-photo",
+        "note": "Ends at the street on the same line as the driveway; the road junction cuts off its south-east corner"
       }
     },
     {
@@ -2540,10 +3527,9 @@
       }
     },
     {
-      "id": "entrance-souterrain",
-      "name": "Souterrain entrance",
-      "kind": "path",
-      "ownerApartmentId": "apt-souterrain",
+      "id": "garden-divider",
+      "name": "Garden divider wall",
+      "kind": "embankment",
       "outline": [
         {
           "x": {
@@ -2551,7 +3537,7 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": -1.5,
+            "value": -0.5,
             "source": "estimated-from-photo"
           }
         },
@@ -2561,7 +3547,7 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": -1.5,
+            "value": -0.5,
             "source": "estimated-from-photo"
           }
         },
@@ -2571,7 +3557,7 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": 2.5,
+            "value": 0.5,
             "source": "estimated-from-photo"
           }
         },
@@ -2581,14 +3567,15 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": 2.5,
+            "value": 0.5,
             "source": "estimated-from-photo"
           }
         }
       ],
       "elevation": {
         "value": -0.05,
-        "source": "estimated-from-photo"
+        "source": "estimated-from-photo",
+        "note": "Steep retaining bank between the ground-floor garden and the souterrain apartment's patio and garden; not an entrance"
       },
       "slope": {
         "towards": "-z",
@@ -2610,7 +3597,7 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": -1.5,
+            "value": -0.5,
             "source": "estimated-from-photo"
           }
         },
@@ -2620,7 +3607,7 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": -1.5,
+            "value": -0.5,
             "source": "estimated-from-photo"
           }
         },
@@ -2630,7 +3617,7 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": -9.0,
+            "value": -7.2,
             "source": "estimated-from-photo"
           }
         },
@@ -2640,7 +3627,7 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": -9.0,
+            "value": -7.2,
             "source": "estimated-from-photo"
           }
         },
@@ -2650,7 +3637,7 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": -6.6,
+            "value": -4.8,
             "source": "estimated-from-photo"
           }
         },
@@ -2660,7 +3647,7 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": -6.6,
+            "value": -4.8,
             "source": "estimated-from-photo"
           }
         }
@@ -2702,23 +3689,43 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": -9.0,
+            "value": -7.2,
             "source": "estimated-from-photo"
           }
         },
         {
           "x": {
-            "value": 13.42,
+            "value": 14.22,
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": -9.0,
+            "value": -7.2,
             "source": "estimated-from-photo"
           }
         },
         {
           "x": {
-            "value": 13.42,
+            "value": 14.22,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -11.75,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 0,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -11.75,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 0,
             "source": "estimated-from-photo"
           },
           "z": {
@@ -2743,6 +3750,202 @@
       }
     },
     {
+      "id": "drainage-north-east",
+      "name": "Drainage strip (north and east)",
+      "kind": "gravel",
+      "outline": [
+        {
+          "x": {
+            "value": 0,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -11.75,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 14.22,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -11.75,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 14.22,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -7.2,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 13.42,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -7.2,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 13.42,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -10.95,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 0,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -10.95,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -1.65,
+        "source": "estimated-from-photo",
+        "note": "Gravel strip along the facade, between the wall and the lawn"
+      }
+    },
+    {
+      "id": "drainage-west",
+      "name": "Drainage strip (west and south-west corner)",
+      "kind": "gravel",
+      "outline": [
+        {
+          "x": {
+            "value": -0.8,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -4.9,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 0,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -4.9,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 0,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 0,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 1.9,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 0,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 1.9,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 0.8,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": -0.8,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 0.8,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -0.2,
+        "source": "estimated-from-photo",
+        "note": "Gravel along the wall, beside the driveway"
+      }
+    },
+    {
+      "id": "drainage-south",
+      "name": "Drainage strip (south)",
+      "kind": "gravel",
+      "outline": [
+        {
+          "x": {
+            "value": 4.4,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 0,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 6.4,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 0,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 6.4,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 0.8,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 4.4,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 0.8,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -0.05,
+        "source": "estimated-from-photo",
+        "note": "Gravel along the wall, east of the light well"
+      }
+    },
+    {
       "id": "street",
       "name": "Street",
       "kind": "road",
@@ -2750,6 +3953,46 @@
         {
           "x": {
             "value": -9,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 10.3,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 15.5,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 10.3,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 15.5,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 8.0,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 19.3,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 8.0,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 19.3,
             "source": "estimated-from-photo"
           },
           "z": {
@@ -3034,6 +4277,477 @@
           }
         }
       ]
+    },
+    {
+      "id": "shed-ground-floor-garden",
+      "name": "Garden shed",
+      "kind": "shed",
+      "footprint": [
+        {
+          "x": {
+            "value": 10.95,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 4.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 12.05,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 4.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 12.05,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 6.3,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 10.95,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 6.3,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "floorElevation": {
+        "value": -0.05,
+        "source": "estimated-from-photo"
+      },
+      "height": {
+        "value": 2.0,
+        "source": "mock",
+        "note": "Assumed height"
+      },
+      "wallThickness": {
+        "value": 0.05,
+        "source": "mock"
+      },
+      "roofThickness": {
+        "value": 0.08,
+        "source": "mock"
+      },
+      "openings": [
+        {
+          "id": "shed-ground-floor-garden-door",
+          "type": "door",
+          "edge": 0,
+          "offset": {
+            "value": 0.15,
+            "source": "mock",
+            "note": "Assumed: door on the side facing the house"
+          },
+          "width": {
+            "value": 0.8,
+            "source": "mock"
+          },
+          "height": {
+            "value": 1.75,
+            "source": "mock"
+          },
+          "sill": {
+            "value": 0,
+            "source": "mock"
+          }
+        }
+      ]
+    },
+    {
+      "id": "compost-ground-floor-garden",
+      "name": "Compost",
+      "kind": "compost",
+      "footprint": [
+        {
+          "x": {
+            "value": 8.75,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 4.25,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 9.95,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 4.25,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 9.95,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 5.45,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 8.75,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 5.45,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "floorElevation": {
+        "value": -0.05,
+        "source": "estimated-from-photo"
+      },
+      "height": {
+        "value": 0.9,
+        "source": "mock",
+        "note": "Assumed height"
+      },
+      "wallThickness": {
+        "value": 0.05,
+        "source": "mock"
+      },
+      "roofThickness": {
+        "value": 0.05,
+        "source": "mock"
+      }
+    }
+  ],
+  "stairs": [
+    {
+      "id": "stair-souterrain-stair-hall-ground-floor",
+      "name": "Stair from the stair hall up to the ground floor",
+      "levelId": "souterrain",
+      "toLevelId": "ground-floor",
+      "apartmentId": "apt-souterrain",
+      "path": [
+        {
+          "x": {
+            "value": 2.85,
+            "source": "mock",
+            "note": "Assumed position in the stair hall; it turns counter-clockwise going up"
+          },
+          "z": {
+            "value": -8.43,
+            "source": "mock"
+          }
+        },
+        {
+          "x": {
+            "value": 2.85,
+            "source": "mock"
+          },
+          "z": {
+            "value": -10.05,
+            "source": "mock"
+          }
+        },
+        {
+          "x": {
+            "value": 0.9,
+            "source": "mock"
+          },
+          "z": {
+            "value": -10.05,
+            "source": "mock"
+          }
+        },
+        {
+          "x": {
+            "value": 0.9,
+            "source": "mock"
+          },
+          "z": {
+            "value": -8.43,
+            "source": "mock"
+          }
+        }
+      ],
+      "width": {
+        "value": 1.0,
+        "source": "mock"
+      }
+    }
+  ],
+  "fences": [
+    {
+      "id": "fence-east-garden",
+      "name": "East fence of the ground-floor garden",
+      "kind": "chain-link",
+      "path": [
+        {
+          "x": {
+            "value": 19.3,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 8.0,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 19.3,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 0.5,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -0.05,
+        "source": "estimated-from-photo",
+        "note": "No gate on this side; the fence ends where the road junction cuts the corner"
+      },
+      "height": {
+        "value": 1.1,
+        "source": "estimated-from-photo"
+      }
+    },
+    {
+      "id": "fence-east-garden-divider",
+      "name": "East fence along the garden divider wall",
+      "kind": "privacy",
+      "path": [
+        {
+          "x": {
+            "value": 19.3,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 0.5,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 19.3,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -0.5,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -0.05,
+        "source": "estimated-from-photo"
+      },
+      "endElevation": {
+        "value": -0.94,
+        "source": "estimated-from-photo"
+      },
+      "height": {
+        "value": 1.1,
+        "source": "estimated-from-photo"
+      }
+    },
+    {
+      "id": "fence-east-patio",
+      "name": "East fence of the souterrain patio",
+      "kind": "privacy",
+      "path": [
+        {
+          "x": {
+            "value": 19.3,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -0.5,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 19.3,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.1,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -0.94,
+        "source": "estimated-from-photo",
+        "note": "Follows the lane, which is higher than the patio here"
+      },
+      "endElevation": {
+        "value": -1.32,
+        "source": "estimated-from-photo"
+      },
+      "height": {
+        "value": 1.1,
+        "source": "estimated-from-photo"
+      }
+    },
+    {
+      "id": "gate-souterrain-patio-lane",
+      "name": "Gate from the lane to the souterrain patio",
+      "kind": "gate",
+      "path": [
+        {
+          "x": {
+            "value": 19.3,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.1,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 19.3,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -7.2,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -1.32,
+        "source": "estimated-from-photo",
+        "note": "At the north end of the patio, where the lawn begins; the only gate in the lane fence"
+      },
+      "endElevation": {
+        "value": -1.39,
+        "source": "estimated-from-photo"
+      },
+      "height": {
+        "value": 1.1,
+        "source": "estimated-from-photo"
+      }
+    },
+    {
+      "id": "fence-east-souterrain-garden",
+      "name": "East fence of the souterrain garden",
+      "kind": "privacy",
+      "path": [
+        {
+          "x": {
+            "value": 19.3,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -7.2,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 19.3,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -17,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -1.65,
+        "source": "estimated-from-photo"
+      },
+      "height": {
+        "value": 1.1,
+        "source": "estimated-from-photo"
+      }
+    },
+    {
+      "id": "fence-north",
+      "name": "North fence of the souterrain garden",
+      "kind": "chain-link",
+      "path": [
+        {
+          "x": {
+            "value": 19.3,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -17,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": -9,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -17,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -1.65,
+        "source": "estimated-from-photo"
+      },
+      "height": {
+        "value": 1.0,
+        "source": "estimated-from-photo"
+      }
+    },
+    {
+      "id": "fence-west-driveway",
+      "name": "Trellis fence along the driveway",
+      "kind": "trellis",
+      "path": [
+        {
+          "x": {
+            "value": -4.85,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 10.3,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": -4.85,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -4.9,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -0.2,
+        "source": "estimated-from-photo",
+        "note": "Wooden trellis between brick pillars"
+      },
+      "height": {
+        "value": 1.0,
+        "source": "estimated-from-photo"
+      }
     }
   ]
 }

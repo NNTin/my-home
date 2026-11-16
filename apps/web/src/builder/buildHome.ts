@@ -6,6 +6,7 @@ import {
   type Point,
   type Polygon,
   type Slope,
+  type Stair,
   type Wall,
 } from '@my-home/shared';
 
@@ -119,6 +120,7 @@ export interface SlabDescriptor extends Prism {
 /** A flat surface at height `y`, or on `slope` (`y` is then the high edge). */
 export interface Surface {
   outline: Vec2[];
+  holes?: Vec2[][];
   y: number;
   slope?: PlaneSlope;
 }
@@ -129,6 +131,8 @@ export interface RoomFloorDescriptor extends Surface {
   name: string;
   levelId: string;
   apartmentId?: string;
+  /** Where the room's name goes: the middle of its floor. */
+  labelAt: Vec3;
 }
 
 export interface TerrainDescriptor extends Prism {
@@ -141,6 +145,33 @@ export interface OutdoorAreaDescriptor extends Surface {
   name: string;
   kind: HomeModel['outdoorAreas'][number]['kind'];
   ownerApartmentId?: string;
+  /** Contour lines of a sloped area (none when flat): the closer together, the steeper. */
+  contours: Surface[];
+}
+
+/** A stair: one box per tread and landing, bottom to top. */
+export interface StairDescriptor {
+  id: string;
+  name: string;
+  levelId: string;
+  toLevelId: string;
+  apartmentId?: string;
+  /** Which way it turns going up, seen from above. */
+  turn: 'clockwise' | 'counter-clockwise' | 'straight';
+  /** Height of one step. */
+  rise: number;
+  steps: (Box & { id: string; part: 'tread' | 'landing' })[];
+  /** Plan rectangle the stair covers: the stairwell opening in the floor it leads up to. */
+  well: Vec2[];
+}
+
+/** A fence: posts and one panel per bay, stepped along sloping ground. */
+export interface FenceDescriptor {
+  id: string;
+  name: string;
+  kind: NonNullable<HomeModel['fences']>[number]['kind'];
+  posts: (Box & { id: string })[];
+  panels: (Box & { id: string })[];
 }
 
 /** An opening in an outbuilding wall. */
@@ -201,6 +232,8 @@ export interface HomeScene {
   roofPlanes: RoofPlaneDescriptor[];
   roofWindows: RoofWindowDescriptor[];
   outbuildings: OutbuildingDescriptor[];
+  stairs: StairDescriptor[];
+  fences: FenceDescriptor[];
   bounds: { min: Vec3; max: Vec3 };
 }
 
@@ -477,13 +510,20 @@ export function buildHome(model: HomeModel): HomeScene {
     }
   }
 
+  const stairs = (model.stairs ?? []).map((s) =>
+    buildStair(s, elevationOf(s.levelId), elevationOf(s.toLevelId)),
+  );
+  /** Stairwell openings in the floor of a level. */
+  const wellsOf = (levelId: string) =>
+    stairs.filter((s) => s.toLevelId === levelId).map((s) => s.well);
+
   const footprint = toOutline(model.building.footprint);
   const slabs: SlabDescriptor[] = model.levels.map((l) => ({
     id: `${l.id}:floor`,
     levelId: l.id,
     kind: 'floor',
     outline: footprint,
-    holes: [],
+    holes: wellsOf(l.id),
     bottom: l.elevation.value - l.slabThickness.value,
     top: l.elevation.value,
   }));
@@ -503,15 +543,23 @@ export function buildHome(model: HomeModel): HomeScene {
     });
   }
 
-  const roomFloors: RoomFloorDescriptor[] = model.rooms.map((r) => ({
-    id: `${r.id}:floor`,
-    roomId: r.id,
-    name: r.name,
-    levelId: r.levelId,
-    ...(r.apartmentId !== undefined && { apartmentId: r.apartmentId }),
-    outline: toOutline(r.outline),
-    y: elevationOf(r.levelId) + SURFACE_OFFSET,
-  }));
+  const roomFloors: RoomFloorDescriptor[] = model.rooms.map((r) => {
+    const outline = toOutline(r.outline);
+    const y = elevationOf(r.levelId) + SURFACE_OFFSET;
+    const [cx, cz] = centroid(outline);
+    const holes = wellsOf(r.levelId).filter((well) => inside(centroid(well), outline));
+    return {
+      id: `${r.id}:floor`,
+      roomId: r.id,
+      name: r.name,
+      levelId: r.levelId,
+      ...(r.apartmentId !== undefined && { apartmentId: r.apartmentId }),
+      outline,
+      ...(holes.length > 0 && { holes }),
+      y,
+      labelAt: [cx, y, cz],
+    };
+  });
 
   const terrain: TerrainDescriptor[] = model.terrain.patches.map((p) => {
     const outline = toOutline(p.outline);
@@ -538,9 +586,11 @@ export function buildHome(model: HomeModel): HomeScene {
       outline,
       y: a.elevation.value + SURFACE_OFFSET,
       ...(slope && { slope }),
+      contours: slope ? slopeContours(outline, slope) : [],
     };
   });
 
+  const fences = (model.fences ?? []).map(buildFence);
   const outbuildings = (model.outbuildings ?? []).map(buildOutbuilding);
   const roof = roofOf(model.building);
   const roofWindows =
@@ -558,6 +608,8 @@ export function buildHome(model: HomeModel): HomeScene {
     roofPlanes,
     roofWindows,
     outbuildings,
+    stairs,
+    fences,
     bounds: boundsOf([
       ...outbuildings.flatMap((b) => b.walls.flatMap(boxCorners)),
       ...roofPlanes.flatMap((r) =>
@@ -701,6 +753,236 @@ export function buildOutbuilding(
       top: floor + height + SURFACE_OFFSET,
     },
   };
+}
+
+/** Area centroid of a simple polygon (the mean of its points when it has no area). */
+export function centroid(outline: Vec2[]): Vec2 {
+  let [area, x, z] = [0, 0, 0];
+  outline.forEach(([ax, az], i) => {
+    const [bx, bz] = outline[(i + 1) % outline.length]!;
+    const cross = ax * bz - bx * az;
+    area += cross;
+    x += (ax + bx) * cross;
+    z += (az + bz) * cross;
+  });
+  if (Math.abs(area) < EPS) {
+    const n = Math.max(outline.length, 1);
+    return [
+      outline.reduce((sum, p) => sum + p[0], 0) / n,
+      outline.reduce((sum, p) => sum + p[1], 0) / n,
+    ];
+  }
+  return [x / (3 * area), z / (3 * area)];
+}
+
+/** Whether a plan point lies inside a simple polygon. */
+function inside([x, z]: Vec2, outline: Vec2[]): boolean {
+  let result = false;
+  outline.forEach(([ax, az], i) => {
+    const [bx, bz] = outline[(i + 1) % outline.length]!;
+    if (az > z !== bz > z && x < ax + ((z - az) / (bz - az)) * (bx - ax)) result = !result;
+  });
+  return result;
+}
+
+/** Height between two contour lines of a sloped outdoor area. */
+export const CONTOUR_INTERVAL = 0.2;
+const CONTOUR_WIDTH = 0.08;
+
+/**
+ * Contour lines across a sloped surface: thin strips at every `CONTOUR_INTERVAL` of fall, lying
+ * on the slope just above the surface. The slope runs across the bounding box, but each line is
+ * clipped to the outline, so a notched or L-shaped area gets a strip per stretch inside it.
+ */
+export function slopeContours(outline: Vec2[], slope: PlaneSlope): Surface[] {
+  const fall = slope.high - slope.low;
+  const run = slope.to - slope.from;
+  // Outline as [along the fall, across it].
+  const points = outline.map(([x, z]): Vec2 => (slope.axis === 'x' ? [x, z] : [z, x]));
+  const lifted = { ...slope, high: slope.high + SURFACE_OFFSET, low: slope.low + SURFACE_OFFSET };
+  const contours: Surface[] = [];
+  for (let k = 1; k * CONTOUR_INTERVAL < fall - EPS; k++) {
+    const at = slope.from + (run * k * CONTOUR_INTERVAL) / fall;
+    const [a, b] = [at - CONTOUR_WIDTH / 2, at + CONTOUR_WIDTH / 2];
+    // Where the line crosses the outline's edges; it is inside between each pair of crossings.
+    const crossings = points
+      .flatMap(([u0, v0], i) => {
+        const [u1, v1] = points[(i + 1) % points.length]!;
+        return u0 > at !== u1 > at ? [v0 + ((at - u0) / (u1 - u0)) * (v1 - v0)] : [];
+      })
+      .sort((p, q) => p - q);
+    for (let i = 0; i + 1 < crossings.length; i += 2) {
+      const [min, max] = [crossings[i]!, crossings[i + 1]!];
+      if (max - min < EPS) continue;
+      const corners: Vec2[] = [
+        [a, min],
+        [b, min],
+        [b, max],
+        [a, max],
+      ];
+      contours.push({
+        outline: slope.axis === 'x' ? corners : corners.map(([u, v]): Vec2 => [v, u]),
+        y: lifted.high,
+        slope: lifted,
+      });
+    }
+  }
+  return contours;
+}
+
+/** Steps are at most this high; the builder adds steps until they are. */
+export const MAX_RISER = 0.19;
+
+/**
+ * Treads and landings of a stair climbing from `from` to `to` along its walking line. Every
+ * turning point gets a square landing; the remaining steps are shared out over the flights by
+ * their length. The last riser arrives on the upper floor, so there is no tread at `to`.
+ */
+export function buildStair(stair: Stair, from: number, to: number): StairDescriptor {
+  const width = stair.width.value;
+  const points = toOutline(stair.path);
+  const flights = points.slice(0, -1).map(([sx, sz], i) => {
+    const [ex, ez] = points[i + 1]!;
+    const length = Math.hypot(ex - sx, ez - sz);
+    const dir: Vec2 = [(ex - sx) / length, (ez - sz) / length];
+    // A landing takes half a width from the flight on either side of it.
+    const start = i > 0 ? width / 2 : 0;
+    const end = length - (i < points.length - 2 ? width / 2 : 0);
+    return {
+      origin: [sx, sz] as Vec2,
+      dir,
+      start,
+      run: Math.max(end - start, 0),
+      corner: [ex, ez] as Vec2,
+    };
+  });
+  const landings = flights.length - 1;
+  const totalRun = flights.reduce((sum, f) => sum + f.run, 0);
+  const wanted = Math.ceil((to - from) / MAX_RISER - EPS) - 1 - landings;
+  // Largest-remainder rounding, at least one tread per flight: the sum never falls short of
+  // `wanted`, so no riser exceeds MAX_RISER.
+  const shares = flights.map((f) => (wanted * f.run) / Math.max(totalRun, EPS));
+  const treads = shares.map((share) => Math.max(1, Math.floor(share + EPS)));
+  const byRemainder = shares
+    .map((share, i) => ({ i, remainder: share - Math.floor(share + EPS) }))
+    .sort((a, b) => b.remainder - a.remainder || a.i - b.i);
+  for (let k = 0; treads.reduce((sum, n) => sum + n, 0) < wanted; k++) {
+    treads[byRemainder[k % byRemainder.length]!.i]!++;
+  }
+  const rise = (to - from) / (treads.reduce((sum, n) => sum + n, 0) + landings + 1);
+
+  const steps: StairDescriptor['steps'] = [];
+  const add = (part: 'tread' | 'landing', [x, z]: Vec2, dir: Vec2, depth: number) => {
+    const top = from + rise * (steps.length + 1);
+    // Two risers thick, so each step closes the gap down to the one below.
+    const thickness = Math.min(2 * rise, top - from);
+    steps.push({
+      id: `${stair.id}:${steps.length}:${part}`,
+      part,
+      center: [x, top - thickness / 2, z],
+      size: [depth, thickness, width],
+      rotationY: rotationFor(dir[0], dir[1]),
+    });
+  };
+  flights.forEach((f, i) => {
+    const going = f.run / treads[i]!;
+    for (let j = 0; j < treads[i]!; j++) {
+      const along = f.start + (j + 0.5) * going;
+      add('tread', [f.origin[0] + f.dir[0] * along, f.origin[1] + f.dir[1] * along], f.dir, going);
+    }
+    if (i < landings) add('landing', f.corner, f.dir, width);
+  });
+
+  // On the plan (x east, z south) a left turn, counter-clockwise from above, has a negative cross.
+  const cross = flights
+    .slice(1)
+    .reduce((sum, f, i) => sum + flights[i]!.dir[0] * f.dir[1] - flights[i]!.dir[1] * f.dir[0], 0);
+  const { min, max } = boundsOf(steps.flatMap(boxCorners));
+  return {
+    id: stair.id,
+    name: stair.name,
+    levelId: stair.levelId,
+    toLevelId: stair.toLevelId,
+    ...(stair.apartmentId !== undefined && { apartmentId: stair.apartmentId }),
+    turn: Math.abs(cross) < EPS ? 'straight' : cross < 0 ? 'counter-clockwise' : 'clockwise',
+    rise,
+    steps,
+    well: [
+      [min[0], min[2]],
+      [max[0], min[2]],
+      [max[0], max[2]],
+      [min[0], max[2]],
+    ],
+  };
+}
+
+/** Fence posts stand at most this far apart. */
+export const FENCE_BAY = 2.5;
+const FENCE_PANEL_DEPTH = 0.04;
+/** Posts are metal profiles, except the brick pillars of a trellis fence. */
+const FENCE_POST: Record<FenceDescriptor['kind'], number> = {
+  'chain-link': 0.08,
+  privacy: 0.08,
+  gate: 0.1,
+  trellis: 0.24,
+};
+/** How far a post stands above its panels. */
+const FENCE_POST_EXTRA = 0.1;
+
+/**
+ * Posts and panels along a fence line. The ground runs linearly from `elevation` to
+ * `endElevation` along the whole path; each bay's panel is level, at the ground height of its
+ * middle, so a fence on a slope steps down bay by bay.
+ */
+export function buildFence(fence: NonNullable<HomeModel['fences']>[number]): FenceDescriptor {
+  const points = toOutline(fence.path);
+  const height = fence.height.value;
+  const size = FENCE_POST[fence.kind];
+  const lengths = points.slice(0, -1).map(([x, z], i) => {
+    const [ex, ez] = points[i + 1]!;
+    return Math.hypot(ex - x, ez - z);
+  });
+  const total = lengths.reduce((sum, l) => sum + l, 0);
+  const start = fence.elevation.value;
+  const end = fence.endElevation?.value ?? start;
+  const groundAt = (distance: number) => start + ((end - start) * distance) / Math.max(total, EPS);
+
+  const posts: FenceDescriptor['posts'] = [];
+  const panels: FenceDescriptor['panels'] = [];
+  // Neighbouring panels differ by at most this much in height; posts cover half of it each way.
+  const step = (Math.abs(end - start) / Math.max(total, EPS)) * FENCE_BAY;
+  const post = ([x, z]: Vec2, distance: number, rotationY: number) => {
+    const ground = groundAt(distance);
+    posts.push({
+      id: `${fence.id}:post:${posts.length}`,
+      center: [x, ground + (height + FENCE_POST_EXTRA) / 2, z],
+      size: [size, height + FENCE_POST_EXTRA + step, size],
+      rotationY,
+    });
+  };
+  let walked = 0;
+  lengths.forEach((length, i) => {
+    if (length < EPS) return;
+    const [sx, sz] = points[i]!;
+    const [ex, ez] = points[i + 1]!;
+    const [dx, dz] = [(ex - sx) / length, (ez - sz) / length];
+    const rotationY = rotationFor(dx, dz);
+    const bays = Math.ceil(length / FENCE_BAY - EPS);
+    const bay = length / bays;
+    for (let j = 0; j < bays; j++) {
+      post([sx + dx * j * bay, sz + dz * j * bay], walked + j * bay, rotationY);
+      const mid = (j + 0.5) * bay;
+      panels.push({
+        id: `${fence.id}:panel:${panels.length}`,
+        center: [sx + dx * mid, groundAt(walked + mid) + height / 2, sz + dz * mid],
+        size: [bay, height, FENCE_PANEL_DEPTH],
+        rotationY,
+      });
+    }
+    walked += length;
+    if (i === lengths.length - 1) post([ex, ez], walked, rotationY);
+  });
+  return { id: fence.id, name: fence.name, kind: fence.kind, posts, panels };
 }
 
 function boundsOf(points: Vec3[]) {

@@ -149,6 +149,12 @@
               "description": {
                 "type": "string",
                 "maxLength": 2000
+              },
+              "entrances": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Entrance"
+                }
               }
             },
             "required": ["id", "name", "levelIds"],
@@ -264,7 +270,7 @@
               },
               "kind": {
                 "type": "string",
-                "enum": ["garden", "driveway", "patio", "path", "road"]
+                "enum": ["garden", "driveway", "patio", "path", "road", "gravel", "embankment"]
               },
               "ownerApartmentId": {
                 "$ref": "#/$defs/Id"
@@ -287,6 +293,18 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/Outbuilding"
+          }
+        },
+        "stairs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Stair"
+          }
+        },
+        "fences": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Fence"
           }
         }
       },
@@ -527,6 +545,31 @@
       "additionalProperties": false,
       "description": "A surface falling linearly across its bounding box."
     },
+    "Entrance": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "roomId": {
+          "$ref": "#/$defs/Id"
+        },
+        "viaId": {
+          "$ref": "#/$defs/Id"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2000
+        }
+      },
+      "required": ["id", "name", "roomId", "viaId"],
+      "additionalProperties": false
+    },
     "Outbuilding": {
       "type": "object",
       "properties": {
@@ -540,7 +583,7 @@
         },
         "kind": {
           "type": "string",
-          "enum": ["garage", "carport", "shed", "porch"]
+          "enum": ["garage", "carport", "shed", "porch", "compost"]
         },
         "footprint": {
           "$ref": "#/$defs/Polygon"
@@ -613,6 +656,75 @@
         }
       },
       "required": ["id", "type", "edge", "offset", "width", "height", "sill"],
+      "additionalProperties": false
+    },
+    "Stair": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "levelId": {
+          "$ref": "#/$defs/Id"
+        },
+        "toLevelId": {
+          "$ref": "#/$defs/Id"
+        },
+        "apartmentId": {
+          "$ref": "#/$defs/Id"
+        },
+        "path": {
+          "minItems": 2,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Point"
+          }
+        },
+        "width": {
+          "$ref": "#/$defs/PositiveDimension"
+        }
+      },
+      "required": ["id", "name", "levelId", "toLevelId", "path", "width"],
+      "additionalProperties": false
+    },
+    "Fence": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["chain-link", "privacy", "trellis", "gate"]
+        },
+        "path": {
+          "minItems": 2,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Point"
+          }
+        },
+        "elevation": {
+          "$ref": "#/$defs/Dimension"
+        },
+        "endElevation": {
+          "$ref": "#/$defs/Dimension"
+        },
+        "height": {
+          "$ref": "#/$defs/PositiveDimension"
+        }
+      },
+      "required": ["id", "name", "kind", "path", "elevation", "height"],
       "additionalProperties": false
     }
   }

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import {
+  Color,
   DoubleSide,
   Euler,
   ExtrudeGeometry,
@@ -39,9 +40,30 @@ const colors = {
   patio: '#b8a184',
   path: '#c2b59b',
   road: '#6f6f6f',
+  gravel: '#a9a8a2',
+  embankment: '#8d8778',
+  stair: '#b9a98c',
+  fencePost: '#3d4043',
+  brickPillar: '#9a5b40',
   outbuilding: '#e4e0d6',
   garageDoor: '#8a8d90',
 } as const;
+
+/** Wall colours of outbuildings that are not rendered like the house. */
+const outbuildingColors: Partial<Record<HomeScene['outbuildings'][number]['kind'], string>> = {
+  shed: '#9a7b56',
+  compost: '#3c4038',
+};
+
+const fenceColors = {
+  'chain-link': '#4a4e52',
+  privacy: '#2c2e30',
+  trellis: '#7a5a3a',
+  gate: '#6c7176',
+} as const;
+
+/** Contour lines are a darker shade of the surface they lie on. */
+const contourColor = (color: string) => `#${new Color(color).multiplyScalar(0.6).getHexString()}`;
 
 const roomColors = ['#e9d8b4', '#d7e3c8', '#cfdbe6', '#ead0cc', '#ddd3e8', '#e6e0c4'];
 
@@ -149,7 +171,7 @@ function PrismMesh({ prism, color }: { prism: Prism; color: string }) {
 /** Plan polygon at height `y` (or on its slope), facing up. */
 function SurfaceMesh({ surface, color }: { surface: Surface; color: string }) {
   const geometry = useMemo(() => {
-    const g = new ShapeGeometry(toShape(surface.outline, [], true));
+    const g = new ShapeGeometry(toShape(surface.outline, surface.holes, true));
     // Rotated to face up: local (x, y, z) is world (x, y + z, -y), so plan z = -local y.
     if (surface.slope) {
       slopeVertices(
@@ -209,7 +231,12 @@ export function HomeMeshes({ scene }: { scene: HomeScene }) {
         <PrismMesh key={t.id} prism={t} color={colors.terrain} />
       ))}
       {scene.outdoorAreas.map((a) => (
-        <SurfaceMesh key={a.id} surface={a} color={colors[a.kind]} />
+        <group key={a.id}>
+          <SurfaceMesh surface={a} color={colors[a.kind]} />
+          {a.contours.map((c, i) => (
+            <SurfaceMesh key={i} surface={c} color={contourColor(colors[a.kind])} />
+          ))}
+        </group>
       ))}
       {scene.slabs.map((s) => (
         <PrismMesh
@@ -244,10 +271,32 @@ export function HomeMeshes({ scene }: { scene: HomeScene }) {
       {scene.openings.map((o) => (
         <OpeningMesh key={o.id} opening={o} />
       ))}
+      {scene.stairs.flatMap((s) =>
+        s.steps.map((step) => <BoxMesh key={step.id} box={step} color={colors.stair} />),
+      )}
+      {scene.fences.map((f) => (
+        <group key={f.id}>
+          {f.posts.map((post) => (
+            <BoxMesh
+              key={post.id}
+              box={post}
+              color={f.kind === 'trellis' ? colors.brickPillar : colors.fencePost}
+            />
+          ))}
+          {f.panels.map((panel) => (
+            <BoxMesh
+              key={panel.id}
+              box={panel}
+              color={fenceColors[f.kind]}
+              transparent={f.kind === 'chain-link'}
+            />
+          ))}
+        </group>
+      ))}
       {scene.outbuildings.map((b) => (
         <group key={b.id}>
           {b.walls.map((w) => (
-            <BoxMesh key={w.id} box={w} color={colors.outbuilding} />
+            <BoxMesh key={w.id} box={w} color={outbuildingColors[b.kind] ?? colors.outbuilding} />
           ))}
           <PrismMesh prism={b.roof} color={colors.floorSlab} />
           {b.openings.map((o) => (

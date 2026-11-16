@@ -28,6 +28,36 @@ Ids are unique across all collections so other documents ([furniture layouts](la
 reference any home, level or room by id alone. Layouts are stored separately, so changing or
 re-seeding a home never deletes them; items whose level or room disappears are kept and flagged.
 
+### Naming: ids are permanent keys
+
+Ids are what automations (smart-home rules, LLM tools) and layouts store, so treat them as a public
+API:
+
+- **An id never changes and is never reused**, even when the thing is renamed, moved or removed.
+  `name` is only a display label and may be reworded or localised at any time.
+- Ids are lower-case kebab-case and say what the thing is and where, without a lookup:
+
+| Entity        | Pattern                                          | Example                                    |
+| ------------- | ------------------------------------------------ | ------------------------------------------ |
+| Apartment     | `apt-<apartment>`                                | `apt-souterrain`                           |
+| Room          | `<apartment>-<room>`                             | `souterrain-bed-room`                      |
+| Door          | `door-<apartment>-<room>-<room or outdoor area>` | `door-souterrain-corridor-patio`           |
+| Window        | `window-<apartment>-<room>-<facade>`             | `window-souterrain-kitchen-north`          |
+| Interior wall | `<apartment>-wall-<room>-<room>`                 | `souterrain-wall-corridor-bed-room`        |
+| Stair         | `stair-<apartment>-<room>-<level it leads to>`   | `stair-souterrain-stair-hall-ground-floor` |
+| Entrance      | `entrance-<apartment>-<how>`                     | `entrance-souterrain-patio`                |
+| Fence, gate   | `fence-<side>-<what it borders>`, `gate-<a>-<b>` | `gate-souterrain-patio-lane`               |
+| Outdoor area  | `<kind or role>-<apartment or side>`             | `patio-souterrain`, `garden-divider`       |
+
+- Room names are fixed two-word labels (`Stair hall`, `Work room`, `Bath room`, `Kitchen`,
+  `Corridor`, `Living room`, `Boiler room`, `Bed room`); the id is the name in kebab-case behind the
+  apartment.
+- A door or gate id names the two things it connects, so the id alone tells which rooms it joins.
+  Two rooms that are open to each other have **no wall and no opening** between them (the
+  souterrain kitchen and corridor): their outlines simply share an edge.
+- Levels that are not laid out yet keep one placeholder room (`ground-floor-interior`); it is
+  replaced, not renamed, when the real rooms are added.
+
 ## Dimensions and provenance
 
 Every length, coordinate and elevation is a `Dimension` (angles, such as the roof pitch and the
@@ -50,17 +80,19 @@ it came from). Nothing else in the model or renderer changes. The only bare numb
 
 ## Structure
 
-| Field          | Content                                                                                                        |
-| -------------- | -------------------------------------------------------------------------------------------------------------- |
-| `building`     | `footprint` (exterior wall centre lines, used for slabs), `roofThickness`, `roof?`, `northBearing?`            |
-| `terrain`      | `groundElevation`, `bottomElevation` and `patches`: plan polygons (with optional `holes`) at an elevation      |
-| `levels`       | `elevation`, clear `height` and floor `slabThickness`                                                          |
-| `apartments`   | `levelIds` they occupy                                                                                         |
-| `rooms`        | floor `outline` on a `levelId`, optionally in an `apartmentId`                                                 |
-| `walls`        | centre line `start`/`end`, `thickness`, `height`, `kind` (`exterior`/`interior`), `levelId`, `apartmentId?`    |
-| `openings`     | `door`/`window` on a `wallId`: `offset` from the wall start, `width`, `height`, `sill`                         |
-| `outdoorAreas` | `garden`/`driveway`/`patio`/`path`/`road` polygons at an `elevation` (or `slope`), optional `ownerApartmentId` |
-| `outbuildings` | optional garages, carports, sheds and porches: a `footprint`, flat roof and openings on its edges              |
+| Field          | Content                                                                                                     |
+| -------------- | ----------------------------------------------------------------------------------------------------------- |
+| `building`     | `footprint` (exterior wall centre lines, used for slabs), `roofThickness`, `roof?`, `northBearing?`         |
+| `terrain`      | `groundElevation`, `bottomElevation` and `patches`: plan polygons (with optional `holes`) at an elevation   |
+| `levels`       | `elevation`, clear `height` and floor `slabThickness`                                                       |
+| `apartments`   | `levelIds` they occupy and, optionally, their `entrances`                                                   |
+| `rooms`        | floor `outline` on a `levelId`, optionally in an `apartmentId`                                              |
+| `walls`        | centre line `start`/`end`, `thickness`, `height`, `kind` (`exterior`/`interior`), `levelId`, `apartmentId?` |
+| `openings`     | `door`/`window` on a `wallId`: `offset` from the wall start, `width`, `height`, `sill`                      |
+| `outdoorAreas` | `garden`/`driveway`/`patio`/`path`/`road`/`gravel`/`embankment` polygons at an `elevation` (or `slope`)     |
+| `outbuildings` | optional garages, carports, sheds, porches and compost bins: a `footprint`, flat roof and edge openings     |
+| `stairs`       | optional: a walking line from one level up to another                                                       |
+| `fences`       | optional: fence lines and gates on the ground                                                               |
 
 Terrain patches are drawn as solid blocks from `bottomElevation` up to their elevation (or their
 slope, below). Leaving the
@@ -82,6 +114,68 @@ A terrain patch or an outdoor area can fall linearly across its bounding box ins
 Model levelled areas as flat patches and join them with sloped patches (ramps, embankments) or let
 a lower patch next to a higher one form a retaining wall. Light wells and sunken entries are small
 low patches in a notch of the surrounding one.
+
+A sloped outdoor area is drawn with contour lines, one for every 0.2 m of fall and clipped to its
+outline, so slopes stand out
+from levelled areas and a steep bank shows as tightly packed lines. Outdoor area kind `embankment`
+is a steep bank or retaining slope that divides two levels and is not walked on; `gravel` is a
+gravel or drainage strip such as the one along a facade.
+
+### Entrances
+
+`apartments[].entrances` (optional) lists every way into an apartment, so "how do I get in" does
+not have to be worked out from the geometry:
+
+```json
+{
+  "id": "entrance-souterrain-patio",
+  "name": "Patio entrance",
+  "roomId": "souterrain-corridor",
+  "viaId": "door-souterrain-corridor-patio",
+  "description": "From the lane through the gate onto the souterrain patio, ..."
+}
+```
+
+`roomId` is the room of the apartment the entrance leads into and `viaId` the door (an opening) or
+stair that is passed to get in.
+
+### Stairs
+
+```json
+{
+  "id": "stair-souterrain-stair-hall-ground-floor",
+  "name": "Stair from the stair hall up to the ground floor",
+  "levelId": "souterrain",
+  "toLevelId": "ground-floor",
+  "apartmentId": "apt-souterrain",
+  "path": [{ "x": ..., "z": ... }, ...],
+  "width": { "value": 1, "source": "mock" }
+}
+```
+
+`path` is the walking line **going up**: straight flights between consecutive points, with a square
+landing (`width` on each side) at every turning point, so turns are right angles. The order of the
+points therefore gives the direction of travel: seen from above with north (`-z`) up, a path that
+keeps turning left climbs counter-clockwise. The builder spreads steps of at most 0.19 m over the
+rise between the two levels, shows the stair with `levelId` (and `apartmentId`), and cuts a
+stairwell opening over it in the floor of `toLevelId`.
+
+### Fences
+
+```json
+{
+  "id": "fence-north", "name": "North fence of the souterrain garden", "kind": "chain-link",
+  "path": [{ "x": ..., "z": ... }, ...],
+  "elevation": { "value": -1.65, "source": "estimated-from-photo" },
+  "height": { "value": 1, "source": "estimated-from-photo" }
+}
+```
+
+`kind` is `chain-link`, `privacy` (mesh with a privacy screen), `trellis` (wood between brick
+pillars) or `gate`. `elevation` is the ground height at the start of `path`; with `endElevation`
+the ground runs linearly to that height at the end, and the fence steps down bay by bay (posts at
+most 2.5 m apart). A gate is its own short fence of kind `gate` in the fence line, with an id that
+names what it connects. Fences are always shown.
 
 ### Openings
 
@@ -106,6 +200,7 @@ low patches in a notch of the surrounding one.
 A wall stands on every footprint edge (from point `edge` to the next) except those in `openEdges`,
 for example a carport's sides or a porch against the house. Openings are placed like wall openings (never on an open edge),
 measured from the edge's start point. Outbuildings have no levels or rooms and are always shown.
+`kind` is `garage`, `carport`, `shed`, `porch` or `compost` (a closed compost bin: a low box with a lid).
 
 ### Roof and attic
 
@@ -160,6 +255,10 @@ and the seed script, not in the editor:
 - openings fit inside their wall (`offset + width <= length`, `sill + height <= wall height`) and do
   not overlap each other
 - walls have a non-zero length; terrain patches are above `bottomElevation`
+- an entrance's room belongs to its apartment, and its `viaId` is a door on a wall of that room
+  (not a window) or a stair that starts or ends in it
+- a stair leads up to a higher level, turns at right angles and its flights leave room for the
+  landings; fence points are distinct
 
 Errors carry a path into the document, for example
 `openings[2].width: Opening "x" spans 7.65 m to 9.15 m but wall "y" is only 8 m long`.
@@ -172,25 +271,78 @@ Errors carry a path into the document, for example
   garage, the terrain levels and `northBearing` (2.5°, including the map grid's convergence) were
   derived from official geodata of the Bavarian surveying administration (LoD2 building model, DGM1
   terrain model, orthophoto). Datenquelle: Bayerische Vermessungsverwaltung, CC BY 4.0.
-- **estimated-from-photo**: windows and doors (position, size, sill), floor levels, the light well
-  and the entrance, from street-level photos. The north facade was only seen at a grazing angle.
-- **mock**: assumed wall, slab and roof thicknesses.
+- **estimated-from-photo**: windows and doors (position, size, sill), floor levels, the light well,
+  the fences, the drainage strips, the garden shed and the compost, from street-level and aerial
+  photos. The north facade was only seen at
+  a grazing angle. The souterrain room layout is from the owner's annotated plan sketch (about
+  ±0.3 m).
+- **mock**: assumed wall, slab and roof thicknesses, the position of the interior doors along their
+  walls and the stair's position in the stair hall.
 
 The plan origin is the house's south-west outside corner, `x` runs along the south wall and `z`
 towards the street. Heights are relative to the ground-floor finished floor (`y = 0`), not to sea
 level. Everything is axis-aligned and the terrain is simplified to levelled areas and slopes:
 
 - **South level** (about 0): the street, the driveway in front of the garage and the ground-floor
-  garden and covered terrace.
-- **Lower level** (-1.65): the souterrain garden on the north side and the patio on the east side,
-  reached from the south garden by the **entrance slope**; steps lead down to the souterrain door.
+  garden and covered terrace. The garden ends at the street on the same line as the driveway; the
+  road junction cuts off its south-east corner. A **garden shed** (`shed-ground-floor-garden`) and a
+  **compost** (`compost-ground-floor-garden`) stand on its lawn.
+- **Lower level** (-1.65): the souterrain apartment's garden on the north side and its patio on the
+  east side.
+- The **garden divider wall** (`garden-divider`, kind `embankment`): a short, steep bank at the
+  south-east corner that separates the ground-floor garden (south level) from the souterrain patio
+  and garden (lower level). It is a dividing element, not a way in.
 - **Souterrain** (floor -2.6): its north windows sit just above the lawn, the south window is below
   ground in a **light well**.
 - The **garage** (flat roof) and the arched **entrance passage** stand west of the house; the lane on
   the east falls towards the north.
+- **Fences**: along the lane on the east, along the north boundary of the souterrain garden, and a
+  trellis fence along the driveway. The lane fence has one gate, `gate-souterrain-patio-lane`, at the
+  north end of the souterrain patio where the lawn begins; the ground-floor garden has no gate, and
+  its fence ends where the road junction cuts the corner. The patio fence follows the lane, which
+  is higher than the patio there.
+- **Drainage**: gravel strips (`drainage-*`, kind `gravel`) along the north facade and the north
+  part of the east facade, around the south-west corner and in front of the south wall.
 
-The interior layout is not modelled yet: each level has one room covering its floor. Never add the
-house's address or location (coordinates, map links, tile IDs, place names) to the repo.
+### The souterrain apartment
+
+```text
+            north
+ +-----------+-----------+-----------+-----------+
+ | Stair     | Work room | Bath room | Kitchen   |
+ | hall      |           |           |           |
+ | (stair    +---door----+---door----+  (open)   |
+ |  up)    door          Corridor              door --> Souterrain patio
+ +-----------+---door----+--door--+----door------+
+ | Living room           | Boiler | Bed room     |
+ |                       | room   |              |
+ |                       +--------+--------------+
+ +-----------------------+
+            south
+```
+
+| Room id                  | Name        | Connected to                                      |
+| ------------------------ | ----------- | ------------------------------------------------- |
+| `souterrain-stair-hall`  | Stair hall  | corridor (door), ground floor (stair)             |
+| `souterrain-work-room`   | Work room   | corridor (door)                                   |
+| `souterrain-bath-room`   | Bath room   | corridor (door)                                   |
+| `souterrain-kitchen`     | Kitchen     | corridor (open, no wall)                          |
+| `souterrain-corridor`    | Corridor    | every other room, and the souterrain patio (door) |
+| `souterrain-living-room` | Living room | corridor (door)                                   |
+| `souterrain-boiler-room` | Boiler room | corridor (door)                                   |
+| `souterrain-bed-room`    | Bed room    | corridor (door)                                   |
+
+There are exactly **two ways into the apartment** (`apartments[].entrances`):
+
+| Entrance id                      | Name                | Route                                                                                                                                                                                       |
+| -------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `entrance-souterrain-stair-hall` | Stair hall entrance | the house's entrance on the ground floor, then down `stair-souterrain-stair-hall-ground-floor` into the stair hall, then `door-souterrain-corridor-stair-hall`                              |
+| `entrance-souterrain-patio`      | Patio entrance      | from the lane through `gate-souterrain-patio-lane` (north end of the patio) onto the souterrain patio, down the sunken entry steps, then `door-souterrain-corridor-patio` into the corridor |
+
+The stair in the stair hall climbs counter-clockwise (north along the east side, west across the
+north end, south along the west side). The ground floor and the attic are not laid out yet: each has
+one placeholder room covering its floor. Never add the house's address or location (coordinates, map
+links, tile IDs, place names) to the repo.
 
 ## The mock home
 
@@ -210,9 +362,11 @@ house's address or location (coordinates, map links, tile IDs, place names) to t
 ## Rendering
 
 `apps/web/src/builder/buildHome.ts` turns a model into render descriptors (wall segments, openings,
-slabs, room floors, terrain blocks, outdoor surfaces, roof planes) without three.js, and
+slabs, room floors, terrain blocks, outdoor surfaces, roof planes, stair steps, fence posts and
+panels) without three.js, and
 `visibility.ts` filters them for the cutaway and the visibility toggles. The cutaway's top entry,
-**Roof**, shows the whole building; choosing the highest level hides the roof to look into it. Walls are split around openings (no CSG). The R3F
+**Roof**, shows the whole building; choosing the highest level hides the roof to look into it, and
+**Room names** labels the rooms of the level being looked into. Walls are split around openings (no CSG). The R3F
 components in `apps/web/src/scene/` only draw descriptors, so any file that follows the schema
 renders without renderer changes.
 

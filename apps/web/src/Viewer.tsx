@@ -8,7 +8,7 @@ import {
   type Vec3,
 } from './builder/buildHome';
 import { compassMarkers } from './compass/compass';
-import { defaultVisibility, visibleScene, type Visibility } from './builder/visibility';
+import { defaultVisibility, roomLabels, visibleScene, type Visibility } from './builder/visibility';
 import { canRedo, canUndo } from './editor/editorState';
 import {
   collisions,
@@ -63,6 +63,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   const scene = useMemo(() => buildHome(model), [model]);
   const [visibility, setVisibility] = useState(() => defaultVisibility(scene));
   const shown = useMemo(() => visibleScene(scene, visibility), [scene, visibility]);
+  const labels = useMemo(() => roomLabels(scene, visibility), [scene, visibility]);
   const northBearing = northBearingOf(model.building);
   const markers = useMemo(
     () =>
@@ -263,6 +264,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
         handlers={handlers}
         northBearing={northBearing}
         markers={markers}
+        labels={labels}
       />
       <ControlPanel
         homes={homes}
