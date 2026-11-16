@@ -86,6 +86,18 @@ describe('outbuildings', () => {
     expect(scene.outbuildings.map((b) => b.id)).toEqual(['garage', 'entrance-passage']);
     expect(scene.bounds.min[0]).toBeLessThanOrEqual(-4.85);
   });
+
+  it('bound their rotated walls exactly, without terrain around them', () => {
+    const model = home();
+    model.terrain.patches = model.terrain.patches.filter((p) => p.id === 'terrain-light-well');
+    // A flat roof keeps the house within its footprint (z >= -10.77), no overhang.
+    model.building.roof = { type: 'flat' };
+    const { min } = buildHome(model).bounds;
+    // The garage's outside faces reach x -4.85 and z -10.95 (its walls along z included); wall
+    // centres alone would give -10.83.
+    expect(min[0]).toBeCloseTo(-4.85);
+    expect(min[2]).toBeCloseTo(-10.95);
+  });
 });
 
 describe('roof windows', () => {

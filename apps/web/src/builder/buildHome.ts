@@ -223,6 +223,17 @@ export function solidPoint(solid: ProfileSolid, [x, y]: Vec2, z = 0): Vec3 {
   return [cx + x * c + z * s, cy + y, cz - x * s + z * c];
 }
 
+/** The eight world corners of a box, honouring its rotation about y. */
+export function boxCorners(box: Box): Vec3[] {
+  const [sx, sy, sz] = box.size;
+  const solid = { center: box.center, rotationY: box.rotationY, depth: sz, outline: [] };
+  return [-1, 1].flatMap((i) =>
+    [-1, 1].flatMap((j) =>
+      [-1, 1].map((k) => solidPoint(solid, [(i * sx) / 2, (j * sy) / 2], (k * sz) / 2)),
+    ),
+  );
+}
+
 /** A gable roof resolved against the footprint; "across" is the plan axis across the ridge. */
 export interface Gable {
   levelId: string;
@@ -548,12 +559,7 @@ export function buildHome(model: HomeModel): HomeScene {
     roofWindows,
     outbuildings,
     bounds: boundsOf([
-      ...outbuildings.flatMap((b) =>
-        b.walls.flatMap((w) => [
-          [w.center[0] - w.size[0] / 2, w.center[1] - w.size[1] / 2, w.center[2]] as Vec3,
-          [w.center[0] + w.size[0] / 2, w.center[1] + w.size[1] / 2, w.center[2]] as Vec3,
-        ]),
-      ),
+      ...outbuildings.flatMap((b) => b.walls.flatMap(boxCorners)),
       ...roofPlanes.flatMap((r) =>
         r.outline.flatMap((p) => [solidPoint(r, p, -r.depth / 2), solidPoint(r, p, r.depth / 2)]),
       ),
