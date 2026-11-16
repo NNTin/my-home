@@ -31,6 +31,8 @@ $S/site-curl.sh staging /api/homes/mock-home/layouts -X POST --json '{"name":"te
 $S/env-status.sh all                                     # health, auth, deployed commit vs GitHub
 $S/screenshot.sh staging --out /tmp/staging.png          # render the 3D viewer in headless Chromium
 $S/screenshot.sh staging --click 'label:has-text("Souterrain")' --drag -300,0   # interact first
+$S/screenshot.sh staging --viewport 390x844 --path '/?walk=first' --pad 0,-44,2000   # walk, then shoot
+$S/walk-smoke.sh staging                                 # phone-sized smoke test of walk mode
 $S/with-site-token.sh staging -- node e2e.mjs            # SITE_TOKEN and SITE_BASE for the child only
 $S/raise-env-issue.sh --dry-run staging "health fails"   # what it would post; drop --dry-run to post
 $S/photos.sh staging list --room souterrain-kitchen      # the owner's photos with their poses
@@ -51,7 +53,11 @@ $S/photo-requests.sh staging create --room souterrain-kitchen --reason "Which wa
 - `screenshot.sh <env> [--path /?home=...] [--out file.png] [--wait ms] [--viewport WxH]`: waits for the canvas
   plus `--wait` (default 6000 ms), then runs any `--click <playwright selector>` and `--drag DX,DY` (pixels from
   the canvas centre, orbits the camera) in the given order, and prints the final host, status and console/page errors. It runs in the
-  shared `ao-heavy` queue when available. Playwright (pinned) is installed outside the repository in
+  shared `ao-heavy` queue when available. In walk mode (`--path '/?walk=first'` or `'/?walk=third'`, see
+  `docs/walking.md`), `--pad DX,DY,MS` holds the movement pad deflected (up to 44 px; negative DY walks
+  forward, negative DX turns left) and `--key KEY,MS` holds a key.
+- `walk-smoke.sh <env> [--out file.png]`: opens walk mode at 390x844 with touch, pushes the pad and checks that
+  the figure walks, turns and stops, that the controls fit the screen and that nothing logs an error. Read-only. Playwright (pinned) is installed outside the repository in
   `${XDG_CACHE_HOME:-$HOME/.cache}/my-home-environments/playwright`, Chromium in `~/.cache/ms-playwright`;
   `screenshot.sh --check` installs them if missing and verifies a headless launch.
 - `raise-env-issue.sh [--dry-run] [--force] <env> <summary> [details-file]`: refuses (exit 3) unless

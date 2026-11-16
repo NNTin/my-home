@@ -36,7 +36,8 @@ toggles, and a **Furniture** panel to place, move and rotate furniture in named 
 saved to the api. See [docs/home-model.md](docs/home-model.md) for the model and how to load other
 homes, [docs/layouts.md](docs/layouts.md) for layouts and the editor,
 [docs/adding-furniture-type.md](docs/adding-furniture-type.md) to add a furniture type, and
-[docs/photos.md](docs/photos.md) for the photos taken inside the model and photo requests.
+[docs/walking.md](docs/walking.md) for walking a figure through the home and taking photos with it, and
+[docs/photos.md](docs/photos.md) for how those photos and photo requests are stored.
 
 ## Database
 
@@ -85,6 +86,7 @@ apps/web/            Vite + React + R3F viewer
   src/layouts/       layout persistence: auto-save, localStorage drafts
   src/scene/         R3F components drawing the descriptors and the furniture
   src/overlay/       HTML overlay (view controls, furniture panel)
+  src/walk/          the virtual figure: walkable world, collision, controls, photo capture
   nginx/             nginx config template for the container image
 apps/api/            Fastify server
   src/routes/        route plugins (registered under /api)

@@ -9,6 +9,8 @@ interface Props {
   scene: HomeScene;
   visibility: Visibility;
   onChange(visibility: Visibility): void;
+  /** Starts walking the figure through the home (and taking photos). */
+  onWalk(): void;
 }
 
 function Toggle({
@@ -27,7 +29,15 @@ function Toggle({
   );
 }
 
-export function ControlPanel({ homes, homeId, onSelectHome, scene, visibility, onChange }: Props) {
+export function ControlPanel({
+  homes,
+  homeId,
+  onSelectHome,
+  scene,
+  visibility,
+  onChange,
+  onWalk,
+}: Props) {
   const set = (patch: Partial<Visibility>) => onChange({ ...visibility, ...patch });
   const levelsTopDown = [...scene.levels].reverse();
   const outdoor = scene.outdoorAreas;
@@ -49,6 +59,11 @@ export function ControlPanel({ homes, homeId, onSelectHome, scene, visibility, o
       ) : (
         <p className="home-name">{homes.find((h) => h.id === homeId)?.name}</p>
       )}
+      <div className="buttons">
+        <button type="button" onClick={onWalk}>
+          🚶 Walk and take photos
+        </button>
+      </div>
 
       <fieldset>
         <legend>Show up to level</legend>

@@ -5,8 +5,11 @@ import {
   LayoutConflict,
   ListHomesResponse,
   ListLayoutsResponse,
+  Photo,
   type CreateLayoutBody,
+  type CreatePhotoMeta,
   type UpdateLayoutBody,
+  type UpdatePhotoBody,
 } from '@my-home/shared';
 
 interface Schema<T> {
@@ -34,7 +37,7 @@ export class LayoutConflictError extends Error {
 }
 
 async function request<T>(
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   url: string,
   schema: Schema<T> | undefined,
   { body, signal }: { body?: unknown; signal?: AbortSignal } = {},
@@ -88,3 +91,56 @@ export const layoutsApi = {
   exportUrl: (id: string) => `${layoutUrl(id)}/export`,
 };
 export type LayoutsApi = typeof layoutsApi;
+
+const photoUrl = (id: string) => `/api/photos/${encodeURIComponent(id)}`;
+
+/**
+ * Uploads a photo with its pose. Uses XMLHttpRequest, the only way to follow upload progress:
+ * `onProgress` gets the fraction sent, from 0 to 1.
+ */
+function uploadPhoto(
+  homeId: string,
+  meta: CreatePhotoMeta,
+  image: Blob,
+  onProgress?: (fraction: number) => void,
+): Promise<Photo> {
+  const url = `${homeUrl(homeId)}/photos`;
+  const form = new FormData();
+  form.set('meta', JSON.stringify(meta));
+  form.set('image', image, 'photo');
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const fail = (message: string, body?: unknown) =>
+      reject(new ApiRequestError(`POST ${url} failed: ${message}`, xhr.status, body));
+    xhr.open('POST', url);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && e.total > 0) onProgress?.(e.loaded / e.total);
+    };
+    xhr.onerror = () => fail('network error');
+    xhr.onabort = () => fail('cancelled');
+    xhr.onload = () => {
+      let json: unknown;
+      try {
+        json = JSON.parse(xhr.responseText);
+      } catch {
+        json = undefined;
+      }
+      if (xhr.status < 200 || xhr.status >= 300) {
+        const error = ApiError.safeParse(json);
+        return fail(error.success ? error.data.message : String(xhr.status), json);
+      }
+      const photo = Photo.safeParse(json);
+      if (photo.success) resolve(photo.data);
+      else fail('unexpected response', json);
+    };
+    xhr.send(form);
+  });
+}
+
+export const photosApi = {
+  upload: uploadPhoto,
+  update: (id: string, body: UpdatePhotoBody) => request('PATCH', photoUrl(id), Photo, { body }),
+  imageUrl: (id: string) => `${photoUrl(id)}/image`,
+  thumbnailUrl: (id: string) => `${photoUrl(id)}/thumbnail`,
+};
+export type PhotosApi = typeof photosApi;

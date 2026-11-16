@@ -1,5 +1,6 @@
 import { northBearingOf, type HomeModel, type HomeSummary, type LayoutItem } from '@my-home/shared';
 import { useEffect, useMemo, useState } from 'react';
+import { photosApi } from './api';
 import {
   buildHome,
   type HomeScene,
@@ -8,7 +9,13 @@ import {
   type Vec3,
 } from './builder/buildHome';
 import { compassMarkers } from './compass/compass';
-import { defaultVisibility, roomLabels, visibleScene, type Visibility } from './builder/visibility';
+import {
+  defaultVisibility,
+  roofIndex,
+  roomLabels,
+  visibleScene,
+  type Visibility,
+} from './builder/visibility';
 import { canRedo, canUndo } from './editor/editorState';
 import {
   collisions,
@@ -24,8 +31,10 @@ import {
   rotateItem,
   setRotation,
   UNKNOWN_SIZE,
+  worldFootprint,
   type EditorSettings,
 } from './editor/operations';
+import { roomAt } from './editor/placement';
 import { shortcutFor } from './editor/shortcuts';
 import { rotationFromDrag } from './editor/snapping';
 import { registry } from './items/registry';
@@ -34,6 +43,11 @@ import { ControlPanel } from './overlay/ControlPanel';
 import { FurniturePanel, type FlaggedItem, type SelectedInfo } from './overlay/FurniturePanel';
 import type { FurnitureHandlers, FurnitureView } from './scene/FurnitureLayer';
 import { Scene } from './scene/Scene';
+import type { Figure } from './walk/figure';
+import { useCompass } from './walk/useCompass';
+import { useWalk } from './walk/useWalk';
+import { WalkHud, type WalkView } from './walk/WalkHud';
+import { buildWalkWorld, startPose, type FurnitureBlocker } from './walk/world';
 
 const shownLevels = (scene: HomeScene, v: Visibility) =>
   scene.levels.filter((l) => l.index <= v.maxLevelIndex && !v.hiddenLevels.includes(l.id));
@@ -49,6 +63,29 @@ export function orbitTarget(scene: HomeScene, v: Visibility): Vec3 {
   return [(min[0] + max[0]) / 2, top ? top.elevation + top.height / 2 : 0, (min[2] + max[2]) / 2];
 }
 
+/**
+ * What is shown while walking. In first person the whole building, since the camera is inside
+ * it. In the overview the cutaway follows the figure: the level it is on, or everything outdoors.
+ */
+export function walkVisibility(
+  scene: HomeScene,
+  v: Visibility,
+  view: WalkView,
+  levelId: string | undefined,
+): Visibility {
+  const level = scene.levels.find((l) => l.id === levelId);
+  const whole = { ...v, maxLevelIndex: roofIndex(scene), hiddenLevels: [] };
+  if (view === 'first') return { ...whole, hiddenApartments: [], showRoomNames: false };
+  return level ? { ...whole, maxLevelIndex: level.index } : whole;
+}
+
+/** `?walk=first` or `?walk=third` (or just `?walk`) opens the viewer already walking. */
+function initialWalk(): WalkView | undefined {
+  const value = new URLSearchParams(window.location.search).get('walk');
+  if (value === null) return undefined;
+  return value === 'third' ? 'third' : 'first';
+}
+
 const UNKNOWN_COLOR = '#9e9e9e';
 const newId = () => crypto.randomUUID();
 
@@ -61,9 +98,8 @@ interface Props {
 /** Renders one home and its furniture; mount with `key={model.id}` so switching homes resets. */
 export function Viewer({ model, homes, onSelectHome }: Props) {
   const scene = useMemo(() => buildHome(model), [model]);
-  const [visibility, setVisibility] = useState(() => defaultVisibility(scene));
-  const shown = useMemo(() => visibleScene(scene, visibility), [scene, visibility]);
-  const labels = useMemo(() => roomLabels(scene, visibility), [scene, visibility]);
+  const [chosenVisibility, setVisibility] = useState(() => defaultVisibility(scene));
+  const [walkView, setWalkView] = useState<WalkView | undefined>(initialWalk);
   const northBearing = northBearingOf(model.building);
   const markers = useMemo(
     () =>
@@ -81,12 +117,56 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   const [settings, setSettings] = useState<EditorSettings>(defaultSettings);
   const ctx = useMemo(() => createContext(model, registry, settings), [model, settings]);
 
+  const { items } = editor;
+
+  // The figure: blocked by walls, fences and the furniture of the active layout.
+  const world = useMemo(() => {
+    const blockers = items.flatMap((item): FurnitureBlocker[] => {
+      const type = registry.get(item.typeId);
+      return ctx.plans.has(item.levelId)
+        ? [
+            {
+              levelId: item.levelId,
+              polygon: worldFootprint(ctx, item),
+              height: (type?.size ?? UNKNOWN_SIZE).height,
+            },
+          ]
+        : [];
+    });
+    return buildWalkWorld(model, scene, blockers);
+  }, [model, scene, ctx, items]);
+  const start = useMemo(() => {
+    const pose = startPose(model, world) ?? { x: 0, z: 0, y: 0, yaw: 0 };
+    return { ...pose, pitch: 0 };
+    // Only where the figure first appears: it must not jump when furniture changes the world.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model]);
+  const walking = walkView !== undefined;
+  const walk = useWalk(world, start, walking);
+  const compass = useCompass(northBearing, walk.setYaw);
+  const figureLevel = scene.levels.find((l) => l.id === walk.levelId);
+  const describeFigure = (figure: Figure) => {
+    const on = scene.levels.find((l) => l.id === figure.levelId);
+    const figurePlan = on && ctx.plans.get(on.id);
+    const room = figurePlan && roomAt(figurePlan, [figure.x, figure.z]);
+    return [room?.name, on?.name].filter(Boolean).join(' · ');
+  };
+
+  const visibility = useMemo(
+    () =>
+      walkView
+        ? walkVisibility(scene, chosenVisibility, walkView, figureLevel?.id)
+        : chosenVisibility,
+    [scene, chosenVisibility, walkView, figureLevel?.id],
+  );
+  const shown = useMemo(() => visibleScene(scene, visibility), [scene, visibility]);
+  const labels = useMemo(() => roomLabels(scene, visibility), [scene, visibility]);
+
   const level = currentLevel(scene, visibility);
   const plan = level && ctx.plans.get(level.id);
   const [roomChoice, setRoomChoice] = useState<string>();
   const roomId = plan?.rooms.some((r) => r.id === roomChoice) ? roomChoice : plan?.rooms[0]?.id;
 
-  const { items } = editor;
   const found = useMemo(() => collisions(ctx, items), [ctx, items]);
   const selectedItem = items.find((i) => i.id === editor.selectedId);
 
@@ -194,7 +274,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
 
   // Keyboard shortcuts (see editor/shortcuts.ts).
   const onKey = (e: KeyboardEvent) => {
-    const action = shortcutFor(e);
+    // While walking the keys steer the figure; the furniture editor is put away.
+    const action = walking ? undefined : shortcutFor(e);
     if (!action) return;
     if (action === 'undo' || action === 'redo' || action === 'duplicate') e.preventDefault();
     if (action === 'undo') dispatch({ type: 'undo' });
@@ -255,47 +336,74 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     ];
   });
 
+  // While walking, furniture is scenery: no selecting or dragging.
+  const idle: FurnitureHandlers = {
+    onSelect: () => {},
+    onMoveStart: () => {},
+    onRotateStart: () => {},
+    onMove: () => {},
+    onRotate: () => {},
+    onDragEnd: () => {},
+  };
+
   return (
     <>
       <Scene
         scene={shown}
         target={orbitTarget(scene, visibility)}
         furniture={furniture}
-        handlers={handlers}
+        handlers={walking ? idle : handlers}
         northBearing={northBearing}
         markers={markers}
         labels={labels}
+        walk={walkView && { figure: walk.figureRef, view: walkView }}
       />
-      <ControlPanel
-        homes={homes}
-        homeId={model.id}
-        onSelectHome={onSelectHome}
-        scene={scene}
-        visibility={visibility}
-        onChange={setVisibility}
-      />
-      <FurniturePanel
-        layouts={layouts}
-        levelName={level?.name ?? ''}
-        rooms={plan?.rooms ?? []}
-        roomId={roomId}
-        onRoomChange={setRoomChoice}
-        categories={registry.categories}
-        onPlace={commands.place}
-        selected={selected}
-        canUndo={canUndo(editor)}
-        canRedo={canRedo(editor)}
-        onUndo={() => dispatch({ type: 'undo' })}
-        onRedo={() => dispatch({ type: 'redo' })}
-        onRotate={commands.rotate}
-        onDuplicate={commands.duplicate}
-        onDelete={commands.remove}
-        settings={settings}
-        onSettings={setSettings}
-        flagged={flagged}
-        onSelectItem={(id) => dispatch({ type: 'select', id })}
-        onRelocate={commands.relocate}
-      />
+      {walkView ? (
+        <WalkHud
+          homeId={model.id}
+          walk={walk}
+          describe={describeFigure}
+          view={walkView}
+          onView={setWalkView}
+          onExit={() => setWalkView(undefined)}
+          compass={compass}
+          api={photosApi}
+        />
+      ) : (
+        <>
+          <ControlPanel
+            homes={homes}
+            homeId={model.id}
+            onSelectHome={onSelectHome}
+            scene={scene}
+            visibility={chosenVisibility}
+            onChange={setVisibility}
+            onWalk={() => setWalkView('first')}
+          />
+          <FurniturePanel
+            layouts={layouts}
+            levelName={level?.name ?? ''}
+            rooms={plan?.rooms ?? []}
+            roomId={roomId}
+            onRoomChange={setRoomChoice}
+            categories={registry.categories}
+            onPlace={commands.place}
+            selected={selected}
+            canUndo={canUndo(editor)}
+            canRedo={canRedo(editor)}
+            onUndo={() => dispatch({ type: 'undo' })}
+            onRedo={() => dispatch({ type: 'redo' })}
+            onRotate={commands.rotate}
+            onDuplicate={commands.duplicate}
+            onDelete={commands.remove}
+            settings={settings}
+            onSettings={setSettings}
+            flagged={flagged}
+            onSelectItem={(id) => dispatch({ type: 'select', id })}
+            onRelocate={commands.relocate}
+          />
+        </>
+      )}
     </>
   );
 }
