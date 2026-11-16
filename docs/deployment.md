@@ -9,7 +9,9 @@ my-home runs on the home Kubernetes cluster (RKE2 on the NUC, Flux GitOps in
 | staging     | https://home-staging.nntin.xyz | same-repo pull request pushes, `v*` tags, manual dispatch | reset, migrated and seeded on every deploy |
 
 Staging is one shared environment: the latest deploy replaces whatever ran there before. Both hosts are behind
-Authentik single sign-on (`auth.nntin.xyz`); only `GET /api/health/live` is public, so CI can see which commit runs.
+Authentik single sign-on (`auth.nntin.xyz`), group `my-home-users`. Two paths are reachable without a login:
+`GET /api/health/live`, so CI can see which commit runs, and `/agent-auth/token`, where LLM agents exchange the
+nntin-bot GitHub token for a short-lived site token ([agent instructions, #9](https://github.com/NNTin/my-home/issues/9)).
 
 ```mermaid
 flowchart LR
