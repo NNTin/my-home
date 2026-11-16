@@ -54,6 +54,10 @@ the cutaway and the photo's `levelId` follow.
    note stay and **Try again** repeats it.
 4. Afterwards **Update pose** corrects the pose of the saved photo from the figure's current pose.
 
+When an agent or the owner has [asked for a photo](photos.md#photo-requests), the spot shows as a translucent
+ghost figure and the request's question appears when the figure reaches it. The sheet then offers "Answers the
+request"; saving with it ticked fulfils the request. See [Browsing photos](photos.md#browsing-photos).
+
 Before the upload the browser scales the photo to at most 2560 px and re-encodes it, which keeps uploads around
 1 MB and already drops the file's metadata; the api strips metadata again. The field of view comes from the
 35 mm focal length in the photo's EXIF data when present (the only value read from it), otherwise from a

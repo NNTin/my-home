@@ -4,8 +4,13 @@ import {
   Layout,
   LayoutConflict,
   ListHomesResponse,
+  EmptyTrashResponse,
   ListLayoutsResponse,
+  ListPhotoRequestsResponse,
+  ListPhotosResponse,
   Photo,
+  PhotoRequest,
+  TrashResponse,
   type CreateLayoutBody,
   type CreatePhotoMeta,
   type UpdateLayoutBody,
@@ -137,10 +142,34 @@ function uploadPhoto(
   });
 }
 
+const requestUrl = (id: string) => `/api/photo-requests/${encodeURIComponent(id)}`;
+
+/** Photos, photo requests and their trash (docs/photos.md). Deleting is a soft delete. */
 export const photosApi = {
   upload: uploadPhoto,
+  /** Every photo of the home that is not in the trash, newest first. */
+  list: (homeId: string, signal?: AbortSignal) =>
+    request('GET', `${homeUrl(homeId)}/photos?limit=500`, ListPhotosResponse, { signal }),
   update: (id: string, body: UpdatePhotoBody) => request('PATCH', photoUrl(id), Photo, { body }),
+  remove: (id: string) => request('DELETE', photoUrl(id), Photo),
+  restore: (id: string) => request('POST', `${photoUrl(id)}/restore`, Photo),
+  purge: (id: string) => request('POST', `${photoUrl(id)}/purge`, undefined),
   imageUrl: (id: string) => `${photoUrl(id)}/image`,
   thumbnailUrl: (id: string) => `${photoUrl(id)}/thumbnail`,
+
+  requests: (homeId: string, signal?: AbortSignal) =>
+    request('GET', `${homeUrl(homeId)}/photo-requests?status=all`, ListPhotoRequestsResponse, {
+      signal,
+    }),
+  cancelRequest: (id: string) => request('POST', `${requestUrl(id)}/cancel`, PhotoRequest),
+  reopenRequest: (id: string) => request('POST', `${requestUrl(id)}/reopen`, PhotoRequest),
+  removeRequest: (id: string) => request('DELETE', requestUrl(id), PhotoRequest),
+  restoreRequest: (id: string) => request('POST', `${requestUrl(id)}/restore`, PhotoRequest),
+  purgeRequest: (id: string) => request('POST', `${requestUrl(id)}/purge`, undefined),
+
+  trash: (homeId: string, signal?: AbortSignal) =>
+    request('GET', `${homeUrl(homeId)}/trash`, TrashResponse, { signal }),
+  emptyTrash: (homeId: string) =>
+    request('POST', `${homeUrl(homeId)}/trash/empty`, EmptyTrashResponse),
 };
 export type PhotosApi = typeof photosApi;

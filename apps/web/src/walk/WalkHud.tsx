@@ -1,5 +1,7 @@
+import type { PhotoRequest } from '@my-home/shared';
 import { useRef, useState, type PointerEvent } from 'react';
 import type { PhotosApi } from '../api';
+import { activeRequest } from '../photos/requests';
 import { CaptureSheet } from './CaptureSheet';
 import type { Figure } from './figure';
 import { Joystick } from './Joystick';
@@ -21,14 +23,46 @@ interface Props {
   onExit(): void;
   compass: CompassState;
   api: Pick<PhotosApi, 'upload' | 'update'>;
+  /** Photo requests; the open ones are offered here and answered by taking a photo. */
+  requests?: PhotoRequest[];
+  /** The room the figure is in, to match requests that only name a room. */
+  roomIdOf?(figure: Figure): string | undefined;
+  /** Jumps the figure to a request's spot. */
+  onGoTo?(request: PhotoRequest): void;
+  /** Tells which request the owner picked to answer next (shown highlighted in 3D). */
+  onChoose?(requestId: string | undefined): void;
+  /** Called after a photo, or a correction of its pose, was stored. */
+  onSaved?(): void;
 }
 
 /**
  * The controls shown while walking: the movement pad, drag-to-look, the view switch and the
  * camera button. Laid out for one thumb on a phone held upright; it works with a mouse too.
  */
-export function WalkHud({ homeId, walk, describe, view, onView, onExit, compass, api }: Props) {
+export function WalkHud({
+  homeId,
+  walk,
+  describe,
+  view,
+  onView,
+  onExit,
+  compass,
+  api,
+  requests = [],
+  roomIdOf,
+  onGoTo,
+  onChoose,
+  onSaved,
+}: Props) {
   const figure = useFigure(walk);
+  const open = requests.filter((r) => r.status === 'open' && r.deletedAt === null);
+  const [chosenId, setChosenId] = useState<string>();
+  const [listed, setListed] = useState(false);
+  const request = activeRequest(open, { ...figure, roomId: roomIdOf?.(figure) }, chosenId);
+  const choose = (id: string | undefined) => {
+    setChosenId(id);
+    onChoose?.(id);
+  };
   const { setPad: onPad, lookBy: onLook, nudge: onNudge, figureRef } = walk;
   const [file, setFile] = useState<Blob>();
   const drag = useRef<{ id: number; x: number; y: number } | undefined>(undefined);
@@ -94,11 +128,55 @@ export function WalkHud({ homeId, walk, describe, view, onView, onExit, compass,
             🧭 {compass.active ? 'On' : 'Off'}
           </button>
         )}
+        {open.length > 0 && (
+          <button type="button" aria-expanded={listed} onClick={() => setListed(!listed)}>
+            Requests ({open.length})
+          </button>
+        )}
         <span className="walk-keys">W A S D / arrows walk · Q E turn · drag to look</span>
       </div>
       {compass.error && (
         <p className="walk-notice" role="alert">
           {compass.error}
+        </p>
+      )}
+
+      {listed && !file && (
+        <ul className="walk-requests" aria-label="Open photo requests">
+          {open.map((r) => (
+            <li key={r.id}>
+              <p>
+                <strong>{r.reason}</strong>
+              </p>
+              <p className="hint">{r.roomName ?? r.roomId ?? 'Anywhere'}</p>
+              <div className="capture-actions">
+                {r.position && onGoTo && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onGoTo(r);
+                      choose(r.id);
+                      setListed(false);
+                    }}
+                  >
+                    Go there
+                  </button>
+                )}
+                <button
+                  type="button"
+                  aria-pressed={chosenId === r.id}
+                  onClick={() => choose(chosenId === r.id ? undefined : r.id)}
+                >
+                  {chosenId === r.id ? 'Answering this' : 'Answer this'}
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {request && !file && !listed && (
+        <p className="walk-request" role="status" aria-label="Photo request here">
+          📌 {request.reason}
         </p>
       )}
 
@@ -111,6 +189,12 @@ export function WalkHud({ homeId, walk, describe, view, onView, onExit, compass,
           api={api}
           onNudge={onNudge}
           onLook={onLook}
+          request={request}
+          onSaved={() => {
+            // An answered request is no longer the one to answer next.
+            choose(undefined);
+            onSaved?.();
+          }}
           onClose={() => setFile(undefined)}
         />
       ) : (

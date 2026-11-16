@@ -87,6 +87,7 @@ apps/web/            Vite + React + R3F viewer
   src/scene/         R3F components drawing the descriptors and the furniture
   src/overlay/       HTML overlay (view controls, furniture panel)
   src/walk/          the virtual figure: walkable world, collision, controls, photo capture
+  src/photos/        photo gallery, filters, trash, view cones and "view from here"
   nginx/             nginx config template for the container image
 apps/api/            Fastify server
   src/routes/        route plugins (registered under /api)

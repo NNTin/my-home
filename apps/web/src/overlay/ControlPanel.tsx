@@ -11,6 +11,11 @@ interface Props {
   onChange(visibility: Visibility): void;
   /** Starts walking the figure through the home (and taking photos). */
   onWalk(): void;
+  /** Opens or closes the photo gallery. */
+  photoCount: number;
+  openRequests: number;
+  photosOpen: boolean;
+  onPhotos(): void;
 }
 
 function Toggle({
@@ -37,6 +42,10 @@ export function ControlPanel({
   visibility,
   onChange,
   onWalk,
+  photoCount,
+  openRequests,
+  photosOpen,
+  onPhotos,
 }: Props) {
   const set = (patch: Partial<Visibility>) => onChange({ ...visibility, ...patch });
   const levelsTopDown = [...scene.levels].reverse();
@@ -62,6 +71,9 @@ export function ControlPanel({
       <div className="buttons">
         <button type="button" onClick={onWalk}>
           🚶 Walk and take photos
+        </button>
+        <button type="button" aria-pressed={photosOpen} onClick={onPhotos}>
+          📷 Photos ({photoCount}){openRequests > 0 && ` · ${openRequests} requested`}
         </button>
       </div>
 
