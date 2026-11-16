@@ -1,12 +1,24 @@
 import { useMemo } from 'react';
-import { DoubleSide, ExtrudeGeometry, Path, Shape, ShapeGeometry, Vector2 } from 'three';
+import {
+  DoubleSide,
+  Euler,
+  ExtrudeGeometry,
+  Path,
+  Shape,
+  ShapeGeometry,
+  Vector2,
+  type BufferGeometry,
+} from 'three';
 import {
   openingParts,
+  slopeY,
   type Box,
   type HomeScene,
   type OpeningDescriptor,
+  type PlaneSlope,
   type Prism,
   type ProfileSolid,
+  type RoofWindowDescriptor,
   type Surface,
   type Vec2,
 } from '../builder/buildHome';
@@ -26,6 +38,9 @@ const colors = {
   driveway: '#8e8c88',
   patio: '#b8a184',
   path: '#c2b59b',
+  road: '#6f6f6f',
+  outbuilding: '#e4e0d6',
+  garageDoor: '#8a8d90',
 } as const;
 
 const roomColors = ['#e9d8b4', '#d7e3c8', '#cfdbe6', '#ead0cc', '#ddd3e8', '#e6e0c4'];
@@ -79,16 +94,45 @@ const toShape = (outline: Vec2[], holes: Vec2[][] = [], flipZ = false) => {
   return shape;
 };
 
+/**
+ * Moves the vertices of a flat face onto a sloped plane. `toPlan` maps a vertex's local (x, y) to
+ * plan [x, z]; `isFace(z)` picks the face's vertices by local z; `localZ(y)` maps a height back.
+ */
+function slopeVertices(
+  geometry: BufferGeometry,
+  slope: PlaneSlope,
+  toPlan: (x: number, y: number) => Vec2,
+  isFace: (z: number) => boolean,
+  localZ: (y: number) => number,
+) {
+  const position = geometry.getAttribute('position');
+  for (let i = 0; i < position.count; i++) {
+    if (!isFace(position.getZ(i))) continue;
+    position.setZ(i, localZ(slopeY(slope, toPlan(position.getX(i), position.getY(i)))));
+  }
+  position.needsUpdate = true;
+  geometry.computeVertexNormals();
+}
+
 /** Plan polygon extruded from `bottom` to `top` (shape in x/z, rotated so depth runs down y). */
 function PrismMesh({ prism, color }: { prism: Prism; color: string }) {
-  const geometry = useMemo(
-    () =>
-      new ExtrudeGeometry(toShape(prism.outline, prism.holes), {
-        depth: prism.top - prism.bottom,
-        bevelEnabled: false,
-      }),
-    [prism],
-  );
+  const geometry = useMemo(() => {
+    const g = new ExtrudeGeometry(toShape(prism.outline, prism.holes), {
+      depth: prism.top - prism.bottom,
+      bevelEnabled: false,
+    });
+    // Local z = 0 is the top face (world y = top - z), local (x, y) is plan (x, z).
+    if (prism.slope) {
+      slopeVertices(
+        g,
+        prism.slope,
+        (x, y) => [x, y],
+        (z) => Math.abs(z) < 1e-6,
+        (y) => prism.top - y,
+      );
+    }
+    return g;
+  }, [prism]);
   return (
     <mesh
       geometry={geometry}
@@ -102,9 +146,22 @@ function PrismMesh({ prism, color }: { prism: Prism; color: string }) {
   );
 }
 
-/** Flat plan polygon at height `y`, facing up. */
+/** Plan polygon at height `y` (or on its slope), facing up. */
 function SurfaceMesh({ surface, color }: { surface: Surface; color: string }) {
-  const geometry = useMemo(() => new ShapeGeometry(toShape(surface.outline, [], true)), [surface]);
+  const geometry = useMemo(() => {
+    const g = new ShapeGeometry(toShape(surface.outline, [], true));
+    // Rotated to face up: local (x, y, z) is world (x, y + z, -y), so plan z = -local y.
+    if (surface.slope) {
+      slopeVertices(
+        g,
+        surface.slope,
+        (x, y) => [x, -y],
+        () => true,
+        (y) => y - surface.y,
+      );
+    }
+    return g;
+  }, [surface]);
   return (
     <mesh
       geometry={geometry}
@@ -117,8 +174,12 @@ function SurfaceMesh({ surface, color }: { surface: Surface; color: string }) {
   );
 }
 
-function OpeningMesh({ opening }: { opening: OpeningDescriptor }) {
-  const { frame, glass } = useMemo(() => openingParts(opening), [opening]);
+function OpeningMesh({
+  opening,
+}: {
+  opening: Pick<OpeningDescriptor, 'type' | 'size' | 'center' | 'rotationY'>;
+}) {
+  const { frame, glass, panel } = useMemo(() => openingParts(opening), [opening]);
   const frameColor = opening.type === 'door' ? colors.doorFrame : colors.frame;
   return (
     <group position={opening.center} rotation={[0, opening.rotationY, 0]}>
@@ -126,7 +187,18 @@ function OpeningMesh({ opening }: { opening: OpeningDescriptor }) {
         <BoxMesh key={i} box={part} color={frameColor} />
       ))}
       {glass && <BoxMesh box={glass} color={colors.glass} transparent />}
+      {panel && <BoxMesh box={panel} color={colors.garageDoor} />}
     </group>
+  );
+}
+
+function RoofWindowMesh({ window: w }: { window: RoofWindowDescriptor }) {
+  const rotation = useMemo(() => new Euler(w.tilt, w.rotationY, 0, 'YXZ'), [w]);
+  return (
+    <mesh position={w.center} rotation={rotation} castShadow>
+      <boxGeometry args={w.size} />
+      <meshStandardMaterial color={colors.glass} metalness={0.3} roughness={0.2} />
+    </mesh>
   );
 }
 
@@ -166,8 +238,22 @@ export function HomeMeshes({ scene }: { scene: HomeScene }) {
       {scene.roofPlanes.map((r) => (
         <ProfileMesh key={r.id} {...r} color={colors.roof} />
       ))}
+      {scene.roofWindows.map((w) => (
+        <RoofWindowMesh key={w.id} window={w} />
+      ))}
       {scene.openings.map((o) => (
         <OpeningMesh key={o.id} opening={o} />
+      ))}
+      {scene.outbuildings.map((b) => (
+        <group key={b.id}>
+          {b.walls.map((w) => (
+            <BoxMesh key={w.id} box={w} color={colors.outbuilding} />
+          ))}
+          <PrismMesh prism={b.roof} color={colors.floorSlab} />
+          {b.openings.map((o) => (
+            <OpeningMesh key={o.id} opening={o} />
+          ))}
+        </group>
       ))}
     </group>
   );

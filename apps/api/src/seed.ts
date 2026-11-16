@@ -2,10 +2,11 @@ import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { loadConfig } from './config';
 import { createDatabase } from './db/client';
-import { seed } from './db/seed';
+import { seedHomes } from './db/seed';
 
 // pnpm db:seed [file] [--replace]. A relative file argument resolves against the directory pnpm
-// ran in; SEED_FILE, like in the server, against the api package.
+// ran in; SEED_FILE, like in the server, against the api package. Without either, the real and
+// the mock home are seeded.
 const { positionals, values } = parseArgs({
   allowPositionals: true,
   options: { replace: { type: 'boolean', default: false } },
@@ -13,12 +14,14 @@ const { positionals, values } = parseArgs({
 const config = loadConfig();
 const fileArg = positionals[0];
 const file = fileArg ? resolve(process.env.INIT_CWD ?? process.cwd(), fileArg) : config.seedFile;
+const files = file ? [file] : undefined;
 
 const database = createDatabase(config, { error: (obj, msg) => console.error(msg, obj) });
 try {
   await database.migrate();
-  const result = await seed(database.db, { file, replace: values.replace });
-  console.log(`seed finished: home "${result.id}" ${result.status} (${database.driver})`);
+  for (const result of await seedHomes(database.db, { files, replace: values.replace })) {
+    console.log(`seed finished: home "${result.id}" ${result.status} (${database.driver})`);
+  }
 } catch (err) {
   console.error((err as Error).message);
   process.exitCode = 1;

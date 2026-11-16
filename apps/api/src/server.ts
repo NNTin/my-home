@@ -2,7 +2,7 @@ import { pino } from 'pino';
 import { buildApp, loggerOptions } from './app';
 import { loadConfig } from './config';
 import { createDatabase } from './db/client';
-import { seed } from './db/seed';
+import { seedHomes } from './db/seed';
 
 const config = loadConfig();
 const logger = pino(loggerOptions(config));
@@ -16,8 +16,10 @@ try {
     app.log.info({ driver: database.driver }, 'migrations applied');
   }
   if (config.seedOnStart) {
-    const result = await seed(database.db, { file: config.seedFile });
-    app.log.info(result, 'seed finished');
+    const files = config.seedFile ? [config.seedFile] : undefined;
+    for (const result of await seedHomes(database.db, { files })) {
+      app.log.info(result, 'seed finished');
+    }
   }
   await app.listen({ host: config.host, port: config.port });
 } catch (err) {

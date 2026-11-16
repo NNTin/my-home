@@ -13,7 +13,7 @@ const EnvSchema = z.object({
   PGLITE_DIR: z.string().default('.data/pglite'),
   MIGRATE_ON_START: z.preprocess(emptyToUndefined, z.stringbool().default(true)),
   SEED_ON_START: z.preprocess(emptyToUndefined, z.stringbool().optional()),
-  /** Home file seeded on start and by `pnpm db:seed`; defaults to data/homes/mock-home.json. */
+  /** Home file seeded on start and by `pnpm db:seed`; defaults to data/homes/home.json + mock-home.json. */
   SEED_FILE: z.preprocess(emptyToUndefined, z.string().optional()),
   /** Git commit of the release, reported by `GET /api/health/live`. */
   APP_COMMIT: z.preprocess(emptyToUndefined, z.string().optional()),

@@ -8,10 +8,10 @@ description: >-
 
 # my-home environments
 
-| Environment | Base URL                         | Deployed from                                         | Data                                 |
-| ----------- | -------------------------------- | ----------------------------------------------------- | ------------------------------------ |
-| staging     | `https://home-staging.nntin.xyz` | same-repo PR pushes, `v*` tags, dispatch; latest wins | throwaway, reset to the mock home    |
-| production  | `https://home.nntin.xyz`         | every push to `main`                                  | real data; change only when asked to |
+| Environment | Base URL                         | Deployed from                                         | Data                                     |
+| ----------- | -------------------------------- | ----------------------------------------------------- | ---------------------------------------- |
+| staging     | `https://home-staging.nntin.xyz` | same-repo PR pushes, `v*` tags, dispatch; latest wins | throwaway, reset to the real + mock home |
+| production  | `https://home.nntin.xyz`         | every push to `main`                                  | real data; change only when asked to     |
 
 Both are behind authentik SSO. Agents exchange the **nntin-bot** GitHub token (`GH_TOKEN`, `GITHUB_TOKEN` or
 `gh auth token`) at `POST <base>/agent-auth/token` for a per-host site token valid for 1 hour, sent as

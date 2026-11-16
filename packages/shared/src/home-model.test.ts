@@ -16,6 +16,9 @@ const readJson = (path: string): unknown =>
   JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8'));
 
 const mockHome = () => structuredClone(readJson('../../../data/homes/mock-home.json')) as HomeModel;
+const realHome = () => structuredClone(readJson('../../../data/homes/home.json')) as HomeModel;
+
+const d = (value: number) => ({ value, source: 'mock' as const });
 
 const issuesOf = (input: unknown): ValidationIssue[] => {
   const result = HomeModel.safeParse(input);
@@ -89,11 +92,17 @@ describe('HomeModel', () => {
     expect(issuesOf(other).map((i) => i.path)).toContain('building.roof.type');
   });
 
-  it('carries a source on every number in the mock home', () => {
+  it.each([
+    ['mock', mockHome],
+    ['real', realHome],
+  ])('carries a source on every number in the %s home', (_, load) => {
     const offenders: string[] = [];
+    // Edge indexes are references, not measurements.
+    const isIndex = (path: (string | number)[]) =>
+      path.at(-1) === 'edge' || path.at(-2) === 'openEdges';
     const walk = (value: unknown, path: (string | number)[]) => {
       if (Array.isArray(value)) return value.forEach((v, i) => walk(v, [...path, i]));
-      if (typeof value === 'number' && formatPath(path) !== 'schemaVersion') {
+      if (typeof value === 'number' && formatPath(path) !== 'schemaVersion' && !isIndex(path)) {
         const parentIsDimension = path.at(-1) === 'value';
         if (!parentIsDimension) offenders.push(formatPath(path));
       }
@@ -103,7 +112,7 @@ describe('HomeModel', () => {
         for (const [k, v] of Object.entries(obj)) walk(v, [...path, k]);
       }
     };
-    walk(mockHome(), []);
+    walk(load(), []);
     expect(offenders).toEqual([]);
   });
 
@@ -167,6 +176,113 @@ describe('HomeModel', () => {
     const paths = issuesOf(home).map((i) => i.path);
     expect(paths).toEqual(
       expect.arrayContaining(['', 'levels[0].height.source', 'openings[0].width.value']),
+    );
+  });
+});
+
+describe('the real home', () => {
+  const home = () => HomeModel.parse(realHome());
+  const level = (id: string) => home().levels.find((l) => l.id === id)!;
+  const patch = (id: string) => home().terrain.patches.find((p) => p.id === id)!;
+  /** Absolute height of an opening's sill or head. */
+  const opening = (id: string) => {
+    const model = home();
+    const o = model.openings.find((x) => x.id === id)!;
+    const wall = model.walls.find((w) => w.id === o.wallId)!;
+    const floor = model.levels.find((l) => l.id === wall.levelId)!.elevation.value;
+    return { sill: floor + o.sill.value, head: floor + o.sill.value + o.height.value };
+  };
+
+  it('is valid', () => {
+    const result = HomeModel.safeParse(realHome());
+    expect(result.error && describeIssues(formatIssues(result.error))).toBeUndefined();
+  });
+
+  it('has a souterrain, a ground floor at the datum and an attic under a gable roof', () => {
+    expect(home().levels.map((l) => l.id)).toEqual(['souterrain', 'ground-floor', 'first-floor']);
+    expect(level('ground-floor').elevation.value).toBe(0);
+    expect(roofOf(home().building)).toMatchObject({ type: 'gable', ridgeAxis: 'x' });
+    expect(northBearingOf(home().building)).toBeCloseTo(2.5);
+  });
+
+  it('puts the north souterrain windows just above the lawn and the south one below grade', () => {
+    const lawn = patch('terrain-lower').elevation.value;
+    for (const id of ['1', '2', '3']) {
+      const { sill } = opening(`souterrain-window-north-${id}`);
+      expect(sill).toBeGreaterThan(lawn);
+      expect(sill - lawn).toBeLessThan(0.3);
+    }
+    const south = opening('souterrain-window-south');
+    expect(south.head).toBeLessThan(patch('terrain-south').elevation.value);
+    expect(south.sill).toBeGreaterThan(patch('terrain-light-well').elevation.value);
+  });
+
+  it('has a garage, a sloped entrance down to the patio and two gardens on their own levels', () => {
+    const model = home();
+    expect(model.outbuildings?.map((b) => b.kind)).toEqual(['garage', 'porch']);
+    const slope = patch('terrain-entrance-slope');
+    expect(slope.elevation.value).toBe(patch('terrain-south').elevation.value);
+    expect(slope.slope?.lowElevation.value).toBe(patch('terrain-lower').elevation.value);
+    const gardens = model.outdoorAreas.filter((a) => a.kind === 'garden');
+    expect(gardens.map((g) => [g.ownerApartmentId, g.elevation.value])).toEqual([
+      ['apt-ground-floor', patch('terrain-south').elevation.value],
+      ['apt-souterrain', patch('terrain-lower').elevation.value],
+    ]);
+  });
+});
+
+describe('optional structures', () => {
+  /** Index and element of the entry with `id` (paths in issues use indexes). */
+  const byId = <T extends { id: string }>(list: T[], id: string) => {
+    const index = list.findIndex((e) => e.id === id);
+    if (index < 0) throw new Error(`no fixture "${id}"`);
+    return [index, list[index]!] as const;
+  };
+
+  it('rejects slopes that do not fall or reach below the terrain bottom', () => {
+    const home = realHome();
+    const [slopeAt, slope] = byId(home.terrain.patches, 'terrain-entrance-slope');
+    const [laneAt, lane] = byId(home.terrain.patches, 'terrain-lane');
+    const [pathAt, path] = byId(home.outdoorAreas, 'entrance-souterrain');
+    slope.slope!.lowElevation.value = 1;
+    lane.slope!.lowElevation.value = -10;
+    path.slope!.lowElevation.value = 5;
+    expect(issuesOf(home).map((i) => i.path)).toEqual([
+      `terrain.patches[${slopeAt}].slope.lowElevation`,
+      `terrain.patches[${laneAt}].elevation`,
+      `outdoorAreas[${pathAt}].slope.lowElevation`,
+    ]);
+  });
+
+  it('rejects outbuilding openings that do not fit, unknown edges and openings on open edges', () => {
+    const home = realHome();
+    const [at, garage] = byId(home.outbuildings!, 'garage');
+    const [doorAt, door] = byId(garage.openings!, 'garage-door');
+    door.width.value = 9;
+    garage.openings!.push({ ...structuredClone(door), id: 'x', edge: 7 });
+    garage.openings!.push({ ...structuredClone(door), id: 'y', edge: 2, width: d(1) });
+    garage.openEdges = [9, 2];
+    const n = garage.openings!.length;
+    expect(issuesOf(home).map((i) => i.path)).toEqual([
+      `outbuildings[${at}].openEdges[0]`,
+      `outbuildings[${at}].openings[${doorAt}].width`,
+      `outbuildings[${at}].openings[${n - 2}].edge`,
+      `outbuildings[${at}].openings[${n - 1}].edge`,
+    ]);
+  });
+
+  it('rejects roof windows past the ridge and duplicate ids', () => {
+    const home = realHome();
+    const roof = home.building.roof as Extract<HomeModel['building']['roof'], { type: 'gable' }>;
+    const [windowAt, window] = byId(roof.windows!, 'roof-window-south');
+    const [passageAt, passage] = byId(home.outbuildings!, 'entrance-passage');
+    window.fromEave.value = 6;
+    passage.id = 'garage';
+    expect(issuesOf(home).map((i) => i.path)).toEqual(
+      expect.arrayContaining([
+        `outbuildings[${passageAt}].id`,
+        `building.roof.windows[${windowAt}].length`,
+      ]),
     );
   });
 });

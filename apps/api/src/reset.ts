@@ -1,9 +1,9 @@
 import { loadConfig } from './config';
 import { createDatabase } from './db/client';
 import { resetDatabase } from './db/reset';
-import { seed } from './db/seed';
+import { seedHomes } from './db/seed';
 
-// Staging deploys: empty the database, migrate, seed the mock home. Refuses to run unless
+// Staging deploys: empty the database, migrate, seed the real and the mock home. Refuses to run unless
 // ALLOW_DATABASE_RESET=true, so it can never wipe a database by accident.
 const config = loadConfig();
 if (!config.allowDatabaseReset) {
@@ -15,8 +15,10 @@ const database = createDatabase(config, { error: (obj, msg) => console.error(msg
 try {
   await resetDatabase(database.db);
   await database.migrate();
-  const result = await seed(database.db, { file: config.seedFile });
-  console.log(`database reset: migrations applied, home "${result.id}" ${result.status}`);
+  const files = config.seedFile ? [config.seedFile] : undefined;
+  for (const result of await seedHomes(database.db, { files })) {
+    console.log(`database reset: migrations applied, home "${result.id}" ${result.status}`);
+  }
 } catch (err) {
   console.error((err as Error).message);
   process.exitCode = 1;

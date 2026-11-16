@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { ApiError, HomeModel, ListHomesResponse } from '@my-home/shared';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { homes } from '../src/db/schema';
-import { readHomeFile, seed } from '../src/db/seed';
+import { readHomeFile, seed, seedHomes } from '../src/db/seed';
 import { defaultHomeFile } from '../src/paths';
 import { createTestApp } from './helpers';
 
@@ -62,6 +62,15 @@ describe('homes API', () => {
         status: 'replaced',
       });
       expect((await inject('GET', '/api/homes/other-home')).json().name).toBe('Renamed');
+    });
+
+    it('seeds the real home before the mock home by default, so it is listed first', async () => {
+      expect(await seedHomes(ctx.database.db)).toEqual([
+        { id: 'home', status: 'inserted' },
+        { id: 'mock-home', status: 'inserted' },
+      ]);
+      const body = ListHomesResponse.parse((await inject('GET', '/api/homes')).json());
+      expect(body.items.map((h) => h.id)).toEqual(['home', 'mock-home']);
     });
 
     it('rejects an invalid file with path-based messages', async () => {

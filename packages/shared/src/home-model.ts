@@ -11,7 +11,7 @@ import { z } from 'zod';
 export const HOME_SCHEMA_VERSION = 1;
 
 export const DimensionSource = z
-  .enum(['mock', 'estimated-from-photo', 'measured'])
+  .enum(['mock', 'estimated-from-photo', 'measured', 'geodata'])
   .meta({ id: 'DimensionSource', description: 'Where a dimension value comes from.' });
 export type DimensionSource = z.infer<typeof DimensionSource>;
 
@@ -83,6 +83,24 @@ const Name = z.string().min(1).max(200);
 /** The default: a flat slab of `building.roofThickness` on top of the highest level. */
 export const FlatRoof = z.strictObject({ type: z.literal('flat') }).meta({ id: 'FlatRoof' });
 
+/** A window lying in one plane of a gable roof (a skylight; not a dormer). */
+export const RoofWindow = z
+  .strictObject({
+    id: Id,
+    /** Roof plane: `min` slopes down towards the lower across-ridge coordinate, `max` the higher. */
+    side: z.enum(['min', 'max']),
+    /** Distance along the ridge from the footprint's lower end to the window's near edge. */
+    offset: NonNegativeDimension,
+    /** Distance up the slope from the footprint edge (eaves side) to the window's lower edge. */
+    fromEave: NonNegativeDimension,
+    /** Size along the ridge. */
+    width: PositiveDimension,
+    /** Size along the slope. */
+    length: PositiveDimension,
+  })
+  .meta({ id: 'RoofWindow' });
+export type RoofWindow = z.infer<typeof RoofWindow>;
+
 /**
  * A gable (saddle) roof over the highest level, which becomes an attic. It spans the bounding
  * rectangle of the footprint; `building.roofThickness` is the thickness of the roof planes.
@@ -97,6 +115,7 @@ export const GableRoof = z
     kneeWallHeight: NonNegativeDimension,
     /** How far the roof reaches past the footprint, on all four sides. */
     overhang: NonNegativeDimension,
+    windows: z.array(RoofWindow).optional(),
   })
   .meta({ id: 'GableRoof' });
 export type GableRoof = z.infer<typeof GableRoof>;
@@ -127,13 +146,28 @@ export const roofOf = (building: Pick<Building, 'roof'>): Roof => building.roof 
 export const northBearingOf = (building: Pick<Building, 'northBearing'>): number =>
   building.northBearing?.value ?? 0;
 
+/**
+ * A plane that falls linearly across the bounding box of an outline: `elevation` at the high edge,
+ * `lowElevation` at the edge it falls towards.
+ */
+export const Slope = z
+  .strictObject({
+    /** Plan direction the surface falls towards. */
+    towards: z.enum(['+x', '-x', '+z', '-z']),
+    lowElevation: Dimension,
+  })
+  .meta({ id: 'Slope', description: 'A surface falling linearly across its bounding box.' });
+export type Slope = z.infer<typeof Slope>;
+
 export const TerrainPatch = z.strictObject({
   id: Id,
   name: Name,
   outline: Polygon,
   holes: z.array(Polygon).optional(),
-  /** Height of the patch's top surface. */
+  /** Height of the patch's top surface (its high edge when sloped). */
   elevation: Dimension,
+  /** Makes the top a slope instead of flat at `elevation`. */
+  slope: Slope.optional(),
 });
 export type TerrainPatch = z.infer<typeof TerrainPatch>;
 
@@ -192,7 +226,8 @@ export const Wall = z.strictObject({
 });
 export type Wall = z.infer<typeof Wall>;
 
-export const OpeningType = z.enum(['door', 'window']);
+/** `door` is drawn open, `french-door` glazed to the floor, `garage-door` closed. */
+export const OpeningType = z.enum(['door', 'window', 'french-door', 'garage-door']);
 export type OpeningType = z.infer<typeof OpeningType>;
 
 export const Opening = z.strictObject({
@@ -208,7 +243,7 @@ export const Opening = z.strictObject({
 });
 export type Opening = z.infer<typeof Opening>;
 
-export const OutdoorAreaKind = z.enum(['garden', 'driveway', 'patio', 'path']);
+export const OutdoorAreaKind = z.enum(['garden', 'driveway', 'patio', 'path', 'road']);
 export type OutdoorAreaKind = z.infer<typeof OutdoorAreaKind>;
 
 export const OutdoorArea = z.strictObject({
@@ -218,9 +253,53 @@ export const OutdoorArea = z.strictObject({
   /** Apartment the area belongs to; omitted for shared areas. */
   ownerApartmentId: Id.optional(),
   outline: Polygon,
+  /** Height of the surface (its high edge when sloped). */
   elevation: Dimension,
+  slope: Slope.optional(),
 });
 export type OutdoorArea = z.infer<typeof OutdoorArea>;
+
+export const OutbuildingKind = z.enum(['garage', 'carport', 'shed', 'porch']);
+export type OutbuildingKind = z.infer<typeof OutbuildingKind>;
+
+/** An opening in an outbuilding wall: the footprint edge from point `edge` to the next one. */
+export const OutbuildingOpening = z
+  .strictObject({
+    id: Id,
+    type: OpeningType,
+    /** Index of the footprint point the edge starts at (an index, not a length). */
+    edge: z.number().int().nonnegative(),
+    /** Distance along the edge from its start point to the near edge of the opening. */
+    offset: NonNegativeDimension,
+    width: PositiveDimension,
+    height: PositiveDimension,
+    sill: NonNegativeDimension,
+  })
+  .meta({ id: 'OutbuildingOpening' });
+export type OutbuildingOpening = z.infer<typeof OutbuildingOpening>;
+
+/**
+ * A simple structure next to the building, such as a garage: walls along every footprint edge and
+ * a flat roof. It has no levels or rooms.
+ */
+export const Outbuilding = z
+  .strictObject({
+    id: Id,
+    name: Name,
+    kind: OutbuildingKind,
+    /** Wall centre lines. */
+    footprint: Polygon,
+    floorElevation: Dimension,
+    /** From the floor to the top of the flat roof. */
+    height: PositiveDimension,
+    wallThickness: PositiveDimension,
+    roofThickness: PositiveDimension,
+    /** Indexes of footprint edges without a wall (a carport's sides, or against the house). */
+    openEdges: z.array(z.number().int().nonnegative()).optional(),
+    openings: z.array(OutbuildingOpening).optional(),
+  })
+  .meta({ id: 'Outbuilding' });
+export type Outbuilding = z.infer<typeof Outbuilding>;
 
 const HomeModelShape = z.strictObject({
   $schema: z.string().optional(),
@@ -236,6 +315,8 @@ const HomeModelShape = z.strictObject({
   walls: z.array(Wall),
   openings: z.array(Opening),
   outdoorAreas: z.array(OutdoorArea),
+  /** Garages, sheds and carports; omitted means none. */
+  outbuildings: z.array(Outbuilding).optional(),
 });
 
 /** Tolerance for comparing lengths (1 mm). */
@@ -270,17 +351,34 @@ function checkSemantics(model: z.infer<typeof HomeModelShape>, ctx: z.Refinement
     'outdoorAreas',
   ] as const;
   for (const key of collections) model[key].forEach((e, i) => claim(e.id, [key, i, 'id']));
+  model.outbuildings?.forEach((b, i) => {
+    claim(b.id, ['outbuildings', i, 'id']);
+    b.openings?.forEach((o, j) => claim(o.id, ['outbuildings', i, 'openings', j, 'id']));
+  });
+  const roof = model.building.roof;
+  if (roof?.type === 'gable') {
+    roof.windows?.forEach((w, i) => claim(w.id, ['building', 'roof', 'windows', i, 'id']));
+  }
 
   const levels = new Set(model.levels.map((l) => l.id));
   const apartments = new Map(model.apartments.map((a) => [a.id, a]));
   const walls = new Map(model.walls.map((w) => [w.id, w]));
   const missing = (kind: string, id: string) => `Unknown ${kind} "${id}"`;
 
-  model.terrain.patches.forEach((p, i) => {
-    if (p.elevation.value <= model.terrain.bottomElevation.value) {
-      issue(['terrain', 'patches', i, 'elevation'], 'Patch must be above terrain.bottomElevation');
+  const checkSlope = (slope: Slope | undefined, elevation: number, path: (string | number)[]) => {
+    if (slope && slope.lowElevation.value >= elevation) {
+      issue([...path, 'slope', 'lowElevation'], 'A slope must fall: lowElevation below elevation');
     }
+  };
+  model.terrain.patches.forEach((p, i) => {
+    const path = ['terrain', 'patches', i];
+    const lowest = Math.min(p.elevation.value, p.slope?.lowElevation.value ?? Infinity);
+    if (lowest <= model.terrain.bottomElevation.value) {
+      issue([...path, 'elevation'], 'Patch must be above terrain.bottomElevation');
+    }
+    checkSlope(p.slope, p.elevation.value, path);
   });
+  model.outdoorAreas.forEach((a, i) => checkSlope(a.slope, a.elevation.value, ['outdoorAreas', i]));
 
   model.apartments.forEach((a, i) =>
     a.levelIds.forEach((id, j) => {
@@ -350,6 +448,65 @@ function checkSemantics(model: z.infer<typeof HomeModelShape>, ctx: z.Refinement
       issue(['outdoorAreas', i, 'ownerApartmentId'], missing('apartment', a.ownerApartmentId));
     }
   });
+
+  model.outbuildings?.forEach((b, i) => {
+    b.openEdges?.forEach((edge, j) => {
+      if (edge >= b.footprint.length) {
+        issue(['outbuildings', i, 'openEdges', j], `Outbuilding "${b.id}" has no edge ${edge}`);
+      }
+    });
+    const byEdge = new Map<number, { from: number; to: number; id: string }[]>();
+    b.openings?.forEach((o, j) => {
+      const path = ['outbuildings', i, 'openings', j];
+      const start = b.footprint[o.edge];
+      const end = b.footprint[(o.edge + 1) % b.footprint.length];
+      if (!start || !end) {
+        issue([...path, 'edge'], `Outbuilding "${b.id}" has no edge ${o.edge}`);
+        return;
+      }
+      if (b.openEdges?.includes(o.edge)) {
+        issue([...path, 'edge'], `Opening "${o.id}" is on open edge ${o.edge} of "${b.id}"`);
+        return;
+      }
+      const length = wallLength({ start, end });
+      const from = o.offset.value;
+      const to = from + o.width.value;
+      if (to > length + EPS) {
+        issue(
+          [...path, 'width'],
+          `Opening "${o.id}" spans ${fmt(from)} to ${fmt(to)} but edge ${o.edge} is only ${fmt(length)} long`,
+        );
+      }
+      if (o.sill.value + o.height.value > b.height.value - b.roofThickness.value + EPS) {
+        issue([...path, 'height'], `Opening "${o.id}" reaches into the roof of "${b.id}"`);
+      }
+      const list = byEdge.get(o.edge) ?? [];
+      for (const other of list) {
+        if (from < other.to - EPS && other.from < to - EPS) {
+          issue([...path, 'offset'], `Opening "${o.id}" overlaps opening "${other.id}"`);
+        }
+      }
+      list.push({ from, to, id: o.id });
+      byEdge.set(o.edge, list);
+    });
+  });
+
+  if (roof?.type === 'gable' && roof.windows?.length) {
+    const xs = model.building.footprint.map((p) => p.x.value);
+    const zs = model.building.footprint.map((p) => p.z.value);
+    const span = (v: number[]) => Math.max(...v) - Math.min(...v);
+    const [along, across] = roof.ridgeAxis === 'x' ? [span(xs), span(zs)] : [span(zs), span(xs)];
+    const slopeLength = across / 2 / Math.cos((roof.pitch.value * Math.PI) / 180);
+    roof.windows.forEach((w, i) => {
+      const path = ['building', 'roof', 'windows', i];
+      if (w.offset.value + w.width.value > along + EPS) {
+        issue([...path, 'width'], `Roof window "${w.id}" reaches past the end of the roof`);
+      }
+      if (w.fromEave.value + w.length.value > slopeLength + EPS) {
+        issue([...path, 'length'], `Roof window "${w.id}" reaches past the ridge`);
+      }
+    });
+  }
 }
 
 export const HomeModel = HomeModelShape.superRefine(checkSemantics).meta({

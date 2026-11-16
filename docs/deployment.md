@@ -36,7 +36,7 @@ flowchart LR
 3. Flux follows each chart channel and upgrades the release. Before any new pod receives traffic, the chart's
    pre-deploy hook runs:
    - production: `node dist/migrate.js`;
-   - staging: `node dist/reset.js`, which empties the database, migrates and seeds the mock home.
+   - staging: `node dist/reset.js`, which empties the database, migrates and seeds the real and the mock home.
 4. `deploy` waits until `https://<host>/api/health/live` reports the commit. Then GitHub marks the deployment
    successful and the previous deployment of that environment inactive.
 
