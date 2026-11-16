@@ -4,15 +4,15 @@ import { loadConfig } from './config';
 import { createDatabase } from './db/client';
 import { seed } from './db/seed';
 
-// pnpm db:seed [file] [--replace]; a relative file resolves against the directory pnpm ran in.
+// pnpm db:seed [file] [--replace]. A relative file argument resolves against the directory pnpm
+// ran in; SEED_FILE, like in the server, against the api package.
 const { positionals, values } = parseArgs({
   allowPositionals: true,
   options: { replace: { type: 'boolean', default: false } },
 });
 const config = loadConfig();
-const cwd = process.env.INIT_CWD ?? process.cwd();
-const fileArg = positionals[0] ?? config.seedFile;
-const file = fileArg === undefined ? undefined : resolve(cwd, fileArg);
+const fileArg = positionals[0];
+const file = fileArg ? resolve(process.env.INIT_CWD ?? process.cwd(), fileArg) : config.seedFile;
 
 const database = createDatabase(config, { error: (obj, msg) => console.error(msg, obj) });
 try {

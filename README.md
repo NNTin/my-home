@@ -29,8 +29,9 @@ pnpm dev
 
 `pnpm dev` starts the api on <http://localhost:3000> and the web app on <http://localhost:5173>.
 The Vite dev server proxies `/api` to the api (`API_URL`). On start-up the api applies migrations and,
-outside production, seeds sample data. The page shows a spinning cube on a grid (orbit with the
-mouse) and an overlay listing the homes returned by `GET /api/homes`.
+outside production, seeds the mock home from `data/homes/mock-home.json`. The page renders the home
+loaded from the api (orbit with the mouse) with a panel for the per-level cutaway and visibility
+toggles. See [docs/home-model.md](docs/home-model.md) for the model and how to load other homes.
 
 ## Database
 
@@ -46,7 +47,8 @@ Workflow for schema changes:
 1. Edit `apps/api/src/db/schema.ts`.
 2. `pnpm db:generate --name <change>` writes a SQL migration to `apps/api/drizzle/`; commit it.
 3. `pnpm db:migrate` applies it (the server also migrates on start unless `MIGRATE_ON_START=false`).
-4. `pnpm db:seed` inserts sample data if the table is empty.
+4. `pnpm db:seed [file] [--replace]` loads a home file (default: the mock home); existing ids are
+   kept unless `--replace` is given.
 
 ## Scripts
 
@@ -59,7 +61,8 @@ Workflow for schema changes:
 | `pnpm typecheck`                    | `tsc` in every package                         |
 | `pnpm test`                         | Vitest in every package (api on PGlite)        |
 | `pnpm db:generate`                  | generate a migration from the Drizzle schema   |
-| `pnpm db:migrate` / `pnpm db:seed`  | apply migrations / insert sample data          |
+| `pnpm db:migrate` / `pnpm db:seed`  | apply migrations / load a home file            |
+| `pnpm schema:generate`              | regenerate the home model JSON Schema          |
 
 A pre-commit hook (husky + lint-staged) lints and formats staged files.
 
@@ -67,8 +70,9 @@ A pre-commit hook (husky + lint-staged) lints and formats staged files.
 
 ```
 apps/web/            Vite + React + R3F viewer
-  src/scene/         three.js scene components
-  src/overlay/       HTML overlay (API status)
+  src/builder/       pure home model -> render descriptors (no three.js)
+  src/scene/         R3F components drawing the descriptors
+  src/overlay/       HTML overlay (view controls)
   nginx/             nginx config template for the container image
 apps/api/            Fastify server
   src/routes/        route plugins (registered under /api)
@@ -76,6 +80,8 @@ apps/api/            Fastify server
   drizzle/           generated SQL migrations (committed)
   test/              Vitest + fastify.inject tests
 packages/shared/     zod schemas and types used by web and api
+  schema/            generated JSON Schema for home files
+data/homes/          home model documents (mock home)
 docs/                project docs
 docker-compose.yml   postgres + api + web
 ```

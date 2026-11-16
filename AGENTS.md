@@ -7,12 +7,14 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - `apps/web`: Vite + React + `@react-three/fiber`/`drei` viewer; dev server proxies `/api`
 - `apps/api`: Fastify + Drizzle (Postgres); schema in `src/db/schema.ts`, migrations in `drizzle/`
 - `packages/shared`: zod schemas and types shared by web and api (ships TS source)
+- `data/homes/`: home model documents (`mock-home.json`); model docs in `docs/home-model.md`
 - `docs/`: project docs; `docker-compose.yml` runs postgres + api + web
 
 ## Commands
 
 - `pnpm install`, then `pnpm dev` (web on :5173, api on :3000)
 - `pnpm lint`, `pnpm format`, `pnpm typecheck`, `pnpm test`, `pnpm build`
+- `pnpm schema:generate` after editing the HomeModel zod schema (commit the JSON Schema)
 - `pnpm db:generate` after editing the Drizzle schema (commit the migration), `pnpm db:migrate`, `pnpm db:seed`
 - One package: `pnpm --filter @my-home/api test`
 
