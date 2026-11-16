@@ -136,6 +136,7 @@ body {
 }
 
 .panel .save-status.offline,
+.panel .save-status.rejected,
 .panel .save-status.conflict {
   color: #ffcc80;
   opacity: 1;

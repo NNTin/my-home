@@ -1,8 +1,8 @@
 import type { Layout, UpdateLayoutBody } from '@my-home/shared';
-import { LayoutConflictError } from '../api';
+import { ApiRequestError, LayoutConflictError } from '../api';
 import { resolveDraft, sameContent, type DraftStore, type LayoutContent } from './drafts';
 
-export type SaveStatus = 'saved' | 'pending' | 'saving' | 'offline' | 'conflict';
+export type SaveStatus = 'saved' | 'pending' | 'saving' | 'offline' | 'rejected' | 'conflict';
 
 export interface SaverState {
   status: SaveStatus;
@@ -32,6 +32,7 @@ export interface SaverOptions {
  * - every edit is written to the draft at once and saved to the API after `debounceMs`
  * - saves run one at a time with the last known `version`; edits made meanwhile are saved next
  * - a failed save (offline, 5xx) keeps the draft and retries after `retryMs` or on the next edit
+ * - a rejected save (other 4xx) keeps the draft and is not retried until the next edit
  * - a 409 stops auto-saving and keeps the draft until the user reloads or overwrites
  */
 export class LayoutSaver {
@@ -185,6 +186,9 @@ export class LayoutSaver {
         if (this.layoutId !== layoutId) return;
         if (err instanceof LayoutConflictError) {
           this.set({ status: 'conflict', conflictVersion: err.currentVersion });
+        } else if (err instanceof ApiRequestError && err.status >= 400 && err.status < 500) {
+          // Retrying the same request would fail the same way.
+          this.set({ status: 'rejected', error: err.message });
         } else {
           this.set({ status: 'offline', error: err instanceof Error ? err.message : String(err) });
           this.schedule(this.retryMs);

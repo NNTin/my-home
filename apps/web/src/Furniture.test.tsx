@@ -194,6 +194,56 @@ describe('furniture editor', () => {
     );
   });
 
+  it('saves with the last valid name while the name field is empty or padded', async () => {
+    const api = fakeApi({ layouts: [{ name: 'Default' }] });
+    await renderApp();
+    const field = panel().getByLabelText('Name');
+    fireEvent.change(field, { target: { value: '' } });
+    place(/Bed/);
+    await waitSaved();
+    expect(field).toHaveValue('');
+    expect(api.layouts.get('layout-1')).toMatchObject({
+      name: 'Default',
+      items: [expect.anything()],
+    });
+    const draft = localStorage.getItem('my-home:layout-draft:layout-1');
+    expect(draft).toBeNull();
+
+    fireEvent.change(field, { target: { value: '  Bedroom plan  ' } });
+    place(/Chair/);
+    await waitSaved();
+    expect(api.layouts.get('layout-1')?.name).toBe('Bedroom plan');
+    const names = api
+      .calls('PUT', /\/api\/layouts\//)
+      .map(([, init]) => JSON.parse(init!.body as string).name);
+    expect(names).not.toContain('');
+    expect(names.every((n: string) => n === n.trim())).toBe(true);
+  });
+
+  it('does not save a layout that is deleted right after an edit', async () => {
+    const api = fakeApi({ layouts: [{ name: 'A' }, { name: 'B' }] });
+    await renderApp();
+    place(/Desk/);
+    fireEvent.click(layoutGroup().getByRole('button', { name: 'Delete' }));
+    await vi.waitFor(() => expect(panel().getByLabelText('Name')).toHaveValue('B'));
+    await new Promise((r) => setTimeout(r, 1200));
+    expect(api.layouts.has('layout-1')).toBe(false);
+    expect(api.calls('PUT', /layout-1$/)).toEqual([]);
+    expect(localStorage.getItem('my-home:layout-draft:layout-1')).toBeNull();
+  });
+
+  it('shows why the server rejected a save and does not retry it', async () => {
+    const api = fakeApi({ layouts: [{ name: 'A' }] });
+    await renderApp();
+    api.layouts.delete('layout-1'); // deleted elsewhere: the next save is a 404
+    place(/Desk/);
+    await vi.waitFor(() => expect(status()).toMatch(/^Not saved/), { timeout: 3000 });
+    expect(panel().getByText(/Layout "layout-1" not found/)).toBeInTheDocument();
+    await new Promise((r) => setTimeout(r, 1200));
+    expect(api.calls('PUT', /layout-1$/)).toHaveLength(1);
+    expect(localStorage.getItem('my-home:layout-draft:layout-1')).toContain('desk');
+  });
+
   it('reopens the last active layout', async () => {
     fakeApi({ layouts: [{ name: 'A' }, { name: 'B', items: [layoutItem()] }] });
     localStorage.setItem('my-home:last-layout:mock-home', 'layout-2');

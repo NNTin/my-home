@@ -46,6 +46,7 @@ const statusText: Record<SaveStatus, string> = {
   pending: 'Unsaved changes…',
   saving: 'Saving…',
   offline: 'Offline: changes kept in this browser, retrying',
+  rejected: 'Not saved: the server rejected the changes (kept in this browser)',
   conflict: 'Changed elsewhere',
 };
 
@@ -134,6 +135,9 @@ export function FurniturePanel(props: Props) {
         <p className={`save-status ${saveState.status}`} role="status">
           {statusText[saveState.status]}
         </p>
+        {saveState.status === 'rejected' && saveState.error && (
+          <p className="error">{saveState.error}</p>
+        )}
         {saveState.restored && saveState.status !== 'saved' && (
           <p className="note">Restored unsaved changes from this browser.</p>
         )}

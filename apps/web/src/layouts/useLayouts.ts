@@ -57,7 +57,8 @@ export function useLayouts(homeId: string, api: LayoutsApi = layoutsApi) {
     [api],
   );
 
-  const nameRef = useRef(name);
+  // The name field may be empty or padded while typing; saves use the last valid, trimmed name.
+  const savedName = useRef(name);
 
   const run = useCallback(async (action: () => Promise<void>) => {
     try {
@@ -72,7 +73,7 @@ export function useLayouts(homeId: string, api: LayoutsApi = layoutsApi) {
     (layout: Layout) => {
       const opened = saver.open(layout);
       dispatch({ type: 'load', items: opened.items });
-      nameRef.current = opened.name;
+      savedName.current = opened.name;
       setName(opened.name);
       setActiveId(layout.id);
       lastLayout.set(homeId, layout.id);
@@ -110,7 +111,7 @@ export function useLayouts(homeId: string, api: LayoutsApi = layoutsApi) {
   // Save edits once a drag is released (live drag updates only move the item on screen).
   useEffect(() => {
     if (editor.revision === 0 || editor.drag) return;
-    saver.edit({ name: nameRef.current, items: editor.items });
+    saver.edit({ name: savedName.current, items: editor.items });
   }, [editor.items, editor.drag, editor.revision, saver]);
 
   // Leaving the page or the home: save what is pending (the draft covers a failed save), then
@@ -155,16 +156,23 @@ export function useLayouts(homeId: string, api: LayoutsApi = layoutsApi) {
       }),
     rename: (next: string) => {
       const trimmed = next.trim();
-      nameRef.current = next;
       setName(next);
       if (!trimmed || !activeId) return;
+      savedName.current = trimmed;
       setLayouts((list) => list.map((l) => (l.id === activeId ? { ...l, name: trimmed } : l)));
       saver.edit({ name: trimmed, items: editor.items });
     },
     remove: () =>
       run(async () => {
         if (!activeId) return;
-        await api.remove(activeId);
+        // Stop the debounced save first so it cannot race the delete; reopen if the delete fails.
+        saver.close();
+        try {
+          await api.remove(activeId);
+        } catch (err) {
+          show(await api.get(activeId));
+          throw err;
+        }
         saver.discard(activeId);
         const rest = layouts.filter((l) => l.id !== activeId);
         if (rest.length === 0) {

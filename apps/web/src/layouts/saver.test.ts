@@ -1,6 +1,6 @@
 import type { Layout, UpdateLayoutBody } from '@my-home/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { LayoutConflictError } from '../api';
+import { ApiRequestError, LayoutConflictError } from '../api';
 import { layoutItem } from '../test/fixtures';
 import { draftStore } from './drafts';
 import { LayoutSaver, type SaverState } from './saver';
@@ -108,6 +108,27 @@ describe('LayoutSaver', () => {
 
     online = true;
     await vi.advanceTimersByTimeAsync(2000);
+    expect(update).toHaveBeenCalledTimes(2);
+    expect(saver.current.status).toBe('saved');
+  });
+
+  it('does not retry a rejected save, but saves again on the next edit', async () => {
+    let reject = true;
+    const { saver, update, drafts } = setup(async (_id, body) => {
+      if (reject) throw new ApiRequestError('PUT /api/layouts/l1 failed: Invalid', 400, {});
+      return layout({ items: body.items, version: 2 });
+    });
+    saver.open(layout());
+    saver.edit({ name: 'Default', items: [a] });
+    await vi.advanceTimersByTimeAsync(500);
+    expect(saver.current.status).toBe('rejected');
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(drafts.read('l1')?.items).toEqual([a]);
+
+    reject = false;
+    saver.edit({ name: 'Default', items: [a, b] });
+    await vi.advanceTimersByTimeAsync(500);
     expect(update).toHaveBeenCalledTimes(2);
     expect(saver.current.status).toBe('saved');
   });
