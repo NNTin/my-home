@@ -1,6 +1,6 @@
 // Run by screenshot.sh; not meant to be called directly.
 //   node screenshot.mjs --check
-//   node screenshot.mjs <out.png> <path> <wait-ms> <width> <height>   (SITE_BASE, SITE_TOKEN from with-site-token.sh)
+//   node screenshot.mjs <out.png> <path> <wait-ms> <width> <height> [actions-json]   (SITE_BASE, SITE_TOKEN from with-site-token.sh)
 // Playwright is loaded from MY_HOME_PLAYWRIGHT_DIR, outside the repository.
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -27,7 +27,28 @@ async function check() {
   await browser.close();
 }
 
-async function shoot([out, target, waitMs, width, height]) {
+/** Runs `[{ click: selector } | { drag: [dx, dy] }]` in order; drags start at the canvas centre. */
+async function runActions(page, actions) {
+  for (const action of actions) {
+    if (action.click !== undefined) {
+      console.log(`click ${action.click}`);
+      await page.locator(action.click).first().click({ timeout: 15_000 });
+    } else if (action.drag) {
+      const [dx, dy] = action.drag;
+      const box = await page.locator('canvas').first().boundingBox();
+      const x = box.x + box.width / 2;
+      const y = box.y + box.height / 2;
+      console.log(`drag ${dx},${dy}`);
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      await page.mouse.move(x + dx, y + dy, { steps: 20 });
+      await page.mouse.up();
+    }
+    await page.waitForTimeout(1000);
+  }
+}
+
+async function shoot([out, target, waitMs, width, height, actions = '[]']) {
   const base = process.env.SITE_BASE;
   const host = new URL(base).host;
   const browser = await chromium.launch({ args: LAUNCH_ARGS });
@@ -60,6 +81,7 @@ async function shoot([out, target, waitMs, width, height]) {
     await page.waitForSelector('canvas', { timeout: 30_000 });
     await page.waitForTimeout(Number(waitMs));
     console.log(`title ${await page.title()}`);
+    await runActions(page, JSON.parse(actions));
     await page.screenshot({ path: out });
     console.log(`errors ${errors.length ? '' : 'none'}`);
     for (const error of errors.slice(0, 10)) console.log(`  ${redact(error)}`);

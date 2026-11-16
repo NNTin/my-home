@@ -30,6 +30,7 @@ $S/site-curl.sh staging /api/homes                       # GET, body on stdout
 $S/site-curl.sh staging /api/homes/mock-home/layouts -X POST --json '{"name":"test"}'
 $S/env-status.sh all                                     # health, auth, deployed commit vs GitHub
 $S/screenshot.sh staging --out /tmp/staging.png          # render the 3D viewer in headless Chromium
+$S/screenshot.sh staging --click 'label:has-text("Souterrain")' --drag -300,0   # interact first
 $S/with-site-token.sh staging -- node e2e.mjs            # SITE_TOKEN and SITE_BASE for the child only
 $S/raise-env-issue.sh --dry-run staging "health fails"   # what it would post; drop --dry-run to post
 ```
@@ -46,7 +47,8 @@ $S/raise-env-issue.sh --dry-run staging "health fails"   # what it would post; d
   below). Exit 4 when one is BROKEN, 1 on a script
   or tool error. The output names the PR or tag staging runs.
 - `screenshot.sh <env> [--path /?home=...] [--out file.png] [--wait ms] [--viewport WxH]`: waits for the canvas
-  plus `--wait` (default 6000 ms) and prints the final host, status and console/page errors. It runs in the
+  plus `--wait` (default 6000 ms), then runs any `--click <playwright selector>` and `--drag DX,DY` (pixels from
+  the canvas centre, orbits the camera) in the given order, and prints the final host, status and console/page errors. It runs in the
   shared `ao-heavy` queue when available. Playwright (pinned) is installed outside the repository in
   `${XDG_CACHE_HOME:-$HOME/.cache}/my-home-environments/playwright`, Chromium in `~/.cache/ms-playwright`;
   `screenshot.sh --check` installs them if missing and verifies a headless launch.
