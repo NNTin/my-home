@@ -50,9 +50,10 @@ import { FurniturePanel, type FlaggedItem, type SelectedInfo } from './overlay/F
 import { filterPhotos, NO_FILTERS } from './photos/filters';
 import { aspectOf, fovHOf, frustumCorners } from './photos/frustum';
 import { PhotosPanel, type OverlaySettings, type PhotosTab } from './photos/PhotosPanel';
+import { openRequests } from './photos/requests';
 import { usePhotos } from './photos/usePhotos';
 import type { FurnitureHandlers, FurnitureView } from './scene/FurnitureLayer';
-import type { PhotoMarkerView, RequestGhostView } from './scene/PhotoMarkers';
+import type { PhotoMarkerView, RequestGhostView, Viewpoint } from './scene/PhotoMarkers';
 import { Scene } from './scene/Scene';
 import type { Figure } from './walk/figure';
 import { useCompass } from './walk/useCompass';
@@ -182,9 +183,13 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   // "View from here": the 3D camera sits at the selected photo's pose.
   const photo = photos.photos.find((p) => p.id === photoId);
   const viewed = !walking && viewingPhoto ? photo : undefined;
+  // Keyed by what the camera needs, not by the photo object: a reload of the lists hands out new
+  // objects for the same photo, and that must not restart the view.
+  const viewKey =
+    viewed && JSON.stringify({ pose: viewed.pose, fovH: fovHOf(viewed), aspect: aspectOf(viewed) });
   const viewpoint = useMemo(
-    () => viewed && { pose: viewed.pose, fovH: fovHOf(viewed), aspect: aspectOf(viewed) },
-    [viewed],
+    () => (viewKey === undefined ? undefined : (JSON.parse(viewKey) as Viewpoint)),
+    [viewKey],
   );
 
   const visibility = useMemo(() => {
@@ -218,9 +223,10 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     const point: [number, number] = [request.position.x, request.position.z];
     return placeAt(world, point, on?.elevation ?? 0);
   };
+  const waiting = new Set(openRequests(photos.requests).map((r) => r.id));
   const requestGhosts = walking
     ? photos.requests.flatMap((request): RequestGhostView[] => {
-        const spot = request.status === 'open' ? requestSpot(request) : undefined;
+        const spot = waiting.has(request.id) ? requestSpot(request) : undefined;
         return spot
           ? [
               {
@@ -479,7 +485,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
             onChange={setVisibility}
             onWalk={() => setWalkView('first')}
             photoCount={photos.photos.length}
-            openRequests={photos.requests.filter((r) => r.status === 'open').length}
+            openRequests={openRequests(photos.requests).length}
             photosOpen={photosOpen}
             onPhotos={() => {
               setPhotosOpen(!photosOpen);

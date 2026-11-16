@@ -1,5 +1,9 @@
 import type { PhotoRequest } from '@my-home/shared';
 
+/** Requests still waiting for a photo: open and not in the trash. */
+export const openRequests = (requests: PhotoRequest[]) =>
+  requests.filter((r) => r.status === 'open' && r.deletedAt === null);
+
 /** A figure within this distance of a request's spot is "there". */
 export const REQUEST_REACH = 1.5;
 
@@ -19,7 +23,7 @@ export function activeRequest(
   figure: Standing,
   chosenId?: string,
 ): PhotoRequest | undefined {
-  const open = requests.filter((r) => r.status === 'open' && r.deletedAt === null);
+  const open = openRequests(requests);
   const chosen = open.find((r) => r.id === chosenId);
   if (chosen) return chosen;
   const near = open

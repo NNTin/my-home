@@ -125,6 +125,29 @@ describe('photo gallery', () => {
     ).toHaveValue('The very first photo');
   }, 20_000);
 
+  it('does not count a deleted request as open', async () => {
+    const deleted = { ...open, id: 'request-deleted', deletedAt: '2026-03-05T00:00:00.000Z' };
+    const api = fakeApi({ photos: [hallway], requests: [open] });
+    // An api that hands out a deleted request with the others must not inflate the count.
+    api.requests.set(deleted.id, deleted);
+    const original = api.fetch.getMockImplementation()!;
+    api.fetch.mockImplementation(async (url, init) => {
+      if (!/photo-requests\?/.test(url)) return original(url, init);
+      return new Response(JSON.stringify({ items: [open, deleted] }), {
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    render(<App />);
+    expect(
+      await screen.findByRole('button', { name: /Photos \(1\) · 1 requested/ }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Photos \(1\)/ }));
+    expect(await screen.findByRole('tab', { name: 'Requests (1)' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Walk and take photos/ }));
+    await waitFor(() => expect(lastScene!.requestGhosts!.map((g) => g.id)).toEqual(['request-1']));
+    expect(screen.getByRole('button', { name: 'Requests (1)' })).toBeInTheDocument();
+  });
+
   it('lists thumbnails and shows a camera marker with a view cone per photo', async () => {
     const { panel } = await openGallery();
     expect(thumbnails(panel)).toHaveLength(4);
@@ -245,6 +268,22 @@ describe('photo gallery', () => {
       fireEvent.click(panel.getByRole('button', { name: 'Leave this view' }));
       expect(lastScene!.viewpoint).toBeUndefined();
       expect(markerIds()).toHaveLength(4);
+    });
+
+    it('keeps the same view when the lists are reloaded', async () => {
+      const { api, panel } = await openGallery();
+      fireEvent.click(panel.getByRole('img', { name: /^Hallway,/ }));
+      fireEvent.click(panel.getByRole('button', { name: 'View from here' }));
+      const before = lastScene!.viewpoint;
+
+      // Editing the note reloads every list: the photo is a new object with the same pose.
+      const detail = within(panel.getByRole('group', { name: 'Photo details' }));
+      fireEvent.change(detail.getByLabelText('Note'), { target: { value: 'Still here' } });
+      fireEvent.click(detail.getByRole('button', { name: 'Save note' }));
+      await waitFor(() => expect(api.photos.get('hallway')!.note).toBe('Still here'));
+      await waitFor(() => expect(detail.queryByRole('button', { name: 'Save note' })).toBeNull());
+      // The very same object: the camera rig is not torn down and set up again.
+      expect(lastScene!.viewpoint).toBe(before);
     });
 
     it('lays the photo over the view at a chosen opacity', async () => {

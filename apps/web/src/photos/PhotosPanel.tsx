@@ -11,6 +11,7 @@ import {
   type PhotoFilters,
 } from './filters';
 import { fovHOf, headingDegrees } from './frustum';
+import { openRequests } from './requests';
 import type { Photos } from './usePhotos';
 
 export interface OverlaySettings {
@@ -261,7 +262,7 @@ export function PhotosPanel({
   const shown = filterPhotos(photos.photos, filters);
   const options = filterOptions(photos.photos);
   const selected = photos.photos.find((p) => p.id === selectedId);
-  const openRequests = photos.requests.filter((r) => r.status === 'open');
+  const open = openRequests(photos.requests);
   const trash = photos.trash;
   const trashCount = (trash?.photos.length ?? 0) + (trash?.requests.length ?? 0);
   const set = (patch: Partial<PhotoFilters>) => onFilters({ ...filters, ...patch });
@@ -281,7 +282,7 @@ export function PhotosPanel({
         {(
           [
             ['photos', `Photos (${photos.photos.length})`],
-            ['requests', `Requests (${openRequests.length})`],
+            ['requests', `Requests (${open.length})`],
             ['trash', `Trash (${trashCount})`],
           ] as const
         ).map(([id, label]) => (

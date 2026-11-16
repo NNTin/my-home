@@ -1,7 +1,7 @@
 import type { PhotoRequest } from '@my-home/shared';
 import { useRef, useState, type PointerEvent } from 'react';
 import type { PhotosApi } from '../api';
-import { activeRequest } from '../photos/requests';
+import { activeRequest, openRequests } from '../photos/requests';
 import { CaptureSheet } from './CaptureSheet';
 import type { Figure } from './figure';
 import { Joystick } from './Joystick';
@@ -55,7 +55,7 @@ export function WalkHud({
   onSaved,
 }: Props) {
   const figure = useFigure(walk);
-  const open = requests.filter((r) => r.status === 'open' && r.deletedAt === null);
+  const open = openRequests(requests);
   const [chosenId, setChosenId] = useState<string>();
   const [listed, setListed] = useState(false);
   const request = activeRequest(open, { ...figure, roomId: roomIdOf?.(figure) }, chosenId);

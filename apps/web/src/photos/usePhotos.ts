@@ -1,5 +1,5 @@
 import type { Photo, PhotoRequest, TrashResponse, UpdatePhotoBody } from '@my-home/shared';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { photosApi, type PhotosApi } from '../api';
 
 export interface PhotosState {
@@ -32,16 +32,21 @@ export interface Photos extends PhotosState {
 export function usePhotos(homeId: string, api: PhotosApi = photosApi): Photos {
   const [state, setState] = useState<PhotosState>({ photos: [], requests: [], trash: undefined });
 
+  // Reloads can overlap (two quick edits, a capture while a list is loading). Only the answer to
+  // the latest one is shown, so an older, slower response never overwrites newer data.
+  const latest = useRef(0);
   const reload = useCallback(async () => {
+    const turn = ++latest.current;
     try {
       const [photos, requests, trash] = await Promise.all([
         api.list(homeId),
         api.requests(homeId),
         api.trash(homeId),
       ]);
-      setState({ photos: photos.items, requests: requests.items, trash });
+      if (turn === latest.current)
+        setState({ photos: photos.items, requests: requests.items, trash });
     } catch (err) {
-      setState((s) => ({ ...s, error: (err as Error).message }));
+      if (turn === latest.current) setState((s) => ({ ...s, error: (err as Error).message }));
     }
   }, [api, homeId]);
   useEffect(() => {
