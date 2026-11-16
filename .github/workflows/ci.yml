@@ -105,7 +105,8 @@ jobs:
           echo "$health" | jq -e '.status == "ok" and .db.status == "ok" and .db.driver == "postgres"'
           curl -fsS http://localhost:8080/api/homes | jq -e '.items | map(.id) | index("mock-home") != null'
           curl -fsS http://localhost:8080/api/homes/mock-home \
-            | jq -e '.schemaVersion == 1 and (.apartments | length) == 4 and (.outdoorAreas | length) == 3'
+            | jq -e '.schemaVersion == 1 and (.levels | length) == 3 and (.apartments | length) == 3
+                and .building.roof.type == "gable" and (.outdoorAreas | length) == 3'
           curl -fsS http://localhost:8080/api/homes/mock-home/export | jq -e '.id == "mock-home"'
           curl -fsS http://localhost:8080/ | grep -q '<div id="root">'
           curl -fsS http://localhost:8080/api/health/live | jq -e '.status == "ok"'
