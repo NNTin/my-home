@@ -308,33 +308,39 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
       const levelId = body.levelId === undefined ? current.levelId : body.levelId;
       const position = body.pose?.position ?? current;
       const moved = body.pose !== undefined || body.levelId !== undefined;
-      const [row] = await db
-        .update(photos)
-        .set({
-          ...(body.levelId !== undefined && { levelId }),
-          ...(body.pose && {
-            x: body.pose.position.x,
-            y: body.pose.position.y,
-            z: body.pose.position.z,
-            yaw: body.pose.yaw,
-            pitch: body.pose.pitch,
-            fovH: body.pose.fovH ?? null,
-          }),
-          ...((moved || body.capturedRoomId !== undefined) &&
-            capturedRoom(model, levelId, position, body)),
-          ...(body.capturedRoomId === undefined &&
-            !moved &&
-            body.capturedRoomName !== undefined && { capturedRoomName: body.capturedRoomName }),
-          ...(body.takenAt !== undefined && { takenAt: new Date(body.takenAt) }),
-          ...(body.note !== undefined && { note: body.note }),
-          ...(body.tags !== undefined && { tags: body.tags }),
-          ...(body.requestId !== undefined && { requestId: body.requestId }),
-          updatedAt: new Date(),
-        })
-        .where(eq(photos.id, id))
-        .returning();
-      // Linking a photo to a request answers it, exactly as uploading it for the request does.
-      if (row && body.requestId) await fulfilOpenRequest(db, body.requestId, row.homeId);
+      // The photo and the request it answers change together or not at all, as on upload.
+      const row = await db.transaction(async (tx) => {
+        const [updated] = await tx
+          .update(photos)
+          .set({
+            ...(body.levelId !== undefined && { levelId }),
+            ...(body.pose && {
+              x: body.pose.position.x,
+              y: body.pose.position.y,
+              z: body.pose.position.z,
+              yaw: body.pose.yaw,
+              pitch: body.pose.pitch,
+              fovH: body.pose.fovH ?? null,
+            }),
+            ...((moved || body.capturedRoomId !== undefined) &&
+              capturedRoom(model, levelId, position, body)),
+            ...(body.capturedRoomId === undefined &&
+              !moved &&
+              body.capturedRoomName !== undefined && { capturedRoomName: body.capturedRoomName }),
+            ...(body.takenAt !== undefined && { takenAt: new Date(body.takenAt) }),
+            ...(body.note !== undefined && { note: body.note }),
+            ...(body.tags !== undefined && { tags: body.tags }),
+            ...(body.requestId !== undefined && { requestId: body.requestId }),
+            updatedAt: new Date(),
+          })
+          .where(eq(photos.id, id))
+          .returning();
+        // Linking a photo to a request answers it, exactly as uploading it for the request does.
+        if (updated && body.requestId) {
+          await fulfilOpenRequest(tx, body.requestId, updated.homeId);
+        }
+        return updated;
+      });
       return row && toPhoto(row, model);
     },
 

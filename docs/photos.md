@@ -119,7 +119,7 @@ $S/photos-copy.sh staging production --dry-run            # what would be copied
 $S/photos-copy.sh staging production --since 2026-11-01T00:00:00Z
 ```
 
-A copied photo keeps its id, pose, time, captured room, note and tags. Its image is re-encoded once more by the destination, like every upload; the loss of that one extra generation is small. Photos already on the destination (also in
+A copied photo keeps its id, pose, time, captured room, note and tags. Its image is re-encoded once more by the destination, like every upload. That is the price of never storing an uploaded file as it came: the copy is encoded at the same quality and is not scaled again (it is already within the size limit), so the loss of that one extra generation is small, but the bytes differ from the source. Photos already on the destination (also in
 its trash) are skipped, so the copy can be repeated. It only adds photos and never changes the source.
 
 ### Size and backups
