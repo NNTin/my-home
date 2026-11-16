@@ -1,4 +1,4 @@
-import { HealthResponse } from '@my-home/shared';
+import { HealthResponse, LiveResponse } from '@my-home/shared';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestApp } from './helpers';
@@ -57,4 +57,31 @@ describe('GET /api/health', () => {
       }
     },
   );
+
+  describe('GET /api/health/live', () => {
+    it('reports the process as alive with the release commit', async () => {
+      const { app } = await createTestApp({ APP_COMMIT: 'abc1234' });
+      try {
+        const res = await app.inject({ method: 'GET', url: '/api/health/live' });
+        expect(res.statusCode).toBe(200);
+        expect(LiveResponse.parse(res.json())).toMatchObject({ status: 'ok', commit: 'abc1234' });
+      } finally {
+        await app.close();
+      }
+    });
+
+    it('stays 200 while the database is unreachable', async () => {
+      const { app, database } = await createTestApp();
+      database.ping = () => Promise.reject(new Error('connection refused'));
+      try {
+        const res = await app.inject({ method: 'GET', url: '/api/health/live' });
+        expect(res.statusCode).toBe(200);
+        expect(res.json()).toMatchObject({ status: 'ok', commit: null });
+        const ready = await app.inject({ method: 'GET', url: '/api/health' });
+        expect(ready.statusCode).toBe(503);
+      } finally {
+        await app.close();
+      }
+    });
+  });
 });

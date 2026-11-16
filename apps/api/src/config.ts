@@ -15,6 +15,10 @@ const EnvSchema = z.object({
   SEED_ON_START: z.preprocess(emptyToUndefined, z.stringbool().optional()),
   /** Home file seeded on start and by `pnpm db:seed`; defaults to data/homes/mock-home.json. */
   SEED_FILE: z.preprocess(emptyToUndefined, z.string().optional()),
+  /** Git commit of the release, reported by `GET /api/health/live`. */
+  APP_COMMIT: z.preprocess(emptyToUndefined, z.string().optional()),
+  /** Allows `dist/reset.js` to drop all data. Set only for throwaway environments (staging). */
+  ALLOW_DATABASE_RESET: z.preprocess(emptyToUndefined, z.stringbool().default(false)),
 });
 
 export type Config = {
@@ -27,6 +31,8 @@ export type Config = {
   migrateOnStart: boolean;
   seedOnStart: boolean;
   seedFile: string | undefined;
+  commit: string | null;
+  allowDatabaseReset: boolean;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -45,5 +51,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     migrateOnStart: e.MIGRATE_ON_START,
     seedOnStart: e.SEED_ON_START ?? e.NODE_ENV === 'development',
     seedFile: e.SEED_FILE,
+    commit: e.APP_COMMIT ?? null,
+    allowDatabaseReset: e.ALLOW_DATABASE_RESET,
   };
 }

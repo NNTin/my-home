@@ -32,7 +32,7 @@ export async function buildApp(config: Config, database: Database, logger: Logge
 
   await app.register(
     async (api) => {
-      await api.register(healthRoutes(database));
+      await api.register(healthRoutes(database, config));
       await api.register(homeRoutes(database.db));
       await api.register(layoutRoutes(database.db));
     },

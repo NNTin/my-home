@@ -1,10 +1,19 @@
-import { HealthResponse } from '@my-home/shared';
+import { HealthResponse, LiveResponse } from '@my-home/shared';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
+import type { Config } from '../config';
 import type { Database } from '../db/client';
 
 export const healthRoutes =
-  (database: Database): FastifyPluginAsyncZod =>
+  (database: Database, config: Pick<Config, 'commit'>): FastifyPluginAsyncZod =>
   async (app) => {
+    // Liveness: answers as long as the process serves requests. It must not depend on the
+    // database, so a database outage marks the api not-ready (/health) without restarting it.
+    app.get('/health/live', { schema: { response: { 200: LiveResponse } } }, async () => ({
+      status: 'ok' as const,
+      uptime: process.uptime(),
+      commit: config.commit,
+    }));
+
     app.get(
       '/health',
       { schema: { response: { 200: HealthResponse, 503: HealthResponse } } },
