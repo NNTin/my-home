@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# photos.sh <staging|production> <command> [options]
+#
+# The owner's photos of the home, each with the pose it was taken from (docs/photos.md).
+#
+#   list [filters]                      photos as a JSON array, newest first
+#   get <photo-id>                      one photo's metadata
+#   download [--dir DIR] [--thumbnail] <photo-id>... | [filters]
+#                                       saves <id>.webp and <id>.json into DIR (default: a new temp dir)
+#   annotate <photo-id> [--note TEXT] [--tag TAG]...
+#                                       sets the note and/or adds tags
+#
+# Filters: --home ID (default: the first home), --level ID, --room ID, --near X,Z,RADIUS (metres on the plan),
+#          --tag TAG, --request ID, --since TIME, --until TIME (ISO 8601, by the time the photo was taken)
+#
+# There is no delete command on purpose: only the owner deletes photos, in the app.
+set -euo pipefail
+# shellcheck source=photos-lib.sh
+source "$(dirname "${BASH_SOURCE[0]}")/photos-lib.sh"
+
+usage() {
+  sed -n '2,15s/^# \{0,1\}//p' "$0" >&2
+  exit 2
+}
+
+[[ $# -ge 2 ]] || usage
+env=$1 command=$2
+shift 2
+resolve_env "$env"
+require_tools curl jq
+
+home='' query='' dir='' kind=image note='' set_note=0
+ids=() tags=()
+add_query() { query+="${query:+&}$1=$(uri "$2")"; }
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --home) home=${2:?} && shift 2 ;;
+    --level) add_query levelId "${2:?}" && shift 2 ;;
+    --room) add_query roomId "${2:?}" && shift 2 ;;
+    --near) add_query near "${2:?}" && shift 2 ;;
+    --request) add_query requestId "${2:?}" && shift 2 ;;
+    --since) add_query since "${2:?}" && shift 2 ;;
+    --until) add_query until "${2:?}" && shift 2 ;;
+    --tag)
+      tags+=("${2:?}")
+      [[ $command == annotate ]] || add_query tag "$2"
+      shift 2
+      ;;
+    --dir) dir=${2:?} && shift 2 ;;
+    --thumbnail) kind=thumbnail && shift ;;
+    --note) note=${2?} set_note=1 && shift 2 ;;
+    -*) die "unknown option $1" ;;
+    *) ids+=("$1") && shift ;;
+  esac
+done
+
+case "$command" in
+  list)
+    [[ ${#ids[@]} -eq 0 ]] || usage
+    list_photos "$env" "${home:-$(default_home "$env")}" "$query" | jq .
+    ;;
+  get)
+    [[ ${#ids[@]} -eq 1 ]] || usage
+    api "$env" "/api/photos/${ids[0]}" | jq .
+    ;;
+  download)
+    if [[ ${#ids[@]} -eq 0 ]]; then
+      mapfile -t ids < <(list_photos "$env" "${home:-$(default_home "$env")}" "$query" | jq -r '.[].id')
+    fi
+    [[ -n $dir ]] || dir=$(mktemp -d "${TMPDIR:-/tmp}/my-home-photos.XXXXXX")
+    mkdir -p "$dir"
+    for id in "${ids[@]}"; do
+      api "$env" "/api/photos/$id" >"$dir/$id.json"
+      api "$env" "/api/photos/$id/$kind" >"$dir/$id.webp"
+      jq -r --arg file "$dir/$id.webp" \
+        '"\($file)\t\(.capturedRoomName // .room.name // "no room")\t\(.takenAt)\t\(.note)"' "$dir/$id.json"
+    done
+    printf '%d photo(s) in %s\n' "${#ids[@]}" "$dir" >&2
+    ;;
+  annotate)
+    [[ ${#ids[@]} -eq 1 ]] || usage
+    [[ $set_note == 1 || ${#tags[@]} -gt 0 ]] || die "annotate needs --note and/or --tag"
+    current=$(api "$env" "/api/photos/${ids[0]}")
+    body=$(jq -c --arg note "$note" --argjson setNote "$set_note" '
+      {tags: (.tags + $ARGS.positional | unique)} + (if $setNote == 1 then {note: $note} else {} end)
+    ' --args "${tags[@]}" <<<"$current")
+    api "$env" "/api/photos/${ids[0]}" -X PATCH --json "$body" | jq .
+    ;;
+  *) usage ;;
+esac

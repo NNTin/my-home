@@ -11,6 +11,7 @@ import { errorHandler } from './errors';
 import { healthRoutes } from './routes/health';
 import { homeRoutes } from './routes/homes';
 import { layoutRoutes } from './routes/layouts';
+import { photoRoutes } from './routes/photos';
 
 export function loggerOptions(config: Config): LoggerOptions {
   const pretty = config.env === 'development' && process.stdout.isTTY;
@@ -35,6 +36,7 @@ export async function buildApp(config: Config, database: Database, logger: Logge
       await api.register(healthRoutes(database, config));
       await api.register(homeRoutes(database.db));
       await api.register(layoutRoutes(database.db));
+      await api.register(photoRoutes(database.db, config));
     },
     { prefix: '/api' },
   );

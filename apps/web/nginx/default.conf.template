@@ -8,6 +8,8 @@ server {
     gzip_types text/css application/javascript application/json image/svg+xml;
 
     location /api/ {
+        # Photo uploads: phone photos are several MB (the api's own limit is PHOTO_MAX_UPLOAD_BYTES).
+        client_max_body_size 32m;
         proxy_pass ${API_UPSTREAM};
         proxy_http_version 1.1;
         proxy_set_header Host $host;

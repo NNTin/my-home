@@ -1,0 +1,204 @@
+import {
+  ListPhotoRequestsResponse,
+  Photo,
+  PhotoRequest,
+  TrashResponse,
+  type CreatePhotoRequestBody,
+} from '@my-home/shared';
+import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { homes } from '../src/db/schema';
+import { seed } from '../src/db/seed';
+import { clearMedia, createTestApp, testImage, uploadPayload } from './helpers';
+
+const body = (overrides: Partial<CreatePhotoRequestBody> = {}): CreatePhotoRequestBody => ({
+  levelId: 'souterrain',
+  position: { x: 3, z: -2 },
+  yaw: 1.5,
+  pitch: 0,
+  reason: 'How wide is the window above the sink?',
+  requester: 'agent',
+  ...overrides,
+});
+
+describe('photo requests API', () => {
+  let ctx: Awaited<ReturnType<typeof createTestApp>>;
+  beforeEach(async () => {
+    if (ctx) await ctx.database.db.delete(homes);
+    else ctx = await createTestApp();
+    await clearMedia(ctx);
+    await seed(ctx.database.db);
+  });
+  afterAll(() => ctx.app.close());
+
+  const inject = (method: 'GET' | 'POST' | 'DELETE', url: string, payload?: unknown) =>
+    ctx.app.inject({ method, url, ...(payload !== undefined && { payload: payload as object }) });
+
+  const create = async (overrides: Partial<CreatePhotoRequestBody> = {}, home = 'mock-home') => {
+    const res = await inject('POST', `/api/homes/${home}/photo-requests`, body(overrides));
+    expect(res.statusCode, res.body).toBe(201);
+    return PhotoRequest.parse(res.json());
+  };
+  const get = async (id: string) =>
+    PhotoRequest.parse((await inject('GET', `/api/photo-requests/${id}`)).json());
+  const list = async (query = '') =>
+    ListPhotoRequestsResponse.parse(
+      (await inject('GET', `/api/homes/mock-home/photo-requests${query}`)).json(),
+    ).items.map((r) => r.id);
+
+  const upload = async (requestId?: string, home = 'mock-home') => {
+    const res = await ctx.app.inject({
+      method: 'POST',
+      url: `/api/homes/${home}/photos`,
+      ...(await uploadPayload(
+        {
+          levelId: 'souterrain',
+          pose: { position: { x: 3, y: -1, z: -2 }, yaw: 1.5, pitch: 0 },
+          ...(requestId && { requestId }),
+        },
+        await testImage(),
+      )),
+    });
+    expect(res.statusCode, res.body).toBe(201);
+    return Photo.parse(res.json());
+  };
+
+  it('creates a request and fills in the room from the position, or the level from the room', async () => {
+    const atPosition = await create();
+    expect(atPosition).toMatchObject({
+      homeId: 'mock-home',
+      levelId: 'souterrain',
+      roomId: 'souterrain-kitchen',
+      roomName: 'Kitchen',
+      position: { x: 3, z: -2 },
+      yaw: 1.5,
+      pitch: 0,
+      reason: 'How wide is the window above the sink?',
+      requester: 'agent',
+      status: 'open',
+      photoIds: [],
+      closedAt: null,
+      deletedAt: null,
+    });
+
+    const roomOnly = await create({
+      levelId: undefined,
+      position: undefined,
+      yaw: undefined,
+      pitch: undefined,
+      roomId: 'souterrain-bedroom',
+      requester: 'owner',
+    });
+    expect(roomOnly).toMatchObject({
+      levelId: 'souterrain',
+      roomId: 'souterrain-bedroom',
+      roomName: 'Bedroom',
+      position: null,
+      yaw: null,
+      requester: 'owner',
+    });
+    expect(await get(roomOnly.id)).toEqual(roomOnly);
+  });
+
+  it('validates the body', async () => {
+    const invalid = [
+      body({ reason: '  ' }),
+      body({ requester: 'someone' as 'agent' }),
+      body({ position: undefined }),
+      body({ pitch: 3 }),
+      { ...body(), extra: true },
+    ];
+    for (const payload of invalid) {
+      const res = await inject('POST', '/api/homes/mock-home/photo-requests', payload);
+      expect(res.statusCode, JSON.stringify(payload)).toBe(400);
+    }
+    expect((await inject('GET', '/api/photo-requests/nope')).statusCode).toBe(404);
+  });
+
+  it('is fulfilled by a photo uploaded for it', async () => {
+    const request = await create();
+    const other = await create({ reason: 'Another one' });
+    const photo = await upload(request.id);
+    expect(photo.requestId).toBe(request.id);
+
+    const fulfilled = await get(request.id);
+    expect(fulfilled).toMatchObject({ status: 'fulfilled', photoIds: [photo.id] });
+    expect(fulfilled.closedAt).not.toBeNull();
+    expect(await get(other.id)).toMatchObject({ status: 'open', photoIds: [] });
+
+    expect(await list()).toEqual([other.id]);
+    expect(await list('?status=open')).toEqual([other.id]);
+    expect(await list('?status=fulfilled')).toEqual([request.id]);
+    expect(await list('?status=all')).toEqual([request.id, other.id]);
+    expect((await inject('GET', '/api/homes/mock-home/photo-requests?status=x')).statusCode).toBe(
+      400,
+    );
+  });
+
+  it('is fulfilled by linking an existing photo of the same home', async () => {
+    const request = await create();
+    const photo = await upload();
+    const foreign = await upload(undefined, 'another-home');
+
+    const url = `/api/photo-requests/${request.id}/fulfil`;
+    expect((await inject('POST', url, { photoId: foreign.id })).statusCode).toBe(400);
+    expect((await inject('POST', url, { photoId: 'nope' })).statusCode).toBe(400);
+    expect(
+      (await inject('POST', '/api/photo-requests/nope/fulfil', { photoId: photo.id })).statusCode,
+    ).toBe(404);
+    expect(await get(request.id)).toMatchObject({ status: 'open' });
+
+    const res = await inject('POST', url, { photoId: photo.id });
+    expect(PhotoRequest.parse(res.json())).toMatchObject({
+      status: 'fulfilled',
+      photoIds: [photo.id],
+    });
+    expect((await inject('GET', `/api/photos/${photo.id}`)).json().requestId).toBe(request.id);
+
+    // A photo in the trash no longer counts as an answer.
+    await inject('DELETE', `/api/photos/${photo.id}`);
+    expect((await get(request.id)).photoIds).toEqual([]);
+  });
+
+  it('can be cancelled and reopened', async () => {
+    const request = await create();
+    const cancelled = PhotoRequest.parse(
+      (await inject('POST', `/api/photo-requests/${request.id}/cancel`)).json(),
+    );
+    expect(cancelled.status).toBe('cancelled');
+    expect(cancelled.closedAt).not.toBeNull();
+    expect(await list()).toEqual([]);
+    expect(await list('?status=cancelled')).toEqual([request.id]);
+
+    // A photo for a closed request is stored but does not change its status.
+    await upload(request.id);
+    expect((await get(request.id)).status).toBe('cancelled');
+
+    const reopened = PhotoRequest.parse(
+      (await inject('POST', `/api/photo-requests/${request.id}/reopen`)).json(),
+    );
+    expect(reopened).toMatchObject({ status: 'open', closedAt: null });
+    expect((await inject('POST', '/api/photo-requests/nope/cancel')).statusCode).toBe(404);
+  });
+
+  it('is deleted into the trash, restored and purged like a photo', async () => {
+    const request = await create();
+    expect((await inject('POST', `/api/photo-requests/${request.id}/purge`)).statusCode).toBe(409);
+
+    const deleted = PhotoRequest.parse(
+      (await inject('DELETE', `/api/photo-requests/${request.id}`)).json(),
+    );
+    expect(deleted.deletedAt).not.toBeNull();
+    expect(deleted.purgeAt).not.toBeNull();
+    expect(await list('?status=all')).toEqual([]);
+    const trash = TrashResponse.parse((await inject('GET', '/api/homes/mock-home/trash')).json());
+    expect(trash.requests.map((r) => r.id)).toEqual([request.id]);
+
+    await inject('POST', `/api/photo-requests/${request.id}/restore`);
+    expect(await list()).toEqual([request.id]);
+
+    await inject('DELETE', `/api/photo-requests/${request.id}`);
+    expect((await inject('POST', `/api/photo-requests/${request.id}/purge`)).statusCode).toBe(204);
+    expect((await inject('GET', `/api/photo-requests/${request.id}`)).statusCode).toBe(404);
+    expect((await inject('DELETE', '/api/photo-requests/nope')).statusCode).toBe(404);
+  });
+});

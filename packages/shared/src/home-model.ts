@@ -412,7 +412,7 @@ function distanceToOutline(x: number, z: number, outline: Polygon): number {
 }
 
 /** Whether a plan point lies inside a simple polygon. */
-function insideOutline(x: number, z: number, outline: Polygon): boolean {
+export function insideOutline(x: number, z: number, outline: Polygon): boolean {
   let inside = false;
   outline.forEach((a, i) => {
     const b = outline[(i + 1) % outline.length]!;

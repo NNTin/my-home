@@ -135,6 +135,51 @@ jobs:
             -H 'content-type: application/json' --data @layout.json | jq -er '.id')
           test "$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE "$base/layouts/$copy")" = 204
           test "$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE "$base/layouts/$id")" = 204
+      - name: Smoke test photos
+        run: |
+          set -euo pipefail
+          base=http://localhost:8080/api
+          # A 1200x900 PNG of noise, about 3 MB: bigger than nginx's default body limit, like a phone photo.
+          python3 - <<'PY'
+          import os, struct, zlib
+          w, h = 1200, 900
+          raw = b''.join(b'\0' + os.urandom(w * 3) for _ in range(h))
+          chunk = lambda t, d: struct.pack('>I', len(d)) + t + d + struct.pack('>I', zlib.crc32(t + d))
+          open('photo.png', 'wb').write(b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0))
+              + chunk(b'IDAT', zlib.compress(raw, 1)) + chunk(b'IEND', b''))
+          PY
+          test "$(stat -c %s photo.png)" -gt 2000000
+          request=$(curl -fsS -X POST "$base/homes/mock-home/photo-requests" -H 'content-type: application/json' \
+            --data '{"roomId":"souterrain-kitchen","reason":"Smoke test","requester":"agent"}' | jq -er '.id')
+          meta="{\"levelId\":\"souterrain\",\"pose\":{\"position\":{\"x\":3,\"y\":-1,\"z\":-2},\"yaw\":0.5,\"pitch\":0},\"tags\":[\"smoke\"],\"requestId\":\"$request\"}"
+          photo=$(curl -fsS -X POST "$base/homes/mock-home/photos" -F "meta=$meta" -F 'image=@photo.png')
+          echo "$photo" | jq -e '.capturedRoomId == "souterrain-kitchen" and .image.width == 1200
+            and .image.contentType == "image/webp" and .thumbnail.width == 480 and .deletedAt == null'
+          id=$(echo "$photo" | jq -er '.id')
+          curl -fsS "$base/homes/mock-home/photos?roomId=souterrain-kitchen&tag=smoke" \
+            | jq -e --arg id "$id" '.total == 1 and .items[0].id == $id'
+          curl -fsS "$base/photo-requests/$request" | jq -e --arg id "$id" '.status == "fulfilled" and .photoIds == [$id]'
+          test "$(curl -fsS -o photo.webp -w '%{content_type}' "$base/photos/$id/image")" = image/webp
+          sum=$(sha256sum < photo.webp)
+          # Not an image: 415. Soft delete, trash, restore.
+          test "$(curl -sS -o /dev/null -w '%{http_code}' -X POST "$base/homes/mock-home/photos" \
+            -F "meta=$meta" -F 'image=@docker-compose.yml')" = 415
+          curl -fsS -X DELETE "$base/photos/$id" | jq -e '.deletedAt != null and .purgeAt != null'
+          curl -fsS "$base/homes/mock-home/photos" | jq -e '.total == 0'
+          curl -fsS "$base/homes/mock-home/trash" | jq -e --arg id "$id" '.photos | map(.id) == [$id]'
+          curl -fsS -X POST "$base/photos/$id/restore" | jq -e '.deletedAt == null'
+          # A staging deploy: reset the database, migrate and seed. Homes are replaced, photos stay.
+          curl -fsS -X POST "$base/homes/mock-home/layouts" -H 'content-type: application/json' \
+            --data '{"name":"Dropped by the reset","items":[]}' | jq -e '.version == 1'
+          docker compose run --rm --no-deps -e ALLOW_DATABASE_RESET=true api node dist/reset.js
+          curl -fsS "$base/homes/mock-home/layouts" | jq -e '.items == []'
+          curl -fsS "$base/photos/$id" | jq -e '.capturedRoomStatus == "current" and .room.id == "souterrain-kitchen"'
+          curl -fsS "$base/photo-requests/$request" | jq -e '.status == "fulfilled"'
+          test "$(curl -fsS "$base/photos/$id/image" | sha256sum)" = "$sum"
+          # A restart migrates again: still there.
+          docker compose restart api
+          docker compose up -d --no-build --wait --wait-timeout 120
+          test "$(curl -fsS --retry 5 --retry-connrefused "$base/photos/$id/image" | sha256sum)" = "$sum"
       - name: Show logs
         if: failure()
         run: docker compose logs

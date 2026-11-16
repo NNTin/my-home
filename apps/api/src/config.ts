@@ -19,6 +19,20 @@ const EnvSchema = z.object({
   APP_COMMIT: z.preprocess(emptyToUndefined, z.string().optional()),
   /** Allows `dist/reset.js` to drop all data. Set only for throwaway environments (staging). */
   ALLOW_DATABASE_RESET: z.preprocess(emptyToUndefined, z.stringbool().default(false)),
+  /** Largest accepted photo upload. Uploads are resized and re-encoded, so stored photos are smaller. */
+  PHOTO_MAX_UPLOAD_BYTES: z.preprocess(
+    emptyToUndefined,
+    z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(25 * 1024 * 1024),
+  ),
+  /** Days a deleted photo or photo request stays in the trash before it is purged. */
+  PHOTO_TRASH_RETENTION_DAYS: z.preprocess(
+    emptyToUndefined,
+    z.coerce.number().positive().default(30),
+  ),
 });
 
 export type Config = {
@@ -33,6 +47,8 @@ export type Config = {
   seedFile: string | undefined;
   commit: string | null;
   allowDatabaseReset: boolean;
+  photoMaxUploadBytes: number;
+  photoTrashRetentionDays: number;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -53,5 +69,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     seedFile: e.SEED_FILE,
     commit: e.APP_COMMIT ?? null,
     allowDatabaseReset: e.ALLOW_DATABASE_RESET,
+    photoMaxUploadBytes: e.PHOTO_MAX_UPLOAD_BYTES,
+    photoTrashRetentionDays: e.PHOTO_TRASH_RETENTION_DAYS,
   };
 }

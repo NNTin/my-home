@@ -24,7 +24,8 @@ api:
   logLevel: info
   resources:
     requests: { cpu: 25m, memory: 96Mi }
-    limits: { cpu: 500m, memory: 256Mi }
+    # Head-room for decoding and re-encoding one full-size phone photo at a time (docs/photos.md).
+    limits: { cpu: 500m, memory: 512Mi }
 web:
   replicas: 1
   resources:
