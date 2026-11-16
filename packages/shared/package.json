@@ -8,12 +8,15 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "schema:generate": "tsx scripts/generate-schema.ts"
   },
   "dependencies": {
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "prettier": "^3.10.1",
+    "tsx": "^4.23.15",
     "vitest": "^5.1.0"
   }
 }
