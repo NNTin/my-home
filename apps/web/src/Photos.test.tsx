@@ -87,6 +87,44 @@ describe('photo gallery', () => {
     expect(markerIds()).toEqual([]);
   });
 
+  it('loads every page of a large collection, so old photos stay reachable', async () => {
+    // 1,201 photos: three pages of the api. The oldest one answers a request.
+    const many = Array.from({ length: 1200 }, (_, i) =>
+      testPhoto({
+        id: `photo-${i}`,
+        takenAt: new Date(Date.UTC(2026, 5, 1) - i * 60_000).toISOString(),
+      }),
+    );
+    const oldest = testPhoto({
+      id: 'oldest',
+      note: 'The very first photo',
+      requestId: 'request-done',
+      takenAt: '2025-01-01T10:00:00.000Z',
+    });
+    const api = fakeApi({ photos: [...many, oldest], requests: [done] });
+    render(<App />);
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Photos \(1201\)/ }, { timeout: 5000 }),
+    );
+    const panel = within(await screen.findByRole('region', { name: 'Photos' }));
+    expect(
+      api
+        .calls('GET', /\/photos\?/)
+        .map(([url]) => new URL(url, 'http://x').searchParams.get('offset')),
+    ).toEqual(expect.arrayContaining(['0', '500', '1000']));
+    expect(lastScene?.photoMarkers).toHaveLength(1201);
+
+    // A date filter for the old range finds it, and so does the jump from its request.
+    fireEvent.change(panel.getByLabelText('To'), { target: { value: '2025-12-31' } });
+    expect(markerIds()).toEqual(['oldest']);
+    fireEvent.click(panel.getByRole('button', { name: 'Clear filters' }));
+    fireEvent.click(panel.getByRole('tab', { name: /Requests/ }));
+    fireEvent.click(panel.getByRole('button', { name: 'Show photos' }));
+    expect(
+      within(panel.getByRole('group', { name: 'Photo details' })).getByLabelText('Note'),
+    ).toHaveValue('The very first photo');
+  }, 20_000);
+
   it('lists thumbnails and shows a camera marker with a view cone per photo', async () => {
     const { panel } = await openGallery();
     expect(thumbnails(panel)).toHaveLength(4);

@@ -86,7 +86,12 @@ export function fakeApi({
         ...r,
         photoIds: live.filter((p) => p.requestId === r.id).map((p) => p.id),
       });
-      if (m[2] === 'photos') return json({ items: live, total: live.length });
+      if (m[2] === 'photos') {
+        const query = new URLSearchParams(m[3]);
+        const offset = Number(query.get('offset') ?? 0);
+        const limit = Math.min(Number(query.get('limit') ?? 100), 500);
+        return json({ items: live.slice(offset, offset + limit), total: live.length });
+      }
       if (m[2] === 'photo-requests') {
         return json({
           items: of(requests)
