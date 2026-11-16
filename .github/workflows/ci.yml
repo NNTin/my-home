@@ -94,7 +94,10 @@ jobs:
           health=$(curl -fsS --retry 5 --retry-connrefused http://localhost:8080/api/health)
           echo "$health"
           echo "$health" | jq -e '.status == "ok" and .db.status == "ok" and .db.driver == "postgres"'
-          curl -fsS http://localhost:8080/api/homes | jq -e '.items | length >= 1'
+          curl -fsS http://localhost:8080/api/homes | jq -e '.items | map(.id) | index("mock-home") != null'
+          curl -fsS http://localhost:8080/api/homes/mock-home \
+            | jq -e '.schemaVersion == 1 and (.apartments | length) == 4 and (.outdoorAreas | length) == 3'
+          curl -fsS http://localhost:8080/api/homes/mock-home/export | jq -e '.id == "mock-home"'
           curl -fsS http://localhost:8080/ | grep -q '<div id="root">'
       - name: Show logs
         if: failure()

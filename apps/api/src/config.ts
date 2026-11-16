@@ -13,6 +13,8 @@ const EnvSchema = z.object({
   PGLITE_DIR: z.string().default('.data/pglite'),
   MIGRATE_ON_START: z.preprocess(emptyToUndefined, z.stringbool().default(true)),
   SEED_ON_START: z.preprocess(emptyToUndefined, z.stringbool().optional()),
+  /** Home file seeded on start and by `pnpm db:seed`; defaults to data/homes/mock-home.json. */
+  SEED_FILE: z.preprocess(emptyToUndefined, z.string().optional()),
 });
 
 export type Config = {
@@ -24,6 +26,7 @@ export type Config = {
   pgliteDir: string;
   migrateOnStart: boolean;
   seedOnStart: boolean;
+  seedFile: string | undefined;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -41,5 +44,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     pgliteDir: e.PGLITE_DIR,
     migrateOnStart: e.MIGRATE_ON_START,
     seedOnStart: e.SEED_ON_START ?? e.NODE_ENV === 'development',
+    seedFile: e.SEED_FILE,
   };
 }
