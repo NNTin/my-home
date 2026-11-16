@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-api
+  labels:
+    {{- include "my-home.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  replicas: {{ .Values.api.replicas }}
+  progressDeadlineSeconds: {{ .Values.rollout.progressDeadlineSeconds }}
+  selector:
+    matchLabels:
+      {{- include "my-home.selector" (dict "root" . "component" "api") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "my-home.selector" (dict "root" . "component" "api") | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: api
+          image: {{ include "my-home.image" (dict "root" . "role" "api") }}
+          ports:
+            - {name: http, containerPort: 3000}
+          securityContext: {{ include "my-home.security" . | nindent 12 }}
+          resources: {{ toYaml .Values.api.resources | nindent 12 }}
+          env: {{ include "my-home.apiEnv" . | nindent 12 }}
+          # Readiness includes the database check; liveness must not, or a database outage restarts every pod.
+          readinessProbe:
+            httpGet: {path: /api/health, port: http}
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet: {path: /api/health/live, port: http}
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+          startupProbe:
+            httpGet: {path: /api/health/live, port: http}
+            periodSeconds: 2
+            failureThreshold: 60
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 64Mi}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-web
+  labels:
+    {{- include "my-home.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  replicas: {{ .Values.web.replicas }}
+  progressDeadlineSeconds: {{ .Values.rollout.progressDeadlineSeconds }}
+  selector:
+    matchLabels:
+      {{- include "my-home.selector" (dict "root" . "component" "web") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "my-home.selector" (dict "root" . "component" "web") | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: web
+          image: {{ include "my-home.image" (dict "root" . "role" "web") }}
+          ports:
+            - {name: http, containerPort: 8080}
+          env:
+            - name: API_UPSTREAM
+              value: "http://{{ .Release.Name }}-api:3000"
+          securityContext: {{ include "my-home.security" . | nindent 12 }}
+          resources: {{ toYaml .Values.web.resources | nindent 12 }}
+          readinessProbe:
+            httpGet: {path: /, port: http}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /, port: http}
+            periodSeconds: 10
+            failureThreshold: 6
+          volumeMounts:
+            # The nginx entrypoint renders its config into conf.d; pid and temp files go to /tmp.
+            - {name: conf, mountPath: /etc/nginx/conf.d}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: conf
+          emptyDir: {sizeLimit: 1Mi}
+        - name: tmp
+          emptyDir: {sizeLimit: 64Mi}

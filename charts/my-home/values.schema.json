@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["images", "database", "release", "rollout", "api", "web"],
+  "$defs": {
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "digest"],
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "digest": { "type": "string", "pattern": "^(sha256:[a-f0-9]{64})?$" }
+      }
+    },
+    "resources": { "type": "object" },
+    "replicas": { "type": "integer", "minimum": 1, "maximum": 3 }
+  },
+  "properties": {
+    "images": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["api", "web"],
+      "properties": { "api": { "$ref": "#/$defs/image" }, "web": { "$ref": "#/$defs/image" } }
+    },
+    "imagePullSecrets": { "type": "array", "items": { "type": "object", "required": ["name"] } },
+    "database": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["secretName", "resetOnDeploy"],
+      "properties": {
+        "secretName": { "type": "string", "minLength": 1 },
+        "resetOnDeploy": { "type": "boolean" }
+      }
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "activeDeadlineSeconds": { "type": "integer", "minimum": 60 },
+        "resources": { "$ref": "#/$defs/resources" }
+      }
+    },
+    "rollout": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "progressDeadlineSeconds": { "type": "integer", "minimum": 60 } }
+    },
+    "api": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "replicas": { "$ref": "#/$defs/replicas" },
+        "logLevel": { "enum": ["fatal", "error", "warn", "info", "debug", "trace", "silent"] },
+        "resources": { "$ref": "#/$defs/resources" }
+      }
+    },
+    "web": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "replicas": { "$ref": "#/$defs/replicas" },
+        "resources": { "$ref": "#/$defs/resources" }
+      }
+    }
+  }
+}

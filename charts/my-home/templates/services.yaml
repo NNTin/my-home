@@ -1,0 +1,15 @@
+{{- range $component, $port := dict "api" 3000 "web" 8080 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $.Release.Name }}-{{ $component }}
+  labels:
+    {{- include "my-home.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  selector:
+    {{- include "my-home.selector" (dict "root" $ "component" $component) | nindent 4 }}
+  ports:
+    - {name: http, port: {{ $port }}, targetPort: http}
+{{- end }}
