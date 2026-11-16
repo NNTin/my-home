@@ -61,8 +61,11 @@ function readFocalLength(view: DataView, tiff: number, end: number): number | un
  * Gets a camera photo ready for upload: reads the focal length, then draws the image onto a
  * canvas no larger than `MAX_UPLOAD_EDGE` and encodes it as JPEG. That keeps uploads small on a
  * phone connection and already leaves the file's metadata (including the GPS location) behind;
- * the api strips metadata again in any case. Falls back to the file itself when the browser
- * cannot decode or encode it.
+ * the api strips metadata again in any case.
+ *
+ * Falls back to the file itself when the browser cannot decode or encode it. In that case the
+ * file's metadata does travel to the api (over HTTPS, behind the site's sign-on), which strips it
+ * before anything is stored.
  */
 export async function prepareImage(file: Blob): Promise<PreparedImage> {
   let focal: number | undefined;
@@ -80,6 +83,9 @@ export async function prepareImage(file: Blob): Promise<PreparedImage> {
     canvas.height = Math.round(bitmap.height * scale);
     const context = canvas.getContext('2d');
     if (!context) throw new Error('no 2d context');
+    // JPEG has no transparency: a see-through PNG goes onto white instead of turning black.
+    context.fillStyle = '#fff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
     context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     const portrait = bitmap.height > bitmap.width;
     bitmap.close();
@@ -92,4 +98,16 @@ export async function prepareImage(file: Blob): Promise<PreparedImage> {
     // Orientation unknown: phones are mostly held upright.
     return { blob: file, fovH: fov(true) };
   }
+}
+
+/**
+ * When a photo was taken: the file's own time, which a phone camera sets at the shot, so a photo
+ * picked or saved a while later keeps its real time. A time in the future (a wrong clock) or no
+ * time at all falls back to now.
+ */
+export function takenAtOf(file: Blob, now = Date.now()): string {
+  const modified = file instanceof File ? file.lastModified : NaN;
+  return new Date(
+    Number.isFinite(modified) && modified > 0 && modified <= now ? modified : now,
+  ).toISOString();
 }

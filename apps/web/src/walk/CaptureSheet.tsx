@@ -2,7 +2,7 @@ import type { Photo, PhotoRequest } from '@my-home/shared';
 import { useEffect, useRef, useState } from 'react';
 import type { PhotosApi } from '../api';
 import { poseOf, type Figure } from './figure';
-import { prepareImage, type PreparedImage } from './prepareImage';
+import { prepareImage, takenAtOf, type PreparedImage } from './prepareImage';
 
 /** Suggested tags; the api stores any short lower-case label. */
 export const PHOTO_TAGS = ['wall', 'window', 'door', 'floor', 'ceiling', 'furniture', 'outside'];
@@ -77,7 +77,7 @@ export function CaptureSheet({
         {
           levelId: figure.levelId ?? null,
           pose: poseOf(figure, image.fovH),
-          takenAt: new Date().toISOString(),
+          takenAt: takenAtOf(file),
           note,
           tags,
           ...(request && answers && { requestId: request.id }),
