@@ -27,6 +27,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      # shellcheck is preinstalled on the runner.
+      - run: shellcheck -x -P SCRIPTDIR .claude/skills/*/scripts/*.sh
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
