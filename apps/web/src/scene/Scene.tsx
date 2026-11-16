@@ -1,7 +1,8 @@
-import { OrbitControls } from '@react-three/drei';
+import { Html, OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { useRef } from 'react';
 import type { HomeScene, Vec3 } from '../builder/buildHome';
+import type { RoomLabel } from '../builder/visibility';
 import type { CompassMarker } from '../compass/compass';
 import { CompassMarkers, CompassRose, CompassTracker } from '../compass/Compass';
 import { FurnitureLayer, type FurnitureHandlers, type FurnitureView } from './FurnitureLayer';
@@ -17,6 +18,8 @@ export interface SceneProps {
   northBearing: number;
   /** N/E/S/W letters on the ground. */
   markers: CompassMarker[];
+  /** Room names shown over their floors. */
+  labels: RoomLabel[];
 }
 
 /** Initial camera: south-east of the building, far enough to see the whole plot. */
@@ -30,7 +33,15 @@ export function initialCamera(bounds: HomeScene['bounds']): Vec3 {
 }
 
 /** Full-size canvas; R3F resizes the renderer and camera with its container. */
-export function Scene({ scene, target, furniture, handlers, northBearing, markers }: SceneProps) {
+export function Scene({
+  scene,
+  target,
+  furniture,
+  handlers,
+  northBearing,
+  markers,
+  labels,
+}: SceneProps) {
   const roseRef = useRef<HTMLButtonElement>(null);
   const northUpRef = useRef<() => void>(undefined);
   return (
@@ -58,6 +69,11 @@ export function Scene({ scene, target, furniture, handlers, northBearing, marker
         <HomeMeshes scene={scene} />
         <FurnitureLayer items={furniture} handlers={handlers} />
         <CompassMarkers markers={markers} />
+        {labels.map((l) => (
+          <Html key={l.id} position={l.at} center zIndexRange={[5, 0]} className="room-label">
+            {l.name}
+          </Html>
+        ))}
         <OrbitControls makeDefault target={target} maxPolarAngle={Math.PI * 0.95} />
         <CompassTracker northBearing={northBearing} roseRef={roseRef} northUpRef={northUpRef} />
       </Canvas>

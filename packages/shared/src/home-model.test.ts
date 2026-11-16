@@ -9,6 +9,7 @@ import {
   northBearingOf,
   roofOf,
   type ValidationIssue,
+  wallLength,
 } from './home-model';
 import { ListHomesQuery } from './homes';
 
@@ -207,20 +208,20 @@ describe('the real home', () => {
 
   it('puts the north souterrain windows just above the lawn and the south one below grade', () => {
     const lawn = patch('terrain-lower').elevation.value;
-    for (const id of ['1', '2', '3']) {
-      const { sill } = opening(`souterrain-window-north-${id}`);
+    for (const room of ['kitchen', 'bath-room', 'work-room']) {
+      const { sill } = opening(`window-souterrain-${room}-north`);
       expect(sill).toBeGreaterThan(lawn);
       expect(sill - lawn).toBeLessThan(0.3);
     }
-    const south = opening('souterrain-window-south');
+    const south = opening('window-souterrain-living-room-south');
     expect(south.head).toBeLessThan(patch('terrain-south').elevation.value);
     expect(south.sill).toBeGreaterThan(patch('terrain-light-well').elevation.value);
   });
 
-  it('has a garage, a sloped entrance down to the patio and two gardens on their own levels', () => {
+  it('has a garage, a divider wall down to the patio and two gardens on their own levels', () => {
     const model = home();
     expect(model.outbuildings?.map((b) => b.kind)).toEqual(['garage', 'porch']);
-    const slope = patch('terrain-entrance-slope');
+    const slope = patch('terrain-garden-divider');
     expect(slope.elevation.value).toBe(patch('terrain-south').elevation.value);
     expect(slope.slope?.lowElevation.value).toBe(patch('terrain-lower').elevation.value);
     const gardens = model.outdoorAreas.filter((a) => a.kind === 'garden');
@@ -228,6 +229,256 @@ describe('the real home', () => {
       ['apt-ground-floor', patch('terrain-south').elevation.value],
       ['apt-souterrain', patch('terrain-lower').elevation.value],
     ]);
+  });
+});
+
+describe('the souterrain apartment of the real home', () => {
+  const model = HomeModel.parse(realHome());
+  const rooms = model.rooms.filter((r) => r.apartmentId === 'apt-souterrain');
+  const box = (points: { x: { value: number }; z: { value: number } }[]) => {
+    const xs = points.map((p) => p.x.value);
+    const zs = points.map((p) => p.z.value);
+    return { x0: Math.min(...xs), x1: Math.max(...xs), z0: Math.min(...zs), z1: Math.max(...zs) };
+  };
+  const room = (id: string) => box(rooms.find((r) => r.id === id)!.outline);
+  const wall = (id: string) => model.walls.find((w) => w.id === id)!;
+  /** Plan span of an opening along its (axis-aligned) wall. */
+  const span = (id: string) => {
+    const o = model.openings.find((x) => x.id === id)!;
+    const w = wall(o.wallId);
+    const length = wallLength(w);
+    const at = (t: number) => ({
+      x: { value: w.start.x.value + ((w.end.x.value - w.start.x.value) * t) / length },
+      z: { value: w.start.z.value + ((w.end.z.value - w.start.z.value) * t) / length },
+    });
+    return box([at(o.offset.value), at(o.offset.value + o.width.value)]);
+  };
+
+  it('has the eight rooms with permanent ids and exact display names', () => {
+    expect(rooms.map((r) => [r.id, r.name])).toEqual([
+      ['souterrain-stair-hall', 'Stair hall'],
+      ['souterrain-work-room', 'Work room'],
+      ['souterrain-bath-room', 'Bath room'],
+      ['souterrain-kitchen', 'Kitchen'],
+      ['souterrain-corridor', 'Corridor'],
+      ['souterrain-living-room', 'Living room'],
+      ['souterrain-boiler-room', 'Boiler room'],
+      ['souterrain-bed-room', 'Bed room'],
+    ]);
+  });
+
+  it('lays the rooms out as a north row, a corridor and a south row without overlaps', () => {
+    const boxes = rooms.map((r) => box(r.outline));
+    boxes.forEach((a, i) =>
+      boxes.slice(i + 1).forEach((b) => {
+        const overlaps =
+          a.x0 < b.x1 - 1e-6 && b.x0 < a.x1 - 1e-6 && a.z0 < b.z1 - 1e-6 && b.z0 < a.z1 - 1e-6;
+        expect(overlaps).toBe(false);
+      }),
+    );
+    const corridor = room('souterrain-corridor');
+    // North row, west to east, all north of the corridor.
+    const north = ['stair-hall', 'work-room', 'bath-room', 'kitchen'].map((n) =>
+      room(`souterrain-${n}`),
+    );
+    north.forEach((r, i) => {
+      if (i > 0) expect(r.x0).toBeCloseTo(north[i - 1]!.x1);
+      expect(r.z0).toBe(north[0]!.z0);
+    });
+    for (const r of north.slice(1)) expect(r.z1).toBeCloseTo(corridor.z0);
+    // The corridor runs from the stair hall to the east wall.
+    expect(corridor.x0).toBeCloseTo(room('souterrain-stair-hall').x1);
+    expect(corridor.x1).toBe(room('souterrain-kitchen').x1);
+    // South row: the living room reaches the south wall, the other two stop at the recess.
+    const [living, boiler, bed] = ['living-room', 'boiler-room', 'bed-room'].map((n) =>
+      room(`souterrain-${n}`),
+    );
+    for (const r of [living!, boiler!, bed!]) expect(r.z0).toBeCloseTo(corridor.z1);
+    expect(living!.z1).toBeGreaterThan(boiler!.z1 + 1);
+    expect(boiler!.z1).toBe(bed!.z1);
+    expect(bed!.x1).toBe(corridor.x1);
+  });
+
+  it('has a door for every connection in the issue, on a wall between the two rooms', () => {
+    const doors = model.openings.filter((o) => o.id.startsWith('door-souterrain-'));
+    expect(doors.map((o) => o.id).sort()).toEqual([
+      'door-souterrain-corridor-bath-room',
+      'door-souterrain-corridor-bed-room',
+      'door-souterrain-corridor-boiler-room',
+      'door-souterrain-corridor-living-room',
+      'door-souterrain-corridor-patio',
+      'door-souterrain-corridor-stair-hall',
+      'door-souterrain-work-room-corridor',
+    ]);
+    const corridor = room('souterrain-corridor');
+    for (const door of doors) {
+      expect(door.type).toBe('door');
+      const s = span(door.id);
+      // Every door lies on the corridor's edge, within the corridor's extent along that edge.
+      const onEdge =
+        [corridor.z0, corridor.z1].some(
+          (z) => Math.abs(s.z0 - z) < 1e-6 && s.x0 >= corridor.x0 && s.x1 <= corridor.x1,
+        ) ||
+        [corridor.x0, corridor.x1 + 0.18].some(
+          (x) => Math.abs(s.x0 - x) < 1e-6 && s.z0 >= corridor.z0 && s.z1 <= corridor.z1,
+        );
+      expect([door.id, onEdge]).toEqual([door.id, true]);
+      if (door.id === 'door-souterrain-corridor-patio') continue;
+      // ... and within the other room's extent along it.
+      const other = room(
+        `souterrain-${door.id.replace('door-souterrain-', '').replace(/-?corridor-?/, '')}`,
+      );
+      const within =
+        s.x0 === s.x1 ? s.z0 >= other.z0 && s.z1 <= other.z1 : s.x0 >= other.x0 && s.x1 <= other.x1;
+      expect([door.id, within]).toEqual([door.id, true]);
+    }
+  });
+
+  it('leaves the boundary between the kitchen and the corridor open: no wall on it', () => {
+    const kitchen = room('souterrain-kitchen');
+    const corridor = room('souterrain-corridor');
+    expect(kitchen.z1).toBe(corridor.z0);
+    const onBoundary = model.walls.filter((w) => {
+      const b = box([w.start, w.end]);
+      return (
+        w.levelId === 'souterrain' &&
+        b.z0 === b.z1 &&
+        Math.abs(b.z0 - kitchen.z1) < 0.2 &&
+        b.x1 > kitchen.x0 + 0.1
+      );
+    });
+    expect(onBoundary).toEqual([]);
+    // The bath room next to it does have its corridor wall.
+    expect(box([wall('souterrain-wall-bath-room-corridor').start]).z0).toBe(kitchen.z1);
+  });
+
+  it('opens the entrance onto the corridor, with its sunken steps, and the east window into the bed room', () => {
+    const corridor = room('souterrain-corridor');
+    const door = span('door-souterrain-corridor-patio');
+    expect(door.z0).toBeGreaterThan(corridor.z0);
+    expect(door.z1).toBeLessThan(corridor.z1);
+    const entry = box(model.terrain.patches.find((p) => p.id === 'terrain-entry')!.outline);
+    expect(entry.z0).toBeLessThanOrEqual(door.z0);
+    expect(entry.z1).toBeGreaterThanOrEqual(door.z1);
+    const bed = room('souterrain-bed-room');
+    const window = span('window-souterrain-bed-room-east');
+    expect(window.z0).toBeGreaterThan(bed.z0);
+    expect(window.z1).toBeLessThan(bed.z1);
+    // The window stays clear of the sunken entry.
+    expect(window.z0).toBeGreaterThan(entry.z1);
+  });
+
+  it('gives every room of the north row its window', () => {
+    for (const name of ['kitchen', 'bath-room', 'work-room']) {
+      const r = room(`souterrain-${name}`);
+      const window = span(`window-souterrain-${name}-north`);
+      expect(window.x0).toBeGreaterThan(r.x0);
+      expect(window.x1).toBeLessThan(r.x1);
+    }
+  });
+
+  it('has exactly two entrances: through the stair hall and from the patio', () => {
+    const apartment = model.apartments.find((a) => a.id === 'apt-souterrain')!;
+    expect(apartment.entrances!.map((e) => [e.id, e.name, e.roomId, e.viaId])).toEqual([
+      [
+        'entrance-souterrain-stair-hall',
+        'Stair hall entrance',
+        'souterrain-stair-hall',
+        'stair-souterrain-stair-hall-ground-floor',
+      ],
+      [
+        'entrance-souterrain-patio',
+        'Patio entrance',
+        'souterrain-corridor',
+        'door-souterrain-corridor-patio',
+      ],
+    ]);
+    // The patio door is the apartment's only exterior door, and it opens onto the patio.
+    const exterior = model.openings.filter(
+      (o) =>
+        o.type !== 'window' &&
+        wall(o.wallId).levelId === 'souterrain' &&
+        wall(o.wallId).kind === 'exterior',
+    );
+    expect(exterior.map((o) => o.id)).toEqual(['door-souterrain-corridor-patio']);
+    const door = span('door-souterrain-corridor-patio');
+    const patio = box(model.outdoorAreas.find((a) => a.id === 'patio-souterrain')!.outline);
+    expect(door.z0).toBeGreaterThan(patio.z0);
+    expect(door.z1).toBeLessThan(patio.z1);
+    // The patio itself is entered from the lane through the gate in its fence.
+    const gate = box(model.fences!.find((f) => f.id === 'gate-souterrain-patio-lane')!.path);
+    expect(gate.x0).toBe(patio.x1);
+    expect(gate.z0).toBeGreaterThan(patio.z0);
+    expect(gate.z1).toBeLessThan(patio.z1);
+  });
+
+  it('has a stair in the stair hall up to the ground floor', () => {
+    const [stair] = model.stairs!;
+    expect(stair).toMatchObject({ levelId: 'souterrain', toLevelId: 'ground-floor' });
+    const hall = room('souterrain-stair-hall');
+    const half = stair!.width.value / 2;
+    const path = box(stair!.path);
+    expect(path.x0 - half).toBeGreaterThanOrEqual(hall.x0);
+    expect(path.x1 + half).toBeLessThanOrEqual(hall.x1);
+    expect(path.z0 - half).toBeGreaterThanOrEqual(hall.z0);
+    expect(path.z1).toBeLessThanOrEqual(hall.z1);
+  });
+});
+
+describe('the outside of the real home', () => {
+  const model = HomeModel.parse(realHome());
+  const patch = (id: string) => model.terrain.patches.find((p) => p.id === id)!;
+
+  it('divides the two gardens with a short, steep wall-like embankment, not an entrance', () => {
+    const slope = patch('terrain-garden-divider');
+    const zs = slope.outline.map((p) => p.z.value);
+    const run = Math.max(...zs) - Math.min(...zs);
+    const fall = slope.elevation.value - slope.slope!.lowElevation.value;
+    expect(run).toBeLessThanOrEqual(1);
+    expect(fall / run).toBeGreaterThan(1.5);
+    const area = model.outdoorAreas.find((a) => a.id === 'garden-divider')!;
+    expect(area.outline).toEqual(slope.outline);
+    expect(area.slope).toEqual(slope.slope);
+    expect(area).toMatchObject({ kind: 'embankment', name: 'Garden divider wall' });
+    expect(area.ownerApartmentId).toBeUndefined();
+    // South of it lies the ground-floor garden, north of it the souterrain patio.
+    const edge = (id: string) =>
+      model.outdoorAreas.find((a) => a.id === id)!.outline.map((p) => p.z.value);
+    expect(Math.min(...edge('garden-ground-floor').filter((z) => z > 0.4))).toBe(Math.max(...zs));
+    expect(Math.max(...edge('patio-souterrain'))).toBe(Math.min(...zs));
+  });
+
+  it('has gravel drainage strips along the facades, at the level of the ground next to them', () => {
+    const strips = model.outdoorAreas.filter((a) => a.kind === 'gravel');
+    expect(strips.map((a) => [a.id, a.elevation.value])).toEqual([
+      ['drainage-north-east', patch('terrain-lower').elevation.value],
+      ['drainage-west', patch('terrain-west').elevation.value],
+      ['drainage-south', patch('terrain-south').elevation.value],
+    ]);
+  });
+
+  it('is fenced on the east, north and along the driveway, with a gate to the patio', () => {
+    expect(model.fences!.map((f) => [f.id, f.kind])).toEqual([
+      ['fence-east-garden', 'chain-link'],
+      ['fence-east-garden-divider', 'privacy'],
+      ['fence-east-patio-south', 'privacy'],
+      ['gate-souterrain-patio-lane', 'gate'],
+      ['fence-east-patio-north', 'privacy'],
+      ['fence-east-souterrain-garden', 'privacy'],
+      ['fence-north', 'chain-link'],
+      ['fence-west-driveway', 'trellis'],
+    ]);
+    // The east line is continuous: each piece starts where the previous one ends, at its height.
+    const east = model.fences!.filter((f) => f.path.every((p) => p.x.value === 19.3));
+    expect(east).toHaveLength(6);
+    east.slice(1).forEach((f, i) => {
+      const before = east[i]!;
+      expect(f.path[0]).toMatchObject({
+        x: { value: before.path.at(-1)!.x.value },
+        z: { value: before.path.at(-1)!.z.value },
+      });
+      expect(f.elevation.value).toBe((before.endElevation ?? before.elevation).value);
+    });
   });
 });
 
@@ -241,9 +492,9 @@ describe('optional structures', () => {
 
   it('rejects slopes that do not fall or reach below the terrain bottom', () => {
     const home = realHome();
-    const [slopeAt, slope] = byId(home.terrain.patches, 'terrain-entrance-slope');
+    const [slopeAt, slope] = byId(home.terrain.patches, 'terrain-garden-divider');
     const [laneAt, lane] = byId(home.terrain.patches, 'terrain-lane');
-    const [pathAt, path] = byId(home.outdoorAreas, 'entrance-souterrain');
+    const [pathAt, path] = byId(home.outdoorAreas, 'garden-divider');
     slope.slope!.lowElevation.value = 1;
     lane.slope!.lowElevation.value = -10;
     path.slope!.lowElevation.value = 5;
@@ -269,6 +520,81 @@ describe('optional structures', () => {
       `outbuildings[${at}].openings[${n - 2}].edge`,
       `outbuildings[${at}].openings[${n - 1}].edge`,
     ]);
+  });
+
+  it('rejects stairs that lead nowhere, go down, turn askew or have no room for a landing', () => {
+    const home = realHome();
+    const stair = home.stairs![0]!;
+    const down = {
+      ...structuredClone(stair),
+      id: 'down',
+      levelId: 'ground-floor',
+      toLevelId: 'souterrain',
+    };
+    const lost = {
+      ...structuredClone(stair),
+      id: 'lost',
+      toLevelId: 'nowhere',
+      apartmentId: 'nobody',
+    };
+    const askew = structuredClone(stair);
+    askew.id = 'askew';
+    askew.path[2]!.z.value += 1;
+    const cramped = structuredClone(stair);
+    cramped.id = 'cramped';
+    cramped.path[2]!.x.value = cramped.path[1]!.x.value - cramped.width.value;
+    cramped.path[3]!.x.value = cramped.path[2]!.x.value;
+    home.stairs!.push(down, lost, askew, cramped);
+    expect(issuesOf(home).map((i) => i.path)).toEqual([
+      'stairs[1].toLevelId',
+      'stairs[2].toLevelId',
+      'stairs[2].apartmentId',
+      'stairs[3].path[1]',
+      'stairs[3].path[2]',
+      'stairs[4].path[2]',
+    ]);
+  });
+
+  it('rejects entrances into a room of another apartment or through nothing', () => {
+    const home = realHome();
+    const [at, apartment] = byId(home.apartments, 'apt-souterrain');
+    apartment.entrances![0]!.roomId = 'ground-floor-interior';
+    apartment.entrances![1]!.viaId = 'souterrain-corridor';
+    apartment.entrances!.push({
+      id: 'souterrain',
+      name: 'x',
+      roomId: 'nowhere',
+      viaId: 'garage-door',
+    });
+    expect(issuesOf(home).map((i) => i.path)).toEqual([
+      `apartments[${at}].entrances[2].id`,
+      `apartments[${at}].entrances[0].roomId`,
+      `apartments[${at}].entrances[1].viaId`,
+      `apartments[${at}].entrances[2].roomId`,
+      `apartments[${at}].entrances[2].viaId`,
+    ]);
+  });
+
+  it('rejects fences that repeat a point or reuse an id', () => {
+    const home = realHome();
+    const [at, fence] = byId(home.fences!, 'fence-north');
+    fence.path.push(structuredClone(fence.path.at(-1)!));
+    fence.id = 'garage';
+    expect(issuesOf(home).map((i) => i.path)).toEqual([
+      `fences[${at}].id`,
+      `fences[${at}].path[2]`,
+    ]);
+  });
+
+  it('keeps documents without stairs, fences and entrances valid', () => {
+    const home = realHome();
+    delete home.stairs;
+    delete home.fences;
+    for (const apartment of home.apartments) delete apartment.entrances;
+    expect(HomeModel.safeParse(home).success).toBe(true);
+    const mock = mockHome();
+    expect(mock.stairs ?? mock.fences).toBeUndefined();
+    expect(HomeModel.safeParse(mock).success).toBe(true);
   });
 
   it('rejects roof windows past the ridge and duplicate ids', () => {

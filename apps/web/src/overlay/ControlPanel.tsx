@@ -72,6 +72,11 @@ export function ControlPanel({ homes, homeId, onSelectHome, scene, visibility, o
             {l.name}
           </label>
         ))}
+        <Toggle
+          label="Room names"
+          checked={visibility.showRoomNames}
+          onChange={() => set({ showRoomNames: !visibility.showRoomNames })}
+        />
       </fieldset>
 
       <fieldset>

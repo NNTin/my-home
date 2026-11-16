@@ -36,10 +36,10 @@ describe('slopes', () => {
 
   it('turns sloped terrain patches and outdoor areas into sloped descriptors', () => {
     const scene = buildHome(home());
-    const slope = scene.terrain.find((t) => t.id === 'terrain-entrance-slope')!;
-    expect(slope).toMatchObject({ top: -0.05, slope: { axis: 'z', from: 2.5, to: -1.5 } });
+    const slope = scene.terrain.find((t) => t.id === 'terrain-garden-divider')!;
+    expect(slope).toMatchObject({ top: -0.05, slope: { axis: 'z', from: 0.5, to: -0.5 } });
     expect(slope.slope).toMatchObject({ high: -0.05, low: -1.65 });
-    const path = scene.outdoorAreas.find((a) => a.id === 'entrance-souterrain')!;
+    const path = scene.outdoorAreas.find((a) => a.id === 'garden-divider')!;
     expect(path.slope!.low).toBeCloseTo(-1.65 + SURFACE_OFFSET);
     // Flat patches stay flat.
     expect(scene.terrain.find((t) => t.id === 'terrain-lower')!.slope).toBeUndefined();

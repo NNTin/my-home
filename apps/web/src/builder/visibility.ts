@@ -11,6 +11,7 @@ export interface Visibility {
   hiddenApartments: string[];
   hiddenOutdoorAreas: string[];
   showTerrain: boolean;
+  showRoomNames: boolean;
 }
 
 /** The cutaway index that shows the whole building including its roof. */
@@ -22,6 +23,7 @@ export const defaultVisibility = (scene: Pick<HomeScene, 'levels'>): Visibility 
   hiddenApartments: [],
   hiddenOutdoorAreas: [],
   showTerrain: true,
+  showRoomNames: true,
 });
 
 /** The descriptors to render for a visibility state. */
@@ -43,6 +45,7 @@ export function visibleScene(scene: HomeScene, v: Visibility): HomeScene {
     walls: scene.walls.filter(shown),
     openings: scene.openings.filter(shown),
     roomFloors: scene.roomFloors.filter(shown),
+    stairs: scene.stairs.filter(shown),
     // Slabs belong to a level, so the floor of a hidden level is cut away with it.
     slabs: scene.slabs.filter((s) => shownLevels.has(s.levelId) && (s.kind !== 'roof' || showRoof)),
     roofPlanes: showRoof ? scene.roofPlanes.filter((r) => shownLevels.has(r.levelId)) : [],
@@ -50,6 +53,26 @@ export function visibleScene(scene: HomeScene, v: Visibility): HomeScene {
     terrain: v.showTerrain ? scene.terrain : [],
     outdoorAreas: scene.outdoorAreas.filter((a) => !v.hiddenOutdoorAreas.includes(a.id)),
   };
+}
+
+/** A room name to draw at a point in the scene. */
+export interface RoomLabel {
+  id: string;
+  name: string;
+  at: [number, number, number];
+}
+
+/**
+ * Room names for the level being looked into: the highest level shown, and only once the roof
+ * is cut away, so names never float over a closed building.
+ */
+export function roomLabels(scene: HomeScene, v: Visibility): RoomLabel[] {
+  if (!v.showRoomNames || v.maxLevelIndex >= roofIndex(scene)) return [];
+  const shown = visibleScene(scene, v);
+  const top = scene.levels.findLast((l) => shown.roomFloors.some((r) => r.levelId === l.id));
+  return shown.roomFloors
+    .filter((r) => r.levelId === top?.id)
+    .map((r) => ({ id: r.roomId, name: r.name, at: r.labelAt }));
 }
 
 /** Adds or removes `id` from a list of hidden ids. */
