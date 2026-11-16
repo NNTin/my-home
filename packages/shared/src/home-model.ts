@@ -287,7 +287,8 @@ export const OutdoorArea = z.strictObject({
 });
 export type OutdoorArea = z.infer<typeof OutdoorArea>;
 
-export const OutbuildingKind = z.enum(['garage', 'carport', 'shed', 'porch']);
+/** A `compost` is a closed compost bin: a low box with a lid. */
+export const OutbuildingKind = z.enum(['garage', 'carport', 'shed', 'porch', 'compost']);
 export type OutbuildingKind = z.infer<typeof OutbuildingKind>;
 
 /** An opening in an outbuilding wall: the footprint edge from point `edge` to the next one. */

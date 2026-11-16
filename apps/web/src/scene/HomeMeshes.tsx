@@ -49,6 +49,12 @@ const colors = {
   garageDoor: '#8a8d90',
 } as const;
 
+/** Wall colours of outbuildings that are not rendered like the house. */
+const outbuildingColors: Partial<Record<HomeScene['outbuildings'][number]['kind'], string>> = {
+  shed: '#9a7b56',
+  compost: '#3c4038',
+};
+
 const fenceColors = {
   'chain-link': '#4a4e52',
   privacy: '#2c2e30',
@@ -290,7 +296,7 @@ export function HomeMeshes({ scene }: { scene: HomeScene }) {
       {scene.outbuildings.map((b) => (
         <group key={b.id}>
           {b.walls.map((w) => (
-            <BoxMesh key={w.id} box={w} color={colors.outbuilding} />
+            <BoxMesh key={w.id} box={w} color={outbuildingColors[b.kind] ?? colors.outbuilding} />
           ))}
           <PrismMesh prism={b.roof} color={colors.floorSlab} />
           {b.openings.map((o) => (

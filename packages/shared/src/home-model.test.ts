@@ -220,7 +220,7 @@ describe('the real home', () => {
 
   it('has a garage, a divider wall down to the patio and two gardens on their own levels', () => {
     const model = home();
-    expect(model.outbuildings?.map((b) => b.kind)).toEqual(['garage', 'porch']);
+    expect(model.outbuildings?.map((b) => b.kind)).toEqual(['garage', 'porch', 'shed', 'compost']);
     const slope = patch('terrain-garden-divider');
     expect(slope.elevation.value).toBe(patch('terrain-south').elevation.value);
     expect(slope.slope?.lowElevation.value).toBe(patch('terrain-lower').elevation.value);
@@ -405,11 +405,15 @@ describe('the souterrain apartment of the real home', () => {
     const patio = box(model.outdoorAreas.find((a) => a.id === 'patio-souterrain')!.outline);
     expect(door.z0).toBeGreaterThan(patio.z0);
     expect(door.z1).toBeLessThan(patio.z1);
-    // The patio itself is entered from the lane through the gate in its fence.
+    // The patio itself is entered from the lane through the gate at its north end, the only gate.
+    expect(model.fences!.filter((f) => f.kind === 'gate').map((f) => f.id)).toEqual([
+      'gate-souterrain-patio-lane',
+    ]);
     const gate = box(model.fences!.find((f) => f.id === 'gate-souterrain-patio-lane')!.path);
     expect(gate.x0).toBe(patio.x1);
-    expect(gate.z0).toBeGreaterThan(patio.z0);
-    expect(gate.z1).toBeLessThan(patio.z1);
+    expect(gate.z0).toBe(patio.z0);
+    // It is a little north of the door.
+    expect(gate.z0 + gate.z1).toBeLessThan(door.z0 + door.z1);
   });
 
   it('has a stair in the stair hall up to the ground floor', () => {
@@ -461,24 +465,68 @@ describe('the outside of the real home', () => {
     expect(model.fences!.map((f) => [f.id, f.kind])).toEqual([
       ['fence-east-garden', 'chain-link'],
       ['fence-east-garden-divider', 'privacy'],
-      ['fence-east-patio-south', 'privacy'],
+      ['fence-east-patio', 'privacy'],
       ['gate-souterrain-patio-lane', 'gate'],
-      ['fence-east-patio-north', 'privacy'],
       ['fence-east-souterrain-garden', 'privacy'],
       ['fence-north', 'chain-link'],
       ['fence-west-driveway', 'trellis'],
     ]);
     // The east line is continuous: each piece starts where the previous one ends, at its height.
     const east = model.fences!.filter((f) => f.path.every((p) => p.x.value === 19.3));
-    expect(east).toHaveLength(6);
+    expect(east).toHaveLength(5);
+    expect(east.at(-1)!.elevation.value).toBe(patch('terrain-lower').elevation.value);
     east.slice(1).forEach((f, i) => {
       const before = east[i]!;
       expect(f.path[0]).toMatchObject({
         x: { value: before.path.at(-1)!.x.value },
         z: { value: before.path.at(-1)!.z.value },
       });
-      expect(f.elevation.value).toBe((before.endElevation ?? before.elevation).value);
+      // Along the lane the pieces also meet in height; the last one stands on the garden level.
+      if (f.id !== 'fence-east-souterrain-garden') {
+        expect(f.elevation.value).toBe((before.endElevation ?? before.elevation).value);
+      }
     });
+  });
+});
+
+describe('the ground-floor garden of the real home', () => {
+  const model = HomeModel.parse(realHome());
+  const zs = (id: string) =>
+    model.outdoorAreas.find((a) => a.id === id)!.outline.map((p) => p.z.value);
+  const garden = model.outdoorAreas.find((a) => a.id === 'garden-ground-floor')!;
+
+  it('ends at the street on the same line as the driveway', () => {
+    expect(Math.max(...zs('garden-ground-floor'))).toBe(Math.max(...zs('driveway')));
+    expect(Math.min(...zs('street'))).toBeLessThan(Math.max(...zs('driveway')));
+  });
+
+  it('loses its south-east corner to the road junction, where the lane fence ends', () => {
+    const corner = garden.outline.map((p) => [p.x.value, p.z.value]);
+    expect(corner).toContainEqual([15.5, 8]);
+    expect(corner).not.toContainEqual([19.3, 10.3]);
+    const street = model.outdoorAreas.find((a) => a.id === 'street')!;
+    expect(street.outline.map((p) => [p.x.value, p.z.value])).toContainEqual([15.5, 8]);
+    const fence = model.fences!.find((f) => f.id === 'fence-east-garden')!;
+    expect(fence.kind).toBe('chain-link');
+    expect(Math.max(...fence.path.map((p) => p.z.value))).toBe(8);
+  });
+
+  it('has a garden shed and a compost standing on the lawn', () => {
+    for (const [id, kind] of [
+      ['shed-ground-floor-garden', 'shed'],
+      ['compost-ground-floor-garden', 'compost'],
+    ] as const) {
+      const b = model.outbuildings!.find((o) => o.id === id)!;
+      expect(b.kind).toBe(kind);
+      expect(b.floorElevation.value).toBe(garden.elevation.value);
+      for (const p of b.footprint) {
+        // Inside the garden's main rectangle, clear of the terrace and the cut corner.
+        expect(p.x.value).toBeGreaterThan(1.9);
+        expect(p.x.value).toBeLessThan(15.5);
+        expect(p.z.value).toBeGreaterThan(1.5);
+        expect(p.z.value).toBeLessThan(10.3);
+      }
+    }
   });
 });
 

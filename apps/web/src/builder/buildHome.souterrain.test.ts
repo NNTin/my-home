@@ -296,11 +296,11 @@ describe('fences', () => {
   });
 
   it('step down bay by bay where the ground falls along them', () => {
-    const patio = buildFence(fence('fence-east-patio-north'));
+    const patio = buildFence(fence('fence-east-patio'));
     const bottoms = patio.panels.map((p) => p.center[1] - p.size[1] / 2);
     bottoms.slice(1).forEach((y, i) => expect(y).toBeLessThan(bottoms[i]!));
-    expect(bottoms[0]!).toBeLessThan(-1.14);
-    expect(bottoms.at(-1)!).toBeGreaterThan(-1.65);
+    expect(bottoms[0]!).toBeLessThan(-0.94);
+    expect(bottoms.at(-1)!).toBeGreaterThan(-1.32);
     // Posts reach from below the lower to above the higher of their two panels.
     patio.posts.slice(1, -1).forEach((post, i) => {
       const [before, after] = [patio.panels[i]!, patio.panels[i + 1]!];
@@ -328,16 +328,16 @@ describe('fences', () => {
     expect(corner.posts[0]!.size[0]).toBeGreaterThan(metal.posts[0]!.size[0]);
   });
 
-  it('are part of the scene, with the gate between the two patio fences', () => {
+  it('are part of the scene, with the gate at the north end of the patio fence', () => {
     const scene = buildHome(home());
-    expect(scene.fences).toHaveLength(8);
+    expect(scene.fences).toHaveLength(7);
     const gate = scene.fences.find((f) => f.kind === 'gate')!;
     expect(gate.panels).toHaveLength(1);
     expect(gate.id).toBe('gate-souterrain-patio-lane');
-    expect(gate.panels[0]!.center[2]).toBeCloseTo(-2.8);
+    expect(gate.panels[0]!.center[2]).toBeCloseTo(-6.65);
     expect(
       visibleScene(scene, { ...defaultVisibility(scene), maxLevelIndex: 0 }).fences,
-    ).toHaveLength(8);
+    ).toHaveLength(7);
   });
 });
 

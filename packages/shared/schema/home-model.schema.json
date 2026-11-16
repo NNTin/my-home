@@ -583,7 +583,7 @@
         },
         "kind": {
           "type": "string",
-          "enum": ["garage", "carport", "shed", "porch"]
+          "enum": ["garage", "carport", "shed", "porch", "compost"]
         },
         "footprint": {
           "$ref": "#/$defs/Polygon"

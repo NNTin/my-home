@@ -90,7 +90,7 @@ it came from). Nothing else in the model or renderer changes. The only bare numb
 | `walls`        | centre line `start`/`end`, `thickness`, `height`, `kind` (`exterior`/`interior`), `levelId`, `apartmentId?` |
 | `openings`     | `door`/`window` on a `wallId`: `offset` from the wall start, `width`, `height`, `sill`                      |
 | `outdoorAreas` | `garden`/`driveway`/`patio`/`path`/`road`/`gravel`/`embankment` polygons at an `elevation` (or `slope`)     |
-| `outbuildings` | optional garages, carports, sheds and porches: a `footprint`, flat roof and openings on its edges           |
+| `outbuildings` | optional garages, carports, sheds, porches and compost bins: a `footprint`, flat roof and edge openings     |
 | `stairs`       | optional: a walking line from one level up to another                                                       |
 | `fences`       | optional: fence lines and gates on the ground                                                               |
 
@@ -199,6 +199,7 @@ names what it connects. Fences are always shown.
 A wall stands on every footprint edge (from point `edge` to the next) except those in `openEdges`,
 for example a carport's sides or a porch against the house. Openings are placed like wall openings (never on an open edge),
 measured from the edge's start point. Outbuildings have no levels or rooms and are always shown.
+`kind` is `garage`, `carport`, `shed`, `porch` or `compost` (a closed compost bin: a low box with a lid).
 
 ### Roof and attic
 
@@ -269,7 +270,8 @@ Errors carry a path into the document, for example
   derived from official geodata of the Bavarian surveying administration (LoD2 building model, DGM1
   terrain model, orthophoto). Datenquelle: Bayerische Vermessungsverwaltung, CC BY 4.0.
 - **estimated-from-photo**: windows and doors (position, size, sill), floor levels, the light well,
-  the fences and the drainage strips, from street-level photos. The north facade was only seen at
+  the fences, the drainage strips, the garden shed and the compost, from street-level and aerial
+  photos. The north facade was only seen at
   a grazing angle. The souterrain room layout is from the owner's annotated plan sketch (about
   ±0.3 m).
 - **mock**: assumed wall, slab and roof thicknesses, the position of the interior doors along their
@@ -280,7 +282,9 @@ towards the street. Heights are relative to the ground-floor finished floor (`y 
 level. Everything is axis-aligned and the terrain is simplified to levelled areas and slopes:
 
 - **South level** (about 0): the street, the driveway in front of the garage and the ground-floor
-  garden and covered terrace.
+  garden and covered terrace. The garden ends at the street on the same line as the driveway; the
+  road junction cuts off its south-east corner. A **garden shed** (`shed-ground-floor-garden`) and a
+  **compost** (`compost-ground-floor-garden`) stand on its lawn.
 - **Lower level** (-1.65): the souterrain apartment's garden on the north side and its patio on the
   east side.
 - The **garden divider wall** (`garden-divider`, kind `embankment`): a short, steep bank at the
@@ -290,9 +294,11 @@ level. Everything is axis-aligned and the terrain is simplified to levelled area
   ground in a **light well**.
 - The **garage** (flat roof) and the arched **entrance passage** stand west of the house; the lane on
   the east falls towards the north.
-- **Fences**: along the lane on the east (with the gate `gate-souterrain-patio-lane` into the
-  souterrain patio), along the north boundary of the souterrain garden, and a trellis fence along
-  the driveway. The east fence follows the higher of the lane and the ground beside it.
+- **Fences**: along the lane on the east, along the north boundary of the souterrain garden, and a
+  trellis fence along the driveway. The lane fence has one gate, `gate-souterrain-patio-lane`, at the
+  north end of the souterrain patio where the lawn begins; the ground-floor garden has no gate, and
+  its fence ends where the road junction cuts the corner. The patio fence follows the lane, which
+  is higher than the patio there.
 - **Drainage**: gravel strips (`drainage-*`, kind `gravel`) along the north facade and the north
   part of the east facade, around the south-west corner and in front of the south wall.
 
@@ -326,10 +332,10 @@ level. Everything is axis-aligned and the terrain is simplified to levelled area
 
 There are exactly **two ways into the apartment** (`apartments[].entrances`):
 
-| Entrance id                      | Name                | Route                                                                                                                                                              |
-| -------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `entrance-souterrain-stair-hall` | Stair hall entrance | the house's entrance on the ground floor, then down `stair-souterrain-stair-hall-ground-floor` into the stair hall, then `door-souterrain-corridor-stair-hall`     |
-| `entrance-souterrain-patio`      | Patio entrance      | from the lane through `gate-souterrain-patio-lane` onto the souterrain patio, down the sunken entry steps, then `door-souterrain-corridor-patio` into the corridor |
+| Entrance id                      | Name                | Route                                                                                                                                                                                       |
+| -------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `entrance-souterrain-stair-hall` | Stair hall entrance | the house's entrance on the ground floor, then down `stair-souterrain-stair-hall-ground-floor` into the stair hall, then `door-souterrain-corridor-stair-hall`                              |
+| `entrance-souterrain-patio`      | Patio entrance      | from the lane through `gate-souterrain-patio-lane` (north end of the patio) onto the souterrain patio, down the sunken entry steps, then `door-souterrain-corridor-patio` into the corridor |
 
 The stair in the stair hall climbs counter-clockwise (north along the east side, west across the
 north end, south along the west side). The ground floor and the attic are not laid out yet: each has

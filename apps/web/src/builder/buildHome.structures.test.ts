@@ -85,7 +85,18 @@ describe('outbuildings', () => {
 
   it('are part of the scene and its bounds', () => {
     const scene = buildHome(home());
-    expect(scene.outbuildings.map((b) => b.id)).toEqual(['garage', 'entrance-passage']);
+    expect(scene.outbuildings.map((b) => b.id)).toEqual([
+      'garage',
+      'entrance-passage',
+      'shed-ground-floor-garden',
+      'compost-ground-floor-garden',
+    ]);
+    const shed = scene.outbuildings.find((b) => b.kind === 'shed')!;
+    expect(shed.openings.map((o) => o.type)).toEqual(['door']);
+    expect(shed.roof.top).toBeCloseTo(-0.05 + 2 + SURFACE_OFFSET);
+    const compost = scene.outbuildings.find((b) => b.kind === 'compost')!;
+    expect(compost.roof.top).toBeCloseTo(-0.05 + 0.9 + SURFACE_OFFSET);
+    expect(compost.walls).toHaveLength(4);
     expect(scene.bounds.min[0]).toBeLessThanOrEqual(-4.85);
   });
 
@@ -133,7 +144,7 @@ describe('roof windows', () => {
     expect(visibleScene(scene, defaultVisibility(scene)).roofWindows).toHaveLength(1);
     const attic = { ...defaultVisibility(scene), maxLevelIndex: 2 };
     expect(visibleScene(scene, attic).roofWindows).toEqual([]);
-    expect(visibleScene(scene, attic).outbuildings).toHaveLength(2);
+    expect(visibleScene(scene, attic).outbuildings).toHaveLength(4);
   });
 });
 

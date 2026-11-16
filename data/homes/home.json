@@ -148,6 +148,46 @@
           },
           {
             "x": {
+              "value": 15.5,
+              "source": "geodata"
+            },
+            "z": {
+              "value": 10.3,
+              "source": "geodata"
+            }
+          },
+          {
+            "x": {
+              "value": 15.5,
+              "source": "geodata"
+            },
+            "z": {
+              "value": 8.0,
+              "source": "geodata"
+            }
+          },
+          {
+            "x": {
+              "value": 19.3,
+              "source": "geodata"
+            },
+            "z": {
+              "value": 8.0,
+              "source": "geodata"
+            }
+          },
+          {
+            "x": {
+              "value": 19.3,
+              "source": "geodata"
+            },
+            "z": {
+              "value": 10.3,
+              "source": "geodata"
+            }
+          },
+          {
+            "x": {
               "value": 25,
               "source": "geodata"
             },
@@ -381,6 +421,26 @@
           {
             "x": {
               "value": 19.3,
+              "source": "geodata"
+            },
+            "z": {
+              "value": 8.0,
+              "source": "geodata"
+            }
+          },
+          {
+            "x": {
+              "value": 15.5,
+              "source": "geodata"
+            },
+            "z": {
+              "value": 8.0,
+              "source": "geodata"
+            }
+          },
+          {
+            "x": {
+              "value": 15.5,
               "source": "geodata"
             },
             "z": {
@@ -964,7 +1024,7 @@
           "name": "Patio entrance",
           "roomId": "souterrain-corridor",
           "viaId": "door-souterrain-corridor-patio",
-          "description": "From the lane through the gate onto the souterrain patio, then down the entry steps to the exterior door at the east end of the corridor."
+          "description": "From the lane through the gate at the north end of the souterrain patio, across the patio and down the entry steps to the exterior door at the east end of the corridor."
         }
       ]
     },
@@ -3353,6 +3413,26 @@
             "source": "estimated-from-photo"
           },
           "z": {
+            "value": 8.0,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 15.5,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 8.0,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 15.5,
+            "source": "estimated-from-photo"
+          },
+          "z": {
             "value": 10.3,
             "source": "estimated-from-photo"
           }
@@ -3370,7 +3450,8 @@
       ],
       "elevation": {
         "value": -0.05,
-        "source": "estimated-from-photo"
+        "source": "estimated-from-photo",
+        "note": "Ends at the street on the same line as the driveway; the road junction cuts off its south-east corner"
       }
     },
     {
@@ -3881,6 +3962,46 @@
         },
         {
           "x": {
+            "value": 15.5,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 10.3,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 15.5,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 8.0,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 19.3,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 8.0,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 19.3,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 10.3,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
             "value": 25,
             "source": "estimated-from-photo"
           },
@@ -4156,6 +4277,158 @@
           }
         }
       ]
+    },
+    {
+      "id": "shed-ground-floor-garden",
+      "name": "Garden shed",
+      "kind": "shed",
+      "footprint": [
+        {
+          "x": {
+            "value": 10.95,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 4.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 12.05,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 4.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 12.05,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 6.3,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 10.95,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 6.3,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "floorElevation": {
+        "value": -0.05,
+        "source": "estimated-from-photo"
+      },
+      "height": {
+        "value": 2.0,
+        "source": "mock",
+        "note": "Assumed height"
+      },
+      "wallThickness": {
+        "value": 0.05,
+        "source": "mock"
+      },
+      "roofThickness": {
+        "value": 0.08,
+        "source": "mock"
+      },
+      "openings": [
+        {
+          "id": "shed-ground-floor-garden-door",
+          "type": "door",
+          "edge": 0,
+          "offset": {
+            "value": 0.15,
+            "source": "mock",
+            "note": "Assumed: door on the side facing the house"
+          },
+          "width": {
+            "value": 0.8,
+            "source": "mock"
+          },
+          "height": {
+            "value": 1.75,
+            "source": "mock"
+          },
+          "sill": {
+            "value": 0,
+            "source": "mock"
+          }
+        }
+      ]
+    },
+    {
+      "id": "compost-ground-floor-garden",
+      "name": "Compost",
+      "kind": "compost",
+      "footprint": [
+        {
+          "x": {
+            "value": 8.75,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 4.25,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 9.95,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 4.25,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 9.95,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 5.45,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 8.75,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": 5.45,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "floorElevation": {
+        "value": -0.05,
+        "source": "estimated-from-photo"
+      },
+      "height": {
+        "value": 0.9,
+        "source": "mock",
+        "note": "Assumed height"
+      },
+      "wallThickness": {
+        "value": 0.05,
+        "source": "mock"
+      },
+      "roofThickness": {
+        "value": 0.05,
+        "source": "mock"
+      }
     }
   ],
   "stairs": [
@@ -4226,7 +4499,7 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": 10.3,
+            "value": 8.0,
             "source": "estimated-from-photo"
           }
         },
@@ -4243,7 +4516,8 @@
       ],
       "elevation": {
         "value": -0.05,
-        "source": "estimated-from-photo"
+        "source": "estimated-from-photo",
+        "note": "No gate on this side; the fence ends where the road junction cuts the corner"
       },
       "height": {
         "value": 1.1,
@@ -4290,8 +4564,8 @@
       }
     },
     {
-      "id": "fence-east-patio-south",
-      "name": "East fence of the souterrain patio (south of the gate)",
+      "id": "fence-east-patio",
+      "name": "East fence of the souterrain patio",
       "kind": "privacy",
       "path": [
         {
@@ -4310,7 +4584,7 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": -2.2,
+            "value": -6.1,
             "source": "estimated-from-photo"
           }
         }
@@ -4321,7 +4595,7 @@
         "note": "Follows the lane, which is higher than the patio here"
       },
       "endElevation": {
-        "value": -1.05,
+        "value": -1.32,
         "source": "estimated-from-photo"
       },
       "height": {
@@ -4340,7 +4614,7 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": -2.2,
+            "value": -6.1,
             "source": "estimated-from-photo"
           }
         },
@@ -4350,58 +4624,18 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": -3.4,
+            "value": -7.2,
             "source": "estimated-from-photo"
           }
         }
       ],
       "elevation": {
-        "value": -1.05,
+        "value": -1.32,
         "source": "estimated-from-photo",
-        "note": "Follows the lane, which is higher than the patio here"
+        "note": "At the north end of the patio, where the lawn begins; the only gate in the lane fence"
       },
       "endElevation": {
-        "value": -1.14,
-        "source": "estimated-from-photo"
-      },
-      "height": {
-        "value": 1.1,
-        "source": "estimated-from-photo"
-      }
-    },
-    {
-      "id": "fence-east-patio-north",
-      "name": "East fence of the souterrain patio (north of the gate)",
-      "kind": "privacy",
-      "path": [
-        {
-          "x": {
-            "value": 19.3,
-            "source": "estimated-from-photo"
-          },
-          "z": {
-            "value": -3.4,
-            "source": "estimated-from-photo"
-          }
-        },
-        {
-          "x": {
-            "value": 19.3,
-            "source": "estimated-from-photo"
-          },
-          "z": {
-            "value": -10.95,
-            "source": "estimated-from-photo"
-          }
-        }
-      ],
-      "elevation": {
-        "value": -1.14,
-        "source": "estimated-from-photo",
-        "note": "Follows the lane, which is higher than the patio here"
-      },
-      "endElevation": {
-        "value": -1.65,
+        "value": -1.39,
         "source": "estimated-from-photo"
       },
       "height": {
@@ -4420,7 +4654,7 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": -10.95,
+            "value": -7.2,
             "source": "estimated-from-photo"
           }
         },
