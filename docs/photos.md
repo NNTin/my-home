@@ -64,6 +64,11 @@ Uploads are processed by [`apps/api/src/photos/image.ts`](../apps/api/src/photos
   This is a hard rule, see the privacy rule in `AGENTS.md`. The **original file is not kept**, because it carries
   that metadata.
 - `takenAt` is the upload time unless the client sends one.
+- One kind of upload is stored **byte for byte** instead of being re-encoded: a WebP within the size limit that
+  holds nothing but pixels (a well-formed container with only pixel chunks: no EXIF, XMP, colour profile,
+  animation or unknown chunk, nothing after its end). That is what this server writes, so the copy tool moves a
+  photo between environments without a second lossy encoding. Anything else is re-encoded as above.
+- A file that cannot be decoded is a 415; a failure after decoding is a 500.
 
 Photos are processed one at a time; decoding a full-size phone photo needs a few hundred MB for a moment, which
 is why the api's memory limit in the chart is 512Mi.
@@ -115,7 +120,8 @@ $S/photos-copy.sh staging production --dry-run            # what would be copied
 $S/photos-copy.sh staging production --since 2026-11-01T00:00:00Z
 ```
 
-A copied photo keeps its id, pose, time, captured room, note and tags. Photos already on the destination (also in
+A copied photo keeps its id, pose, time, captured room, note and tags, and its image bytes exactly (same
+SHA-256, see [Images and privacy](#images-and-privacy)). Photos already on the destination (also in
 its trash) are skipped, so the copy can be repeated. It only adds photos and never changes the source.
 
 ### Size and backups
@@ -173,8 +179,7 @@ The home does not have to exist in this environment: it is a soft reference like
 ## Photo requests
 
 A request says where to stand (`position` on a level, a `roomId`, or both), which way to look (`yaw`, `pitch`), why
-(`reason`) and who asks (`requester`: `owner` or `agent`). Uploading a photo with the request's id as `requestId`
-fulfils an open request; `fulfil` links a photo that already exists. A request may have several photos; photos
+(`reason`) and who asks (`requester`: `owner` or `agent`). Uploading a photo with the request's id as `requestId`, or setting `requestId` on an existing photo with `PATCH`, fulfils an open request of the same home; `fulfil` does the same and also checks the photo. Only photos of the request's own home count as its answers. Unlinking a photo does not reopen the request. A request may have several photos; photos
 in the trash do not count.
 
 ## Agent workflow

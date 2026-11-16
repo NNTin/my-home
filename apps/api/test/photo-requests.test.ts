@@ -159,6 +159,27 @@ describe('photo requests API', () => {
     expect((await get(request.id)).photoIds).toEqual([]);
   });
 
+  it('is fulfilled by setting the request on an existing photo', async () => {
+    const request = await create();
+    const photo = await upload();
+    const patch = (requestId: string | null) =>
+      ctx.app.inject({ method: 'PATCH', url: `/api/photos/${photo.id}`, payload: { requestId } });
+
+    expect((await patch(request.id)).json().requestId).toBe(request.id);
+    const fulfilled = await get(request.id);
+    expect(fulfilled).toMatchObject({ status: 'fulfilled', photoIds: [photo.id] });
+    expect(fulfilled.closedAt).not.toBeNull();
+
+    // Unlinking leaves the request closed; only the owner reopens it.
+    await patch(null);
+    expect(await get(request.id)).toMatchObject({ status: 'fulfilled', photoIds: [] });
+    // A cancelled request stays cancelled when a photo is linked to it.
+    const cancelled = await create({ reason: 'No longer needed' });
+    await inject('POST', `/api/photo-requests/${cancelled.id}/cancel`);
+    await patch(cancelled.id);
+    expect(await get(cancelled.id)).toMatchObject({ status: 'cancelled', photoIds: [photo.id] });
+  });
+
   it('never counts a photo of another home as an answer', async () => {
     const request = await create();
     // Request ids on photos are soft references: another home's photo may carry this id.

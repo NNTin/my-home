@@ -180,6 +180,19 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
     return row && (await toRequests([row]))[0];
   };
 
+  /** A photo linked to an open request of its own home fulfils it; any other link is just kept. */
+  const fulfilOpenRequest = (tx: Pick<Db, 'update'>, requestId: string, homeId: string) =>
+    tx
+      .update(photoRequests)
+      .set({ status: 'fulfilled', closedAt: new Date(), updatedAt: new Date() })
+      .where(
+        and(
+          eq(photoRequests.id, requestId),
+          eq(photoRequests.homeId, homeId),
+          eq(photoRequests.status, 'open'),
+        ),
+      );
+
   const store = {
     /** Stores a processed upload; undefined when `meta.id` is already taken. */
     async create(
@@ -224,19 +237,7 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
         if (!inserted) return undefined;
         await tx.insert(photoBlobs).values({ photoId: id, data: processed.image.data });
         await tx.insert(photoThumbnails).values({ photoId: id, data: processed.thumbnail.data });
-        // A photo taken for an open request of this home fulfils it.
-        if (inserted.requestId) {
-          await tx
-            .update(photoRequests)
-            .set({ status: 'fulfilled', closedAt: new Date(), updatedAt: new Date() })
-            .where(
-              and(
-                eq(photoRequests.id, inserted.requestId),
-                eq(photoRequests.homeId, homeId),
-                eq(photoRequests.status, 'open'),
-              ),
-            );
-        }
+        if (inserted.requestId) await fulfilOpenRequest(tx, inserted.requestId, homeId);
         return inserted;
       });
       return row && toPhoto(row, model);
@@ -332,6 +333,8 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
         })
         .where(eq(photos.id, id))
         .returning();
+      // Linking a photo to a request answers it, exactly as uploading it for the request does.
+      if (row && body.requestId) await fulfilOpenRequest(db, body.requestId, row.homeId);
       return row && toPhoto(row, model);
     },
 

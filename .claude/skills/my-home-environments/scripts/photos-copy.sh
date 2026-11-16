@@ -4,7 +4,8 @@
 # Copies photos from one environment's photo store to the other's, e.g. photos the owner took on staging to
 # production: photos-copy.sh staging production --dry-run. Never automatic; run it when the owner asks.
 #
-# - A photo keeps its id, pose, time, captured room, note, tags and request id. Photos whose id already exists
+# - A photo keeps its id, pose, time, captured room, note, tags and request id, and its image bytes exactly (the
+#   api stores an already processed photo as it is, without re-encoding it). Photos whose id already exists
 #   on the destination (also in its trash) are skipped, so the copy can be repeated.
 # - Only adds photos: nothing is changed or deleted on either side. Photos in the source's trash are not copied.
 # - --since TIME copies photos taken at or after that time (ISO 8601). --home defaults to the source's first
@@ -15,7 +16,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/photos-lib.sh"
 
 usage() {
-  sed -n '2,12s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,13s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 
