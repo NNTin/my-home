@@ -6,6 +6,8 @@ import {
   formatPath,
   HomeModel,
   homeModelJsonSchema,
+  northBearingOf,
+  roofOf,
   type ValidationIssue,
 } from './home-model';
 import { ListHomesQuery } from './homes';
@@ -29,12 +31,62 @@ describe('HomeModel', () => {
 
   it('contains all apartments, gardens and the driveway in the mock home', () => {
     const home = HomeModel.parse(mockHome());
-    expect(home.apartments).toHaveLength(4);
+    expect(home.levels.map((l) => l.id)).toEqual(['souterrain', 'ground-floor', 'first-floor']);
+    expect(home.apartments).toHaveLength(3);
     expect(home.outdoorAreas.map((a) => a.kind).sort()).toEqual(['driveway', 'garden', 'garden']);
     const souterrain = home.levels.find((l) => l.id === 'souterrain');
     expect(souterrain?.elevation.value).toBeLessThan(home.terrain.groundElevation.value);
     // Partially sunken: the souterrain's walls reach above ground level.
     expect(souterrain!.elevation.value + souterrain!.height.value).toBeGreaterThan(0);
+  });
+
+  it('models the first floor as an attic under a gable roof, with north at -z', () => {
+    const home = HomeModel.parse(mockHome());
+    expect(roofOf(home.building)).toMatchObject({ type: 'gable', ridgeAxis: 'x' });
+    expect(northBearingOf(home.building)).toBe(0);
+    expect(home.walls.some((w) => w.levelId === 'second-floor')).toBe(false);
+  });
+
+  it('still accepts schema-1 documents without a roof or north bearing (4 levels, flat roof)', () => {
+    // The shape stored before the attic change: no roof/northBearing and a second floor.
+    const home = mockHome();
+    delete home.building.roof;
+    delete home.building.northBearing;
+    const first = home.levels.find((l) => l.id === 'first-floor')!;
+    home.levels.push({
+      ...structuredClone(first),
+      id: 'second-floor',
+      name: 'Second floor',
+      elevation: { value: 7.25, source: 'mock' },
+    });
+    home.apartments.push({ id: 'apt-second-floor', name: 'Second', levelIds: ['second-floor'] });
+    for (const w of home.walls.filter((w) => w.levelId === 'first-floor')) {
+      home.walls.push({
+        ...structuredClone(w),
+        id: w.id.replace('first', 'second'),
+        levelId: 'second-floor',
+        apartmentId: 'apt-second-floor',
+        height: { value: 2.9, source: 'mock' },
+      });
+    }
+    const parsed = HomeModel.parse(home);
+    expect(parsed.levels).toHaveLength(4);
+    expect(roofOf(parsed.building)).toEqual({ type: 'flat' });
+    expect(northBearingOf(parsed.building)).toBe(0);
+  });
+
+  it('rejects an invalid roof or bearing', () => {
+    const home = mockHome();
+    const roof = home.building.roof as Extract<HomeModel['building']['roof'], { type: 'gable' }>;
+    roof.pitch.value = 90;
+    home.building.northBearing!.value = 400;
+    const paths = issuesOf(home).map((i) => i.path);
+    expect(paths).toEqual(
+      expect.arrayContaining(['building.roof.pitch.value', 'building.northBearing.value']),
+    );
+    const other = mockHome() as unknown as { building: { roof: unknown } };
+    other.building.roof = { type: 'dome' };
+    expect(issuesOf(other).map((i) => i.path)).toContain('building.roof.type');
   });
 
   it('carries a source on every number in the mock home', () => {

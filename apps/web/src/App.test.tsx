@@ -42,9 +42,10 @@ describe('App', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/homes', expect.anything());
     expect(fetchMock).toHaveBeenCalledWith('/api/homes/mock-home', expect.anything());
     expect(screen.getByText('Mock home')).toBeInTheDocument();
-    expect(levelsOf()).toEqual(
-      new Set(['souterrain', 'ground-floor', 'first-floor', 'second-floor']),
-    );
+    expect(levelsOf()).toEqual(new Set(['souterrain', 'ground-floor', 'first-floor']));
+    expect(lastScene?.scene.roofPlanes).toHaveLength(2);
+    expect(lastScene?.northBearing).toBe(0);
+    expect(lastScene?.markers.map((m) => m.label)).toEqual(['N', 'E', 'S', 'W']);
     expect(lastScene?.scene.outdoorAreas.map((a) => a.name)).toEqual([
       'Souterrain garden',
       'Ground-floor garden',
@@ -64,6 +65,21 @@ describe('App', () => {
     expect(lastScene?.target[1]).toBeCloseTo(0.05);
   });
 
+  it('cuts away the roof to look into the attic', async () => {
+    stubApi();
+    render(<App />);
+    const cutaway = within(await screen.findByRole('group', { name: 'Show up to level' }));
+    expect(cutaway.getByLabelText('Roof')).toBeChecked();
+
+    fireEvent.click(cutaway.getByLabelText('First floor (attic)'));
+    expect(lastScene?.scene.roofPlanes).toEqual([]);
+    expect(levelsOf()).toEqual(new Set(['souterrain', 'ground-floor', 'first-floor']));
+    expect(screen.getByText(/Add to First floor \(attic\)/)).toBeInTheDocument();
+
+    fireEvent.click(cutaway.getByLabelText('Roof'));
+    expect(lastScene?.scene.roofPlanes).toHaveLength(2);
+  });
+
   it('toggles apartments, levels and outdoor areas', async () => {
     stubApi();
     render(<App />);
@@ -72,8 +88,9 @@ describe('App', () => {
     expect(levelsOf().has('ground-floor')).toBe(false);
 
     const levels = within(screen.getByRole('group', { name: 'Levels' }));
-    fireEvent.click(levels.getByLabelText('Second floor'));
-    expect(levelsOf()).toEqual(new Set(['souterrain', 'first-floor']));
+    fireEvent.click(levels.getByLabelText('First floor (attic)'));
+    expect(levelsOf()).toEqual(new Set(['souterrain']));
+    expect(lastScene?.scene.roofPlanes).toEqual([]);
 
     const outdoor = within(screen.getByRole('group', { name: 'Outdoor' }));
     fireEvent.click(outdoor.getByLabelText('Driveway'));

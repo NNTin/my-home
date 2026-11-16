@@ -1,6 +1,13 @@
-import type { HomeModel, HomeSummary, LayoutItem } from '@my-home/shared';
+import { northBearingOf, type HomeModel, type HomeSummary, type LayoutItem } from '@my-home/shared';
 import { useEffect, useMemo, useState } from 'react';
-import { buildHome, type HomeScene, type LevelInfo, type Vec3 } from './builder/buildHome';
+import {
+  buildHome,
+  type HomeScene,
+  type LevelInfo,
+  type Vec2,
+  type Vec3,
+} from './builder/buildHome';
+import { compassMarkers } from './compass/compass';
 import { defaultVisibility, visibleScene, type Visibility } from './builder/visibility';
 import { canRedo, canUndo } from './editor/editorState';
 import {
@@ -56,6 +63,16 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   const scene = useMemo(() => buildHome(model), [model]);
   const [visibility, setVisibility] = useState(() => defaultVisibility(scene));
   const shown = useMemo(() => visibleScene(scene, visibility), [scene, visibility]);
+  const northBearing = northBearingOf(model.building);
+  const markers = useMemo(
+    () =>
+      compassMarkers(
+        model.building.footprint.map((p): Vec2 => [p.x.value, p.z.value]),
+        model.terrain.groundElevation.value,
+        northBearing,
+      ),
+    [model, northBearing],
+  );
 
   const layouts = useLayouts(model.id);
   const { editor, actions } = layouts;
@@ -244,6 +261,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
         target={orbitTarget(scene, visibility)}
         furniture={furniture}
         handlers={handlers}
+        northBearing={northBearing}
+        markers={markers}
       />
       <ControlPanel
         homes={homes}

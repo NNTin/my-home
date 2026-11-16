@@ -1,8 +1,18 @@
 import { HomeModel, type Dimension } from '@my-home/shared';
 import { describe, expect, it } from 'vitest';
 import mockHomeJson from '../../../../data/homes/mock-home.json';
-import { buildHome, openingParts, rotationFor, splitWall, SURFACE_OFFSET } from './buildHome';
-import { defaultVisibility, toggleId, visibleScene } from './visibility';
+import {
+  buildHome,
+  clipSpan,
+  openingParts,
+  rotationFor,
+  solidPoint,
+  splitWall,
+  SURFACE_OFFSET,
+  type Vec2,
+  type WallSegment,
+} from './buildHome';
+import { defaultVisibility, roofIndex, toggleId, visibleScene } from './visibility';
 
 const d = (value: number): Dimension => ({ value, source: 'mock' });
 const p = (x: number, z: number) => ({ x: d(x), z: d(z) });
@@ -87,6 +97,27 @@ function fixture(): HomeModel {
   });
 }
 
+/**
+ * The fixture under a 45° gable roof with an east-west ridge: knee walls 0.5 m, so the roof
+ * underside runs from 3.5 m at z = 0 and z = 4 up to 5.5 m at the ridge (z = 2).
+ */
+function gableFixture(): HomeModel {
+  const model = fixture();
+  model.building.roofThickness = d(0.2);
+  model.building.roof = {
+    type: 'gable',
+    ridgeAxis: 'x',
+    pitch: d(45),
+    kneeWallHeight: d(0.5),
+    overhang: d(0.25),
+  };
+  return HomeModel.parse(model);
+}
+
+/** World corners of a trimmed wall segment's outline, on its centre plane. */
+const worldOutline = (w: WallSegment) =>
+  w.outline!.map((p) => solidPoint({ ...w, depth: w.size[2], outline: w.outline! }, p));
+
 const mockHome = HomeModel.parse(mockHomeJson);
 
 describe('splitWall', () => {
@@ -111,6 +142,46 @@ describe('splitWall', () => {
 
   it('omits empty spans for full-height openings flush with the wall ends', () => {
     expect(splitWall(1, 2, [{ offset: 0, width: 1, sill: 0, height: 2 }])).toEqual([]);
+  });
+});
+
+describe('clipSpan', () => {
+  const span = { from: 0, to: 4, bottom: 0, top: 1 };
+
+  it('keeps spans below the ceiling and drops spans above it', () => {
+    expect(clipSpan(span, () => 2, [])).toBeUndefined();
+    expect(clipSpan(span, () => 1, [])).toBeUndefined();
+    expect(clipSpan(span, () => 0, [])).toBeNull();
+  });
+
+  it('cuts a flat ceiling', () => {
+    expect(clipSpan(span, () => 0.5, [])).toEqual([
+      [0, 0],
+      [4, 0],
+      [4, 0.5],
+      [0, 0.5],
+    ]);
+  });
+
+  it('follows a pitched ceiling and its kinks, clamped to the span', () => {
+    // A tent peaking at t = 2 (height 1.5), down to 0.5 at both ends: capped at the top of 1.
+    const tent = (t: number) => 1.5 - Math.abs(t - 2) * 0.5;
+    expect(clipSpan(span, tent, [2])).toEqual([
+      [0, 0],
+      [4, 0],
+      [4, 0.5],
+      [3, 1],
+      [1, 1],
+      [0, 0.5],
+    ]);
+    // Falling below the bottom drops that part of the span.
+    const slope = (t: number) => 2 - t;
+    expect(clipSpan(span, slope, [])).toEqual([
+      [0, 0],
+      [2, 0],
+      [1, 1],
+      [0, 1],
+    ]);
   });
 });
 
@@ -216,13 +287,8 @@ describe('buildHome', () => {
 
   it('builds the mock home with every apartment, both gardens and the driveway', () => {
     const mock = buildHome(mockHome);
-    expect(mock.levels.map((l) => l.id)).toEqual([
-      'souterrain',
-      'ground-floor',
-      'first-floor',
-      'second-floor',
-    ]);
-    expect(mock.apartments).toHaveLength(4);
+    expect(mock.levels.map((l) => l.id)).toEqual(['souterrain', 'ground-floor', 'first-floor']);
+    expect(mock.apartments).toHaveLength(3);
     expect(new Set(mock.walls.map((w) => w.apartmentId))).toEqual(
       new Set(mock.apartments.map((a) => a.id)),
     );
@@ -234,6 +300,77 @@ describe('buildHome', () => {
     expect(mock.openings).toHaveLength(mockHome.openings.length);
     const souterrainFloor = mock.slabs.find((s) => s.id === 'souterrain:floor')!;
     expect(souterrainFloor.top).toBeLessThan(0);
+  });
+
+  it('puts a gable roof on the mock home, with the first floor as its attic', () => {
+    const mock = buildHome(mockHome);
+    expect(mock.slabs.some((s) => s.kind === 'roof')).toBe(false);
+    expect(mock.roofPlanes.map((r) => r.levelId)).toEqual(['first-floor', 'first-floor']);
+    // Gable ends are trimmed into gables; the knee walls are trimmed flat.
+    const trimmed = (wallId: string) =>
+      mock.walls.filter((w) => w.wallId === wallId && w.outline).map(worldOutline);
+    const ridge = 4.4 + 1 + 4 * Math.tan((40 * Math.PI) / 180);
+    const westTop = Math.max(
+      ...trimmed('first-floor-wall-west')
+        .flat()
+        .map((p) => p[1]),
+    );
+    expect(westTop).toBeCloseTo(ridge);
+    expect(trimmed('first-floor-wall-front')).toHaveLength(1);
+    expect(mock.bounds.max[1]).toBeGreaterThan(ridge);
+    // The attic floor stays where furniture is placed.
+    expect(mock.levels[2]!.elevation).toBe(4.4);
+  });
+});
+
+describe('gable roof', () => {
+  const scene = buildHome(gableFixture());
+  const close = (actual: number[], expected: number[]) =>
+    actual.forEach((v, i) => expect(v).toBeCloseTo(expected[i]!));
+
+  it('replaces the flat roof slab with two sloped planes', () => {
+    expect(scene.slabs.map((s) => s.kind)).toEqual(['floor', 'floor']);
+    expect(scene.roofPlanes.map((r) => [r.id, r.levelId])).toEqual([
+      ['roof:min', 'up'],
+      ['roof:max', 'up'],
+    ]);
+  });
+
+  it('runs the planes from the ridge down past the eaves and gables by the overhang', () => {
+    const plane = scene.roofPlanes[1]!;
+    const [ridge, eave, eaveTop] = plane.outline as [Vec2, Vec2, Vec2, Vec2];
+    // Ridge above the footprint centre line, 2 m above the eaves at 45°.
+    close(solidPoint(plane, ridge), [2, 5.5, 2]);
+    // South eave 0.25 m past the footprint and 0.25 m lower.
+    close(solidPoint(plane, eave), [2, 3.25, 4.25]);
+    // 0.2 m thick at right angles to the slope.
+    expect(eaveTop[1] - eave[1]).toBeCloseTo(0.2 * Math.SQRT2);
+    // Along the ridge from x = -0.25 to 4.25.
+    close(solidPoint(plane, ridge, -plane.depth / 2), [4.25, 5.5, 2]);
+    close(solidPoint(plane, ridge, plane.depth / 2), [-0.25, 5.5, 2]);
+    const north = scene.roofPlanes[0]!;
+    close(solidPoint(north, north.outline[1]!), [2, 3.25, -0.25]);
+  });
+
+  it('trims a gable-end wall on the attic to the roof underside', () => {
+    const [segment] = scene.walls.filter((w) => w.wallId === 'w-up');
+    // The 2.5 m wall runs across the ridge, so it becomes a gable: knee height at both ends.
+    const round = (n: number) => Math.round(n * 1e9) / 1e9 + 0;
+    expect(worldOutline(segment!).map((p) => p.map(round))).toEqual([
+      [0, 3, 0],
+      [0, 3, 4],
+      [0, 3.5, 4],
+      [0, 5.5, 2],
+      [0, 3.5, 0],
+    ]);
+  });
+
+  it('leaves walls on lower levels alone', () => {
+    expect(scene.walls.filter((w) => w.levelId === 'low').every((w) => !w.outline)).toBe(true);
+  });
+
+  it('includes the roof in the bounds', () => {
+    expect(scene.bounds.max[1]).toBeCloseTo(5.5 + 0.2 * Math.SQRT2);
   });
 });
 
@@ -256,6 +393,20 @@ describe('visibleScene', () => {
 
   it('shows everything by default', () => {
     expect(visibleScene(scene, defaultVisibility(scene))).toEqual(scene);
+  });
+
+  it('shows the roof only above the top level, so the top level can be looked into', () => {
+    const flat = visibleScene(scene, { ...defaultVisibility(scene), maxLevelIndex: 1 });
+    expect(roofIndex(scene)).toBe(2);
+    expect(flat.slabs.map((s) => s.id)).toEqual(['up:floor', 'low:floor']);
+
+    const gable = buildHome(gableFixture());
+    expect(visibleScene(gable, defaultVisibility(gable)).roofPlanes).toHaveLength(2);
+    const attic = visibleScene(gable, { ...defaultVisibility(gable), maxLevelIndex: 1 });
+    expect(attic.roofPlanes).toEqual([]);
+    expect(attic.walls.some((w) => w.wallId === 'w-up')).toBe(true);
+    const hidden = visibleScene(gable, { ...defaultVisibility(gable), hiddenLevels: ['up'] });
+    expect(hidden.roofPlanes).toEqual([]);
   });
 
   it('cuts away levels above the selected one, including their slabs and roof', () => {

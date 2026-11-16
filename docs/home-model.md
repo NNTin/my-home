@@ -14,7 +14,8 @@ The api validates every write with it and the web app validates every response w
 | Topic       | Convention                                                                           |
 | ----------- | ------------------------------------------------------------------------------------ |
 | Units       | metres                                                                               |
-| Axes        | Y-up, right-handed: `x` east, `y` up, `z` south (towards the street in the mock)     |
+| Axes        | Y-up, right-handed: `x` plan east, `y` up, `z` plan south (towards the street)       |
+| North       | `building.northBearing`: true north, degrees clockwise from `-z` (default 0)         |
 | Plan points | `{ x, z }`; polygons are lists of at least 3 points, either winding                  |
 | Ground      | `terrain.groundElevation`, normally `y = 0`                                          |
 | Elevation   | a level's `elevation` is the top of its floor slab; below-ground levels are negative |
@@ -27,7 +28,8 @@ re-seeding a home never deletes them; items whose level or room disappears are k
 
 ## Dimensions and provenance
 
-Every length, coordinate and elevation is a `Dimension`:
+Every length, coordinate and elevation is a `Dimension` (angles, such as the roof pitch and the
+north bearing, use the same shape in degrees):
 
 ```json
 { "value": 2.5, "source": "mock", "note": "optional free text" }
@@ -47,7 +49,7 @@ it came from). Nothing else in the model or renderer changes. The only bare numb
 
 | Field          | Content                                                                                                     |
 | -------------- | ----------------------------------------------------------------------------------------------------------- |
-| `building`     | `footprint` (exterior wall centre lines, used for slabs) and `roofThickness`                                |
+| `building`     | `footprint` (exterior wall centre lines, used for slabs), `roofThickness`, `roof?`, `northBearing?`         |
 | `terrain`      | `groundElevation`, `bottomElevation` and `patches`: plan polygons (with optional `holes`) at an elevation   |
 | `levels`       | `elevation`, clear `height` and floor `slabThickness`                                                       |
 | `apartments`   | `levelIds` they occupy                                                                                      |
@@ -60,6 +62,43 @@ Terrain patches are drawn as solid blocks from `bottomElevation` up to their ele
 building footprint out of every patch (a hole, or no patch there) keeps the ground out of
 below-ground rooms; a lower patch next to a higher one forms a retaining wall, which is how the mock
 home's sunken souterrain garden works.
+
+### Roof and attic
+
+`building.roof` covers the highest level. Omitted (as in documents stored before it existed) or
+`{ "type": "flat" }` is a flat slab of `roofThickness` on top of the highest level's walls. A
+gable roof turns the highest level into an attic:
+
+```json
+"roof": {
+  "type": "gable",
+  "ridgeAxis": "x",
+  "pitch": { "value": 40, "source": "mock", "note": "Degrees" },
+  "kneeWallHeight": { "value": 1, "source": "mock" },
+  "overhang": { "value": 0.4, "source": "mock" }
+}
+```
+
+| Field            | Meaning                                                                               |
+| ---------------- | ------------------------------------------------------------------------------------- |
+| `ridgeAxis`      | ridge direction on the plan: `x` (along x, east-west) or `z` (along z, north-south)   |
+| `pitch`          | slope of both roof planes in degrees (0 to 80, exclusive)                             |
+| `kneeWallHeight` | height of the roof underside above the attic floor at the footprint edge (eaves side) |
+| `overhang`       | how far the roof reaches past the footprint on all four sides                         |
+
+The roof spans the bounding rectangle of the footprint, with the ridge over its centre line;
+`roofThickness` is the thickness of the roof planes at right angles to the slope. The builder
+trims every wall of the attic level to the roof underside, so model the attic walls **at least as
+high as the roof**: a gable-end wall (across the ridge) as tall as the ridge becomes the gable, and
+an eave wall a little higher than the knee wall closes flush against the roof. Openings must still
+fit under the roof slope (this is not validated). The attic floor is an ordinary level, so rooms,
+the cutaway and furniture placement work unchanged.
+
+### Orientation
+
+`building.northBearing` says where true north is: degrees clockwise, seen from above, from the
+plan's `-z` axis. 0 (the default) means `-z` is north and `+x` east; 90 means true north is `+x`.
+The viewer's compass and the N/E/S/W ground markers follow it; geometry does not change.
 
 ### Validation beyond the shape
 
@@ -83,16 +122,20 @@ Errors carry a path into the document, for example
 - **Souterrain** (floor at -1.2 m, 2.5 m clear): the user's apartment with hallway, living room,
   kitchen, bedroom and bathroom, interior walls with doors, an entrance door and a patio door to its
   sunken garden (-1.1 m), and high windows on the street side above ground level
-- **Ground floor**, **first floor**, **second floor**: one empty apartment each (exterior walls,
-  slabs, a few windows; the ground floor has a front door)
+- **Ground floor**: an empty apartment (exterior walls, slab, windows and the front door)
+- **First floor (attic)**: an empty attic apartment under a 40° gable roof with an east-west ridge,
+  1 m knee walls on the street and garden sides and two windows in each gable end. There is no
+  second floor.
+- `northBearing` is 0 for now; the real value will be set once known
 - **Gardens**: the souterrain garden behind the building and the ground-floor garden wrapping the
   west and back of the plot; a shared **driveway** on the east side
 
 ## Rendering
 
 `apps/web/src/builder/buildHome.ts` turns a model into render descriptors (wall segments, openings,
-slabs, room floors, terrain blocks, outdoor surfaces) without three.js, and `visibility.ts` filters
-them for the cutaway and the visibility toggles. Walls are split around openings (no CSG). The R3F
+slabs, room floors, terrain blocks, outdoor surfaces, roof planes) without three.js, and
+`visibility.ts` filters them for the cutaway and the visibility toggles. The cutaway's top entry,
+**Roof**, shows the whole building; choosing the highest level hides the roof to look into it. Walls are split around openings (no CSG). The R3F
 components in `apps/web/src/scene/` only draw descriptors, so any file that follows the schema
 renders without renderer changes.
 
@@ -143,4 +186,5 @@ The viewer shows the first home the api lists; pick another with the home select
 1. Edit `packages/shared/src/home-model.ts` (keep every length a `Dimension`).
 2. `pnpm schema:generate` and commit the JSON Schema.
 3. Update `data/homes/*.json`. A breaking change bumps `HOME_SCHEMA_VERSION`; stored documents are
-   re-validated on read, so old rows need a migration or a re-import.
+   re-validated on read, so old rows need a migration or a re-import. Prefer optional fields with
+   defaults (like `roof` and `northBearing`), which keep stored documents valid at version 1.

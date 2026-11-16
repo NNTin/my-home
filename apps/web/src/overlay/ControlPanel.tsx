@@ -1,6 +1,6 @@
 import type { HomeSummary } from '@my-home/shared';
 import type { HomeScene } from '../builder/buildHome';
-import { toggleId, type Visibility } from '../builder/visibility';
+import { roofIndex, toggleId, type Visibility } from '../builder/visibility';
 
 interface Props {
   homes: HomeSummary[];
@@ -52,6 +52,15 @@ export function ControlPanel({ homes, homeId, onSelectHome, scene, visibility, o
 
       <fieldset>
         <legend>Show up to level</legend>
+        <label className="toggle">
+          <input
+            type="radio"
+            name="cutaway"
+            checked={visibility.maxLevelIndex >= roofIndex(scene)}
+            onChange={() => set({ maxLevelIndex: roofIndex(scene) })}
+          />{' '}
+          Roof
+        </label>
         {levelsTopDown.map((l) => (
           <label key={l.id} className="toggle">
             <input

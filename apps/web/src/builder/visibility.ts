@@ -2,7 +2,10 @@ import type { HomeScene } from './buildHome';
 
 /** What the viewer shows. Pure data, so the filtering rules are unit-tested without a canvas. */
 export interface Visibility {
-  /** Cutaway: levels above this index (0 = lowest) are hidden. */
+  /**
+   * Cutaway: levels above this index (0 = lowest) are hidden. The roof shows only at
+   * `roofIndex(scene)`, one above the top level, so the top level can be looked into.
+   */
   maxLevelIndex: number;
   hiddenLevels: string[];
   hiddenApartments: string[];
@@ -10,8 +13,11 @@ export interface Visibility {
   showTerrain: boolean;
 }
 
+/** The cutaway index that shows the whole building including its roof. */
+export const roofIndex = (scene: Pick<HomeScene, 'levels'>) => scene.levels.length;
+
 export const defaultVisibility = (scene: Pick<HomeScene, 'levels'>): Visibility => ({
-  maxLevelIndex: scene.levels.length - 1,
+  maxLevelIndex: roofIndex(scene),
   hiddenLevels: [],
   hiddenApartments: [],
   hiddenOutdoorAreas: [],
@@ -30,13 +36,16 @@ export function visibleScene(scene: HomeScene, v: Visibility): HomeScene {
     shownLevels.has(item.levelId) &&
     (item.apartmentId === undefined || !hiddenApartments.has(item.apartmentId));
 
+  const showRoof = v.maxLevelIndex >= roofIndex(scene);
+
   return {
     ...scene,
     walls: scene.walls.filter(shown),
     openings: scene.openings.filter(shown),
     roomFloors: scene.roomFloors.filter(shown),
     // Slabs belong to a level, so the floor of a hidden level is cut away with it.
-    slabs: scene.slabs.filter((s) => shownLevels.has(s.levelId)),
+    slabs: scene.slabs.filter((s) => shownLevels.has(s.levelId) && (s.kind !== 'roof' || showRoof)),
+    roofPlanes: showRoof ? scene.roofPlanes.filter((r) => shownLevels.has(r.levelId)) : [],
     terrain: v.showTerrain ? scene.terrain : [],
     outdoorAreas: scene.outdoorAreas.filter((a) => !v.hiddenOutdoorAreas.includes(a.id)),
   };

@@ -40,6 +40,12 @@
             },
             "roofThickness": {
               "$ref": "#/$defs/PositiveDimension"
+            },
+            "roof": {
+              "$ref": "#/$defs/Roof"
+            },
+            "northBearing": {
+              "$ref": "#/$defs/Bearing"
             }
           },
           "required": ["id", "name", "footprint", "roofThickness"],
@@ -358,6 +364,71 @@
       "additionalProperties": false,
       "description": "A strictly positive value in metres with provenance."
     },
+    "Roof": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/FlatRoof"
+        },
+        {
+          "$ref": "#/$defs/GableRoof"
+        }
+      ]
+    },
+    "FlatRoof": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "flat"
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+    "GableRoof": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "gable"
+        },
+        "ridgeAxis": {
+          "type": "string",
+          "enum": ["x", "z"]
+        },
+        "pitch": {
+          "$ref": "#/$defs/Pitch"
+        },
+        "kneeWallHeight": {
+          "$ref": "#/$defs/NonNegativeDimension"
+        },
+        "overhang": {
+          "$ref": "#/$defs/NonNegativeDimension"
+        }
+      },
+      "required": ["type", "ridgeAxis", "pitch", "kneeWallHeight", "overhang"],
+      "additionalProperties": false
+    },
+    "Pitch": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 80
+        },
+        "source": {
+          "$ref": "#/$defs/DimensionSource"
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 500
+        }
+      },
+      "required": ["value", "source"],
+      "additionalProperties": false,
+      "description": "A roof pitch in degrees (0 to 80) with provenance."
+    },
     "NonNegativeDimension": {
       "type": "object",
       "properties": {
@@ -376,6 +447,26 @@
       "required": ["value", "source"],
       "additionalProperties": false,
       "description": "A non-negative value in metres with provenance."
+    },
+    "Bearing": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number",
+          "minimum": -360,
+          "maximum": 360
+        },
+        "source": {
+          "$ref": "#/$defs/DimensionSource"
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 500
+        }
+      },
+      "required": ["value", "source"],
+      "additionalProperties": false,
+      "description": "An angle in degrees with provenance."
     }
   }
 }

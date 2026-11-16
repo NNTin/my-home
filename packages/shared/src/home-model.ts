@@ -58,7 +58,51 @@ export const Polygon = z
   .meta({ id: 'Polygon', description: 'A simple polygon on the plan, at least 3 points.' });
 export type Polygon = z.infer<typeof Polygon>;
 
+/** A compass bearing in degrees with provenance. */
+export const Bearing = z
+  .strictObject({
+    value: z.number().min(-360).max(360),
+    source: DimensionSource,
+    note: z.string().max(500).optional(),
+  })
+  .meta({ id: 'Bearing', description: 'An angle in degrees with provenance.' });
+export type Bearing = z.infer<typeof Bearing>;
+
+/** A roof pitch in degrees with provenance. */
+export const Pitch = z
+  .strictObject({
+    value: z.number().gt(0).lt(80),
+    source: DimensionSource,
+    note: z.string().max(500).optional(),
+  })
+  .meta({ id: 'Pitch', description: 'A roof pitch in degrees (0 to 80) with provenance.' });
+export type Pitch = z.infer<typeof Pitch>;
+
 const Name = z.string().min(1).max(200);
+
+/** The default: a flat slab of `building.roofThickness` on top of the highest level. */
+export const FlatRoof = z.strictObject({ type: z.literal('flat') }).meta({ id: 'FlatRoof' });
+
+/**
+ * A gable (saddle) roof over the highest level, which becomes an attic. It spans the bounding
+ * rectangle of the footprint; `building.roofThickness` is the thickness of the roof planes.
+ */
+export const GableRoof = z
+  .strictObject({
+    type: z.literal('gable'),
+    /** Direction of the ridge on the plan: `x` (east-west) or `z` (north-south). */
+    ridgeAxis: z.enum(['x', 'z']),
+    pitch: Pitch,
+    /** Height of the roof's underside above the attic floor, at the footprint edge (eaves side). */
+    kneeWallHeight: NonNegativeDimension,
+    /** How far the roof reaches past the footprint, on all four sides. */
+    overhang: NonNegativeDimension,
+  })
+  .meta({ id: 'GableRoof' });
+export type GableRoof = z.infer<typeof GableRoof>;
+
+export const Roof = z.discriminatedUnion('type', [FlatRoof, GableRoof]).meta({ id: 'Roof' });
+export type Roof = z.infer<typeof Roof>;
 
 export const Building = z.strictObject({
   id: Id,
@@ -66,8 +110,22 @@ export const Building = z.strictObject({
   /** Outline of the exterior walls (centre lines), used for slabs and the terrain cut. */
   footprint: Polygon,
   roofThickness: PositiveDimension,
+  /** Roof over the highest level; a flat roof when omitted. */
+  roof: Roof.optional(),
+  /**
+   * Where true north is: degrees clockwise (seen from above) from the plan's -z axis.
+   * Omitted means 0, i.e. true north is -z.
+   */
+  northBearing: Bearing.optional(),
 });
 export type Building = z.infer<typeof Building>;
+
+/** The building's roof, defaulting to a flat one for documents without `roof`. */
+export const roofOf = (building: Pick<Building, 'roof'>): Roof => building.roof ?? { type: 'flat' };
+
+/** True north in degrees clockwise from the plan's -z axis (0 when not set). */
+export const northBearingOf = (building: Pick<Building, 'northBearing'>): number =>
+  building.northBearing?.value ?? 0;
 
 export const TerrainPatch = z.strictObject({
   id: Id,

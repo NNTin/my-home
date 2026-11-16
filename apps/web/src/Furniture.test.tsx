@@ -296,12 +296,17 @@ describe('furniture editor', () => {
   });
 
   it('keeps and flags items whose level or room no longer exists', async () => {
+    // E.g. a layout from before the second floor was removed from the mock home.
     const api = fakeApi({
       layouts: [
         {
           name: 'Old building',
           items: [
-            layoutItem({ id: 'gone-level', levelId: 'attic', roomId: 'attic-room' }),
+            layoutItem({
+              id: 'gone-level',
+              levelId: 'second-floor',
+              position: { x: 0, z: 0 },
+            }),
             layoutItem({ id: 'gone-room', roomId: 'old-bedroom' }),
             layoutItem({ id: 'gone-type', typeId: 'piano', position: { x: 3, z: -2 } }),
           ],
@@ -311,7 +316,7 @@ describe('furniture editor', () => {
     await renderApp();
     const flagged = within(panel().getByRole('group', { name: 'Needs attention' }));
     expect(flagged.getAllByRole('listitem').map((li) => li.textContent)).toEqual([
-      expect.stringContaining('level "attic" no longer exists'),
+      expect.stringContaining('level "second-floor" no longer exists'),
       expect.stringContaining('room "old-bedroom" no longer exists'),
       expect.stringContaining('unknown furniture type'),
     ]);
