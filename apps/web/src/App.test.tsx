@@ -1,41 +1,130 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import mockHome from '../../../data/homes/mock-home.json';
 import { App } from './App';
+import type { SceneProps } from './scene/Scene';
 
-// jsdom has no WebGL, so the R3F canvas is replaced with a stub.
-vi.mock('./scene/Scene', () => ({ Scene: () => <div data-testid="scene" /> }));
+// jsdom has no WebGL, so the R3F canvas is replaced with a stub that exposes what it would draw.
+let lastScene: SceneProps | undefined;
+vi.mock('./scene/Scene', () => ({
+  Scene: (props: SceneProps) => {
+    lastScene = props;
+    return <div data-testid="scene" />;
+  },
+}));
 
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
+const summary = (id: string, name: string) => ({
+  id,
+  name,
+  schemaVersion: 1,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+});
+
+function stubApi(
+  homes = [summary('mock-home', 'Mock home')],
+  models: Record<string, unknown> = {},
+) {
+  const fetchMock = vi.fn(async (url: string) => {
+    if (url === '/api/homes') return jsonResponse({ items: homes });
+    const id = decodeURIComponent(url.replace('/api/homes/', ''));
+    const model = id === 'mock-home' ? mockHome : models[id];
+    return model
+      ? jsonResponse(model)
+      : jsonResponse(
+          { statusCode: 404, error: 'Not Found', message: `Home "${id}" not found` },
+          404,
+        );
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+}
+
+const levelsOf = () => new Set(lastScene?.scene.walls.map((w) => w.levelId));
+
 describe('App', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    lastScene = undefined;
+    window.history.replaceState(null, '', '/');
+  });
 
-  it('renders the scene and the homes fetched from the API', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      jsonResponse({
-        items: [
-          {
-            id: '0b5c7a44-0a43-4c35-8a4c-1f1a2f0f4f11',
-            name: 'Mock home',
-            createdAt: '2026-01-01T00:00:00.000Z',
-            updatedAt: '2026-01-01T00:00:00.000Z',
-          },
-        ],
-      }),
-    );
-    vi.stubGlobal('fetch', fetchMock);
-
+  it('loads the first home from the API and renders all of it', async () => {
+    const fetchMock = stubApi();
     render(<App />);
 
-    expect(screen.getByTestId('scene')).toBeInTheDocument();
-    expect(await screen.findByText('Mock home')).toBeInTheDocument();
+    expect(await screen.findByTestId('scene')).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith('/api/homes', expect.anything());
+    expect(fetchMock).toHaveBeenCalledWith('/api/homes/mock-home', expect.anything());
+    expect(screen.getByText('Mock home')).toBeInTheDocument();
+    expect(levelsOf()).toEqual(
+      new Set(['souterrain', 'ground-floor', 'first-floor', 'second-floor']),
+    );
+    expect(lastScene?.scene.outdoorAreas.map((a) => a.name)).toEqual([
+      'Souterrain garden',
+      'Ground-floor garden',
+      'Driveway',
+    ]);
+  });
+
+  it('cuts away the upper levels to look into the souterrain', async () => {
+    stubApi();
+    render(<App />);
+    const cutaway = within(await screen.findByRole('group', { name: 'Show up to level' }));
+
+    fireEvent.click(cutaway.getByLabelText('Souterrain'));
+    expect(levelsOf()).toEqual(new Set(['souterrain']));
+    expect(lastScene?.scene.slabs.map((s) => s.id)).toEqual(['souterrain:floor']);
+    // The orbit target moves down into the souterrain (floor at -1.2 m, 2.5 m high).
+    expect(lastScene?.target[1]).toBeCloseTo(0.05);
+  });
+
+  it('toggles apartments, levels and outdoor areas', async () => {
+    stubApi();
+    render(<App />);
+    const apartments = within(await screen.findByRole('group', { name: 'Apartments' }));
+    fireEvent.click(apartments.getByLabelText('Ground-floor apartment'));
+    expect(levelsOf().has('ground-floor')).toBe(false);
+
+    const levels = within(screen.getByRole('group', { name: 'Levels' }));
+    fireEvent.click(levels.getByLabelText('Second floor'));
+    expect(levelsOf()).toEqual(new Set(['souterrain', 'first-floor']));
+
+    const outdoor = within(screen.getByRole('group', { name: 'Outdoor' }));
+    fireEvent.click(outdoor.getByLabelText('Driveway'));
+    expect(lastScene?.scene.outdoorAreas.map((a) => a.id)).not.toContain('driveway');
+    fireEvent.click(outdoor.getByLabelText('Terrain'));
+    expect(lastScene?.scene.terrain).toEqual([]);
+  });
+
+  it('renders whichever home is selected, with no renderer changes', async () => {
+    const tiny = { ...mockHome, id: 'tiny', name: 'Tiny home', outdoorAreas: [] };
+    stubApi([summary('mock-home', 'Mock home'), summary('tiny', 'Tiny home')], { tiny });
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText('Home'), { target: { value: 'tiny' } });
+    await vi.waitFor(() => expect(lastScene?.scene.outdoorAreas).toEqual([]));
+    expect(window.location.search).toBe('?home=tiny');
+  });
+
+  it('shows a hint when there are no homes', async () => {
+    stubApi([]);
+    render(<App />);
+    expect(await screen.findByText(/No homes yet/)).toBeInTheDocument();
+  });
+
+  it('shows the API error message', async () => {
+    stubApi();
+    window.history.replaceState(null, '', '/?home=missing');
+    render(<App />);
+    expect(await screen.findByText(/API error: .*Home "missing" not found/)).toBeInTheDocument();
   });
 
   it('shows an error when the API fails', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({}, 500)));
     render(<App />);
-    expect(await screen.findByText(/API error/)).toBeInTheDocument();
+    expect(await screen.findByText(/API error: GET \/api\/homes failed: 500/)).toBeInTheDocument();
   });
 });

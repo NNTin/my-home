@@ -1,0 +1,284 @@
+import { HomeModel, type Dimension } from '@my-home/shared';
+import { describe, expect, it } from 'vitest';
+import mockHomeJson from '../../../../data/homes/mock-home.json';
+import { buildHome, openingParts, rotationFor, splitWall, SURFACE_OFFSET } from './buildHome';
+import { defaultVisibility, toggleId, visibleScene } from './visibility';
+
+const d = (value: number): Dimension => ({ value, source: 'mock' });
+const p = (x: number, z: number) => ({ x: d(x), z: d(z) });
+const square = (size: number) => [p(0, 0), p(size, 0), p(size, size), p(0, size)];
+
+/** A 4 m x 4 m single-room building with one wall carrying a door and a window. */
+function fixture(): HomeModel {
+  return HomeModel.parse({
+    schemaVersion: 1,
+    id: 'fixture',
+    name: 'Fixture',
+    building: { id: 'b', name: 'B', footprint: square(4), roofThickness: d(0.2) },
+    terrain: {
+      groundElevation: d(0),
+      bottomElevation: d(-2),
+      patches: [
+        { id: 't', name: 'Ground', outline: square(10), holes: [square(4)], elevation: d(0) },
+      ],
+    },
+    levels: [
+      { id: 'up', name: 'Upper', elevation: d(3), height: d(2.5), slabThickness: d(0.3) },
+      { id: 'low', name: 'Lower', elevation: d(-1), height: d(2.5), slabThickness: d(0.2) },
+    ],
+    apartments: [
+      { id: 'a1', name: 'Lower flat', levelIds: ['low'] },
+      { id: 'a2', name: 'Upper flat', levelIds: ['up'] },
+    ],
+    rooms: [{ id: 'r', name: 'Room', levelId: 'low', apartmentId: 'a1', outline: square(4) }],
+    walls: [
+      {
+        id: 'w',
+        levelId: 'low',
+        apartmentId: 'a1',
+        kind: 'exterior',
+        start: p(0, 0),
+        end: p(4, 0),
+        thickness: d(0.3),
+        height: d(2.5),
+      },
+      {
+        id: 'w-up',
+        levelId: 'up',
+        apartmentId: 'a2',
+        kind: 'exterior',
+        start: p(0, 0),
+        end: p(0, 4),
+        thickness: d(0.3),
+        height: d(2.5),
+      },
+    ],
+    openings: [
+      // Listed out of order on purpose: the builder sorts by offset.
+      {
+        id: 'win',
+        wallId: 'w',
+        type: 'window',
+        offset: d(2.5),
+        width: d(1),
+        height: d(1),
+        sill: d(1),
+      },
+      {
+        id: 'door',
+        wallId: 'w',
+        type: 'door',
+        offset: d(0.5),
+        width: d(1),
+        height: d(2),
+        sill: d(0),
+      },
+    ],
+    outdoorAreas: [
+      {
+        id: 'g',
+        name: 'Garden',
+        kind: 'garden',
+        ownerApartmentId: 'a1',
+        outline: square(2),
+        elevation: d(0),
+      },
+    ],
+  });
+}
+
+const mockHome = HomeModel.parse(mockHomeJson);
+
+describe('splitWall', () => {
+  it('returns one full span for a wall without openings', () => {
+    expect(splitWall(4, 2.5, [])).toEqual([{ part: 'full', from: 0, to: 4, bottom: 0, top: 2.5 }]);
+  });
+
+  it('cuts a door and a window out of a wall', () => {
+    const spans = splitWall(4, 2.5, [
+      { offset: 2.5, width: 1, sill: 1, height: 1 },
+      { offset: 0.5, width: 1, sill: 0, height: 2 },
+    ]);
+    expect(spans).toEqual([
+      { part: 'full', from: 0, to: 0.5, bottom: 0, top: 2.5 },
+      { part: 'above', from: 0.5, to: 1.5, bottom: 2, top: 2.5 },
+      { part: 'full', from: 1.5, to: 2.5, bottom: 0, top: 2.5 },
+      { part: 'below', from: 2.5, to: 3.5, bottom: 0, top: 1 },
+      { part: 'above', from: 2.5, to: 3.5, bottom: 2, top: 2.5 },
+      { part: 'full', from: 3.5, to: 4, bottom: 0, top: 2.5 },
+    ]);
+  });
+
+  it('omits empty spans for full-height openings flush with the wall ends', () => {
+    expect(splitWall(1, 2, [{ offset: 0, width: 1, sill: 0, height: 2 }])).toEqual([]);
+  });
+});
+
+describe('rotationFor', () => {
+  it('maps local +x onto the wall direction', () => {
+    for (const [dx, dz] of [
+      [1, 0],
+      [0, 1],
+      [-1, 0],
+      [0, -1],
+    ] as const) {
+      const a = rotationFor(dx, dz);
+      // three.js: rotating (1, 0, 0) about +y by a gives (cos a, 0, -sin a).
+      expect(Math.cos(a)).toBeCloseTo(dx);
+      expect(-Math.sin(a)).toBeCloseTo(dz);
+    }
+  });
+});
+
+describe('buildHome', () => {
+  const scene = buildHome(fixture());
+
+  it('orders levels by elevation', () => {
+    expect(scene.levels.map((l) => [l.id, l.index])).toEqual([
+      ['low', 0],
+      ['up', 1],
+    ]);
+  });
+
+  it('places wall segments in world space on the level floor', () => {
+    const segments = scene.walls.filter((w) => w.wallId === 'w');
+    expect(segments.map((s) => s.id)).toEqual([
+      'w:0:full',
+      'w:1:above',
+      'w:2:full',
+      'w:3:below',
+      'w:4:above',
+      'w:5:full',
+    ]);
+    const [first, lintel] = segments;
+    expect(first).toMatchObject({
+      levelId: 'low',
+      apartmentId: 'a1',
+      kind: 'exterior',
+      rotationY: -0,
+    });
+    expect(first!.center).toEqual([0.25, 0.25, 0]); // floor at -1, 2.5 m high
+    expect(first!.size).toEqual([0.5, 2.5, 0.3]);
+    expect(lintel!.center).toEqual([1, 1.25, 0]);
+    expect(lintel!.size).toEqual([1, 0.5, 0.3]);
+  });
+
+  it('rotates segments of walls that run along z', () => {
+    const [segment] = scene.walls.filter((w) => w.wallId === 'w-up');
+    expect(segment!.rotationY).toBeCloseTo(-Math.PI / 2);
+    expect(segment!.center).toEqual([0, 4.25, 2]);
+    expect(segment!.size).toEqual([4, 2.5, 0.3]);
+  });
+
+  it('describes openings for frames and glass', () => {
+    expect(scene.openings).toEqual([
+      expect.objectContaining({
+        id: 'win',
+        type: 'window',
+        center: [3, 0.5, 0],
+        size: [1, 1, 0.3],
+      }),
+      expect.objectContaining({ id: 'door', type: 'door', center: [1, 0, 0], size: [1, 2, 0.3] }),
+    ]);
+  });
+
+  it('adds a floor slab per level and a roof on the top level', () => {
+    expect(scene.slabs.map((s) => [s.id, s.levelId, s.bottom, s.top])).toEqual([
+      ['up:floor', 'up', 2.7, 3],
+      ['low:floor', 'low', -1.2, -1],
+      ['roof', 'up', 5.5, 5.7 + SURFACE_OFFSET],
+    ]);
+    expect(scene.slabs[0]!.outline).toEqual([
+      [0, 0],
+      [4, 0],
+      [4, 4],
+      [0, 4],
+    ]);
+  });
+
+  it('builds room floors, terrain and outdoor areas', () => {
+    expect(scene.roomFloors).toEqual([
+      expect.objectContaining({ roomId: 'r', levelId: 'low', y: -1 + SURFACE_OFFSET }),
+    ]);
+    expect(scene.terrain).toEqual([
+      expect.objectContaining({ id: 't', bottom: -2, top: 0, holes: [expect.any(Array)] }),
+    ]);
+    expect(scene.outdoorAreas).toEqual([
+      expect.objectContaining({
+        id: 'g',
+        kind: 'garden',
+        ownerApartmentId: 'a1',
+        y: SURFACE_OFFSET,
+      }),
+    ]);
+    expect(scene.bounds).toEqual({ min: [0, -1.2, 0], max: [10, 5.7 + SURFACE_OFFSET, 10] });
+  });
+
+  it('builds the mock home with every apartment, both gardens and the driveway', () => {
+    const mock = buildHome(mockHome);
+    expect(mock.levels.map((l) => l.id)).toEqual([
+      'souterrain',
+      'ground-floor',
+      'first-floor',
+      'second-floor',
+    ]);
+    expect(mock.apartments).toHaveLength(4);
+    expect(new Set(mock.walls.map((w) => w.apartmentId))).toEqual(
+      new Set(mock.apartments.map((a) => a.id)),
+    );
+    expect(mock.outdoorAreas.map((a) => a.id)).toEqual([
+      'garden-souterrain',
+      'garden-ground-floor',
+      'driveway',
+    ]);
+    expect(mock.openings).toHaveLength(mockHome.openings.length);
+    const souterrainFloor = mock.slabs.find((s) => s.id === 'souterrain:floor')!;
+    expect(souterrainFloor.top).toBeLessThan(0);
+  });
+});
+
+describe('openingParts', () => {
+  it('frames a window on four sides and adds glass', () => {
+    const { frame, glass } = openingParts({ type: 'window', size: [1, 1, 0.3] });
+    expect(frame).toHaveLength(4);
+    expect(glass?.size).toEqual([0.88, 0.88, 0.02]);
+  });
+
+  it('leaves a door open at the bottom', () => {
+    const { frame, glass } = openingParts({ type: 'door', size: [1, 2, 0.3] });
+    expect(frame).toHaveLength(3);
+    expect(glass).toBeUndefined();
+  });
+});
+
+describe('visibleScene', () => {
+  const scene = buildHome(fixture());
+
+  it('shows everything by default', () => {
+    expect(visibleScene(scene, defaultVisibility(scene))).toEqual(scene);
+  });
+
+  it('cuts away levels above the selected one, including their slabs and roof', () => {
+    const v = { ...defaultVisibility(scene), maxLevelIndex: 0 };
+    const shown = visibleScene(scene, v);
+    expect(new Set(shown.walls.map((w) => w.levelId))).toEqual(new Set(['low']));
+    expect(shown.slabs.map((s) => s.id)).toEqual(['low:floor']);
+    expect(shown.roomFloors).toHaveLength(1);
+  });
+
+  it('hides individual levels, apartments, outdoor areas and the terrain', () => {
+    const base = defaultVisibility(scene);
+    expect(visibleScene(scene, { ...base, hiddenLevels: ['low'] }).roomFloors).toEqual([]);
+    const noFlat = visibleScene(scene, { ...base, hiddenApartments: ['a1'] });
+    expect(noFlat.walls.every((w) => w.apartmentId === 'a2')).toBe(true);
+    expect(noFlat.openings).toEqual([]);
+    expect(noFlat.slabs).toHaveLength(3); // slabs belong to levels, not apartments
+    expect(visibleScene(scene, { ...base, hiddenOutdoorAreas: ['g'] }).outdoorAreas).toEqual([]);
+    expect(visibleScene(scene, { ...base, showTerrain: false }).terrain).toEqual([]);
+  });
+
+  it('toggles ids', () => {
+    expect(toggleId(['a'], 'b')).toEqual(['a', 'b']);
+    expect(toggleId(['a', 'b'], 'a')).toEqual(['b']);
+  });
+});
