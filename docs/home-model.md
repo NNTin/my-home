@@ -21,8 +21,9 @@ The api validates every write with it and the web app validates every response w
 | Wall height | measured from the level's floor; exterior walls usually include the slab above       |
 | Ids         | letters, digits, `-` and `_`; unique across the whole document                       |
 
-Ids are unique across all collections so other documents (furniture layouts, Epic 3) can reference
-any home, level or room by id alone.
+Ids are unique across all collections so other documents ([furniture layouts](layouts.md)) can
+reference any home, level or room by id alone. Layouts are stored separately, so changing or
+re-seeding a home never deletes them; items whose level or room disappears are kept and flagged.
 
 ## Dimensions and provenance
 
