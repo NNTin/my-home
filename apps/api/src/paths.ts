@@ -3,6 +3,9 @@ import { fileURLToPath } from 'node:url';
 // Resolved relative to this module: `src/` in dev and tests, `dist/` once bundled.
 export const migrationsFolder = fileURLToPath(new URL('../drizzle', import.meta.url));
 
+/** Hand-written migrations of the `media` schema (photos), applied by `migrateMedia`. */
+export const mediaMigrationsFolder = fileURLToPath(new URL('../media-migrations', import.meta.url));
+
 const homeFile = (name: string) =>
   fileURLToPath(new URL(`../../../data/homes/${name}`, import.meta.url));
 

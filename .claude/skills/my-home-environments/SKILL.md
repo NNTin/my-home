@@ -8,10 +8,10 @@ description: >-
 
 # my-home environments
 
-| Environment | Base URL                         | Deployed from                                         | Data                                     |
-| ----------- | -------------------------------- | ----------------------------------------------------- | ---------------------------------------- |
-| staging     | `https://home-staging.nntin.xyz` | same-repo PR pushes, `v*` tags, dispatch; latest wins | throwaway, reset to the real + mock home |
-| production  | `https://home.nntin.xyz`         | every push to `main`                                  | real data; change only when asked to     |
+| Environment | Base URL                         | Deployed from                                         | Data                                       |
+| ----------- | -------------------------------- | ----------------------------------------------------- | ------------------------------------------ |
+| staging     | `https://home-staging.nntin.xyz` | same-repo PR pushes, `v*` tags, dispatch; latest wins | reset to the real + mock home; photos stay |
+| production  | `https://home.nntin.xyz`         | every push to `main`                                  | real data; change only when asked to       |
 
 Both are behind authentik SSO. Agents exchange the **nntin-bot** GitHub token (`GH_TOKEN`, `GITHUB_TOKEN` or
 `gh auth token`) at `POST <base>/agent-auth/token` for a per-host site token valid for 1 hour, sent as
@@ -33,6 +33,8 @@ $S/screenshot.sh staging --out /tmp/staging.png          # render the 3D viewer 
 $S/screenshot.sh staging --click 'label:has-text("Souterrain")' --drag -300,0   # interact first
 $S/with-site-token.sh staging -- node e2e.mjs            # SITE_TOKEN and SITE_BASE for the child only
 $S/raise-env-issue.sh --dry-run staging "health fails"   # what it would post; drop --dry-run to post
+$S/photos.sh staging list --room souterrain-kitchen      # the owner's photos with their poses
+$S/photo-requests.sh staging create --room souterrain-kitchen --reason "Which wall has the window?"
 ```
 
 - `site-curl.sh <env> <path> [curl args...]`: checks once that the GitHub token is nntin-bot's, caches the site
@@ -55,6 +57,31 @@ $S/raise-env-issue.sh --dry-run staging "health fails"   # what it would post; d
 - `raise-env-issue.sh [--dry-run] [--force] <env> <summary> [details-file]`: refuses (exit 3) unless
   `env-status.sh` reports BROKEN; then comments on the open `environment`-labelled issue titled
   `[env] <env>: ...`, or creates one (and the label). `--force` is for a human override only.
+
+## Photos and photo requests
+
+The owner photographs the real home from a known pose in the model (`docs/photos.md`). Use the photos when
+refining the model, and **ask for a photo instead of guessing** when unsure about a wall, room, opening or
+furniture. `--home` defaults to the first home.
+
+- `photos.sh <env> list [filters]`: metadata as JSON, newest first. Filters: `--room ID`, `--level ID`,
+  `--near X,Z,RADIUS` (metres on the plan), `--tag TAG`, `--request ID`, `--since TIME`, `--until TIME`.
+- `photos.sh <env> get <photo-id>`: one photo's metadata (pose, captured room, note, tags).
+- `photos.sh <env> download [--dir DIR] [--thumbnail] <photo-id>... | [filters]`: saves `<id>.webp` and
+  `<id>.json`. Use a temp or artifact directory, **never the repository**.
+- `photos.sh <env> annotate <photo-id> [--note TEXT] [--tag TAG]...`: record what the photo shows.
+- `photo-requests.sh <env> create --reason TEXT [--room ID] [--at X,Z] [--level ID] [--heading-deg DEG | --yaw RAD]
+[--pitch RAD]`: ask the owner for a photo: where to stand, which way to look (degrees clockwise from plan
+  north, `-z`) and what you need to see. The owner sees it on the phone as a target marker.
+- `photo-requests.sh <env> list [--status open|fulfilled|cancelled|all]`, `get <id>`,
+  `close <id> [--photo PHOTO_ID]` (fulfilled by that photo; without `--photo`, cancelled).
+- `photos-copy.sh <from-env> <to-env> [--since TIME] [--dry-run]`: copies photos between the environments'
+  separate stores, for example `staging production`. Only when the owner asks; run `--dry-run` first. It skips
+  photos the destination already has and never changes the source.
+
+**Never delete or purge photos or photo requests.** There is no script for it on purpose: deleting is the
+owner's action in the app. The only exception is test data you uploaded yourself in the same task. Photos
+survive staging redeploys, so anything you upload stays until it is deleted.
 
 ## Playwright
 
@@ -100,7 +127,8 @@ of creating a duplicate.
 
 - Never print, log, commit or paste the GitHub token or the site token, including in issues, PR comments and
   test output. Never send either to any host other than api.github.com and the environment itself.
-- Prefer staging for tests and experiments. It is reset on every deploy, so keep nothing there you need later.
+- Prefer staging for tests and experiments. Homes and layouts are reset on every deploy, so keep nothing there
+  you need later; photos and photo requests are **not** reset, so clean up test photos you uploaded.
   Change production only when the task asks for it.
 - Never use the browser login flow on auth.nntin.xyz. The token exchange is the only supported way for agents.
 - Reuse the cached site token; exchanging per request hits the rate limit (30 per minute).

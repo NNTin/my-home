@@ -35,15 +35,17 @@ Images are built and pushed by the `publish` job in `.github/workflows/ci.yml`, 
 
 api (environment variables, validated at start-up):
 
-| Variable               | Default              | Notes                                                  |
-| ---------------------- | -------------------- | ------------------------------------------------------ |
-| `DATABASE_URL`         | unset                | Postgres connection string; when unset PGlite is used  |
-| `PORT` / `HOST`        | `3000` / `0.0.0.0`   |                                                        |
-| `LOG_LEVEL`            | `info`               | pino level                                             |
-| `MIGRATE_ON_START`     | `true`               | apply Drizzle migrations before listening              |
-| `APP_COMMIT`           | unset                | release commit, reported by `GET /api/health/live`     |
-| `SEED_ON_START`        | `false` in the image | insert sample data when the table is empty             |
-| `ALLOW_DATABASE_RESET` | `false`              | lets `node dist/reset.js` drop all data (staging only) |
+| Variable                     | Default              | Notes                                                                         |
+| ---------------------------- | -------------------- | ----------------------------------------------------------------------------- |
+| `DATABASE_URL`               | unset                | Postgres connection string; when unset PGlite is used                         |
+| `PORT` / `HOST`              | `3000` / `0.0.0.0`   |                                                                               |
+| `LOG_LEVEL`                  | `info`               | pino level                                                                    |
+| `MIGRATE_ON_START`           | `true`               | apply Drizzle migrations before listening                                     |
+| `APP_COMMIT`                 | unset                | release commit, reported by `GET /api/health/live`                            |
+| `SEED_ON_START`              | `false` in the image | insert sample data when the table is empty                                    |
+| `ALLOW_DATABASE_RESET`       | `false`              | lets `node dist/reset.js` drop homes and layouts, never photos (staging only) |
+| `PHOTO_MAX_UPLOAD_BYTES`     | `26214400`           | largest accepted photo upload (25 MB)                                         |
+| `PHOTO_TRASH_RETENTION_DAYS` | `30`                 | days a deleted photo stays in the trash before it is purged                   |
 
 `docker-compose.yml` sets `SEED_ON_START=true` so the demo stack shows data. That is for demo and
 smoke-test use only; leave it unset for real deployments.

@@ -2,6 +2,7 @@ import { pino } from 'pino';
 import { buildApp, loggerOptions } from './app';
 import { loadConfig } from './config';
 import { createDatabase } from './db/client';
+import { photoStore } from './db/photos';
 import { seedHomes } from './db/seed';
 
 const config = loadConfig();
@@ -22,6 +23,18 @@ try {
     }
   }
   await app.listen({ host: config.host, port: config.port });
+
+  // Photos and requests deleted longer ago than the retention period leave the trash for good.
+  const photos = photoStore(database.db, { retentionDays: config.photoTrashRetentionDays });
+  const purgeExpired = () =>
+    photos.purgeExpired().then(
+      (result) => {
+        if (result.purgedPhotos + result.purgedRequests > 0) app.log.info(result, 'trash purged');
+      },
+      (err: unknown) => app.log.error({ err }, 'purging the trash failed'),
+    );
+  void purgeExpired();
+  setInterval(() => void purgeExpired(), 60 * 60 * 1000).unref();
 } catch (err) {
   app.log.fatal({ err }, 'failed to start');
   await app.close();

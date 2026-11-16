@@ -3,10 +3,10 @@
 my-home runs on the home Kubernetes cluster (RKE2 on the NUC, Flux GitOps in
 [NNTin/lair.nntin.xyz](https://github.com/NNTin/lair.nntin.xyz)). Every green build is deployed automatically:
 
-| Environment | URL                            | Deployed from                                             | Database                                   |
-| ----------- | ------------------------------ | --------------------------------------------------------- | ------------------------------------------ |
-| production  | https://home.nntin.xyz         | every push to `main`                                      | persistent, backed up daily                |
-| staging     | https://home-staging.nntin.xyz | same-repo pull request pushes, `v*` tags, manual dispatch | reset, migrated and seeded on every deploy |
+| Environment | URL                            | Deployed from                                             | Database                                 |
+| ----------- | ------------------------------ | --------------------------------------------------------- | ---------------------------------------- |
+| production  | https://home.nntin.xyz         | every push to `main`                                      | persistent, backed up daily              |
+| staging     | https://home-staging.nntin.xyz | same-repo pull request pushes, `v*` tags, manual dispatch | reset on every deploy, **except photos** |
 
 Staging is one shared environment: the latest deploy replaces whatever ran there before. Both hosts are behind
 Authentik single sign-on (`auth.nntin.xyz`); only `GET /api/health/live` is public, so CI can see which commit runs.
@@ -36,7 +36,10 @@ flowchart LR
 3. Flux follows each chart channel and upgrades the release. Before any new pod receives traffic, the chart's
    pre-deploy hook runs:
    - production: `node dist/migrate.js`;
-   - staging: `node dist/reset.js`, which empties the database, migrates and seeds the real and the mock home.
+   - staging: `node dist/reset.js`, which drops the `public` and `drizzle` schemas (homes, layouts and their
+     migration journal), migrates and seeds the real and the mock home. It never touches the `media` schema:
+     **photos and photo requests survive every staging deploy**, whichever branch is deployed
+     ([photos.md](photos.md#persistence)).
 4. `deploy` waits until `https://<host>/api/health/live` reports the commit. Then GitHub marks the deployment
    successful and the previous deployment of that environment inactive.
 
@@ -79,3 +82,22 @@ reads them.
 Production and staging each have their own PostgreSQL and credentials, in separate namespaces; staging pods cannot
 reach the production database. Production is dumped daily (`pg_dump`, 14 days kept). Backup and restore steps are
 in [lair's runbook](https://github.com/NNTin/lair.nntin.xyz/blob/develop/docs/my-home/deployment.md#backups-and-restore).
+
+### Photos: what the databases must provide
+
+Since photos ([photos.md](photos.md)) the **staging database is no longer throwaway**: its `media` schema holds the
+owner's photos, which exist nowhere else until they are copied to production. The databases are provisioned in
+NNTin/lair.nntin.xyz; this repository only states what it needs from both of them:
+
+| Requirement    | Production and staging                                                                                       |
+| -------------- | ------------------------------------------------------------------------------------------------------------ |
+| Storage        | PostgreSQL data on a persistent volume that survives pod restarts and redeploys                              |
+| Schema to keep | `media` (tables `photos`, `photo_blobs`, `photo_thumbnails`, `photo_requests`, `schema_migrations`)          |
+| Expected size  | about 1 MB per photo; plan for 2,000 photos: **2 GiB of data, at least 5 GiB volume** per database           |
+| Backup         | daily `pg_dump` in custom format that includes the `media` schema, 14 days kept (about 2 GiB each when full) |
+| Restore        | restoring only the photos must be possible: `pg_restore --schema=media`                                      |
+| Database role  | may create the `media` schema (`CREATE` on the database), as it already recreates `public` on staging        |
+| Request size   | the ingress in front of the web container accepts request bodies of at least 32 MB (photo uploads)           |
+
+A staging backup may leave out `public` and `drizzle`: they are recreated by every deploy. The api's memory limit
+is 512Mi (`charts/my-home/values.yaml`) because it decodes one full-size photo at a time.

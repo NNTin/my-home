@@ -32,11 +32,15 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - web tests run in jsdom: mock the R3F canvas, never require WebGL.
 - Keep changes scoped; conventional commit messages.
 - Never mention the house's address or location (coordinates, map links, tile IDs, place names) in the repo or on GitHub.
+- Photos (`docs/photos.md`) live in the `media` schema, which no deploy resets: its migrations
+  (`apps/api/media-migrations/`) are expand-only (add tables, columns, indexes; never drop, rename or tighten).
+- Agents never delete or purge photos or photo requests, and never commit photos. Unsure about a wall, room, opening
+  or furniture? Look at the photos, then ask for one (`photo-requests.sh`) instead of guessing.
 
 ## Environments
 
-- staging `https://home-staging.nntin.xyz`: throwaway, reset to the real and the mock home on every deploy (same-repo PR
-  pushes, `v*` tags; latest wins). Use it for tests and experiments.
+- staging `https://home-staging.nntin.xyz`: reset to the real and the mock home on every deploy (same-repo PR
+  pushes, `v*` tags; latest wins), **except photos**, which are the owner's and stay. Use it for tests and experiments.
 - production `https://home.nntin.xyz`: real data, deployed from every push to `main`. Change it only when asked.
 - Both are behind authentik SSO: exchange the nntin-bot GitHub token for a site token with the
   `my-home-environments` skill (`.claude/skills/`), instruction sheet in #9. `GET /api/health/live` is public.

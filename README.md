@@ -34,8 +34,9 @@ outside production, seeds the real home (`data/homes/home.json`) and the mock ho
 loaded from the api (orbit with the mouse) with a panel for the per-level cutaway and visibility
 toggles, and a **Furniture** panel to place, move and rotate furniture in named layouts that are
 saved to the api. See [docs/home-model.md](docs/home-model.md) for the model and how to load other
-homes, [docs/layouts.md](docs/layouts.md) for layouts and the editor, and
-[docs/adding-furniture-type.md](docs/adding-furniture-type.md) to add a furniture type.
+homes, [docs/layouts.md](docs/layouts.md) for layouts and the editor,
+[docs/adding-furniture-type.md](docs/adding-furniture-type.md) to add a furniture type, and
+[docs/photos.md](docs/photos.md) for the photos taken inside the model and photo requests.
 
 ## Database
 
@@ -53,6 +54,10 @@ Workflow for schema changes:
 3. `pnpm db:migrate` applies it (the server also migrates on start unless `MIGRATE_ON_START=false`).
 4. `pnpm db:seed [file] [--replace]` loads a home file (default: the real and the mock home); existing ids are
    kept unless `--replace` is given.
+
+Photos are different: they live in the `media` schema with hand-written, expand-only migrations in
+`apps/api/media-migrations/`, applied by the same `pnpm db:migrate`. Read
+[docs/photos.md](docs/photos.md#migrations-expand-only) before changing it.
 
 ## Scripts
 
@@ -84,7 +89,9 @@ apps/web/            Vite + React + R3F viewer
 apps/api/            Fastify server
   src/routes/        route plugins (registered under /api)
   src/db/            Drizzle schema, driver switch, seed
+  src/photos/        photo upload processing (metadata stripping, resizing)
   drizzle/           generated SQL migrations (committed)
+  media-migrations/  hand-written, expand-only migrations of the media schema (photos)
   test/              Vitest + fastify.inject tests
 packages/shared/     zod schemas and types used by web and api
   schema/            generated JSON Schema for home files
@@ -111,8 +118,8 @@ verified in GitHub Actions (`.github/workflows/ci.yml`):
 
 - `check`: install, lint, format:check, typecheck, test (PGlite), build
 - `test-postgres`: api tests against a `postgres` service container
-- `docker`: build both images, `docker compose up`, smoke-test `/api/health`, `/` and the layouts
-  API
+- `docker`: build both images, `docker compose up`, smoke-test `/api/health`, `/`, the layouts API
+  and the photos API (including a database reset that must keep the photos)
 - `chart`: lint the Helm chart and check its deployment contract (`tools/check-chart.sh`)
 - `publish`: push images to GHCR for `main`, `v*` tags, same-repo pull requests and manual dispatches
 - `deploy`: publish the chart and wait until production (`main`) or staging (everything else) runs the commit
