@@ -64,7 +64,7 @@ Production follows the newest `0.1.0-main.*` chart. To roll back, pin it to the 
 run. Find the chart version in the run's `deploy` summary ("Published my-home 0.1.0-main.N"), or list them with
 `gh api /users/NNTin/packages/container/charts%2Fmy-home/versions --jq '.[].metadata.container.tags[]'`.
 
-In NNTin/lair.nntin.xyz `clusters/nuc/my-home/release.yaml`, replace the `semver`/`semverFilter` lines of
+In NNTin/lair.nntin.xyz `clusters/nuc/my-home/production/release.yaml`, replace the `semver`/`semverFilter` lines of
 `OCIRepository my-home-release` with `tag: 0.1.0-main.<N>`, then commit and push to `develop`. Flux rolls back within
 minutes. While pinned, merges to `main` do not deploy. To resume, restore the two lines. See
 [lair's runbook](https://github.com/NNTin/lair.nntin.xyz/blob/develop/docs/my-home/deployment.md) for the exact
