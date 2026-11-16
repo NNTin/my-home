@@ -66,6 +66,10 @@ JOBS[1]=$(jobs_json completed failure 5 "")
 check_production old0000000000
 expect "production: publish failed" CI_FAILED
 
+JOBS[1]=$(jobs_json completed skipped "" "")
+check_production old0000000000
+expect "production: publish skipped" CI_FAILED
+
 JOBS[1]=$(jobs_json completed success 10 failure)
 check_production old0000000000
 expect "production: published 10 min ago, deploy job failed" DEPLOYING
@@ -104,6 +108,17 @@ expect "staging: tag published 20 min ago, deploy failed" DEPLOYING
 [[ $fresh_msg == *"still publishing"* && $staging_ref == "PR #42 (feat/old)" ]] || {
   fail=$((fail + 1))
   echo "FAIL  staging message or ref: $fresh_msg / $staging_ref"
+}
+
+# A newer PR whose publish failed is named as well; the skipped fork run is not.
+RUNS=$(jq -c --arg at "$(ago 1)" '[.[0] | .databaseId = 14 | .headBranch = "feat/y" | .createdAt = $at] + .' \
+  <<<"$RUNS")
+JOBS[14]=$(jobs_json completed failure 1 "")
+check_staging old0000000000
+expect "staging: newer PR publish failed, tag still deploying" DEPLOYING
+[[ $fresh_msg == *"newer: PR #42 (feat/y) publish failed (publish)"* ]] || {
+  fail=$((fail + 1))
+  echo "FAIL  the failed newer publish is not named: $fresh_msg"
 }
 
 JOBS[11]=$(jobs_json completed success 75 failure)

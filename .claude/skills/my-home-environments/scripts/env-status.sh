@@ -40,7 +40,7 @@ main_head() { gh api "repos/$MY_HOME_REPO/commits/main" | jq -r '.sha // empty';
 runs_list() { gh run list -R "$MY_HOME_REPO" -w ci.yml --json "$RUN_FIELDS" "$@"; }
 run_jobs() { gh run view "$1" -R "$MY_HOME_REPO" --json jobs; }
 
-# publish_info <run id>: sets pub_state (pending|failed|success), pub_done (completion time), pub_note
+# publish_info <run id>: sets pub_state (pending|failed|skipped|success), pub_done (completion time), pub_note
 # (publish/deploy job outcome) and failed (failed job names) for one CI run.
 publish_info() {
   local jobs
@@ -54,6 +54,9 @@ publish_info() {
     | join(", ")' <<<"$jobs")
   if [[ $pub_status == completed && $pub_conclusion == success ]]; then
     pub_state=success
+  elif [[ -z $failed && $pub_status == completed && $pub_conclusion =~ ^(skipped|cancelled)$ ]]; then
+    # Fork pull requests skip publishing; superseded pushes are cancelled. Neither is a failure.
+    pub_state=skipped
   elif [[ $pub_status == completed || -n $failed ]]; then
     pub_state=failed
   else
@@ -77,7 +80,9 @@ classify() {
   publish_info "$id"
   case "$pub_state" in
     pending) fresh_state=PENDING fresh_msg="CI for $label is still running, image not published yet ($pub_note)" ;;
-    failed) fresh_state=CI_FAILED fresh_msg="image for $label was not published (failed: ${failed:-?}); a CI issue" ;;
+    failed | skipped)
+      fresh_state=CI_FAILED fresh_msg="image for $label was not published (${failed:+failed: }${failed:-$pub_note}); a CI issue"
+      ;;
     success)
       age=$(minutes_since "$pub_done")
       if ((age < STALE_MINUTES)); then
@@ -122,7 +127,7 @@ describe_run() {
 
 # check_staging <live sha>: also sets staging_ref (what staging runs, when derivable).
 check_staging() {
-  local live=$1 runs candidates count i run expected="" label="" pending=""
+  local live=$1 runs candidates count i run expected="" label="" newer=""
   runs=$(runs_list -L 40 2>/dev/null) || {
     fresh_state=UNKNOWN fresh_msg="could not list CI runs"
     return
@@ -141,14 +146,20 @@ check_staging() {
       label="${expected:0:7} ($(describe_run "$run"))"
       break
     fi
-    [[ $pub_state == pending && -z $pending ]] && pending="$(describe_run "$run") is still publishing"
+    # Name the newest run that has not published (yet), so a failing PR is visible here too.
+    if [[ -z $newer ]]; then
+      case "$pub_state" in
+        pending) newer="$(describe_run "$run") is still publishing" ;;
+        failed) newer="$(describe_run "$run") publish failed (${failed:-?})" ;;
+      esac
+    fi
   done
   if [[ -z $expected ]]; then
     fresh_state=UNKNOWN fresh_msg="no staging CI run with a published image among the latest runs"
   else
     classify "$live" "$expected" "$label" "$run"
   fi
-  [[ -n $pending ]] && fresh_msg+="; newer: $pending"
+  [[ -n $newer ]] && fresh_msg+="; newer: $newer"
   return 0
 }
 

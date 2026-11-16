@@ -12,6 +12,7 @@ cat >"$work/bin/gh" <<'EOF'
 case "$1 $2" in
   "auth status") exit 0 ;;
   "issue list" | "label list") echo '[]' ;;
+  "issue create" | "issue comment" | "label create") echo "gh $1 $2 must not run in tests" >&2; exit 1 ;;
   *) echo "unexpected gh call: $*" >&2; exit 1 ;;
 esac
 EOF
@@ -38,6 +39,21 @@ case_() {
 case_ "BROKEN (exit 4 + result line) raises" 4 BROKEN 0
 case_ "not broken (exit 0) refuses" 0 DEPLOYING 3
 case_ "script error (exit 1) refuses even with a BROKEN line" 1 BROKEN 3
+# A real tooling error: env-status.sh dies on jq under set -e before printing any result line.
+tooling_error() {
+  local rc=0
+  printf '#!/usr/bin/env bash\nset -euo pipefail\necho "staging  https://home-staging.nntin.xyz"\n%s\n' \
+    "jq -r .commit <<<'not json'" >"$work/scripts/env-status.sh"
+  PATH="$work/bin:$PATH" "$work/scripts/raise-env-issue.sh" --dry-run staging "test" >"$work/out" 2>&1 || rc=$?
+  if [[ $rc == 3 ]] && ! grep -q 'would create issue\|would comment' "$work/out"; then
+    pass=$((pass + 1))
+    echo "ok    tooling error in env-status.sh (jq under set -e) raises nothing: exit 3"
+  else
+    fail=$((fail + 1))
+    echo "FAIL  tooling error: want exit 3 and no issue, got $rc"
+  fi
+}
+tooling_error
 case_ "exit 4 without a BROKEN result line refuses" 4 OK 3
 case_ "--force overrides a script error" 1 OK 0 --force
 
