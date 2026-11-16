@@ -1,8 +1,8 @@
-import type { Photo } from '@my-home/shared';
+import type { Photo, PhotoRequest } from '@my-home/shared';
 import { useEffect, useRef, useState } from 'react';
 import type { PhotosApi } from '../api';
 import { poseOf, type Figure } from './figure';
-import { prepareImage, type PreparedImage } from './prepareImage';
+import { prepareImage, takenAtOf, type PreparedImage } from './prepareImage';
 
 /** Suggested tags; the api stores any short lower-case label. */
 export const PHOTO_TAGS = ['wall', 'window', 'door', 'floor', 'ceiling', 'furniture', 'outside'];
@@ -28,6 +28,10 @@ interface Props {
   api: Pick<PhotosApi, 'upload' | 'update'>;
   onNudge(forward: number, right: number): void;
   onLook(dYaw: number, dPitch: number): void;
+  /** The open photo request this photo would answer, if the figure is at one. */
+  request?: PhotoRequest | undefined;
+  /** Called after the photo, or a correction of its pose, was stored. */
+  onSaved?(): void;
   onClose(): void;
 }
 
@@ -44,9 +48,12 @@ export function CaptureSheet({
   api,
   onNudge,
   onLook,
+  request,
+  onSaved,
   onClose,
 }: Props) {
   const [phase, setPhase] = useState<Phase>({ step: 'compose' });
+  const [answers, setAnswers] = useState(true);
   const [note, setNote] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   // The preview URL lives exactly as long as the effect, so it is never used after being revoked.
@@ -70,14 +77,16 @@ export function CaptureSheet({
         {
           levelId: figure.levelId ?? null,
           pose: poseOf(figure, image.fovH),
-          takenAt: new Date().toISOString(),
+          takenAt: takenAtOf(file),
           note,
           tags,
+          ...(request && answers && { requestId: request.id }),
         },
         image.blob,
         (progress) => setPhase({ step: 'uploading', progress }),
       );
       setPhase({ step: 'saved', photo });
+      onSaved?.();
     } catch (err) {
       setPhase({ step: 'failed', message: (err as Error).message });
     }
@@ -92,6 +101,7 @@ export function CaptureSheet({
         pose: poseOf(figure, photo.pose.fovH),
       });
       setPhase({ step: 'saved', photo: updated, adjusted: 'saved' });
+      onSaved?.();
     } catch {
       setPhase({ step: 'saved', photo, adjusted: 'failed' });
     }
@@ -193,6 +203,17 @@ export function CaptureSheet({
               </label>
             ))}
           </div>
+          {request && (
+            <label className="capture-request">
+              <input
+                type="checkbox"
+                checked={answers}
+                disabled={busy}
+                onChange={() => setAnswers(!answers)}
+              />{' '}
+              Answers the request: <em>{request.reason}</em>
+            </label>
+          )}
           <p className="hint">The photo is saved at the figure's position and view. Adjust:</p>
           {nudges}
           {phase.step === 'uploading' && (

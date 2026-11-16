@@ -7,6 +7,14 @@ import type { CompassMarker } from '../compass/compass';
 import { CompassMarkers, CompassRose, CompassTracker } from '../compass/Compass';
 import { FurnitureLayer, type FurnitureHandlers, type FurnitureView } from './FurnitureLayer';
 import { HomeMeshes } from './HomeMeshes';
+import {
+  PhotoMarkers,
+  RequestGhosts,
+  ViewpointRig,
+  type PhotoMarkerView,
+  type RequestGhostView,
+  type Viewpoint,
+} from './PhotoMarkers';
 import { WalkRig, type WalkRigProps } from './WalkRig';
 
 export interface SceneProps {
@@ -23,6 +31,13 @@ export interface SceneProps {
   labels: RoomLabel[];
   /** Set while walking: the figure to draw and whose eyes or overview the camera takes. */
   walk?: WalkRigProps | undefined;
+  /** Photos shown as cameras with view cones; clicking one calls `onSelectPhoto`. */
+  photoMarkers?: PhotoMarkerView[];
+  onSelectPhoto?(id: string): void;
+  /** Open photo requests shown as ghost figures. */
+  requestGhosts?: RequestGhostView[];
+  /** Set to look from a photo's pose ("view from here"). */
+  viewpoint?: Viewpoint | undefined;
 }
 
 /** Initial camera: south-east of the building, far enough to see the whole plot. */
@@ -45,6 +60,10 @@ export function Scene({
   markers,
   labels,
   walk,
+  photoMarkers = [],
+  onSelectPhoto,
+  requestGhosts = [],
+  viewpoint,
 }: SceneProps) {
   const roseRef = useRef<HTMLButtonElement>(null);
   const northUpRef = useRef<() => void>(undefined);
@@ -83,9 +102,12 @@ export function Scene({
           target={target}
           maxPolarAngle={Math.PI * 0.95}
           // In first person the camera is the figure's eyes; dragging looks around instead.
-          enabled={walk?.view !== 'first'}
+          enabled={walk?.view !== 'first' && !viewpoint}
         />
         {walk && <WalkRig figure={walk.figure} view={walk.view} />}
+        {viewpoint && <ViewpointRig viewpoint={viewpoint} />}
+        <PhotoMarkers markers={photoMarkers} onSelect={(id) => onSelectPhoto?.(id)} />
+        <RequestGhosts ghosts={requestGhosts} />
         <CompassTracker northBearing={northBearing} roseRef={roseRef} northUpRef={northUpRef} />
       </Canvas>
       <CompassRose roseRef={roseRef} onNorthUp={() => northUpRef.current?.()} />

@@ -1,9 +1,9 @@
-import type { Photo } from '@my-home/shared';
+import type { Photo, PhotoRequest } from '@my-home/shared';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildHome } from '../builder/buildHome';
-import { mockHome } from '../test/fixtures';
+import { mockHome, testRequest } from '../test/fixtures';
 import type { Figure } from './figure';
 import { useWalk } from './useWalk';
 import { WalkHud, type WalkView } from './WalkHud';
@@ -46,7 +46,17 @@ const fakeApi = (): { [K in keyof Api]: ReturnType<typeof vi.fn<Api[K]>> } => ({
 });
 
 const onExit = vi.fn();
-function Harness({ api = fakeApi(), compass = false }: { api?: Api; compass?: boolean }) {
+function Harness({
+  api = fakeApi(),
+  compass = false,
+  requests = [],
+  onSaved,
+}: {
+  api?: Api;
+  compass?: boolean;
+  requests?: PhotoRequest[];
+  onSaved?: () => void;
+}) {
   const walk = useWalk(world, start, true);
   const [view, setView] = useState<WalkView>('first');
   const [compassOn, setCompassOn] = useState(false);
@@ -60,6 +70,9 @@ function Harness({ api = fakeApi(), compass = false }: { api?: Api; compass?: bo
       onExit={onExit}
       compass={{ supported: compass, active: compassOn, toggle: () => setCompassOn(!compassOn) }}
       api={api}
+      requests={requests}
+      roomIdOf={() => 'souterrain-hallway'}
+      {...(onSaved && { onSaved })}
     />
   );
 }
@@ -292,6 +305,65 @@ describe('WalkHud', () => {
       expect(screen.queryByRole('region', { name: 'New photo' })).not.toBeInTheDocument();
       expect(api.upload).not.toHaveBeenCalled();
       expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:preview');
+    });
+    describe('for a photo request', () => {
+      // The figure stands at (0.5, 0) in the hallway.
+      const here = testRequest({
+        id: 'here',
+        position: { x: 0.8, z: 0.4 },
+        reason: 'The coat rack',
+      });
+      const elsewhere = testRequest({ id: 'elsewhere', position: { x: 3, z: -2 } });
+
+      it('offers the request at the figure and uploads the photo as its answer', async () => {
+        const api = fakeApi();
+        const onSaved = vi.fn();
+        render(<Harness api={api} requests={[elsewhere, here]} onSaved={onSaved} />);
+        expect(screen.getByRole('status', { name: 'Photo request here' })).toHaveTextContent(
+          'The coat rack',
+        );
+        takePhoto();
+        expect(screen.getByLabelText(/Answers the request/)).toBeChecked();
+        fireEvent.click(screen.getByRole('button', { name: 'Save photo' }));
+        await screen.findByText('Photo saved');
+        expect(api.upload.mock.calls[0]![1].requestId).toBe('here');
+        expect(onSaved).toHaveBeenCalled();
+      });
+
+      it('leaves the request open when the owner says the photo is not for it', async () => {
+        const api = fakeApi();
+        render(<Harness api={api} requests={[here]} />);
+        takePhoto();
+        fireEvent.click(screen.getByLabelText(/Answers the request/));
+        fireEvent.click(screen.getByRole('button', { name: 'Save photo' }));
+        await screen.findByText('Photo saved');
+        expect(api.upload.mock.calls[0]![1]).not.toHaveProperty('requestId');
+      });
+
+      it('answers a request picked from the list, wherever the figure is', async () => {
+        const api = fakeApi();
+        render(<Harness api={api} requests={[elsewhere]} />);
+        expect(
+          screen.queryByRole('status', { name: 'Photo request here' }),
+        ).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Requests (1)' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Answer this' }));
+        expect(screen.getByRole('button', { name: 'Answering this' })).toHaveAttribute(
+          'aria-pressed',
+          'true',
+        );
+        takePhoto();
+        fireEvent.click(screen.getByRole('button', { name: 'Save photo' }));
+        await screen.findByText('Photo saved');
+        expect(api.upload.mock.calls[0]![1].requestId).toBe('elsewhere');
+      });
+
+      it('offers nothing without open requests', () => {
+        render(<Harness requests={[{ ...here, status: 'fulfilled' }]} />);
+        expect(screen.queryByRole('button', { name: /Requests/ })).not.toBeInTheDocument();
+        takePhoto();
+        expect(screen.queryByLabelText(/Answers the request/)).not.toBeInTheDocument();
+      });
     });
   });
 });

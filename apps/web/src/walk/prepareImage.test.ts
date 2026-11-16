@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { horizontalFov } from './figure';
-import { focalLength35mm, prepareImage } from './prepareImage';
+import { focalLength35mm, prepareImage, takenAtOf } from './prepareImage';
 
 /** A minimal JPEG with an EXIF block that records only FocalLengthIn35mmFilm. */
 function jpegWithFocalLength(focal: number, littleEndian: boolean): ArrayBuffer {
@@ -59,5 +59,68 @@ describe('prepareImage', () => {
   it('assumes a typical phone camera when the focal length is unknown', async () => {
     const prepared = await prepareImage(new Blob(['not an image']));
     expect(prepared.fovH).toBeCloseTo(horizontalFov(true));
+  });
+});
+
+describe('prepareImage in a browser that can decode', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('scales to the upload limit and puts transparent pixels on white before encoding JPEG', async () => {
+    const calls: string[] = [];
+    const context = {
+      fillStyle: '',
+      fillRect: (...args: number[]) => calls.push(`fill ${context.fillStyle} ${args.join(',')}`),
+      drawImage: (_image: unknown, ...args: number[]) => calls.push(`draw ${args.join(',')}`),
+    };
+    const encoded = new Blob(['jpeg'], { type: 'image/jpeg' });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: () => context,
+      toBlob: (done: (blob: Blob) => void, type: string, quality: number) => {
+        calls.push(`encode ${type} ${quality}`);
+        done(encoded);
+      },
+    };
+    vi.spyOn(document, 'createElement').mockReturnValue(canvas as unknown as HTMLCanvasElement);
+    const close = vi.fn();
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi.fn().mockResolvedValue({ width: 4000, height: 3000, close }),
+    );
+
+    const prepared = await prepareImage(new Blob(['png with transparency'], { type: 'image/png' }));
+    expect(prepared.blob).toBe(encoded);
+    expect([canvas.width, canvas.height]).toEqual([2560, 1920]);
+    // White first, then the photo, then the encoding.
+    expect(calls).toEqual([
+      'fill #fff 0,0,2560,1920',
+      'draw 0,0,2560,1920',
+      'encode image/jpeg 0.9',
+    ]);
+    // Landscape: the wide field of view.
+    expect(prepared.fovH).toBeCloseTo(horizontalFov(false));
+    expect(close).toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+});
+
+describe('takenAtOf', () => {
+  const now = Date.parse('2026-06-01T12:00:00.000Z');
+
+  it('uses the time the camera gave the file', () => {
+    const file = new File(['x'], 'photo.jpg', {
+      lastModified: Date.parse('2026-05-30T08:15:00.000Z'),
+    });
+    expect(takenAtOf(file, now)).toBe('2026-05-30T08:15:00.000Z');
+  });
+
+  it('falls back to now for a time in the future, no time, or a plain blob', () => {
+    const future = new File(['x'], 'photo.jpg', { lastModified: now + 60_000 });
+    expect(takenAtOf(future, now)).toBe('2026-06-01T12:00:00.000Z');
+    expect(takenAtOf(new File(['x'], 'photo.jpg', { lastModified: 0 }), now)).toBe(
+      '2026-06-01T12:00:00.000Z',
+    );
+    expect(takenAtOf(new Blob(['x']), now)).toBe('2026-06-01T12:00:00.000Z');
   });
 });

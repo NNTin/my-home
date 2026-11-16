@@ -24,7 +24,7 @@ MY_HOME_PLAYWRIGHT_DIR=${MY_HOME_PLAYWRIGHT_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}
 export MY_HOME_PLAYWRIGHT_DIR
 
 usage() {
-  sed -n '2,3s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,16s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 

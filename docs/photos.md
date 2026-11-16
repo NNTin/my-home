@@ -142,6 +142,32 @@ the custom format; a plain-text dump doubles it). Requirements for the databases
   photos or requests** and the skill has no script for it. The only exception is test data an agent uploaded
   itself in the same task.
 
+## Browsing photos
+
+**📷 Photos** in the view controls opens the gallery in place of the furniture panel
+([`apps/web/src/photos/`](../apps/web/src/photos/)).
+
+- **Photos**: thumbnails, newest first, with filters for level (or outside), room, tag, request and date. A
+  click opens the detail view: the photo, where and when it was taken, the pose (position, heading in degrees
+  clockwise from plan north, pitch, field of view), the note and tags (both editable) and the request it
+  answers. A photo whose room is gone shows its captured room name with "room not in this model".
+- **Camera markers**: while the gallery is open, every listed photo on a visible level (the cutaway decides;
+  outdoor photos always show) is drawn in 3D as a camera with its view cone. Clicking a marker opens the photo.
+  The markers follow the gallery's filters. They also show in the walking overview.
+- **View from here** puts the 3D camera at the photo's pose with a matching field of view. **Lay the photo over
+  the 3D view** draws the photo semi-transparently on top (opacity slider) to compare model and reality: where
+  walls, doors and windows do not line up, the model or the pose is off. The photo is scaled to fit the view and
+  the camera's field of view is chosen to match (`matchingVerticalFov`), so it lines up at any window size.
+- **Requests**: all photo requests with their state; cancel, reopen or delete them, or jump to the photos that
+  answer one.
+- **Trash**: deleted photos and requests with the date they will be gone for good; restore them, delete one for
+  good or empty the trash (both ask first).
+
+While [walking](walking.md), open requests with a position stand in the model as translucent "ghost" figures
+facing the way the photo should look. **Requests (n)** lists them: **Go there** moves the figure onto the spot,
+**Answer this** picks one regardless of where the figure stands. A photo taken at a request's spot (within 1.5 m
+on the same level), or in the room a request names, is offered as its answer; saving it fulfils the request.
+
 ## API
 
 All under `/api`; shapes in `packages/shared/src/photos.ts`.

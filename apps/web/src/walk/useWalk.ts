@@ -35,6 +35,8 @@ export interface Walk {
   /** Moves by metres relative to where the figure faces. */
   nudge(forward: number, right: number): void;
   setYaw(yaw: number): void;
+  /** Puts the figure somewhere else at once (a jump to a photo request's spot). */
+  place(figure: Figure): void;
 }
 
 /**
@@ -153,5 +155,9 @@ export function useWalk(world: WalkWorld, start: Figure, active: boolean): Walk 
   }, []);
   const published = useCallback(() => announced.current, []);
 
-  return { figureRef, levelId, published, subscribe, setPad, lookBy, nudge, setYaw };
+  const place = useCallback((figure: Figure) => {
+    figureRef.current = figure;
+  }, []);
+
+  return { figureRef, levelId, published, subscribe, setPad, lookBy, nudge, setYaw, place };
 }

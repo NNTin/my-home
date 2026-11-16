@@ -4,8 +4,13 @@ import {
   Layout,
   LayoutConflict,
   ListHomesResponse,
+  EmptyTrashResponse,
   ListLayoutsResponse,
+  ListPhotoRequestsResponse,
+  ListPhotosResponse,
   Photo,
+  PhotoRequest,
+  TrashResponse,
   type CreateLayoutBody,
   type CreatePhotoMeta,
   type UpdateLayoutBody,
@@ -137,10 +142,49 @@ function uploadPhoto(
   });
 }
 
+/** Photos fetched per request: the largest page the api serves. */
+export const PHOTO_PAGE_SIZE = 500;
+
+const requestUrl = (id: string) => `/api/photo-requests/${encodeURIComponent(id)}`;
+
+/** Photos, photo requests and their trash (docs/photos.md). Deleting is a soft delete. */
 export const photosApi = {
   upload: uploadPhoto,
+  /**
+   * Every photo of the home that is not in the trash, newest first. The api pages its list; the
+   * gallery filters, counts and draws markers from all of them, so every page is fetched.
+   */
+  async list(homeId: string, signal?: AbortSignal): Promise<ListPhotosResponse> {
+    const items: Photo[] = [];
+    for (;;) {
+      const url = `${homeUrl(homeId)}/photos?limit=${PHOTO_PAGE_SIZE}&offset=${items.length}`;
+      const page = await request('GET', url, ListPhotosResponse, { signal });
+      items.push(...page.items);
+      // An empty page ends the loop too, should photos be deleted while paging.
+      if (items.length >= page.total || page.items.length === 0)
+        return { items, total: items.length };
+    }
+  },
   update: (id: string, body: UpdatePhotoBody) => request('PATCH', photoUrl(id), Photo, { body }),
+  remove: (id: string) => request('DELETE', photoUrl(id), Photo),
+  restore: (id: string) => request('POST', `${photoUrl(id)}/restore`, Photo),
+  purge: (id: string) => request('POST', `${photoUrl(id)}/purge`, undefined),
   imageUrl: (id: string) => `${photoUrl(id)}/image`,
   thumbnailUrl: (id: string) => `${photoUrl(id)}/thumbnail`,
+
+  requests: (homeId: string, signal?: AbortSignal) =>
+    request('GET', `${homeUrl(homeId)}/photo-requests?status=all`, ListPhotoRequestsResponse, {
+      signal,
+    }),
+  cancelRequest: (id: string) => request('POST', `${requestUrl(id)}/cancel`, PhotoRequest),
+  reopenRequest: (id: string) => request('POST', `${requestUrl(id)}/reopen`, PhotoRequest),
+  removeRequest: (id: string) => request('DELETE', requestUrl(id), PhotoRequest),
+  restoreRequest: (id: string) => request('POST', `${requestUrl(id)}/restore`, PhotoRequest),
+  purgeRequest: (id: string) => request('POST', `${requestUrl(id)}/purge`, undefined),
+
+  trash: (homeId: string, signal?: AbortSignal) =>
+    request('GET', `${homeUrl(homeId)}/trash`, TrashResponse, { signal }),
+  emptyTrash: (homeId: string) =>
+    request('POST', `${homeUrl(homeId)}/trash/empty`, EmptyTrashResponse),
 };
 export type PhotosApi = typeof photosApi;
