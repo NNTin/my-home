@@ -125,22 +125,28 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
     return { capturedRoomId: room?.id ?? null, capturedRoomName: room?.name ?? null };
   };
 
-  const photoIdsByRequest = async (requestIds: string[]) => {
+  /**
+   * The photos that answer each request. A request id on a photo is a soft reference (the copy
+   * tool keeps it), so only photos of the request's own home count as its answers.
+   */
+  const photoIdsByRequest = async (requests: Pick<PhotoRequestRow, 'id' | 'homeId'>[]) => {
     const byRequest = new Map<string, string[]>();
-    if (requestIds.length === 0) return byRequest;
+    if (requests.length === 0) return byRequest;
+    const homeOf = new Map(requests.map((r) => [r.id, r.homeId]));
     const rows = await db
-      .select({ id: photos.id, requestId: photos.requestId })
+      .select({ id: photos.id, requestId: photos.requestId, homeId: photos.homeId })
       .from(photos)
-      .where(and(inArray(photos.requestId, requestIds), isNull(photos.deletedAt)))
+      .where(and(inArray(photos.requestId, [...homeOf.keys()]), isNull(photos.deletedAt)))
       .orderBy(asc(photos.takenAt), asc(photos.id));
     for (const row of rows) {
+      if (homeOf.get(row.requestId!) !== row.homeId) continue;
       byRequest.set(row.requestId!, [...(byRequest.get(row.requestId!) ?? []), row.id]);
     }
     return byRequest;
   };
 
   const toRequests = async (rows: PhotoRequestRow[]): Promise<PhotoRequest[]> => {
-    const linked = await photoIdsByRequest(rows.map((r) => r.id));
+    const linked = await photoIdsByRequest(rows);
     return rows.map((row) =>
       PhotoRequest.parse({
         id: row.id,

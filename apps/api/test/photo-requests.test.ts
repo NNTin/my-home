@@ -159,6 +159,31 @@ describe('photo requests API', () => {
     expect((await get(request.id)).photoIds).toEqual([]);
   });
 
+  it('never counts a photo of another home as an answer', async () => {
+    const request = await create();
+    // Request ids on photos are soft references: another home's photo may carry this id.
+    const foreign = await upload(request.id, 'another-home');
+    expect(foreign.requestId).toBe(request.id);
+    expect(await get(request.id)).toMatchObject({ status: 'open', photoIds: [] });
+
+    const moved = await upload(undefined, 'another-home');
+    const patched = await ctx.app.inject({
+      method: 'PATCH',
+      url: `/api/photos/${moved.id}`,
+      payload: { requestId: request.id },
+    });
+    expect(patched.statusCode).toBe(200);
+    expect(await get(request.id)).toMatchObject({ status: 'open', photoIds: [] });
+
+    // A photo of the request's own home still counts, next to the foreign ones.
+    const own = await upload(request.id);
+    expect(await get(request.id)).toMatchObject({ status: 'fulfilled', photoIds: [own.id] });
+    const listed = ListPhotoRequestsResponse.parse(
+      (await inject('GET', '/api/homes/mock-home/photo-requests?status=all')).json(),
+    ).items;
+    expect(listed.map((r) => r.photoIds)).toEqual([[own.id]]);
+  });
+
   it('can be cancelled and reopened', async () => {
     const request = await create();
     const cancelled = PhotoRequest.parse(
