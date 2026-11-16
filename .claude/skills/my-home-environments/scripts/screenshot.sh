@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # screenshot.sh <staging|production> [--path /?home=...] [--out file.png] [--wait ms] [--viewport WxH]
+#               [--click <playwright selector>]... [--drag DX,DY]...
 # screenshot.sh --check
 #
 # Screenshots the 3D viewer in headless Chromium (Playwright, kept outside the repository in
 # MY_HOME_PLAYWRIGHT_DIR, default ${XDG_CACHE_HOME:-$HOME/.cache}/my-home-environments/playwright; browsers in
 # ~/.cache/ms-playwright). Waits for the canvas plus --wait ms (default 6000), then prints the final host,
 # status, title and console/page errors. Default --out: ${TMPDIR:-/tmp}/my-home-<env>-<time>.png.
+# --click and --drag run in the given order after the wait, each followed by a short settle: --click clicks a
+# Playwright selector (e.g. 'label:has-text("Souterrain")'), --drag drags DX,DY pixels from the canvas centre
+# (orbits the camera).
 # The site token is attached only to requests for the environment's own host and is never printed.
 # --check installs Playwright if missing and reports its version, the Chromium path and a headless launch.
 set -euo pipefail
@@ -59,7 +63,7 @@ fi
 [[ $# -ge 1 ]] || usage
 resolve_env "$1"
 shift
-target=/ out='' wait_ms=6000 viewport=1440x900
+target=/ out='' wait_ms=6000 viewport=1440x900 actions='[]'
 while [[ $# -gt 0 ]]; do
   [[ $# -ge 2 ]] || usage
   case "$1" in
@@ -67,6 +71,11 @@ while [[ $# -gt 0 ]]; do
     --out) out=$2 ;;
     --wait) wait_ms=$2 ;;
     --viewport) viewport=$2 ;;
+    --click) actions=$(jq -c --arg s "$2" '. + [{click: $s}]' <<<"$actions") ;;
+    --drag)
+      [[ $2 =~ ^-?[0-9]+,-?[0-9]+$ ]] || die "--drag must be DX,DY in pixels, e.g. -300,0"
+      actions=$(jq -c --arg d "$2" '. + [{drag: ($d | split(",") | map(tonumber))}]' <<<"$actions")
+      ;;
     *) usage ;;
   esac
   shift 2
@@ -82,4 +91,4 @@ ensure_playwright
 node_cmd=(node)
 command -v ao-heavy >/dev/null 2>&1 && [[ ${AO_HEAVY_ACTIVE:-} != 1 ]] && node_cmd=(ao-heavy node)
 "$script_dir/with-site-token.sh" "$SITE_ENV" -- \
-  "${node_cmd[@]}" "$script_dir/screenshot.mjs" "$out" "$target" "$wait_ms" "$width" "$height"
+  "${node_cmd[@]}" "$script_dir/screenshot.mjs" "$out" "$target" "$wait_ms" "$width" "$height" "$actions"

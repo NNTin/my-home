@@ -1,4 +1,5 @@
 import {
+  roofOf,
   wallLength,
   type HomeModel,
   type Opening,
@@ -24,12 +25,34 @@ export interface Box {
   rotationY: number;
 }
 
+/**
+ * A polygon in a local (x, y) plane, extruded through `depth` along local z (centred on the
+ * plane), rotated about y by `rotationY` and moved to `center`. See `solidPoint`.
+ */
+export interface ProfileSolid {
+  center: Vec3;
+  rotationY: number;
+  depth: number;
+  outline: Vec2[];
+}
+
 export interface WallSegment extends Box {
   id: string;
   wallId: string;
   levelId: string;
   apartmentId?: string;
   kind: Wall['kind'];
+  /**
+   * Set when the segment is trimmed by a pitched roof: draw this outline (local along-wall x and
+   * height y, relative to `center`) extruded through the wall thickness instead of the box.
+   */
+  outline?: Vec2[];
+}
+
+/** One sloped plane of a pitched roof. */
+export interface RoofPlaneDescriptor extends ProfileSolid {
+  id: string;
+  levelId: string;
 }
 
 export interface OpeningDescriptor extends Box {
@@ -104,6 +127,8 @@ export interface HomeScene {
   roomFloors: RoomFloorDescriptor[];
   terrain: TerrainDescriptor[];
   outdoorAreas: OutdoorAreaDescriptor[];
+  /** Planes of a pitched roof; a flat roof is a slab of kind `roof` instead. */
+  roofPlanes: RoofPlaneDescriptor[];
   bounds: { min: Vec3; max: Vec3 };
 }
 
@@ -116,6 +141,140 @@ const toOutline = (polygon: Polygon): Vec2[] => polygon.map(toVec2);
 
 /** Rotation about +y that maps the local +x axis onto the plan direction (dx, dz). */
 export const rotationFor = (dx: number, dz: number) => Math.atan2(-dz, dx);
+
+/** World position of the outline point `[x, y]` of a profile solid, at local depth `z`. */
+export function solidPoint(solid: ProfileSolid, [x, y]: Vec2, z = 0): Vec3 {
+  const c = Math.cos(solid.rotationY);
+  const s = Math.sin(solid.rotationY);
+  // Same rotation as three.js about +y: (x, z) -> (x cos + z sin, -x sin + z cos).
+  const [cx, cy, cz] = solid.center;
+  return [cx + x * c + z * s, cy + y, cz - x * s + z * c];
+}
+
+/** A gable roof resolved against the footprint; "across" is the plan axis across the ridge. */
+export interface Gable {
+  levelId: string;
+  ridgeAxis: 'x' | 'z';
+  /** Footprint bounds along the ridge and across it. */
+  along: Vec2;
+  across: Vec2;
+  /** Across coordinate of the ridge. */
+  ridge: number;
+  /** Height of the roof underside at the footprint edge, and its slope (rise per metre). */
+  eaveY: number;
+  slope: number;
+  thickness: number;
+  overhang: number;
+}
+
+export function gableOf(model: HomeModel, top: LevelInfo | undefined): Gable | undefined {
+  const roof = roofOf(model.building);
+  if (roof.type !== 'gable' || !top) return undefined;
+  const xs = model.building.footprint.map((p) => p.x.value);
+  const zs = model.building.footprint.map((p) => p.z.value);
+  const range = (v: number[]): Vec2 => [Math.min(...v), Math.max(...v)];
+  const [along, across] = roof.ridgeAxis === 'x' ? [range(xs), range(zs)] : [range(zs), range(xs)];
+  return {
+    levelId: top.id,
+    ridgeAxis: roof.ridgeAxis,
+    along,
+    across,
+    ridge: (across[0] + across[1]) / 2,
+    eaveY: top.elevation + roof.kneeWallHeight.value,
+    slope: Math.tan((roof.pitch.value * Math.PI) / 180),
+    thickness: model.building.roofThickness.value,
+    overhang: roof.overhang.value,
+  };
+}
+
+/** Height of the roof underside above the plan coordinate `across` (beyond the eaves too). */
+export const roofUnderside = (g: Gable, across: number) =>
+  g.eaveY + ((g.across[1] - g.across[0]) / 2 - Math.abs(across - g.ridge)) * g.slope;
+
+/** The two roof planes, each from the ridge down past the eaves by the overhang. */
+export function gableRoofPlanes(g: Gable): RoofPlaneDescriptor[] {
+  const half = (g.across[1] - g.across[0]) / 2;
+  const reach = half + g.overhang;
+  const ridgeY = g.eaveY + half * g.slope;
+  const eaveY = g.eaveY - g.overhang * g.slope;
+  // Vertical thickness of a slab that is `thickness` thick at right angles to its slope.
+  const t = g.thickness * Math.hypot(1, g.slope);
+  const alongMid = (g.along[0] + g.along[1]) / 2;
+  const center: Vec3 = g.ridgeAxis === 'x' ? [alongMid, 0, g.ridge] : [g.ridge, 0, alongMid];
+  // Local x runs across the ridge (towards +z or +x), local z along it.
+  const rotationY = g.ridgeAxis === 'x' ? rotationFor(0, 1) : rotationFor(1, 0);
+  const depth = g.along[1] - g.along[0] + 2 * g.overhang;
+  return ([-1, 1] as const).map((side) => ({
+    id: `roof:${side < 0 ? 'min' : 'max'}`,
+    levelId: g.levelId,
+    center,
+    rotationY,
+    depth,
+    outline: [
+      [0, ridgeY],
+      [side * reach, eaveY],
+      [side * reach, eaveY + t],
+      [0, ridgeY + t],
+    ],
+  }));
+}
+
+/**
+ * Trims a wall span (`from`..`to` along the wall, `bottom`..`top` above its floor) to
+ * `ceiling(t)`, a piecewise linear height whose kinks are at `kinks`. Returns `undefined` when the
+ * span is entirely below the ceiling, `null` when entirely above, else the trimmed outline.
+ */
+export function clipSpan(
+  span: Pick<Span, 'from' | 'to' | 'bottom' | 'top'>,
+  ceiling: (t: number) => number,
+  kinks: number[],
+): Vec2[] | undefined | null {
+  const { from, to, bottom, top } = span;
+  const base = [from, ...kinks.filter((t) => t > from + EPS && t < to - EPS), to].sort(
+    (a, b) => a - b,
+  );
+  // Clamping to [bottom, top] adds a kink wherever the ceiling crosses either of them.
+  const ts: number[] = [];
+  base.forEach((t, i) => {
+    ts.push(t);
+    const next = base[i + 1];
+    if (next === undefined) return;
+    for (const level of [bottom, top]) {
+      const a = ceiling(t) - level;
+      const b = ceiling(next) - level;
+      if (a * b < -EPS * EPS) ts.push(t + ((next - t) * a) / (a - b));
+    }
+  });
+  ts.sort((a, b) => a - b);
+  if (ts.every((t) => ceiling(t) >= top - EPS)) return undefined;
+  if (ts.every((t) => ceiling(t) <= bottom + EPS)) return null;
+  const height = (t: number) => Math.min(top, Math.max(bottom, ceiling(t)));
+  const points: Vec2[] = [
+    [from, bottom],
+    [to, bottom],
+    ...ts.reverse().map((t): Vec2 => [t, height(t)]),
+  ];
+  return simplify(points);
+}
+
+/** Drops repeated and collinear vertices of a closed polygon. */
+function simplify(points: Vec2[]): Vec2[] {
+  let result = points;
+  for (let changed = true; changed && result.length > 3;) {
+    changed = false;
+    for (let i = 0; i < result.length; i++) {
+      const [ax, ay] = result[(i + result.length - 1) % result.length]!;
+      const [bx, by] = result[i]!;
+      const [cx, cy] = result[(i + 1) % result.length]!;
+      if (Math.abs((bx - ax) * (cy - ay) - (by - ay) * (cx - ax)) < EPS * EPS) {
+        result = result.filter((_, j) => j !== i);
+        changed = true;
+        break;
+      }
+    }
+  }
+  return result;
+}
 
 interface Span {
   part: 'full' | 'below' | 'above';
@@ -166,6 +325,7 @@ export function buildHome(model: HomeModel): HomeScene {
       height: l.height.value,
     }));
   const levelById = new Map(model.levels.map((l) => [l.id, l]));
+  const gable = gableOf(model, levels.at(-1));
   const elevationOf = (levelId: string) => levelById.get(levelId)?.elevation.value ?? 0;
 
   const walls: WallSegment[] = [];
@@ -201,16 +361,24 @@ export function buildHome(model: HomeModel): HomeScene {
         height: o.height.value,
       })),
     );
-    spans.forEach((s, i) =>
+    // Under a gable roof the attic's walls are trimmed to the roof underside, which turns a tall
+    // gable-end wall into a gable and knee walls into a flush fit.
+    const trim = gable?.levelId === wall.levelId ? roofCeiling(gable, wall, base) : undefined;
+    spans.forEach((s, i) => {
+      const outline = trim && clipSpan(s, trim.ceiling, trim.kinks);
+      if (outline === null) return;
+      const mid = (s.from + s.to) / 2;
+      const midY = (s.bottom + s.top) / 2;
       walls.push({
         ...common,
         id: `${wall.id}:${i}:${s.part}`,
         kind: wall.kind,
-        center: at((s.from + s.to) / 2, base + (s.bottom + s.top) / 2),
+        center: at(mid, base + midY),
         size: [s.to - s.from, s.top - s.bottom, thickness],
         rotationY,
-      }),
-    );
+        ...(outline && { outline: outline.map(([t, y]): Vec2 => [t - mid, y - midY]) }),
+      });
+    });
 
     for (const o of wallOpenings) {
       const width = o.width.value;
@@ -237,7 +405,8 @@ export function buildHome(model: HomeModel): HomeScene {
     top: l.elevation.value,
   }));
   const topLevel = levels.at(-1);
-  if (topLevel) {
+  const roofPlanes = gable ? gableRoofPlanes(gable) : [];
+  if (topLevel && !gable) {
     const roofBottom = topLevel.elevation + topLevel.height;
     slabs.push({
       id: 'roof',
@@ -288,7 +457,11 @@ export function buildHome(model: HomeModel): HomeScene {
     roomFloors,
     terrain,
     outdoorAreas,
+    roofPlanes,
     bounds: boundsOf([
+      ...roofPlanes.flatMap((r) =>
+        r.outline.flatMap((p) => [solidPoint(r, p, -r.depth / 2), solidPoint(r, p, r.depth / 2)]),
+      ),
       ...terrain.flatMap((t) => t.outline.map(([x, z]) => [x, t.top, z] as Vec3)),
       ...slabs.flatMap((s) =>
         s.outline.flatMap(
@@ -301,6 +474,24 @@ export function buildHome(model: HomeModel): HomeScene {
       ),
     ]),
   };
+}
+
+/**
+ * The roof underside as a height above the wall's floor along the wall (`t` from its start), and
+ * where that height has kinks. Across a thick wall the highest point counts, so walls running
+ * along the slope close against the roof on both faces.
+ */
+function roofCeiling(g: Gable, wall: Wall, base: number) {
+  const length = wallLength(wall);
+  const dx = (wall.end.x.value - wall.start.x.value) / length;
+  const dz = (wall.end.z.value - wall.start.z.value) / length;
+  const [u0, du, nu] =
+    g.ridgeAxis === 'x' ? [wall.start.z.value, dz, dx] : [wall.start.x.value, dx, dz];
+  const w = (wall.thickness.value / 2) * Math.abs(nu);
+  const peak = roofUnderside(g, g.ridge);
+  const ceiling = (t: number) => Math.min(peak, roofUnderside(g, u0 + du * t) + w * g.slope) - base;
+  const kinks = Math.abs(du) < EPS ? [] : [-w, 0, w].map((o) => (g.ridge + o - u0) / du);
+  return { ceiling, kinks };
 }
 
 function boundsOf(points: Vec3[]) {

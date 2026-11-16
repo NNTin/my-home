@@ -3,7 +3,7 @@
   "schemaVersion": 1,
   "id": "mock-home",
   "name": "Mock home",
-  "description": "Placeholder building: a partially sunken souterrain apartment with its own sunken garden, a ground-floor apartment with its own garden, two empty upper apartments and a driveway. Every dimension is a mock value.",
+  "description": "Placeholder building: a partially sunken souterrain apartment with its own sunken garden, a ground-floor apartment with its own garden, an empty attic apartment on the first floor under a gable roof, and a driveway. Every dimension is a mock value.",
   "building": {
     "id": "building",
     "name": "Apartment building",
@@ -52,7 +52,30 @@
     "roofThickness": {
       "value": 0.3,
       "source": "mock",
-      "note": "Flat roof placeholder"
+      "note": "Thickness of the roof planes"
+    },
+    "roof": {
+      "type": "gable",
+      "ridgeAxis": "x",
+      "pitch": {
+        "value": 40,
+        "source": "mock",
+        "note": "Degrees"
+      },
+      "kneeWallHeight": {
+        "value": 1,
+        "source": "mock",
+        "note": "Roof underside above the attic floor at the eaves"
+      },
+      "overhang": {
+        "value": 0.4,
+        "source": "mock"
+      }
+    },
+    "northBearing": {
+      "value": 0,
+      "source": "mock",
+      "note": "Degrees clockwise from -z; the real orientation is set later"
     }
   },
   "terrain": {
@@ -249,25 +272,9 @@
     },
     {
       "id": "first-floor",
-      "name": "First floor",
+      "name": "First floor (attic)",
       "elevation": {
         "value": 4.4,
-        "source": "mock"
-      },
-      "height": {
-        "value": 2.6,
-        "source": "mock"
-      },
-      "slabThickness": {
-        "value": 0.25,
-        "source": "mock"
-      }
-    },
-    {
-      "id": "second-floor",
-      "name": "Second floor",
-      "elevation": {
-        "value": 7.25,
         "source": "mock"
       },
       "height": {
@@ -295,15 +302,9 @@
     },
     {
       "id": "apt-first-floor",
-      "name": "First-floor apartment",
+      "name": "Attic apartment",
       "levelIds": ["first-floor"],
-      "description": "Empty shell."
-    },
-    {
-      "id": "apt-second-floor",
-      "name": "Second-floor apartment",
-      "levelIds": ["second-floor"],
-      "description": "Empty shell."
+      "description": "Empty shell on the first floor, under the gable roof."
     }
   ],
   "rooms": [
@@ -995,9 +996,9 @@
         "source": "mock"
       },
       "height": {
-        "value": 2.85,
+        "value": 1.2,
         "source": "mock",
-        "note": "Clear height plus the slab above"
+        "note": "Knee wall; the builder trims it to the roof"
       }
     },
     {
@@ -1030,9 +1031,9 @@
         "source": "mock"
       },
       "height": {
-        "value": 2.85,
+        "value": 1.2,
         "source": "mock",
-        "note": "Clear height plus the slab above"
+        "note": "Knee wall; the builder trims it to the roof"
       }
     },
     {
@@ -1065,9 +1066,9 @@
         "source": "mock"
       },
       "height": {
-        "value": 2.85,
+        "value": 4.5,
         "source": "mock",
-        "note": "Clear height plus the slab above"
+        "note": "Gable end; the builder trims it to the roof"
       }
     },
     {
@@ -1100,149 +1101,9 @@
         "source": "mock"
       },
       "height": {
-        "value": 2.85,
+        "value": 4.5,
         "source": "mock",
-        "note": "Clear height plus the slab above"
-      }
-    },
-    {
-      "id": "second-floor-wall-back",
-      "levelId": "second-floor",
-      "apartmentId": "apt-second-floor",
-      "kind": "exterior",
-      "start": {
-        "x": {
-          "value": -5.15,
-          "source": "mock"
-        },
-        "z": {
-          "value": -4,
-          "source": "mock"
-        }
-      },
-      "end": {
-        "x": {
-          "value": 5.15,
-          "source": "mock"
-        },
-        "z": {
-          "value": -4,
-          "source": "mock"
-        }
-      },
-      "thickness": {
-        "value": 0.3,
-        "source": "mock"
-      },
-      "height": {
-        "value": 2.9,
-        "source": "mock",
-        "note": "Clear height plus the roof slab"
-      }
-    },
-    {
-      "id": "second-floor-wall-front",
-      "levelId": "second-floor",
-      "apartmentId": "apt-second-floor",
-      "kind": "exterior",
-      "start": {
-        "x": {
-          "value": -5.15,
-          "source": "mock"
-        },
-        "z": {
-          "value": 4,
-          "source": "mock"
-        }
-      },
-      "end": {
-        "x": {
-          "value": 5.15,
-          "source": "mock"
-        },
-        "z": {
-          "value": 4,
-          "source": "mock"
-        }
-      },
-      "thickness": {
-        "value": 0.3,
-        "source": "mock"
-      },
-      "height": {
-        "value": 2.9,
-        "source": "mock",
-        "note": "Clear height plus the roof slab"
-      }
-    },
-    {
-      "id": "second-floor-wall-west",
-      "levelId": "second-floor",
-      "apartmentId": "apt-second-floor",
-      "kind": "exterior",
-      "start": {
-        "x": {
-          "value": -5,
-          "source": "mock"
-        },
-        "z": {
-          "value": -3.85,
-          "source": "mock"
-        }
-      },
-      "end": {
-        "x": {
-          "value": -5,
-          "source": "mock"
-        },
-        "z": {
-          "value": 3.85,
-          "source": "mock"
-        }
-      },
-      "thickness": {
-        "value": 0.3,
-        "source": "mock"
-      },
-      "height": {
-        "value": 2.9,
-        "source": "mock",
-        "note": "Clear height plus the roof slab"
-      }
-    },
-    {
-      "id": "second-floor-wall-east",
-      "levelId": "second-floor",
-      "apartmentId": "apt-second-floor",
-      "kind": "exterior",
-      "start": {
-        "x": {
-          "value": 5,
-          "source": "mock"
-        },
-        "z": {
-          "value": -3.85,
-          "source": "mock"
-        }
-      },
-      "end": {
-        "x": {
-          "value": 5,
-          "source": "mock"
-        },
-        "z": {
-          "value": 3.85,
-          "source": "mock"
-        }
-      },
-      "thickness": {
-        "value": 0.3,
-        "source": "mock"
-      },
-      "height": {
-        "value": 2.9,
-        "source": "mock",
-        "note": "Clear height plus the roof slab"
+        "note": "Gable end; the builder trims it to the roof"
       }
     }
   ],
@@ -1626,95 +1487,11 @@
       }
     },
     {
-      "id": "first-floor-front-window-1",
-      "wallId": "first-floor-wall-front",
-      "type": "window",
-      "offset": {
-        "value": 1.65,
-        "source": "mock"
-      },
-      "width": {
-        "value": 1.5,
-        "source": "mock"
-      },
-      "height": {
-        "value": 1.4,
-        "source": "mock"
-      },
-      "sill": {
-        "value": 0.9,
-        "source": "mock"
-      }
-    },
-    {
-      "id": "first-floor-front-window-2",
-      "wallId": "first-floor-wall-front",
-      "type": "window",
-      "offset": {
-        "value": 7.15,
-        "source": "mock"
-      },
-      "width": {
-        "value": 1.5,
-        "source": "mock"
-      },
-      "height": {
-        "value": 1.4,
-        "source": "mock"
-      },
-      "sill": {
-        "value": 0.9,
-        "source": "mock"
-      }
-    },
-    {
-      "id": "first-floor-back-window-1",
-      "wallId": "first-floor-wall-back",
-      "type": "window",
-      "offset": {
-        "value": 1.65,
-        "source": "mock"
-      },
-      "width": {
-        "value": 1.5,
-        "source": "mock"
-      },
-      "height": {
-        "value": 1.4,
-        "source": "mock"
-      },
-      "sill": {
-        "value": 0.9,
-        "source": "mock"
-      }
-    },
-    {
-      "id": "first-floor-back-window-2",
-      "wallId": "first-floor-wall-back",
-      "type": "window",
-      "offset": {
-        "value": 7.15,
-        "source": "mock"
-      },
-      "width": {
-        "value": 1.5,
-        "source": "mock"
-      },
-      "height": {
-        "value": 1.4,
-        "source": "mock"
-      },
-      "sill": {
-        "value": 0.9,
-        "source": "mock"
-      }
-    },
-    {
-      "id": "first-floor-west-window",
+      "id": "first-floor-west-window-1",
       "wallId": "first-floor-wall-west",
       "type": "window",
       "offset": {
-        "value": 3.25,
+        "value": 1.9,
         "source": "mock"
       },
       "width": {
@@ -1731,11 +1508,32 @@
       }
     },
     {
-      "id": "first-floor-east-window",
+      "id": "first-floor-west-window-2",
+      "wallId": "first-floor-wall-west",
+      "type": "window",
+      "offset": {
+        "value": 4.6,
+        "source": "mock"
+      },
+      "width": {
+        "value": 1.2,
+        "source": "mock"
+      },
+      "height": {
+        "value": 1.4,
+        "source": "mock"
+      },
+      "sill": {
+        "value": 0.9,
+        "source": "mock"
+      }
+    },
+    {
+      "id": "first-floor-east-window-1",
       "wallId": "first-floor-wall-east",
       "type": "window",
       "offset": {
-        "value": 3.25,
+        "value": 1.9,
         "source": "mock"
       },
       "width": {
@@ -1752,116 +1550,11 @@
       }
     },
     {
-      "id": "second-floor-front-window-1",
-      "wallId": "second-floor-wall-front",
+      "id": "first-floor-east-window-2",
+      "wallId": "first-floor-wall-east",
       "type": "window",
       "offset": {
-        "value": 1.65,
-        "source": "mock"
-      },
-      "width": {
-        "value": 1.5,
-        "source": "mock"
-      },
-      "height": {
-        "value": 1.4,
-        "source": "mock"
-      },
-      "sill": {
-        "value": 0.9,
-        "source": "mock"
-      }
-    },
-    {
-      "id": "second-floor-front-window-2",
-      "wallId": "second-floor-wall-front",
-      "type": "window",
-      "offset": {
-        "value": 7.15,
-        "source": "mock"
-      },
-      "width": {
-        "value": 1.5,
-        "source": "mock"
-      },
-      "height": {
-        "value": 1.4,
-        "source": "mock"
-      },
-      "sill": {
-        "value": 0.9,
-        "source": "mock"
-      }
-    },
-    {
-      "id": "second-floor-back-window-1",
-      "wallId": "second-floor-wall-back",
-      "type": "window",
-      "offset": {
-        "value": 1.65,
-        "source": "mock"
-      },
-      "width": {
-        "value": 1.5,
-        "source": "mock"
-      },
-      "height": {
-        "value": 1.4,
-        "source": "mock"
-      },
-      "sill": {
-        "value": 0.9,
-        "source": "mock"
-      }
-    },
-    {
-      "id": "second-floor-back-window-2",
-      "wallId": "second-floor-wall-back",
-      "type": "window",
-      "offset": {
-        "value": 7.15,
-        "source": "mock"
-      },
-      "width": {
-        "value": 1.5,
-        "source": "mock"
-      },
-      "height": {
-        "value": 1.4,
-        "source": "mock"
-      },
-      "sill": {
-        "value": 0.9,
-        "source": "mock"
-      }
-    },
-    {
-      "id": "second-floor-west-window",
-      "wallId": "second-floor-wall-west",
-      "type": "window",
-      "offset": {
-        "value": 3.25,
-        "source": "mock"
-      },
-      "width": {
-        "value": 1.2,
-        "source": "mock"
-      },
-      "height": {
-        "value": 1.4,
-        "source": "mock"
-      },
-      "sill": {
-        "value": 0.9,
-        "source": "mock"
-      }
-    },
-    {
-      "id": "second-floor-east-window",
-      "wallId": "second-floor-wall-east",
-      "type": "window",
-      "offset": {
-        "value": 3.25,
+        "value": 4.6,
         "source": "mock"
       },
       "width": {

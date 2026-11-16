@@ -159,3 +159,81 @@ body {
     max-height: 45%;
   }
 }
+
+/* HUD compass: bottom centre between the panels; top right on narrow screens. */
+.compass {
+  --rose: 0deg;
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  width: 4.5rem;
+  height: 4.5rem;
+  padding: 0;
+  transform: translateX(-50%);
+  border: 1px solid rgb(255 255 255 / 0.35);
+  border-radius: 50%;
+  background: rgb(0 0 0 / 0.6);
+  color: #e8eaed;
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.compass:focus-visible {
+  outline: 2px solid #a8d4ff;
+  outline-offset: 2px;
+}
+
+.compass-rose {
+  position: absolute;
+  inset: 0;
+  transform: rotate(var(--rose));
+}
+
+.compass-needle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.55rem;
+  height: 2.3rem;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(#ff6b5b 50%, #cfd3d8 50%);
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+
+.compass-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+  /* Around the rose at angle --a, but kept upright on screen. */
+  transform: translate(-50%, -50%) rotate(var(--a)) translateY(-1.65rem)
+    rotate(calc(-1 * (var(--a) + var(--rose))));
+}
+
+.compass-N {
+  color: #ff8a80;
+}
+
+@media (max-width: 720px) {
+  .compass {
+    top: 1rem;
+    right: 1rem;
+    bottom: auto;
+    left: auto;
+    width: 3.75rem;
+    height: 3.75rem;
+    transform: none;
+  }
+
+  .compass-label {
+    transform: translate(-50%, -50%) rotate(var(--a)) translateY(-1.35rem)
+      rotate(calc(-1 * (var(--a) + var(--rose))));
+  }
+
+  .compass-needle {
+    height: 1.9rem;
+  }
+}

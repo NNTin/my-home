@@ -1,6 +1,9 @@
 import { OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
+import { useRef } from 'react';
 import type { HomeScene, Vec3 } from '../builder/buildHome';
+import type { CompassMarker } from '../compass/compass';
+import { CompassMarkers, CompassRose, CompassTracker } from '../compass/Compass';
 import { FurnitureLayer, type FurnitureHandlers, type FurnitureView } from './FurnitureLayer';
 import { HomeMeshes } from './HomeMeshes';
 
@@ -10,6 +13,10 @@ export interface SceneProps {
   target: Vec3;
   furniture: FurnitureView[];
   handlers: FurnitureHandlers;
+  /** Bearing of true north, degrees clockwise from -z (`building.northBearing`). */
+  northBearing: number;
+  /** N/E/S/W letters on the ground. */
+  markers: CompassMarker[];
 }
 
 /** Initial camera: south-east of the building, far enough to see the whole plot. */
@@ -23,31 +30,38 @@ export function initialCamera(bounds: HomeScene['bounds']): Vec3 {
 }
 
 /** Full-size canvas; R3F resizes the renderer and camera with its container. */
-export function Scene({ scene, target, furniture, handlers }: SceneProps) {
+export function Scene({ scene, target, furniture, handlers, northBearing, markers }: SceneProps) {
+  const roseRef = useRef<HTMLButtonElement>(null);
+  const northUpRef = useRef<() => void>(undefined);
   return (
-    <Canvas
-      camera={{ position: initialCamera(scene.bounds), fov: 45, near: 0.1, far: 500 }}
-      dpr={[1, 2]}
-      shadows
-      // Clicking empty space clears the selection.
-      onPointerMissed={() => handlers.onSelect(undefined)}
-      style={{ touchAction: 'none' }}
-    >
-      <color attach="background" args={['#cfdde8']} />
-      <hemisphereLight args={['#ffffff', '#5b5040', 0.8]} />
-      <directionalLight
-        position={[20, 30, 15]}
-        intensity={1.6}
-        castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-bias={-0.0005}
-        shadow-normalBias={0.03}
+    <>
+      <Canvas
+        camera={{ position: initialCamera(scene.bounds), fov: 45, near: 0.1, far: 500 }}
+        dpr={[1, 2]}
+        shadows
+        // Clicking empty space clears the selection.
+        onPointerMissed={() => handlers.onSelect(undefined)}
+        style={{ touchAction: 'none' }}
       >
-        <orthographicCamera attach="shadow-camera" args={[-30, 30, 30, -30, 1, 100]} />
-      </directionalLight>
-      <HomeMeshes scene={scene} />
-      <FurnitureLayer items={furniture} handlers={handlers} />
-      <OrbitControls makeDefault target={target} maxPolarAngle={Math.PI * 0.95} />
-    </Canvas>
+        <color attach="background" args={['#cfdde8']} />
+        <hemisphereLight args={['#ffffff', '#5b5040', 0.8]} />
+        <directionalLight
+          position={[20, 30, 15]}
+          intensity={1.6}
+          castShadow
+          shadow-mapSize={[2048, 2048]}
+          shadow-bias={-0.0005}
+          shadow-normalBias={0.03}
+        >
+          <orthographicCamera attach="shadow-camera" args={[-30, 30, 30, -30, 1, 100]} />
+        </directionalLight>
+        <HomeMeshes scene={scene} />
+        <FurnitureLayer items={furniture} handlers={handlers} />
+        <CompassMarkers markers={markers} />
+        <OrbitControls makeDefault target={target} maxPolarAngle={Math.PI * 0.95} />
+        <CompassTracker northBearing={northBearing} roseRef={roseRef} northUpRef={northUpRef} />
+      </Canvas>
+      <CompassRose roseRef={roseRef} onNorthUp={() => northUpRef.current?.()} />
+    </>
   );
 }

@@ -6,6 +6,7 @@ import {
   type HomeScene,
   type OpeningDescriptor,
   type Prism,
+  type ProfileSolid,
   type Surface,
   type Vec2,
 } from '../builder/buildHome';
@@ -38,6 +39,34 @@ function BoxMesh({ box, color, transparent }: { box: Box; color: string; transpa
       ) : (
         <meshStandardMaterial color={color} />
       )}
+    </mesh>
+  );
+}
+
+/** A profile extruded through its depth, centred; see `solidPoint` in the builder. */
+function ProfileMesh({
+  center,
+  rotationY,
+  depth,
+  outline,
+  color,
+}: ProfileSolid & { color: string }) {
+  // Outlines come from the builder, so they are stable between renders.
+  const geometry = useMemo(() => {
+    const shape = new Shape(outline.map(([x, y]) => new Vector2(x, y)));
+    const g = new ExtrudeGeometry(shape, { depth, bevelEnabled: false });
+    g.translate(0, 0, -depth / 2);
+    return g;
+  }, [outline, depth]);
+  return (
+    <mesh
+      geometry={geometry}
+      position={center}
+      rotation={[0, rotationY, 0]}
+      castShadow
+      receiveShadow
+    >
+      <meshStandardMaterial color={color} />
     </mesh>
   );
 }
@@ -120,8 +149,22 @@ export function HomeMeshes({ scene }: { scene: HomeScene }) {
       {scene.roomFloors.map((r, i) => (
         <SurfaceMesh key={r.id} surface={r} color={roomColors[i % roomColors.length]!} />
       ))}
-      {scene.walls.map((w) => (
-        <BoxMesh key={w.id} box={w} color={colors[w.kind]} />
+      {scene.walls.map((w) =>
+        w.outline ? (
+          <ProfileMesh
+            key={w.id}
+            center={w.center}
+            rotationY={w.rotationY}
+            depth={w.size[2]}
+            outline={w.outline}
+            color={colors[w.kind]}
+          />
+        ) : (
+          <BoxMesh key={w.id} box={w} color={colors[w.kind]} />
+        ),
+      )}
+      {scene.roofPlanes.map((r) => (
+        <ProfileMesh key={r.id} {...r} color={colors.roof} />
       ))}
       {scene.openings.map((o) => (
         <OpeningMesh key={o.id} opening={o} />
