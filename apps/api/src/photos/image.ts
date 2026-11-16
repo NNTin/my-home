@@ -46,29 +46,6 @@ async function encode(input: Buffer, edge: number, quality: number): Promise<Enc
   return { data, contentType: STORED_CONTENT_TYPE, width: info.width, height: info.height };
 }
 
-/** Chunks of a WebP file that hold only pixels: the bitstream, its header and the alpha plane. */
-const PIXEL_CHUNKS = new Set(['VP8 ', 'VP8L', 'VP8X', 'ALPH']);
-
-/**
- * Whether a file is a WebP that holds nothing but pixels: a well-formed RIFF container whose
- * every chunk is a pixel chunk, with no EXIF, XMP, colour profile, animation or unknown chunk and
- * nothing after its end. Such a file is what this module writes, so it can be stored as it is.
- */
-export function isMetadataFreeWebp(file: Buffer): boolean {
-  if (file.length < 20 || file.toString('latin1', 0, 4) !== 'RIFF') return false;
-  if (file.toString('latin1', 8, 12) !== 'WEBP') return false;
-  if (file.readUInt32LE(4) + 8 !== file.length) return false;
-  let offset = 12;
-  while (offset < file.length) {
-    if (offset + 8 > file.length) return false;
-    if (!PIXEL_CHUNKS.has(file.toString('latin1', offset, offset + 4))) return false;
-    const size = file.readUInt32LE(offset + 4);
-    // Chunks are padded to an even length.
-    offset += 8 + size + (size % 2);
-  }
-  return offset === file.length;
-}
-
 let queue: Promise<unknown> = Promise.resolve();
 
 /**
@@ -76,51 +53,36 @@ let queue: Promise<unknown> = Promise.resolve();
  * a thumbnail, both re-encoded as WebP **without any metadata**. The original is not kept: it
  * carries EXIF (camera, time and GPS location), which must never be stored.
  *
- * The one upload that is not re-encoded is a photo this module wrote before (the copy tool sends
- * those): a WebP within the size limit that holds nothing but pixels is stored byte for byte, so
- * copying a photo between environments does not degrade it.
+ * Every upload is decoded to pixels and encoded again, without exception: also a WebP this
+ * server wrote itself (the copy tool sends those). A file can hide bytes where no container check
+ * finds them, for example behind the bitstream inside a pixel chunk, so no upload is ever stored
+ * as it came. A copied photo therefore goes through one more lossy encoding.
  *
  * Calls run one after another, so a burst of uploads cannot multiply the memory of decoding a
  * full-size phone photo.
  */
 export function processImage(input: Buffer): Promise<ProcessedImage> {
   const run = async (): Promise<ProcessedImage> => {
-    let metadata: Awaited<ReturnType<ReturnType<typeof sharp>['metadata']>>;
+    let format: string | undefined;
     try {
-      metadata = await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS }).metadata();
+      format = (await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS }).metadata()).format;
     } catch {
       throw new UnsupportedImageError('The upload is not an image this server can read');
     }
-    const { format } = metadata;
     if (!format || !ACCEPTED_FORMATS.has(format)) {
       throw new UnsupportedImageError(
         `Unsupported image format "${format ?? 'unknown'}": upload a JPEG, PNG or WebP`,
       );
     }
-    const stored =
-      format === 'webp' &&
-      Math.max(metadata.width, metadata.height) <= MAX_PHOTO_EDGE &&
-      isMetadataFreeWebp(input);
     // Decoding the upload is where a broken or unreadable file shows: that is the caller's
     // fault (415). Anything that fails after that is ours and stays a 500.
     let image: EncodedImage;
-    let thumbnail: EncodedImage | undefined;
     try {
-      if (stored) {
-        thumbnail = await encode(input, THUMBNAIL_EDGE, 70);
-        image = {
-          data: input,
-          contentType: STORED_CONTENT_TYPE,
-          width: metadata.width,
-          height: metadata.height,
-        };
-      } else {
-        image = await encode(input, MAX_PHOTO_EDGE, 82);
-      }
+      image = await encode(input, MAX_PHOTO_EDGE, 82);
     } catch (err) {
       throw new UnsupportedImageError(`The image cannot be decoded: ${(err as Error).message}`);
     }
-    thumbnail ??= await encode(image.data, THUMBNAIL_EDGE, 70);
+    const thumbnail = await encode(image.data, THUMBNAIL_EDGE, 70);
     return { image, thumbnail, sha256: createHash('sha256').update(image.data).digest('hex') };
   };
   const result = queue.then(run, run);

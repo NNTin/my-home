@@ -161,10 +161,10 @@ jobs:
           curl -fsS "$base/photo-requests/$request" | jq -e --arg id "$id" '.status == "fulfilled" and .photoIds == [$id]'
           test "$(curl -fsS -o photo.webp -w '%{content_type}' "$base/photos/$id/image")" = image/webp
           sum=$(sha256sum < photo.webp)
-          # A stored photo uploaded again (the copy tool) is kept byte for byte.
+          # A stored photo uploaded again (the copy tool) is accepted and re-encoded like any upload.
           copy=$(curl -fsS -X POST "$base/homes/mock-home/photos" \
-            -F 'meta={"pose":{"position":{"x":0,"y":0,"z":0},"yaw":0,"pitch":0}}' -F 'image=@photo.webp' | jq -er '.id')
-          test "$(curl -fsS "$base/photos/$copy/image" | sha256sum)" = "$sum"
+            -F 'meta={"pose":{"position":{"x":0,"y":0,"z":0},"yaw":0,"pitch":0}}' -F 'image=@photo.webp' \
+            | jq -er 'select(.image.width == 1200 and .image.contentType == "image/webp") | .id')
           curl -fsS -X DELETE "$base/photos/$copy" > /dev/null
           test "$(curl -sS -o /dev/null -w '%{http_code}' -X POST "$base/photos/$copy/purge")" = 204
           # Not an image: 415. Soft delete, trash, restore.

@@ -1,7 +1,6 @@
 import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
 import {
-  isMetadataFreeWebp,
   MAX_PHOTO_EDGE,
   processImage,
   THUMBNAIL_EDGE,
@@ -79,64 +78,93 @@ describe('processImage', () => {
     ).rejects.toThrow(UnsupportedImageError);
   });
 
-  describe('a photo this server stored before (the copy tool)', () => {
-    it('is stored byte for byte, without a second lossy encoding', async () => {
-      const first = await processImage(await testImage({ width: 800, height: 600, exif }));
-      expect(isMetadataFreeWebp(first.image.data)).toBe(true);
-      const copy = await processImage(first.image.data);
-      expect(copy.image.data.equals(first.image.data)).toBe(true);
-      expect(copy.sha256).toBe(first.sha256);
-      expect([copy.image.width, copy.image.height]).toEqual([800, 600]);
-      expect([copy.thumbnail.width, copy.thumbnail.height]).toEqual([480, 360]);
-    });
-
-    it('re-encodes a WebP that carries metadata or is too large', async () => {
-      const withExif = await sharp(await testImage({ width: 80, height: 60 }))
-        .withExif(exif)
-        .webp()
-        .toBuffer();
-      expect(withExif.includes('TestCameraMaker')).toBe(true);
-      expect(isMetadataFreeWebp(withExif)).toBe(false);
-      const stripped = await processImage(withExif);
-      expect(stripped.image.data.equals(withExif)).toBe(false);
-      expect(stripped.image.data.includes('TestCameraMaker')).toBe(false);
-      expect((await sharp(stripped.image.data).metadata()).exif).toBeUndefined();
-
-      const large = await testImage({ width: 3200, height: 1600, format: 'webp' });
-      expect(isMetadataFreeWebp(large)).toBe(true);
-      expect((await processImage(large)).image.width).toBe(MAX_PHOTO_EDGE);
-    });
-
-    it('does not trust a container with unknown chunks or trailing data', async () => {
-      const clean = (await processImage(await testImage())).image.data;
-      const chunk = (name: string, body: string) => {
-        const header = Buffer.alloc(8);
-        header.write(name, 'latin1');
-        header.writeUInt32LE(body.length, 4);
-        return Buffer.concat([header, Buffer.from(body, 'latin1')]);
-      };
-      const withChunk = (extra: Buffer) => {
-        const file = Buffer.concat([clean, extra]);
-        file.writeUInt32LE(file.length - 8, 4);
-        return file;
-      };
-      for (const name of ['EXIF', 'XMP ', 'ICCP', 'ANIM', 'NOTE']) {
-        expect(isMetadataFreeWebp(withChunk(chunk(name, 'secret location'))), name).toBe(false);
+  describe('nothing of the uploaded file itself is stored', () => {
+    const SECRET = 'secret location';
+    const chunk = (name: string, body: Buffer) => {
+      const header = Buffer.alloc(8);
+      header.write(name, 'latin1');
+      header.writeUInt32LE(body.length, 4);
+      return Buffer.concat([header, body, Buffer.alloc(body.length % 2)]);
+    };
+    /** Rebuilds a WebP from its chunks, each changed by `change`, with a correct RIFF size. */
+    const rebuild = (file: Buffer, change: (name: string, body: Buffer) => Buffer[]) => {
+      const chunks: Buffer[] = [];
+      for (let offset = 12; offset < file.length;) {
+        const size = file.readUInt32LE(offset + 4);
+        const name = file.toString('latin1', offset, offset + 4);
+        chunks.push(...change(name, file.subarray(offset + 8, offset + 8 + size)));
+        offset += 8 + size + (size % 2);
       }
-      // Bytes after the end of the container, and a truncated file.
-      expect(isMetadataFreeWebp(Buffer.concat([clean, Buffer.from('secret location')]))).toBe(
-        false,
-      );
-      expect(isMetadataFreeWebp(clean.subarray(0, clean.length - 3))).toBe(false);
-      expect(isMetadataFreeWebp(Buffer.from('RIFF'))).toBe(false);
+      const body = Buffer.concat([Buffer.from('WEBP', 'latin1'), ...chunks]);
+      const header = Buffer.alloc(8);
+      header.write('RIFF', 'latin1');
+      header.writeUInt32LE(body.length, 4);
+      return Buffer.concat([header, body]);
+    };
+    const stored = async () => (await processImage(await testImage({ exif }))).image.data;
+    const lossless = () =>
+      sharp({ create: { width: 64, height: 48, channels: 3, background: '#c87828' } })
+        .webp({ lossless: true })
+        .toBuffer();
 
-      // Uploading such a file never stores the hidden bytes.
-      const smuggled = withChunk(chunk('NOTE', 'secret location'));
-      const stored = await processImage(smuggled).then(
-        (processed) => processed.image.data,
-        () => Buffer.alloc(0),
-      );
-      expect(stored.includes('secret location')).toBe(false);
+    it('re-encodes a photo this server stored before (the copy tool), keeping its size', async () => {
+      const first = await processImage(await testImage({ width: 800, height: 600 }));
+      const copy = await processImage(first.image.data);
+      expect([copy.image.width, copy.image.height]).toEqual([800, 600]);
+      expect((await sharp(copy.image.data).metadata()).format).toBe('webp');
+    });
+
+    // Each of these files decodes fine: a container check alone would let the bytes through.
+    it.each([
+      [
+        'behind the bitstream inside a lossy pixel chunk',
+        async () =>
+          rebuild(await stored(), (name, body) => [
+            chunk(name, name === 'VP8 ' ? Buffer.concat([body, Buffer.from(SECRET)]) : body),
+          ]),
+      ],
+      [
+        'behind the bitstream inside a lossless pixel chunk',
+        async () =>
+          rebuild(await lossless(), (name, body) => [
+            chunk(name, name === 'VP8L' ? Buffer.concat([body, Buffer.from(SECRET)]) : body),
+          ]),
+      ],
+      [
+        'in a second pixel chunk that decoders ignore',
+        async () =>
+          rebuild(await stored(), (name, body) => [
+            chunk(name, body),
+            chunk('VP8L', Buffer.from(SECRET)),
+          ]),
+      ],
+      [
+        'in an unknown chunk',
+        async () =>
+          rebuild(await stored(), (name, body) => [
+            chunk(name, body),
+            chunk('NOTE', Buffer.from(SECRET)),
+          ]),
+      ],
+      [
+        'after the end of the container',
+        async () => Buffer.concat([await stored(), Buffer.from(SECRET)]),
+      ],
+    ])('drops bytes hidden %s', async (_where, build) => {
+      const upload = await build();
+      expect(upload.includes(SECRET)).toBe(true);
+      // Stored re-encoded, or refused: never as it came.
+      let result: Awaited<ReturnType<typeof processImage>>;
+      try {
+        result = await processImage(upload);
+      } catch (err) {
+        expect(err).toBeInstanceOf(UnsupportedImageError);
+        return;
+      }
+      for (const image of [result.image, result.thumbnail]) {
+        expect(image.data.includes(SECRET)).toBe(false);
+        expect(image.data.equals(upload)).toBe(false);
+      }
     });
   });
 

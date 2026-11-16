@@ -64,10 +64,9 @@ Uploads are processed by [`apps/api/src/photos/image.ts`](../apps/api/src/photos
   This is a hard rule, see the privacy rule in `AGENTS.md`. The **original file is not kept**, because it carries
   that metadata.
 - `takenAt` is the upload time unless the client sends one.
-- One kind of upload is stored **byte for byte** instead of being re-encoded: a WebP within the size limit that
-  holds nothing but pixels (a well-formed container with only pixel chunks: no EXIF, XMP, colour profile,
-  animation or unknown chunk, nothing after its end). That is what this server writes, so the copy tool moves a
-  photo between environments without a second lossy encoding. Anything else is re-encoded as above.
+- **Every upload is re-encoded, without exception**, also a WebP this server wrote itself. A file can hide bytes
+  where no container check finds them (for example behind the bitstream inside a pixel chunk), so nothing is
+  ever stored as it was uploaded.
 - A file that cannot be decoded is a 415; a failure after decoding is a 500.
 
 Photos are processed one at a time; decoding a full-size phone photo needs a few hundred MB for a moment, which
@@ -120,8 +119,7 @@ $S/photos-copy.sh staging production --dry-run            # what would be copied
 $S/photos-copy.sh staging production --since 2026-11-01T00:00:00Z
 ```
 
-A copied photo keeps its id, pose, time, captured room, note and tags, and its image bytes exactly (same
-SHA-256, see [Images and privacy](#images-and-privacy)). Photos already on the destination (also in
+A copied photo keeps its id, pose, time, captured room, note and tags. Its image is re-encoded once more by the destination, like every upload; the loss of that one extra generation is small. Photos already on the destination (also in
 its trash) are skipped, so the copy can be repeated. It only adds photos and never changes the source.
 
 ### Size and backups
