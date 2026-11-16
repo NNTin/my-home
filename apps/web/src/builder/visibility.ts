@@ -46,6 +46,7 @@ export function visibleScene(scene: HomeScene, v: Visibility): HomeScene {
     // Slabs belong to a level, so the floor of a hidden level is cut away with it.
     slabs: scene.slabs.filter((s) => shownLevels.has(s.levelId) && (s.kind !== 'roof' || showRoof)),
     roofPlanes: showRoof ? scene.roofPlanes.filter((r) => shownLevels.has(r.levelId)) : [],
+    roofWindows: showRoof ? scene.roofWindows.filter((r) => shownLevels.has(r.levelId)) : [],
     terrain: v.showTerrain ? scene.terrain : [],
     outdoorAreas: scene.outdoorAreas.filter((a) => !v.hiddenOutdoorAreas.includes(a.id)),
   };

@@ -5,6 +5,7 @@ import {
   type Opening,
   type Point,
   type Polygon,
+  type Slope,
   type Wall,
 } from '@my-home/shared';
 
@@ -63,12 +64,50 @@ export interface OpeningDescriptor extends Box {
   type: Opening['type'];
 }
 
-/** A prism extruded vertically from `bottom` to `top`. */
+/**
+ * A plane falling linearly along a plan axis: `high` at coordinate `from`, `low` at `to` (and
+ * clamped beyond them).
+ */
+export interface PlaneSlope {
+  axis: 'x' | 'z';
+  from: number;
+  to: number;
+  high: number;
+  low: number;
+}
+
+/** Height of a sloped plane above the plan point `[x, z]`. */
+export function slopeY(slope: PlaneSlope, [x, z]: Vec2): number {
+  const at = slope.axis === 'x' ? x : z;
+  const t = slope.to === slope.from ? 0 : (at - slope.from) / (slope.to - slope.from);
+  return slope.high + (slope.low - slope.high) * Math.min(1, Math.max(0, t));
+}
+
+/** Resolves a model slope against the bounding box of `outline`, offset vertically by `lift`. */
+export function resolveSlope(
+  outline: Vec2[],
+  high: number,
+  slope: Slope | undefined,
+  lift = 0,
+): PlaneSlope | undefined {
+  if (!slope) return undefined;
+  const axis = slope.towards.endsWith('x') ? 'x' : 'z';
+  const values = outline.map(([x, z]) => (axis === 'x' ? x : z));
+  const [min, max] = [Math.min(...values), Math.max(...values)];
+  const [from, to] = slope.towards.startsWith('+') ? [min, max] : [max, min];
+  return { axis, from, to, high: high + lift, low: slope.lowElevation.value + lift };
+}
+
+/**
+ * A prism extruded vertically from `bottom` to `top`. With `slope` its top follows that plane
+ * instead (`top` is then the high edge).
+ */
 export interface Prism {
   outline: Vec2[];
   holes: Vec2[][];
   bottom: number;
   top: number;
+  slope?: PlaneSlope;
 }
 
 export interface SlabDescriptor extends Prism {
@@ -77,10 +116,11 @@ export interface SlabDescriptor extends Prism {
   kind: 'floor' | 'roof';
 }
 
-/** A flat surface at height `y`. */
+/** A flat surface at height `y`, or on `slope` (`y` is then the high edge). */
 export interface Surface {
   outline: Vec2[];
   y: number;
+  slope?: PlaneSlope;
 }
 
 export interface RoomFloorDescriptor extends Surface {
@@ -101,6 +141,36 @@ export interface OutdoorAreaDescriptor extends Surface {
   name: string;
   kind: HomeModel['outdoorAreas'][number]['kind'];
   ownerApartmentId?: string;
+}
+
+/** An opening in an outbuilding wall. */
+export interface OutbuildingOpeningDescriptor extends Box {
+  id: string;
+  type: Opening['type'];
+}
+
+/** A garage, shed or carport: wall boxes, their openings and a flat roof. */
+export interface OutbuildingDescriptor {
+  id: string;
+  name: string;
+  kind: NonNullable<HomeModel['outbuildings']>[number]['kind'];
+  walls: (Box & { id: string })[];
+  openings: OutbuildingOpeningDescriptor[];
+  roof: Prism & { id: string };
+}
+
+/**
+ * A window lying on a roof plane. `size` is [along the ridge, thickness, down the slope]; the
+ * box is turned by `tilt` about its local x, then by `rotationY` about y (Euler order YXZ), so
+ * its local +z runs down the slope.
+ */
+export interface RoofWindowDescriptor {
+  id: string;
+  levelId: string;
+  center: Vec3;
+  size: Vec3;
+  rotationY: number;
+  tilt: number;
 }
 
 export interface LevelInfo {
@@ -129,6 +199,8 @@ export interface HomeScene {
   outdoorAreas: OutdoorAreaDescriptor[];
   /** Planes of a pitched roof; a flat roof is a slab of kind `roof` instead. */
   roofPlanes: RoofPlaneDescriptor[];
+  roofWindows: RoofWindowDescriptor[];
+  outbuildings: OutbuildingDescriptor[];
   bounds: { min: Vec3; max: Vec3 };
 }
 
@@ -430,23 +502,38 @@ export function buildHome(model: HomeModel): HomeScene {
     y: elevationOf(r.levelId) + SURFACE_OFFSET,
   }));
 
-  const terrain: TerrainDescriptor[] = model.terrain.patches.map((p) => ({
-    id: p.id,
-    name: p.name,
-    outline: toOutline(p.outline),
-    holes: (p.holes ?? []).map(toOutline),
-    bottom: model.terrain.bottomElevation.value,
-    top: p.elevation.value,
-  }));
+  const terrain: TerrainDescriptor[] = model.terrain.patches.map((p) => {
+    const outline = toOutline(p.outline);
+    const slope = resolveSlope(outline, p.elevation.value, p.slope);
+    return {
+      id: p.id,
+      name: p.name,
+      outline,
+      holes: (p.holes ?? []).map(toOutline),
+      bottom: model.terrain.bottomElevation.value,
+      top: p.elevation.value,
+      ...(slope && { slope }),
+    };
+  });
 
-  const outdoorAreas: OutdoorAreaDescriptor[] = model.outdoorAreas.map((a) => ({
-    id: a.id,
-    name: a.name,
-    kind: a.kind,
-    ...(a.ownerApartmentId !== undefined && { ownerApartmentId: a.ownerApartmentId }),
-    outline: toOutline(a.outline),
-    y: a.elevation.value + SURFACE_OFFSET,
-  }));
+  const outdoorAreas: OutdoorAreaDescriptor[] = model.outdoorAreas.map((a) => {
+    const outline = toOutline(a.outline);
+    const slope = resolveSlope(outline, a.elevation.value, a.slope, SURFACE_OFFSET);
+    return {
+      id: a.id,
+      name: a.name,
+      kind: a.kind,
+      ...(a.ownerApartmentId !== undefined && { ownerApartmentId: a.ownerApartmentId }),
+      outline,
+      y: a.elevation.value + SURFACE_OFFSET,
+      ...(slope && { slope }),
+    };
+  });
+
+  const outbuildings = (model.outbuildings ?? []).map(buildOutbuilding);
+  const roof = roofOf(model.building);
+  const roofWindows =
+    gable && roof.type === 'gable' ? gableRoofWindows(gable, roof.windows ?? []) : [];
 
   return {
     levels,
@@ -458,7 +545,15 @@ export function buildHome(model: HomeModel): HomeScene {
     terrain,
     outdoorAreas,
     roofPlanes,
+    roofWindows,
+    outbuildings,
     bounds: boundsOf([
+      ...outbuildings.flatMap((b) =>
+        b.walls.flatMap((w) => [
+          [w.center[0] - w.size[0] / 2, w.center[1] - w.size[1] / 2, w.center[2]] as Vec3,
+          [w.center[0] + w.size[0] / 2, w.center[1] + w.size[1] / 2, w.center[2]] as Vec3,
+        ]),
+      ),
       ...roofPlanes.flatMap((r) =>
         r.outline.flatMap((p) => [solidPoint(r, p, -r.depth / 2), solidPoint(r, p, r.depth / 2)]),
       ),
@@ -494,6 +589,114 @@ function roofCeiling(g: Gable, wall: Wall, base: number) {
   return { ceiling, kinks };
 }
 
+/** Windows lying on the gable roof's planes, just above their top surface. */
+export function gableRoofWindows(
+  g: Gable,
+  windows: NonNullable<Extract<HomeModel['building']['roof'], { type: 'gable' }>['windows']>,
+): RoofWindowDescriptor[] {
+  const tilt = Math.atan(g.slope);
+  const top = g.thickness * Math.hypot(1, g.slope);
+  return windows.map((w) => {
+    const width = w.width.value;
+    const length = w.length.value;
+    // Horizontal distance from the footprint edge to the window's centre.
+    const inset = (w.fromEave.value + length / 2) * Math.cos(tilt);
+    const across = w.side === 'max' ? g.across[1] - inset : g.across[0] + inset;
+    const along = g.along[0] + w.offset.value + width / 2;
+    const y = roofUnderside(g, across) + top + ROOF_WINDOW_THICKNESS / 2 / Math.cos(tilt);
+    const quarter = Math.PI / 2;
+    const rotationY =
+      g.ridgeAxis === 'x'
+        ? w.side === 'max'
+          ? 0
+          : Math.PI
+        : w.side === 'max'
+          ? quarter
+          : -quarter;
+    return {
+      id: w.id,
+      levelId: g.levelId,
+      center: g.ridgeAxis === 'x' ? [along, y, across] : [across, y, along],
+      size: [width, ROOF_WINDOW_THICKNESS, length],
+      rotationY,
+      tilt,
+    };
+  });
+}
+
+const ROOF_WINDOW_THICKNESS = 0.06;
+
+/** Walls along every footprint edge (overlapping at the corners), openings and a flat roof. */
+export function buildOutbuilding(
+  b: NonNullable<HomeModel['outbuildings']>[number],
+): OutbuildingDescriptor {
+  const floor = b.floorElevation.value;
+  const height = b.height.value;
+  const t = b.wallThickness.value;
+  const points = toOutline(b.footprint);
+  const walls: OutbuildingDescriptor['walls'] = [];
+  const openings: OutbuildingOpeningDescriptor[] = [];
+  points.forEach(([sx, sz], edge) => {
+    const [ex, ez] = points[(edge + 1) % points.length]!;
+    const length = Math.hypot(ex - sx, ez - sz);
+    if (length < EPS || b.openEdges?.includes(edge)) return;
+    const dx = (ex - sx) / length;
+    const dz = (ez - sz) / length;
+    const rotationY = rotationFor(dx, dz);
+    // Each wall runs half a thickness past both corners so the corners close.
+    const at = (along: number, y: number): Vec3 => [
+      sx + dx * (along - t / 2),
+      y,
+      sz + dz * (along - t / 2),
+    ];
+    const edgeOpenings = (b.openings ?? []).filter((o) => o.edge === edge);
+    const spans = splitWall(
+      length + t,
+      height,
+      edgeOpenings.map((o) => ({
+        offset: o.offset.value + t / 2,
+        width: o.width.value,
+        sill: o.sill.value,
+        height: o.height.value,
+      })),
+    );
+    spans.forEach((span, i) => {
+      walls.push({
+        id: `${b.id}:${edge}:${i}:${span.part}`,
+        center: at((span.from + span.to) / 2, floor + (span.bottom + span.top) / 2),
+        size: [span.to - span.from, span.top - span.bottom, t],
+        rotationY,
+      });
+    });
+    for (const o of edgeOpenings) {
+      openings.push({
+        id: o.id,
+        type: o.type,
+        center: at(
+          t / 2 + o.offset.value + o.width.value / 2,
+          floor + o.sill.value + o.height.value / 2,
+        ),
+        size: [o.width.value, o.height.value, t],
+        rotationY,
+      });
+    }
+  });
+  return {
+    id: b.id,
+    name: b.name,
+    kind: b.kind,
+    walls,
+    openings,
+    roof: {
+      id: `${b.id}:roof`,
+      outline: points,
+      holes: [],
+      bottom: floor + height - b.roofThickness.value,
+      top: floor + height + SURFACE_OFFSET,
+    },
+  };
+}
+
 function boundsOf(points: Vec3[]) {
   const min: Vec3 = [Infinity, Infinity, Infinity];
   const max: Vec3 = [-Infinity, -Infinity, -Infinity];
@@ -512,9 +715,14 @@ const GLASS_DEPTH = 0.02;
 
 /**
  * Frame members and glass of an opening, in the opening's local space (centre at the origin,
- * width along x). Windows get a full frame and a pane; doors a frame without a sill, left open.
+ * width along x). Windows get a full frame and a pane; doors a frame without a sill, left open;
+ * French doors a pane down to the floor; garage doors a closed panel.
  */
-export function openingParts(opening: Pick<OpeningDescriptor, 'type' | 'size'>) {
+export function openingParts(opening: Pick<OpeningDescriptor, 'type' | 'size'>): {
+  frame: Box[];
+  glass?: Box;
+  panel?: Box;
+} {
   const [w, h, wallDepth] = opening.size;
   const f = Math.min(FRAME_WIDTH, w / 4, h / 4);
   const d = Math.min(FRAME_DEPTH, wallDepth);
@@ -528,7 +736,13 @@ export function openingParts(opening: Pick<OpeningDescriptor, 'type' | 'size'>) 
     box(w / 2 - f / 2, 0, f, h),
     box(0, h / 2 - f / 2, w - 2 * f, f),
   ];
-  if (opening.type === 'door') return { frame, glass: undefined };
+  if (opening.type === 'door') return { frame };
+  if (opening.type === 'french-door') {
+    return { frame, glass: box(0, -f / 2, w - 2 * f, h - f, GLASS_DEPTH) };
+  }
+  if (opening.type === 'garage-door') {
+    return { frame, panel: box(0, -f / 2, w - 2 * f, h - f, GLASS_DEPTH * 2) };
+  }
   frame.push(box(0, -h / 2 + f / 2, w - 2 * f, f));
   return { frame, glass: box(0, 0, w - 2 * f, h - 2 * f, GLASS_DEPTH) };
 }

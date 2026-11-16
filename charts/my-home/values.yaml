@@ -10,7 +10,7 @@ imagePullSecrets: []
 database:
   # Secret holding DATABASE_URL for this environment's database. The infrastructure repository provisions it.
   secretName: my-home-db
-  # Staging only: every deploy empties the database, migrates and seeds the mock home (dist/reset.js).
+  # Staging only: every deploy empties the database, migrates and seeds the real and mock homes (dist/reset.js).
   resetOnDeploy: false
 release:
   activeDeadlineSeconds: 600

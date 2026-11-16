@@ -85,6 +85,9 @@
                   },
                   "elevation": {
                     "$ref": "#/$defs/Dimension"
+                  },
+                  "slope": {
+                    "$ref": "#/$defs/Slope"
                   }
                 },
                 "required": ["id", "name", "outline", "elevation"],
@@ -227,7 +230,7 @@
               },
               "type": {
                 "type": "string",
-                "enum": ["door", "window"]
+                "enum": ["door", "window", "french-door", "garage-door"]
               },
               "offset": {
                 "$ref": "#/$defs/NonNegativeDimension"
@@ -261,7 +264,7 @@
               },
               "kind": {
                 "type": "string",
-                "enum": ["garden", "driveway", "patio", "path"]
+                "enum": ["garden", "driveway", "patio", "path", "road"]
               },
               "ownerApartmentId": {
                 "$ref": "#/$defs/Id"
@@ -271,10 +274,19 @@
               },
               "elevation": {
                 "$ref": "#/$defs/Dimension"
+              },
+              "slope": {
+                "$ref": "#/$defs/Slope"
               }
             },
             "required": ["id", "name", "kind", "outline", "elevation"],
             "additionalProperties": false
+          }
+        },
+        "outbuildings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Outbuilding"
           }
         }
       },
@@ -342,7 +354,7 @@
     },
     "DimensionSource": {
       "type": "string",
-      "enum": ["mock", "estimated-from-photo", "measured"],
+      "enum": ["mock", "estimated-from-photo", "measured", "geodata"],
       "description": "Where a dimension value comes from."
     },
     "PositiveDimension": {
@@ -404,6 +416,12 @@
         },
         "overhang": {
           "$ref": "#/$defs/NonNegativeDimension"
+        },
+        "windows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RoofWindow"
+          }
         }
       },
       "required": ["type", "ridgeAxis", "pitch", "kneeWallHeight", "overhang"],
@@ -448,6 +466,32 @@
       "additionalProperties": false,
       "description": "A non-negative value in metres with provenance."
     },
+    "RoofWindow": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "side": {
+          "type": "string",
+          "enum": ["min", "max"]
+        },
+        "offset": {
+          "$ref": "#/$defs/NonNegativeDimension"
+        },
+        "fromEave": {
+          "$ref": "#/$defs/NonNegativeDimension"
+        },
+        "width": {
+          "$ref": "#/$defs/PositiveDimension"
+        },
+        "length": {
+          "$ref": "#/$defs/PositiveDimension"
+        }
+      },
+      "required": ["id", "side", "offset", "fromEave", "width", "length"],
+      "additionalProperties": false
+    },
     "Bearing": {
       "type": "object",
       "properties": {
@@ -467,6 +511,109 @@
       "required": ["value", "source"],
       "additionalProperties": false,
       "description": "An angle in degrees with provenance."
+    },
+    "Slope": {
+      "type": "object",
+      "properties": {
+        "towards": {
+          "type": "string",
+          "enum": ["+x", "-x", "+z", "-z"]
+        },
+        "lowElevation": {
+          "$ref": "#/$defs/Dimension"
+        }
+      },
+      "required": ["towards", "lowElevation"],
+      "additionalProperties": false,
+      "description": "A surface falling linearly across its bounding box."
+    },
+    "Outbuilding": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["garage", "carport", "shed", "porch"]
+        },
+        "footprint": {
+          "$ref": "#/$defs/Polygon"
+        },
+        "floorElevation": {
+          "$ref": "#/$defs/Dimension"
+        },
+        "height": {
+          "$ref": "#/$defs/PositiveDimension"
+        },
+        "wallThickness": {
+          "$ref": "#/$defs/PositiveDimension"
+        },
+        "roofThickness": {
+          "$ref": "#/$defs/PositiveDimension"
+        },
+        "openEdges": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "openings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OutbuildingOpening"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "footprint",
+        "floorElevation",
+        "height",
+        "wallThickness",
+        "roofThickness"
+      ],
+      "additionalProperties": false
+    },
+    "OutbuildingOpening": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["door", "window", "french-door", "garage-door"]
+        },
+        "edge": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "offset": {
+          "$ref": "#/$defs/NonNegativeDimension"
+        },
+        "width": {
+          "$ref": "#/$defs/PositiveDimension"
+        },
+        "height": {
+          "$ref": "#/$defs/PositiveDimension"
+        },
+        "sill": {
+          "$ref": "#/$defs/NonNegativeDimension"
+        }
+      },
+      "required": ["id", "type", "edge", "offset", "width", "height", "sill"],
+      "additionalProperties": false
     }
   }
 }

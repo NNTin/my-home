@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { describeIssues, formatIssues, HomeModel } from '@my-home/shared';
-import { defaultHomeFile } from '../paths';
+import { defaultHomeFile, defaultSeedFiles } from '../paths';
 import type { Db } from './client';
 import { homeStore } from './homes';
 
@@ -39,4 +39,14 @@ export async function seed(
     return { id: model.id, status: status === 'created' ? 'inserted' : 'replaced' };
   }
   return { id: model.id, status: (await store.insert(model)) ? 'inserted' : 'unchanged' };
+}
+
+/** Seeds `files` in order (the oldest home is shown first); defaults to `defaultSeedFiles`. */
+export async function seedHomes(
+  db: Db,
+  { files = defaultSeedFiles, replace = false }: { files?: string[]; replace?: boolean } = {},
+): Promise<SeedResult[]> {
+  const results: SeedResult[] = [];
+  for (const file of files) results.push(await seed(db, { file, replace }));
+  return results;
 }

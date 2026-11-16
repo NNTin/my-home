@@ -7,7 +7,8 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - `apps/web`: Vite + React + `@react-three/fiber`/`drei` viewer; dev server proxies `/api`
 - `apps/api`: Fastify + Drizzle (Postgres); schema in `src/db/schema.ts`, migrations in `drizzle/`
 - `packages/shared`: zod schemas and types shared by web and api (ships TS source)
-- `data/homes/`: home model documents (`mock-home.json`); model docs in `docs/home-model.md`
+- `data/homes/`: home model documents (`home.json` the real house, `mock-home.json` the test fixture); model docs in
+  `docs/home-model.md`
 - `apps/web/src/items/<type>/`: one furniture type per folder, auto-registered
   (`docs/adding-furniture-type.md`); layouts and the editor in `docs/layouts.md`
 - `docs/`: project docs; `docker-compose.yml` runs postgres + api + web
@@ -30,10 +31,11 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - api tests use `fastify.inject` and must also pass against real Postgres (CI `test-postgres`).
 - web tests run in jsdom: mock the R3F canvas, never require WebGL.
 - Keep changes scoped; conventional commit messages.
+- Never mention the house's address or location (coordinates, map links, tile IDs, place names) in the repo or on GitHub.
 
 ## Environments
 
-- staging `https://home-staging.nntin.xyz`: throwaway, reset to the mock home on every deploy (same-repo PR
+- staging `https://home-staging.nntin.xyz`: throwaway, reset to the real and the mock home on every deploy (same-repo PR
   pushes, `v*` tags; latest wins). Use it for tests and experiments.
 - production `https://home.nntin.xyz`: real data, deployed from every push to `main`. Change it only when asked.
 - Both are behind authentik SSO: exchange the nntin-bot GitHub token for a site token with the

@@ -6,8 +6,10 @@ The api validates every write with it and the web app validates every response w
 
 - JSON Schema: [`packages/shared/schema/home-model.schema.json`](../packages/shared/schema/home-model.schema.json),
   generated with `pnpm schema:generate` and committed (a test fails when it is out of date).
-- Mock home: [`data/homes/mock-home.json`](../data/homes/mock-home.json). Its `$schema` points at the
-  JSON Schema, so editors such as VS Code validate and autocomplete it.
+- Real home: [`data/homes/home.json`](../data/homes/home.json), see [The real home](#the-real-home).
+- Mock home: [`data/homes/mock-home.json`](../data/homes/mock-home.json), the test fixture. Both
+  files' `$schema` points at the JSON Schema, so editors such as VS Code validate and autocomplete
+  them.
 
 ## Conventions
 
@@ -40,28 +42,70 @@ north bearing, use the same shape in degrees):
 | `mock`                 | placeholder value, not based on the real home |
 | `estimated-from-photo` | estimated from photos or video                |
 | `measured`             | measured on site                              |
+| `geodata`              | derived from official geodata (see below)     |
 
 Refining a value means changing `value` and `source` (and adding a `note`, for example which photo
 it came from). Nothing else in the model or renderer changes. The only bare number is
-`schemaVersion`.
+`schemaVersion` (and the edge indexes of outbuildings, which are references, not lengths).
 
 ## Structure
 
-| Field          | Content                                                                                                     |
-| -------------- | ----------------------------------------------------------------------------------------------------------- |
-| `building`     | `footprint` (exterior wall centre lines, used for slabs), `roofThickness`, `roof?`, `northBearing?`         |
-| `terrain`      | `groundElevation`, `bottomElevation` and `patches`: plan polygons (with optional `holes`) at an elevation   |
-| `levels`       | `elevation`, clear `height` and floor `slabThickness`                                                       |
-| `apartments`   | `levelIds` they occupy                                                                                      |
-| `rooms`        | floor `outline` on a `levelId`, optionally in an `apartmentId`                                              |
-| `walls`        | centre line `start`/`end`, `thickness`, `height`, `kind` (`exterior`/`interior`), `levelId`, `apartmentId?` |
-| `openings`     | `door`/`window` on a `wallId`: `offset` from the wall start, `width`, `height`, `sill`                      |
-| `outdoorAreas` | `garden`/`driveway`/`patio`/`path` polygons at an `elevation`, with an optional `ownerApartmentId`          |
+| Field          | Content                                                                                                        |
+| -------------- | -------------------------------------------------------------------------------------------------------------- |
+| `building`     | `footprint` (exterior wall centre lines, used for slabs), `roofThickness`, `roof?`, `northBearing?`            |
+| `terrain`      | `groundElevation`, `bottomElevation` and `patches`: plan polygons (with optional `holes`) at an elevation      |
+| `levels`       | `elevation`, clear `height` and floor `slabThickness`                                                          |
+| `apartments`   | `levelIds` they occupy                                                                                         |
+| `rooms`        | floor `outline` on a `levelId`, optionally in an `apartmentId`                                                 |
+| `walls`        | centre line `start`/`end`, `thickness`, `height`, `kind` (`exterior`/`interior`), `levelId`, `apartmentId?`    |
+| `openings`     | `door`/`window` on a `wallId`: `offset` from the wall start, `width`, `height`, `sill`                         |
+| `outdoorAreas` | `garden`/`driveway`/`patio`/`path`/`road` polygons at an `elevation` (or `slope`), optional `ownerApartmentId` |
+| `outbuildings` | optional garages, carports, sheds and porches: a `footprint`, flat roof and openings on its edges              |
 
-Terrain patches are drawn as solid blocks from `bottomElevation` up to their elevation. Leaving the
+Terrain patches are drawn as solid blocks from `bottomElevation` up to their elevation (or their
+slope, below). Leaving the
 building footprint out of every patch (a hole, or no patch there) keeps the ground out of
 below-ground rooms; a lower patch next to a higher one forms a retaining wall, which is how the mock
 home's sunken souterrain garden works.
+
+### Slopes
+
+A terrain patch or an outdoor area can fall linearly across its bounding box instead of being flat:
+`elevation` is then its high edge and `slope.lowElevation` the edge it falls `towards`
+(`+x`, `-x`, `+z` or `-z`):
+
+```json
+"elevation": { "value": -0.05, "source": "estimated-from-photo" },
+"slope": { "towards": "-z", "lowElevation": { "value": -1.65, "source": "estimated-from-photo" } }
+```
+
+Model levelled areas as flat patches and join them with sloped patches (ramps, embankments) or let
+a lower patch next to a higher one form a retaining wall. Light wells and sunken entries are small
+low patches in a notch of the surrounding one.
+
+### Openings
+
+`type` is `window`, `door` (drawn open), `french-door` (glazed down to the floor) or `garage-door`
+(a closed panel).
+
+### Outbuildings
+
+```json
+{
+  "id": "garage", "name": "Garage", "kind": "garage",
+  "footprint": [ ... wall centre lines ... ],
+  "floorElevation": { "value": -0.2, "source": "estimated-from-photo" },
+  "height": { "value": 2.47, "source": "geodata", "note": "Floor to the top of the flat roof" },
+  "wallThickness": { "value": 0.24, "source": "mock" },
+  "roofThickness": { "value": 0.2, "source": "mock" },
+  "openEdges": [],
+  "openings": [{ "id": "garage-door", "type": "garage-door", "edge": 0, "offset": ..., "width": ..., "height": ..., "sill": ... }]
+}
+```
+
+A wall stands on every footprint edge (from point `edge` to the next) except those in `openEdges`,
+for example a carport's sides or a porch against the house. Openings are placed like wall openings,
+measured from the edge's start point. Outbuildings have no levels or rooms and are always shown.
 
 ### Roof and attic
 
@@ -85,6 +129,11 @@ gable roof turns the highest level into an attic:
 | `pitch`          | slope of both roof planes in degrees (0 to 80, exclusive)                             |
 | `kneeWallHeight` | height of the roof underside above the attic floor at the footprint edge (eaves side) |
 | `overhang`       | how far the roof reaches past the footprint on all four sides                         |
+
+`windows` (optional) are roof windows lying in a roof plane: `side` `min` or `max` (the plane falling
+towards the lower or higher across-ridge coordinate), `offset` along the ridge from the footprint's
+lower end, `fromEave` up the slope from the footprint edge, `width` along the ridge and `length`
+along the slope. They are hidden with the roof.
 
 The roof spans the bounding rectangle of the footprint, with the ridge over its centre line;
 `roofThickness` is the thickness of the roof planes at right angles to the slope. The builder
@@ -115,6 +164,34 @@ and the seed script, not in the editor:
 Errors carry a path into the document, for example
 `openings[2].width: Opening "x" spans 7.65 m to 9.15 m but wall "y" is only 8 m long`.
 
+## The real home
+
+`data/homes/home.json` (id `home`) is the house the project is about. Values come from:
+
+- **geodata**: the building footprint, eave and ridge heights (roof pitch 29°, ridge east-west), the
+  garage, the terrain levels and `northBearing` (2.5°, including the map grid's convergence) were
+  derived from official geodata of the Bavarian surveying administration (LoD2 building model, DGM1
+  terrain model, orthophoto). Datenquelle: Bayerische Vermessungsverwaltung, CC BY 4.0.
+- **estimated-from-photo**: windows and doors (position, size, sill), floor levels, the light well
+  and the entrance, from street-level photos. The north facade was only seen at a grazing angle.
+- **mock**: assumed wall, slab and roof thicknesses.
+
+The plan origin is the house's south-west outside corner, `x` runs along the south wall and `z`
+towards the street. Heights are relative to the ground-floor finished floor (`y = 0`), not to sea
+level. Everything is axis-aligned and the terrain is simplified to levelled areas and slopes:
+
+- **South level** (about 0): the street, the driveway in front of the garage and the ground-floor
+  garden and covered terrace.
+- **Lower level** (-1.65): the souterrain garden on the north side and the patio on the east side,
+  reached from the south garden by the **entrance slope**; steps lead down to the souterrain door.
+- **Souterrain** (floor -2.6): its north windows sit just above the lawn, the south window is below
+  ground in a **light well**.
+- The **garage** (flat roof) and the arched **entrance passage** stand west of the house; the lane on
+  the east falls towards the north.
+
+The interior layout is not modelled yet: each level has one room covering its floor. Never add the
+house's address or location (coordinates, map links, tile IDs, place names) to the repo.
+
 ## The mock home
 
 `data/homes/mock-home.json` (all values `source: "mock"`):
@@ -141,11 +218,13 @@ renders without renderer changes.
 
 ## Seeding, swapping and importing homes
 
-The api seeds `data/homes/mock-home.json` on start in development (`SEED_ON_START`). Seeding is
-idempotent: a home whose id already exists is left alone.
+The api seeds `data/homes/home.json` and then `data/homes/mock-home.json` on start in development
+(`SEED_ON_START`), and staging resets to both; the viewer opens the oldest home, the real one.
+`SEED_FILE` seeds a single file instead. Seeding is idempotent: a home whose id already exists is
+left alone. Production is not seeded.
 
 ```sh
-pnpm db:seed                                   # the mock home (or SEED_FILE)
+pnpm db:seed                                   # the real and the mock home (or SEED_FILE)
 pnpm db:seed path/to/other-home.json           # another file; relative to where pnpm runs
 pnpm db:seed data/homes/mock-home.json --replace   # overwrite an existing home with the same id
 SEED_FILE=../../data/homes/other.json pnpm dev # default for start-up and db:seed (relative to apps/api)
