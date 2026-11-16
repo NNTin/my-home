@@ -38,9 +38,8 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - production `https://home.nntin.xyz`: real data, deployed from every push to `main`. Change it only when asked.
 - Both are behind authentik SSO: exchange the nntin-bot GitHub token for a site token with the
   `my-home-environments` skill (`.claude/skills/`), instruction sheet in #9. `GET /api/health/live` is public.
-- Broken or no longer deploying (down, health failing, deployed commit not catching up with `main` or the latest
-  PR/tag after CI is done; `env-status.sh`): raise an issue in NNTin/my-home, or comment on the open one
-  (`raise-env-issue.sh`).
+- Raise an issue in NNTin/my-home (or comment on the open one) only if the deployed commit hasn't caught up 1 hour
+  after its image was published, or the site stays down: `env-status.sh`, then `raise-env-issue.sh`.
 
 More: `README.md` (setup, conventions), `docs/container-images.md` (images, tags) and
 `docs/deployment.md` (production/staging deploys, rollback). Production migrations must be forward-only and

@@ -29,47 +29,69 @@ S=.claude/skills/my-home-environments/scripts
 $S/site-curl.sh staging /api/homes                       # GET, body on stdout
 $S/site-curl.sh staging /api/homes/mock-home/layouts -X POST --json '{"name":"test"}'
 $S/env-status.sh all                                     # health, auth, deployed commit vs GitHub
+$S/screenshot.sh staging --out /tmp/staging.png          # render the 3D viewer in headless Chromium
 $S/with-site-token.sh staging -- node e2e.mjs            # SITE_TOKEN and SITE_BASE for the child only
 $S/raise-env-issue.sh --dry-run staging "health fails"   # what it would post; drop --dry-run to post
 ```
 
 - `site-curl.sh <env> <path> [curl args...]`: checks once that the GitHub token is nntin-bot's, caches the site
   token per host (0600, `${XDG_RUNTIME_DIR:-$HOME/.cache}/my-home-agent-auth/`, refreshed 5 min early), never
-  follows redirects, and on a 302 to auth.nntin.xyz exchanges again and retries once. Exits 22 on HTTP >= 400.
-  `SITE_CURL_VERBOSE=1` prints the status. Exchange errors (401 `invalid_token`, 429 with
-  `retry_after_seconds`, 502) end with a clear message; it never retries `invalid_token`.
+  follows redirects, and on a 302 to auth.nntin.xyz exchanges again and retries once. Exits 22 on HTTP >= 400,
+  1 on other errors; `-L`, `-f`, `-o`, `-D` and `-w` are rejected. `SITE_CURL_VERBOSE=1` prints the status.
+  Exchange errors (401 `invalid_token`, 429 with `retry_after_seconds`, 502) end with a clear message; it never
+  retries `invalid_token`.
 - `with-site-token.sh <env> -- <command...>`: exports `SITE_TOKEN`, `SITE_BASE`, `SITE_HOST` and
   `SITE_TOKEN_EXPIRES_AT` to the command only, with at least 10 min of validity left.
-- `env-status.sh [staging|production|all]`: exit 0 when OK or DEPLOYING (CI/deploy still running, within
-  `ENV_STATUS_GRACE_MINUTES`, default 45), 1 when BROKEN or STALE. Production must run `main` HEAD; staging
-  must run its latest GitHub deployment, and the output names the PR or tag it runs.
-- `raise-env-issue.sh [--dry-run] <env> <summary> [details-file]`: comments on the open `environment`-labelled
-  issue titled `[env] <env>: ...`, or creates one (and the label) with the `env-status.sh` output.
+- `env-status.sh [staging|production|all]`: OK, DEPLOYING, PENDING, CI_FAILED or BROKEN per environment (see
+  below). Exit 1 only when one is BROKEN. The output names the PR or tag staging runs.
+- `screenshot.sh <env> [--path /?home=...] [--out file.png] [--wait ms] [--viewport WxH]`: waits for the canvas
+  plus `--wait` (default 6000 ms) and prints the final host, status and console/page errors. It runs in the
+  shared `ao-heavy` queue when available. Playwright (pinned) is installed outside the repository in
+  `${XDG_CACHE_HOME:-$HOME/.cache}/my-home-environments/playwright`, Chromium in `~/.cache/ms-playwright`;
+  `screenshot.sh --check` installs them if missing and verifies a headless launch.
+- `raise-env-issue.sh [--dry-run] [--force] <env> <summary> [details-file]`: refuses (exit 3) unless
+  `env-status.sh` reports BROKEN; then comments on the open `environment`-labelled issue titled
+  `[env] <env>: ...`, or creates one (and the label). `--force` is for a human override only.
 
 ## Playwright
+
+Attach the token only to requests for the environment's own host. Never use `extraHTTPHeaders`: it sends the
+token to every third-party host the page loads from. Chromium here needs `--no-sandbox` and SwiftShader for WebGL.
 
 ```js
 // with-site-token.sh staging -- node e2e.mjs
 import { chromium } from 'playwright';
 
-const browser = await chromium.launch();
-const context = await browser.newContext({
-  baseURL: process.env.SITE_BASE,
-  extraHTTPHeaders: { Authorization: `Bearer ${process.env.SITE_TOKEN}` },
+const { SITE_BASE, SITE_HOST, SITE_TOKEN } = process.env;
+const browser = await chromium.launch({
+  args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+});
+const context = await browser.newContext({ baseURL: SITE_BASE });
+await context.route('**/*', (route) => {
+  const request = route.request();
+  if (new URL(request.url()).host !== SITE_HOST) return route.continue();
+  return route.continue({
+    headers: { ...request.headers(), authorization: `Bearer ${SITE_TOKEN}` },
+  });
 });
 const page = await context.newPage();
 await page.goto('/');
 ```
 
-`extraHTTPHeaders` is sent to every host the page loads from. The app loads only from its own host; if a test
-navigates elsewhere, set the header per route (`context.route`) for `SITE_HOST` only.
-
 ## When an environment is broken
 
-Run `env-status.sh <env>`. If it reports BROKEN or STALE (down, health failing, or the deployed commit not
-catching up with `main` or the latest PR/tag after CI is done), run `raise-env-issue.sh <env> "<summary>"`. It
-comments on an existing open issue instead of creating a duplicate. A WARN (CI on `main` failed before deploying)
-is a code problem: fix `main` instead.
+Image builds and deploys take a while, so `env-status.sh` calls an environment BROKEN only when:
+
+- it is down or unhealthy on every probe (4 probes over about 2 minutes, `ENV_STATUS_PROBES`,
+  `ENV_STATUS_PROBE_INTERVAL`), or
+- the CI publish job for the expected commit succeeded more than `STALE_MINUTES` (default 60) ago and
+  `/api/health/live` still reports another commit. Expected: `main` HEAD for production; for staging the
+  newest same-repo PR push, `v*` tag or dispatch whose publish succeeded.
+
+Before that it reports DEPLOYING, even when the deploy job failed (the output names it). PENDING (image not
+published yet) and CI_FAILED (publish failed) are CI problems: fix the code or CI, do not raise an environment
+issue. Only on BROKEN run `raise-env-issue.sh <env> "<summary>"`; it comments on an existing open issue instead
+of creating a duplicate.
 
 ## Rules
 

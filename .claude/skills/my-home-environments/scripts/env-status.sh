@@ -2,35 +2,28 @@
 # env-status.sh [staging|production|all]   (default: all)
 #
 # Checks each environment: public /api/health/live (deployed commit), authenticated /api/health and /, and
-# whether the deployed commit is current. Production must run origin/main HEAD; staging must run its latest
-# GitHub deployment (the newest same-repo PR push, v* tag or dispatch). While CI/deploy for the newer commit
-# is still running, and for up to ENV_STATUS_GRACE_MINUTES (default 45) after it started, that is DEPLOYING.
-# Exits 0 when every environment is OK or DEPLOYING, 1 when any is BROKEN or STALE, 2 on usage errors.
-# Prints no tokens; the output is safe to paste into an issue.
+# whether the deployed commit has caught up. Expected commit: production = origin/main HEAD; staging = the
+# newest same-repo PR push, v* tag or dispatch whose CI publish job succeeded.
+#   OK         runs the expected commit
+#   DEPLOYING  image published less than STALE_MINUTES (default 60) ago, even if the deploy job failed
+#   PENDING    image not published yet (CI still running); CI_FAILED: publish failed. CI issues, not BROKEN
+#   BROKEN     down or unhealthy on every probe (ENV_STATUS_PROBES, default 4, every ENV_STATUS_PROBE_INTERVAL
+#              seconds, default 40), or the image was published more than STALE_MINUTES ago and the
+#              environment still runs another commit
+# Exits 1 when any environment is BROKEN, 2 on usage errors, otherwise 0. Prints no tokens.
 set -euo pipefail
 # shellcheck source=lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
-GRACE_MINUTES=${ENV_STATUS_GRACE_MINUTES:-45}
+STALE_MINUTES=${STALE_MINUTES:-60}
+PROBES=${ENV_STATUS_PROBES:-4}
+PROBE_INTERVAL=${ENV_STATUS_PROBE_INTERVAL:-40}
+RUN_FIELDS=databaseId,event,headBranch,headSha,status,conclusion,createdAt,url
 
 usage() {
-  sed -n '2,9s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,13s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
-
-case "${1:-all}" in
-  all) envs=(staging production) ;;
-  staging | stg | production | prod) envs=("$1") ;;
-  *) usage ;;
-esac
-require_tools curl jq
-
-SITE_RESPONSE_BODY=$(mktemp)
-SITE_RESPONSE_HEADERS=$(mktemp)
-trap 'rm -f "$SITE_RESPONSE_BODY" "$SITE_RESPONSE_HEADERS"' EXIT
-
-have_gh=0
-command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1 && have_gh=1
 
 line() { printf '  %-8s %s\n' "$1" "$2"; }
 
@@ -39,168 +32,214 @@ minutes_since() { echo $((($(date +%s) - $(date -d "$1" +%s)) / 60)); }
 
 # fields <jq paths...>: one line of the given fields joined by \x1f, a non-whitespace IFS character, so that
 # empty fields (a null .conclusion while a run is in progress) do not collapse the way tabs do under read.
-fields() { jq -r "[$(IFS=, && echo "$*")] | map(. // \"\" | tostring) | join(\"\u001f\")"; }
+fields() { jq -r "[$(IFS=, && echo "$*")] | map(. // \"\" | tostring) | join(\"\\u001f\")"; }
 
-# failed_jobs <run id>: names of failed jobs, comma separated.
-failed_jobs() {
-  gh run view "$1" -R "$MY_HOME_REPO" --json jobs \
-    --jq '[.jobs[] | select(.conclusion == "failure" or .conclusion == "timed_out") | .name] | join(", ")'
+# GitHub lookups. They return raw JSON so the tests can stub gh.
+main_head() { gh api "repos/$MY_HOME_REPO/commits/main" | jq -r '.sha // empty'; }
+runs_list() { gh run list -R "$MY_HOME_REPO" -w ci.yml --json "$RUN_FIELDS" "$@"; }
+run_jobs() { gh run view "$1" -R "$MY_HOME_REPO" --json jobs; }
+
+# publish_info <run id>: sets pub_state (pending|failed|success), pub_done (completion time), pub_note
+# (publish/deploy job outcome) and failed (failed job names) for one CI run.
+publish_info() {
+  local jobs
+  jobs=$(run_jobs "$1") || jobs='{"jobs":[]}'
+  local pub_status pub_conclusion dep_status dep_conclusion
+  IFS=$'\x1f' read -r pub_status pub_conclusion pub_done < <(jq '[.jobs[] | select(.name == "publish")][0] // {}' \
+    <<<"$jobs" | fields .status .conclusion .completedAt)
+  IFS=$'\x1f' read -r dep_status dep_conclusion < <(jq '[.jobs[] | select(.name == "deploy")][0] // {}' \
+    <<<"$jobs" | fields .status .conclusion)
+  failed=$(jq -r '[.jobs[] | select(.conclusion == "failure" or .conclusion == "timed_out") | .name]
+    | join(", ")' <<<"$jobs")
+  if [[ $pub_status == completed && $pub_conclusion == success ]]; then
+    pub_state=success
+  elif [[ $pub_status == completed || -n $failed ]]; then
+    pub_state=failed
+  else
+    pub_state=pending
+  fi
+  pub_note="publish ${pub_conclusion:-${pub_status:-not started}}, deploy ${dep_conclusion:-${dep_status:-not started}}"
 }
 
-# describe_ref <ref>: "PR #N" / "tag vX" / "branch X" for a staging deployment ref.
-describe_ref() {
-  local ref=$1 pr
-  [[ $ref == v* ]] && gh api "repos/$MY_HOME_REPO/git/ref/tags/$ref" >/dev/null 2>&1 && {
-    echo "tag $ref"
+# classify <live sha> <expected sha> <label> <run json or empty>: sets fresh_state and fresh_msg.
+classify() {
+  local live=$1 expected=$2 label=$3 run=$4 id url age
+  if [[ $live == "$expected" ]]; then
+    fresh_state=OK fresh_msg="runs $label"
     return
-  }
-  pr=$(gh pr list -R "$MY_HOME_REPO" --head "$ref" --state all -L 1 --json number --jq '.[0].number // empty' \
-    2>/dev/null || true)
-  if [[ -n $pr ]]; then echo "PR #$pr ($ref)"; else echo "branch $ref"; fi
+  fi
+  if [[ -z $run ]]; then
+    fresh_state=PENDING fresh_msg="no CI run for $label yet; runs ${live:0:7}"
+    return
+  fi
+  IFS=$'\x1f' read -r id url < <(fields .databaseId .url <<<"$run")
+  publish_info "$id"
+  case "$pub_state" in
+    pending) fresh_state=PENDING fresh_msg="CI for $label is still running, image not published yet ($pub_note)" ;;
+    failed) fresh_state=CI_FAILED fresh_msg="image for $label was not published (failed: ${failed:-?}); a CI issue" ;;
+    success)
+      age=$(minutes_since "$pub_done")
+      if ((age < STALE_MINUTES)); then
+        fresh_state=DEPLOYING fresh_msg="image for $label published ${age} min ago ($pub_note); BROKEN after"
+        fresh_msg+=" ${STALE_MINUTES} min"
+      else
+        fresh_state=BROKEN fresh_msg="image for $label published ${age} min ago (> ${STALE_MINUTES} min) but it"
+        fresh_msg+=" still runs ${live:0:7} ($pub_note)"
+      fi
+      ;;
+  esac
+  fresh_msg+=": $url"
 }
 
-# check_production <live commit>: sets fresh_state and fresh_msg.
+# check_production <live sha>
 check_production() {
-  local live=$1 head run status conclusion created url id jobs
-  head=$(gh api "repos/$MY_HOME_REPO/commits/main" --jq .sha 2>/dev/null) ||
-    head=$(git ls-remote "https://github.com/$MY_HOME_REPO.git" refs/heads/main 2>/dev/null | cut -f1) || head=
+  local live=$1 head run
+  head=$(main_head 2>/dev/null) || head=
   if [[ -z $head ]]; then
     fresh_state=UNKNOWN fresh_msg="could not read origin/main HEAD"
     return
   fi
-  if [[ $live == "$head" ]]; then
-    fresh_state=OK fresh_msg="runs origin/main HEAD ${head:0:7}"
-    return
-  fi
-  run=$(gh run list -R "$MY_HOME_REPO" -w ci.yml -b main -e push -c "$head" -L 1 \
-    --json databaseId,status,conclusion,createdAt,url --jq '.[0] // empty' 2>/dev/null || true)
-  if [[ -z $run ]]; then
-    created=$(gh api "repos/$MY_HOME_REPO/commits/$head" --jq .commit.committer.date 2>/dev/null || date -u +%FT%TZ)
-    if (($(minutes_since "$created") < GRACE_MINUTES)); then
-      fresh_state=DEPLOYING fresh_msg="main HEAD ${head:0:7} has no CI run yet"
-    else
-      fresh_state=STALE fresh_msg="main HEAD ${head:0:7} has no CI run after $(minutes_since "$created") min"
-    fi
-    return
-  fi
-  IFS=$'\x1f' read -r id status conclusion created url < <(fields .databaseId .status .conclusion .createdAt .url \
-    <<<"$run")
-  if [[ $status != completed ]]; then
-    if (($(minutes_since "$created") < GRACE_MINUTES)); then
-      fresh_state=DEPLOYING fresh_msg="CI for main HEAD ${head:0:7} is $status: $url"
-    else
-      fresh_state=STALE fresh_msg="CI for main HEAD ${head:0:7} is still $status after $(minutes_since "$created") min: $url"
-    fi
-    return
-  fi
-  if [[ $conclusion == success ]]; then
-    fresh_state=STALE fresh_msg="CI for main HEAD ${head:0:7} succeeded but production runs ${live:0:7}: $url"
-    return
-  fi
-  jobs=$(failed_jobs "$id" 2>/dev/null || true)
-  if [[ -z $jobs || $jobs == *publish* || $jobs == *deploy* ]]; then
-    fresh_state=STALE fresh_msg="deploy of main HEAD ${head:0:7} failed (${jobs:-$conclusion}): $url"
-  else
-    # Checks failed before publishing: a code problem on main, not an environment problem.
-    fresh_state=WARN fresh_msg="runs ${live:0:7}; CI for main HEAD ${head:0:7} failed in $jobs before deploying: $url"
-  fi
+  run=$(runs_list -b main -e push -L 10 2>/dev/null |
+    jq -c --arg sha "$head" '[.[] | select(.headSha == $sha)][0] // empty') || run=
+  classify "$live" "$head" "main HEAD ${head:0:7}" "$run"
 }
 
-# check_staging <live commit>: sets fresh_state, fresh_msg and staging_ref.
+# describe_run <run json>: "PR #N (branch)", "tag vX" or "dispatch of X".
+describe_run() {
+  local event branch pr
+  IFS=$'\x1f' read -r event branch < <(fields .event .headBranch <<<"$1")
+  case "$event" in
+    pull_request)
+      pr=$(gh pr list -R "$MY_HOME_REPO" --head "$branch" --state all -L 1 --json number 2>/dev/null |
+        jq -r '.[0].number // empty') || pr=
+      if [[ -n $pr ]]; then echo "PR #$pr ($branch)"; else echo "PR branch $branch"; fi
+      ;;
+    workflow_dispatch) echo "dispatch of $branch" ;;
+    *) echo "tag $branch" ;;
+  esac
+}
+
+# check_staging <live sha>: also sets staging_ref (what staging runs, when derivable).
 check_staging() {
-  local live=$1 deployments latest_sha latest_ref latest_created latest_id dep_state run id jobs url
-  deployments=$(gh api "repos/$MY_HOME_REPO/deployments?environment=staging&per_page=30" 2>/dev/null) || {
-    fresh_state=UNKNOWN fresh_msg="could not list staging deployments"
+  local live=$1 runs candidates count i run expected="" label="" pending=""
+  runs=$(runs_list -L 40 2>/dev/null) || {
+    fresh_state=UNKNOWN fresh_msg="could not list CI runs"
     return
   }
-  staging_ref=$(jq -r --arg sha "$live" '[.[] | select(.sha == $sha)][0].ref // empty' <<<"$deployments")
-  [[ -n $staging_ref ]] && staging_ref=$(describe_ref "$staging_ref")
-  IFS=$'\x1f' read -r latest_id latest_sha latest_ref latest_created < <(jq '.[0]' <<<"$deployments" |
-    fields .id .sha .ref .created_at)
-  dep_state=$(gh api "repos/$MY_HOME_REPO/deployments/$latest_id/statuses" --jq '.[0].state // "pending"' \
-    2>/dev/null || echo unknown)
-  if [[ $live == "$latest_sha" ]]; then
-    fresh_state=OK fresh_msg="runs the latest staging deployment ($latest_ref, $latest_created)"
-  else
-    case "$dep_state" in
-      queued | pending | in_progress | waiting)
-        if (($(minutes_since "$latest_created") < GRACE_MINUTES)); then
-          fresh_state=DEPLOYING fresh_msg="deploying ${latest_sha:0:7} ($latest_ref), state $dep_state"
-        else
-          fresh_state=STALE fresh_msg="deploy of ${latest_sha:0:7} ($latest_ref) still $dep_state after" \
-            "$(minutes_since "$latest_created") min"
-        fi
-        ;;
-      *) fresh_state=STALE fresh_msg="latest deployment ${latest_sha:0:7} ($latest_ref) is $dep_state but staging runs ${live:0:7}" ;;
-    esac
-    return
-  fi
-  # A newer staging CI run whose publish or deploy failed never shows up as a deployment.
-  run=$(gh run list -R "$MY_HOME_REPO" -w ci.yml -L 20 \
-    --json databaseId,event,headBranch,status,conclusion,createdAt,url 2>/dev/null |
-    jq -c --arg after "$latest_created" '[.[] | select(.createdAt > $after and .status == "completed"
-      and .conclusion == "failure" and (.event == "pull_request" or .event == "workflow_dispatch"
-      or (.event == "push" and .headBranch != "main")))][0] // empty' 2>/dev/null || true)
-  if [[ -n $run ]]; then
-    IFS=$'\x1f' read -r id url < <(fields .databaseId .url <<<"$run")
-    jobs=$(failed_jobs "$id" 2>/dev/null || true)
-    if [[ $jobs == *publish* || $jobs == *deploy* ]]; then
-      fresh_state=STALE fresh_msg="a newer staging deploy failed ($jobs): $url"
+  # Runs that deploy to staging, newest first. Fork pull requests never publish, so they drop out below.
+  candidates=$(jq -c '[.[] | select(.event == "pull_request" or .event == "workflow_dispatch"
+    or (.event == "push" and .headBranch != "main"))] | sort_by(.createdAt) | reverse' <<<"$runs")
+  run=$(jq -c --arg sha "$live" '[.[] | select(.headSha == $sha)][0] // empty' <<<"$candidates")
+  [[ -n $run ]] && staging_ref=$(describe_run "$run")
+  count=$(jq length <<<"$candidates")
+  for ((i = 0; i < count && i < 10; i++)); do
+    run=$(jq -c ".[$i]" <<<"$candidates")
+    publish_info "$(jq -r .databaseId <<<"$run")"
+    if [[ $pub_state == success ]]; then
+      expected=$(jq -r .headSha <<<"$run")
+      label="${expected:0:7} ($(describe_run "$run"))"
+      break
     fi
+    [[ $pub_state == pending && -z $pending ]] && pending="$(describe_run "$run") is still publishing"
+  done
+  if [[ -z $expected ]]; then
+    fresh_state=UNKNOWN fresh_msg="no staging CI run with a published image among the latest runs"
+  else
+    classify "$live" "$expected" "$label" "$run"
   fi
+  [[ -n $pending ]] && fresh_msg+="; newer: $pending"
+  return 0
 }
 
-failures=()
-for env in "${envs[@]}"; do
-  resolve_env "$env"
-  state=OK
-  printf '%s  %s\n' "$SITE_ENV" "$SITE_BASE"
-
+# probe_env <commit file>: one round of live/health/web checks. Prints its lines; exits non-zero on failure.
+# Run it in a subshell: a failed token exchange or login redirect dies, and that only ends the subshell.
+probe_env() {
+  local ok=0 live_json commit
   live_json=$(curl -sS --max-time 20 "$SITE_BASE/api/health/live" 2>&1) || live_json=
   commit=$(jq -r 'select(.status == "ok") | .commit // empty' <<<"$live_json" 2>/dev/null || true)
   if [[ -n $commit ]]; then
     line live "ok, commit $commit"
+    printf '%s' "$commit" >"$1"
   else
-    line live "FAILED: $(printf '%s' "${live_json:-no response}" | head -c 200 | redact)"
-    state=BROKEN
+    line live "FAILED: $(printf '%s' "${live_json:-no response}" | head -c 200)"
+    ok=1
   fi
-
-  # A failed exchange exits, so try it in a subshell first; authed_request then reuses the cached token.
-  if auth_err=$(site_token 2>&1 >/dev/null) && authed_request /api/health; then
-    if [[ $SITE_STATUS == 200 ]] && jq -e '.status == "ok"' "$SITE_RESPONSE_BODY" >/dev/null 2>&1; then
-      line health "ok (db $(jq -r '.db.status // "?"' "$SITE_RESPONSE_BODY"))"
-    else
-      line health "FAILED: HTTP $SITE_STATUS $(head -c 200 "$SITE_RESPONSE_BODY" | redact)"
-      state=BROKEN
-    fi
-    if authed_request / && [[ $SITE_STATUS == 200 ]] && grep -qi '<html' "$SITE_RESPONSE_BODY"; then
-      line web "ok (HTTP 200)"
-    else
-      line web "FAILED: HTTP ${SITE_STATUS:-none}"
-      state=BROKEN
-    fi
+  if ! authed_request /api/health; then
+    line health "FAILED: request error"
+    ok=1
+  elif [[ $SITE_STATUS == 200 ]] && jq -e '.status == "ok"' "$SITE_RESPONSE_BODY" >/dev/null 2>&1; then
+    line health "ok (db $(jq -r '.db.status // "?"' "$SITE_RESPONSE_BODY"))"
   else
-    line auth "FAILED: $(printf '%s' "${auth_err:-request failed}" | redact)"
-    state=BROKEN
+    line health "FAILED: HTTP $SITE_STATUS $(head -c 200 "$SITE_RESPONSE_BODY")"
+    ok=1
   fi
-
-  if [[ -n $commit && $have_gh == 1 ]]; then
-    staging_ref=
-    if [[ $SITE_ENV == production ]]; then check_production "$commit"; else check_staging "$commit"; fi
-    [[ -n $staging_ref ]] && line runs "$staging_ref"
-    line deploy "$fresh_state: $fresh_msg"
-    [[ $state == OK && $fresh_state != OK && $fresh_state != WARN && $fresh_state != UNKNOWN ]] &&
-      state=$fresh_state
-  elif [[ -n $commit ]]; then
-    line deploy "UNKNOWN: gh is not logged in, cannot compare with GitHub"
+  if authed_request / && [[ $SITE_STATUS == 200 ]] && grep -qi '<html' "$SITE_RESPONSE_BODY"; then
+    line web "ok (HTTP 200)"
+  else
+    line web "FAILED: HTTP ${SITE_STATUS:-none}"
+    ok=1
   fi
+  return "$ok"
+}
 
-  line result "$state"
-  [[ $state == OK || $state == DEPLOYING ]] || failures+=("$SITE_ENV: $state")
-done
+main() {
+  local envs env state attempt out commit have_gh=0 failures=()
+  case "${1:-all}" in
+    all) envs=(staging production) ;;
+    staging | stg | production | prod) envs=("$1") ;;
+    *) usage ;;
+  esac
+  require_tools curl jq
+  command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1 && have_gh=1
 
-if ((${#failures[@]})); then
-  printf '\nNOT OK: %s\n' "$(IFS=';' && echo "${failures[*]}")"
-  exit 1
+  SITE_RESPONSE_BODY=$(mktemp)
+  SITE_RESPONSE_HEADERS=$(mktemp)
+  COMMIT_FILE=$(mktemp)
+  trap 'rm -f "$SITE_RESPONSE_BODY" "$SITE_RESPONSE_HEADERS" "$COMMIT_FILE"' EXIT
+
+  for env in "${envs[@]}"; do
+    resolve_env "$env"
+    state=OK
+    printf '%s  %s\n' "$SITE_ENV" "$SITE_BASE"
+    for ((attempt = 1; ; attempt++)); do
+      : >"$COMMIT_FILE"
+      if out=$( (probe_env "$COMMIT_FILE") 2>&1); then
+        ((attempt > 1)) && out+=$'\n'"$(line probes "passed on attempt $attempt of $PROBES")"
+        break
+      fi
+      if ((attempt >= PROBES)); then
+        out+=$'\n'"$(line probes "failed $PROBES of $PROBES over $(((PROBES - 1) * PROBE_INTERVAL))s")"
+        state=BROKEN
+        break
+      fi
+      printf '  (probe %s of %s failed, retrying in %ss)\n' "$attempt" "$PROBES" "$PROBE_INTERVAL" >&2
+      sleep "$PROBE_INTERVAL"
+    done
+    # A died exchange or login redirect leaves "env-status.sh: <message>"; show it as an auth line.
+    sed "s/^${0##*/}: /  auth     FAILED: /" <<<"$out" | redact
+    commit=$(<"$COMMIT_FILE")
+
+    if [[ -n $commit && $have_gh == 1 ]]; then
+      staging_ref=
+      if [[ $SITE_ENV == production ]]; then check_production "$commit"; else check_staging "$commit"; fi
+      [[ -n $staging_ref ]] && line runs "$staging_ref"
+      line deploy "$fresh_state: $fresh_msg"
+      [[ $state == OK && $fresh_state != UNKNOWN ]] && state=$fresh_state
+    elif [[ -n $commit ]]; then
+      line deploy "UNKNOWN: gh is not logged in, cannot compare with GitHub"
+    fi
+
+    line result "$state"
+    [[ $state == BROKEN ]] && failures+=("$SITE_ENV")
+  done
+
+  if ((${#failures[@]})); then
+    printf '\nBROKEN: %s\n' "${failures[*]}"
+    return 1
+  fi
+  printf '\nnot broken (see each result line)\n'
+}
+
+if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
+  main "$@"
 fi
-printf '\nall checked environments OK\n'

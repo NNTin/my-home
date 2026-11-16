@@ -27,8 +27,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      # shellcheck is preinstalled on the runner.
-      - run: shellcheck -x -P SCRIPTDIR .claude/skills/*/scripts/*.sh
+      # shellcheck is preinstalled on the runner; the skill tests are offline (gh is stubbed).
+      - run: shellcheck -x -P SCRIPTDIR .claude/skills/*/scripts/*.sh .claude/skills/*/tests/*.sh
+      - run: .claude/skills/my-home-environments/tests/env-status.test.sh
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
