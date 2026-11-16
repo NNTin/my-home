@@ -37,6 +37,10 @@ line() { printf '  %-8s %s\n' "$1" "$2"; }
 # minutes_since <ISO-8601 time>
 minutes_since() { echo $((($(date +%s) - $(date -d "$1" +%s)) / 60)); }
 
+# fields <jq paths...>: one line of the given fields joined by \x1f, a non-whitespace IFS character, so that
+# empty fields (a null .conclusion while a run is in progress) do not collapse the way tabs do under read.
+fields() { jq -r "[$(IFS=, && echo "$*")] | map(. // \"\" | tostring) | join(\"\u001f\")"; }
+
 # failed_jobs <run id>: names of failed jobs, comma separated.
 failed_jobs() {
   gh run view "$1" -R "$MY_HOME_REPO" --json jobs \
@@ -79,8 +83,8 @@ check_production() {
     fi
     return
   fi
-  IFS=$'\t' read -r id status conclusion created url < <(jq -r '[.databaseId, .status, .conclusion, .createdAt,
-    .url] | @tsv' <<<"$run")
+  IFS=$'\x1f' read -r id status conclusion created url < <(fields .databaseId .status .conclusion .createdAt .url \
+    <<<"$run")
   if [[ $status != completed ]]; then
     if (($(minutes_since "$created") < GRACE_MINUTES)); then
       fresh_state=DEPLOYING fresh_msg="CI for main HEAD ${head:0:7} is $status: $url"
@@ -111,8 +115,8 @@ check_staging() {
   }
   staging_ref=$(jq -r --arg sha "$live" '[.[] | select(.sha == $sha)][0].ref // empty' <<<"$deployments")
   [[ -n $staging_ref ]] && staging_ref=$(describe_ref "$staging_ref")
-  IFS=$'\t' read -r latest_id latest_sha latest_ref latest_created < <(jq -r '.[0] | [.id, .sha, .ref,
-    .created_at] | @tsv' <<<"$deployments")
+  IFS=$'\x1f' read -r latest_id latest_sha latest_ref latest_created < <(jq '.[0]' <<<"$deployments" |
+    fields .id .sha .ref .created_at)
   dep_state=$(gh api "repos/$MY_HOME_REPO/deployments/$latest_id/statuses" --jq '.[0].state // "pending"' \
     2>/dev/null || echo unknown)
   if [[ $live == "$latest_sha" ]]; then
@@ -138,7 +142,7 @@ check_staging() {
       and .conclusion == "failure" and (.event == "pull_request" or .event == "workflow_dispatch"
       or (.event == "push" and .headBranch != "main")))][0] // empty' 2>/dev/null || true)
   if [[ -n $run ]]; then
-    IFS=$'\t' read -r id url < <(jq -r '[.databaseId, .url] | @tsv' <<<"$run")
+    IFS=$'\x1f' read -r id url < <(fields .databaseId .url <<<"$run")
     jobs=$(failed_jobs "$id" 2>/dev/null || true)
     if [[ $jobs == *publish* || $jobs == *deploy* ]]; then
       fresh_state=STALE fresh_msg="a newer staging deploy failed ($jobs): $url"
