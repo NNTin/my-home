@@ -6,7 +6,8 @@ import { homes } from '../src/db/schema';
 
 /**
  * Builds the app against in-memory PGlite, or against the Postgres in DATABASE_URL (CI).
- * Migrations run once per app; the sample table is emptied so each test starts clean.
+ * Migrations run once per app; the tables are emptied so each test starts clean (deleting the
+ * homes cascades to their layouts).
  */
 export async function createTestApp() {
   const config = loadConfig({
