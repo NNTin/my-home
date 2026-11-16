@@ -1,10 +1,16 @@
 name: CI
 
+# Every green build of main deploys to production (home.nntin.xyz); every green same-repo pull request push,
+# v* tag and manual dispatch deploys to the single shared staging environment (home-staging.nntin.xyz), where
+# the latest deploy wins. CI publishes images and a Helm chart (0.1.0-main.<run> / 0.1.0-staging.<run>) with the
+# image digests stamped in; Flux in NNTin/lair.nntin.xyz follows each channel. See docs/deployment.md.
 on:
   push:
     branches: [main]
     tags: ['v*']
   pull_request:
+  # Deploys the selected branch or tag to staging, e.g. main to reset staging.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -99,6 +105,7 @@ jobs:
             | jq -e '.schemaVersion == 1 and (.apartments | length) == 4 and (.outdoorAreas | length) == 3'
           curl -fsS http://localhost:8080/api/homes/mock-home/export | jq -e '.id == "mock-home"'
           curl -fsS http://localhost:8080/ | grep -q '<div id="root">'
+          curl -fsS http://localhost:8080/api/health/live | jq -e '.status == "ok"'
       - name: Smoke test layouts
         run: |
           set -euo pipefail
@@ -131,51 +138,154 @@ jobs:
         if: always()
         run: docker compose down -v
 
+  chart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v4
+        with:
+          version: v4.2.4
+      - run: bash tools/check-chart.sh
+
   publish:
-    if: github.event_name == 'push'
-    needs: [check, test-postgres, docker]
+    # Fork pull requests are validated only: no secrets, no images, no deploy.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    needs: [check, test-postgres, docker, chart]
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    strategy:
-      matrix:
-        app: [api, web]
+    outputs:
+      revision: ${{ steps.ref.outputs.revision }}
+      channel: ${{ steps.ref.outputs.channel }}
+      api-digest: ${{ steps.api.outputs.digest }}
+      web-digest: ${{ steps.web.outputs.digest }}
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
-      - name: Is the commit on main?
+      - name: Resolve revision, channel and tags
         id: ref
+        env:
+          PR: ${{ github.event.pull_request.number }}
         run: |
-          if git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "on_main=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "on_main=false" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          revision=$(git rev-parse HEAD)
+          short=${revision:0:7}
+          channel=staging
+          [ "$GITHUB_EVENT_NAME" = push ] && [ "$GITHUB_REF" = refs/heads/main ] && channel=main
+          # main: :main :sha-<short>; PR: :pr-<n> :sha-<short>; v* tag: :vX.Y.Z (+ :latest on main); dispatch: :sha-<short>.
+          tags=(sha-$short)
+          if [ -n "$PR" ]; then
+            tags+=(pr-$PR)
+          elif [ "$channel" = main ]; then
+            tags+=(main)
+          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            tags=("${GITHUB_REF#refs/tags/}")
+            git merge-base --is-ancestor "$revision" origin/main && tags+=(latest)
           fi
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+          echo "tags=${tags[*]}" >> "$GITHUB_OUTPUT"
+          echo "Publishing $revision to $channel as: ${tags[*]}"
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: ghcr.io/nntin/my-home-${{ matrix.app }}
-          flavor: latest=false
-          # main push -> :main, :sha-<short>; v* tag -> :vX.Y.Z (+ :latest when the tag is on main)
-          tags: |
-            type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
-            type=sha,prefix=sha-,format=short,enable=${{ github.ref == 'refs/heads/main' }}
-            type=semver,pattern=v{{version}}
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && steps.ref.outputs.on_main == 'true' }}
-      - uses: docker/build-push-action@v7
+      - name: Image tags
+        id: tags
+        env:
+          TAGS: ${{ steps.ref.outputs.tags }}
+        run: |
+          for app in api web; do
+            echo "$app<<EOF" >> "$GITHUB_OUTPUT"
+            for tag in $TAGS; do echo "ghcr.io/nntin/my-home-$app:$tag" >> "$GITHUB_OUTPUT"; done
+            echo "EOF" >> "$GITHUB_OUTPUT"
+          done
+      - name: Publish api image
+        id: api
+        uses: docker/build-push-action@v7
         with:
           context: .
-          file: apps/${{ matrix.app }}/Dockerfile
+          file: apps/api/Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.app }}
-          cache-to: type=gha,scope=${{ matrix.app }},mode=max
+          tags: ${{ steps.tags.outputs.api }}
+          # source links the package to this repository, so the workflow token can manage its versions.
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ steps.ref.outputs.revision }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
+      - name: Publish web image
+        id: web
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: true
+          tags: ${{ steps.tags.outputs.web }}
+          # source links the package to this repository, so the workflow token can manage its versions.
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ steps.ref.outputs.revision }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max
+
+  deploy:
+    # One deploy per environment at a time. A newer pending deploy replaces an older pending one, and the chart
+    # is only published here, so the latest deploy wins and two deploys never race. GitHub records each run as a
+    # deployment of the environment and marks the previous one inactive, which the pull request shows.
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    environment:
+      name: ${{ needs.publish.outputs.channel == 'main' && 'production' || 'staging' }}
+      url: ${{ needs.publish.outputs.channel == 'main' && 'https://home.nntin.xyz' || 'https://home-staging.nntin.xyz' }}
+    concurrency:
+      group: deploy-${{ needs.publish.outputs.channel }}
+      cancel-in-progress: false
+    env:
+      REVISION: ${{ needs.publish.outputs.revision }}
+      CHANNEL: ${{ needs.publish.outputs.channel }}
+      HOST: ${{ needs.publish.outputs.channel == 'main' && 'home.nntin.xyz' || 'home-staging.nntin.xyz' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.publish.outputs.revision }}
+      - uses: azure/setup-helm@v4
+        with:
+          version: v4.2.4
+      - name: Publish chart
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          API_DIGEST: ${{ needs.publish.outputs.api-digest }}
+          WEB_DIGEST: ${{ needs.publish.outputs.web-digest }}
+        run: |
+          set -euo pipefail
+          version="0.1.0-$CHANNEL.$GITHUB_RUN_NUMBER"
+          python3 tools/stamp-chart-digests.py "$API_DIGEST" "$WEB_DIGEST"
+          printf '%s' "$REGISTRY_TOKEN" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          helm package charts/my-home --version "$version" --app-version "$REVISION" --destination release
+          helm push "release/my-home-$version.tgz" oci://ghcr.io/nntin/charts
+          echo "### Published my-home $version" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commit \`$REVISION\` → $CHANNEL (https://$HOST)" >> "$GITHUB_STEP_SUMMARY"
+      - name: Wait until the environment runs this commit
+        # Flux polls the chart channel every 2 minutes; the pre-deploy hook migrates (staging: resets) first.
+        run: |
+          set -uo pipefail
+          for attempt in $(seq 1 90); do
+            commit=$(curl -fsS --max-time 10 -A 'Mozilla/5.0 (my-home CI)' "https://$HOST/api/health/live" | jq -r '.commit // empty' || true)
+            if [ "$commit" = "$REVISION" ]; then
+              echo "https://$HOST runs $REVISION"
+              exit 0
+            fi
+            echo "attempt $attempt: https://$HOST runs ${commit:-unknown}, waiting for $REVISION"
+            sleep 10
+          done
+          echo "::error::https://$HOST did not switch to $REVISION within 15 minutes"
+          exit 1

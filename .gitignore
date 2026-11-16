@@ -10,3 +10,4 @@ coverage/
 .DS_Store
 .vite/
 .claude/settings.local.json
+__pycache__/

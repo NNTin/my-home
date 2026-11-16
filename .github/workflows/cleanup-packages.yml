@@ -1,0 +1,28 @@
+name: Clean up pull request packages
+
+# Deletes pull request images and staging charts that are no longer needed. Production (:main, :sha-* of main
+# builds), release (:v*, :latest) and production charts (0.1.0-main.*) are never deleted.
+on:
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: List what would be deleted without deleting
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 tools/cleanup-packages.py
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          DRY_RUN: ${{ inputs.dry-run == true && '1' || '' }}

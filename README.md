@@ -112,7 +112,9 @@ verified in GitHub Actions (`.github/workflows/ci.yml`):
 - `test-postgres`: api tests against a `postgres` service container
 - `docker`: build both images, `docker compose up`, smoke-test `/api/health`, `/` and the layouts
   API
-- `publish`: push images to GHCR on `main` and `v*` tags (never from pull requests)
+- `chart`: lint the Helm chart and check its deployment contract (`tools/check-chart.sh`)
+- `publish`: push images to GHCR for `main`, `v*` tags, same-repo pull requests and manual dispatches
+- `deploy`: publish the chart and wait until production (`main`) or staging (everything else) runs the commit
 
-See [docs/container-images.md](docs/container-images.md) for image names, tags and the deployment
-model.
+See [docs/container-images.md](docs/container-images.md) for image names and tags, and
+[docs/deployment.md](docs/deployment.md) for the production and staging deployments.
