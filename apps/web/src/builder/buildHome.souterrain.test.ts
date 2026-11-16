@@ -233,6 +233,31 @@ describe('stairs', () => {
     ]);
   });
 
+  it('never exceed the maximum riser, however the treads divide over the flights', () => {
+    const source = model.stairs![0]!;
+    // Three equal flights of 2 m (after the landings) and a 2.4 m rise: 13 risers are needed, so
+    // 10 treads over three flights; rounding each share of 3.33 down would leave only 12 risers.
+    const equal = buildStair(
+      { ...source, path: [point(0, 0), point(0, -2.5), point(3, -2.5), point(3, 0)] },
+      0,
+      2.4,
+    );
+    expect(equal.rise).toBeLessThanOrEqual(MAX_RISER + 1e-9);
+    expect(equal.steps.filter((s) => s.part === 'tread')).toHaveLength(10);
+    expect(equal.rise).toBeCloseTo(2.4 / 13);
+    for (const rise of [0.5, 1.1, 2.4, 2.6, 2.75, 3.3, 5]) {
+      for (const far of [1.2, 2.5, 4, 7.3]) {
+        const stair = buildStair(
+          { ...source, path: [point(0, 0), point(0, -far), point(3, -far), point(3, 1)] },
+          0,
+          rise,
+        );
+        expect(stair.rise).toBeLessThanOrEqual(MAX_RISER + 1e-9);
+        expect((stair.steps.length + 1) * stair.rise).toBeCloseTo(rise);
+      }
+    }
+  });
+
   it('stay inside the stair hall and clear of the corridor door', () => {
     const hall = scene.roomFloors.find((r) => r.roomId === 'souterrain-stair-hall')!;
     const xs = hall.outline.map((p) => p[0]);

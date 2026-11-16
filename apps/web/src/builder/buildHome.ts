@@ -847,9 +847,16 @@ export function buildStair(stair: Stair, from: number, to: number): StairDescrip
   const landings = flights.length - 1;
   const totalRun = flights.reduce((sum, f) => sum + f.run, 0);
   const wanted = Math.ceil((to - from) / MAX_RISER - EPS) - 1 - landings;
-  const treads = flights.map((f) =>
-    Math.max(1, Math.round((wanted * f.run) / Math.max(totalRun, EPS))),
-  );
+  // Largest-remainder rounding, at least one tread per flight: the sum never falls short of
+  // `wanted`, so no riser exceeds MAX_RISER.
+  const shares = flights.map((f) => (wanted * f.run) / Math.max(totalRun, EPS));
+  const treads = shares.map((share) => Math.max(1, Math.floor(share + EPS)));
+  const byRemainder = shares
+    .map((share, i) => ({ i, remainder: share - Math.floor(share + EPS) }))
+    .sort((a, b) => b.remainder - a.remainder || a.i - b.i);
+  for (let k = 0; treads.reduce((sum, n) => sum + n, 0) < wanted; k++) {
+    treads[byRemainder[k % byRemainder.length]!.i]!++;
+  }
   const rise = (to - from) / (treads.reduce((sum, n) => sum + n, 0) + landings + 1);
 
   const steps: StairDescriptor['steps'] = [];
