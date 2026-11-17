@@ -3,7 +3,8 @@
 #
 # Smoke test of walk mode on a phone-sized screen (390x844, touch) in headless Chromium: opens /?walk=first,
 # pushes the movement pad, and checks that the figure walks, turns and stops, that the controls fit the screen
-# and that nothing logs an error. Ends with a screenshot of the overview. Exit 0 when every check passes.
+# and that nothing logs an error, also when leaving walk mode (from the overview, opened by address, restored).
+# Ends with a screenshot of the overview. Exit 0 when every check passes.
 # Read-only: it takes no photo and changes nothing. Uses the Playwright set-up of screenshot.sh.
 set -euo pipefail
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -11,7 +12,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$script_dir/lib.sh"
 
 usage() {
-  sed -n '2,7s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,8s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 

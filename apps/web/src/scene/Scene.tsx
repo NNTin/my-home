@@ -1,4 +1,4 @@
-import { Html, OrbitControls } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
 import { Canvas, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, type RefObject } from 'react';
 import type { HomeScene, Vec3 } from '../builder/buildHome';
@@ -17,6 +17,7 @@ import {
   type RequestGhostView,
   type Viewpoint,
 } from './PhotoMarkers';
+import { RoomLabels, RoomLabelTracker } from './RoomLabels';
 import { WalkRig, type WalkRigProps } from './WalkRig';
 
 export interface SceneProps {
@@ -135,6 +136,7 @@ export function Scene({
   paused = false,
 }: SceneProps) {
   const roseRef = useRef<HTMLButtonElement>(null);
+  const labelsRef = useRef<HTMLDivElement>(null);
   const northUpRef = useRef<() => void>(undefined);
   const rose = useMemo(() => ({ ref: roseRef, northBearing }), [northBearing]);
   return (
@@ -170,11 +172,7 @@ export function Scene({
         <HomeMeshes scene={scene} />
         <FurnitureLayer items={furniture} handlers={handlers} touch={touch} toolbar={toolbar} />
         <CompassMarkers markers={markers} />
-        {labels.map((l) => (
-          <Html key={l.id} position={l.at} center zIndexRange={[5, 0]} className="room-label">
-            {l.name}
-          </Html>
-        ))}
+        <RoomLabelTracker labels={labels} layerRef={labelsRef} />
         <OrbitControls
           makeDefault
           target={target}
@@ -191,6 +189,7 @@ export function Scene({
         <RequestGhosts ghosts={requestGhosts} />
         <CompassTracker northBearing={northBearing} roseRef={roseRef} northUpRef={northUpRef} />
       </Canvas>
+      <RoomLabels labels={labels} layerRef={labelsRef} />
       <CompassRose roseRef={roseRef} onNorthUp={() => northUpRef.current?.()} />
     </>
   );
