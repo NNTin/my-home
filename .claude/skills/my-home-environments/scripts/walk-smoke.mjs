@@ -114,6 +114,36 @@ async function smoke(out) {
     );
     await page.screenshot({ path: out });
     console.log(`end ${JSON.stringify(await figure())} in "${await where()}"`);
+    // Leaving walk mode logs nothing, whichever way in: the first-person walk above, the overview
+    // opened by address, and a walk restored after a reload (issue #31: a removeChild page error
+    // when the room names change as the overview is left).
+    const exit = async (label) => {
+      const before = errors.length;
+      await page.getByRole('button', { name: /Exit/ }).click();
+      await hud.waitFor({ state: 'detached', timeout: 10_000 });
+      await page.waitForTimeout(1500);
+      check(
+        `leaving ${label} logs no error`,
+        errors.length === before,
+        errors
+          .slice(before, before + 3)
+          .map(redact)
+          .join(' | '),
+      );
+    };
+    const open = async (path) => {
+      await page.goto(new URL(path, base).href, { waitUntil: 'networkidle', timeout: 60_000 });
+      await hud.waitFor({ timeout: 30_000 });
+      await page.waitForTimeout(3000);
+    };
+    await exit('the overview of a walk');
+    await open('/?walk=third');
+    await exit('the overview opened by address');
+    await open('/?walk=first');
+    await page.reload({ waitUntil: 'networkidle' });
+    await hud.waitFor({ timeout: 30_000 });
+    await page.waitForTimeout(3000);
+    await exit('a walk restored after a reload');
     check(
       'no console or page errors',
       errors.length === 0,
