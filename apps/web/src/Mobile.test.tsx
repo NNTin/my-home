@@ -181,6 +181,8 @@ describe('phone layout', () => {
 
     fireEvent.click(tab(/Requests/));
     expect(tab(/Requests/)).toHaveAttribute('aria-selected', 'true');
+    // The button stands for the photos, not for the requests beside them.
+    expect(photos).toHaveAttribute('aria-pressed', 'false');
     expect(within(region('Photos')!).getByText(testRequest().reason)).toBeInTheDocument();
 
     // The same button closes the sheet again, and leaving the photos removes the markers.

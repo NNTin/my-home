@@ -48,7 +48,9 @@ export interface SceneProps {
 export function initialCamera(bounds: HomeScene['bounds'], aspect = 1): Vec3 {
   const [minX, , minZ] = bounds.min;
   const [maxX, maxY, maxZ] = bounds.max;
-  const size = Math.max(maxX - minX, maxZ - minZ, 1) * Math.max(1, 1 / aspect);
+  // A view that is not measured yet (no width or height) counts as a wide one.
+  const back = Number.isFinite(aspect) && aspect > 0 ? Math.max(1, 1 / aspect) : 1;
+  const size = Math.max(maxX - minX, maxZ - minZ, 1) * back;
   const cx = (minX + maxX) / 2;
   const cz = (minZ + maxZ) / 2;
   return [cx + size * 0.55, maxY + size * 0.45, cz + size * 0.75];

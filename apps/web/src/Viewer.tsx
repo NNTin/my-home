@@ -576,7 +576,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
       {sheetShown && (
         <TopBar
           {...controls}
-          photosOpen={photosOpen && snap !== 'collapsed'}
+          photosOpen={panel === 'photos' && snap !== 'collapsed'}
           onPhotos={() => {
             if (panel === 'photos' && snap !== 'collapsed') return setSnap('collapsed');
             showPanel('photos');
