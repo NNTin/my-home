@@ -42,8 +42,8 @@ view_args() {
     souterrain) ARGS=("${base[@]}" --click 'label:has-text("Souterrain")') ;;
     ground-floor) ARGS=("${base[@]}" --click 'label:has-text("Ground floor")') ;;
     first-floor) ARGS=("${base[@]}" --click 'label:has-text("First floor")') ;;
-    orbit-180) ARGS=("${base[@]}" --drag 600,0) ;;
-    steep) ARGS=("${base[@]}" --drag 0,250) ;;
+    orbit-180) ARGS=("${base[@]}" --drag '600,0') ;;
+    steep) ARGS=("${base[@]}" --drag '0,250') ;;
     mock-home) ARGS=(--viewport 1440x900 --path '/?home=mock-home&hints=off') ;;
     phone) ARGS=(--viewport 390x844 --touch --path '/?hints=off') ;;
     *) die "unknown view '$1' (views: $(views | tr '\n' ' '))" ;;
