@@ -10,7 +10,8 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - `data/homes/`: home model documents (`home.json` the real house, `mock-home.json` the test fixture); model docs in
   `docs/home-model.md`
 - `apps/web/src/items/<type>/`: one furniture type per folder, auto-registered
-  (`docs/adding-furniture-type.md`); layouts and the editor in `docs/layouts.md`
+  (`docs/adding-furniture-type.md`); layouts and the editor in `docs/layouts.md`; the phone layout (top bar,
+  sheet) in `docs/mobile.md`
 - `docs/`: project docs; `docker-compose.yml` runs postgres + api + web
 - `charts/my-home`: Helm chart deployed to Kubernetes by CI + Flux (`docs/deployment.md`); `tools/check-chart.sh`
 
