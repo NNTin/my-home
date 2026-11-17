@@ -860,6 +860,27 @@ describe('WalkHud', () => {
       expect(kept().draft).toBeUndefined();
     });
 
+    it('stays in Manual when Manual is tapped before the quiet permission answer arrives', async () => {
+      let answer: (result: string) => void = () => {};
+      vi.stubGlobal(
+        'DeviceOrientationEvent',
+        Object.assign(class extends Event {}, {
+          requestPermission: () => new Promise<string>((resolve) => (answer = resolve)),
+        }),
+      );
+      render(<Harness restored={{ mode: 'sensors', lostPhoto: false }} />);
+      // The quiet request is on its way.
+      await act(async () => {});
+      const manual = screen.getByRole('radio', { name: /Manual/ });
+      // Still Manual while the browser has not answered; the owner taps it anyway.
+      expect(manual).toHaveAttribute('aria-checked', 'true');
+      fireEvent.click(manual);
+      await act(async () => answer('granted'));
+      expect(screen.getByRole('radio', { name: /Manual/ })).toHaveAttribute('aria-checked', 'true');
+      expect(hud().dataset.mode).toBe('manual');
+      vi.unstubAllGlobals();
+    });
+
     it('comes back in Sensor mode where no tap is needed (Android), else in Manual', async () => {
       vi.stubGlobal('DeviceOrientationEvent', class extends Event {});
       const { unmount } = render(<Harness restored={{ mode: 'sensors', lostPhoto: false }} />);
