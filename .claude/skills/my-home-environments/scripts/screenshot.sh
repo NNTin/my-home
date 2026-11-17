@@ -70,7 +70,7 @@ shift
 target=/ out='' wait_ms=6000 viewport=1440x900 actions='[]' touch=''
 while [[ $# -gt 0 ]]; do
   if [[ $1 == --touch ]]; then
-    touch=touch
+    touch='touch'
     shift
     continue
   fi
