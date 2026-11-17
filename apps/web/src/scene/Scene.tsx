@@ -1,10 +1,12 @@
 import { Html, OrbitControls } from '@react-three/drei';
-import { Canvas } from '@react-three/fiber';
-import { useMemo, useRef } from 'react';
+import { Canvas, useThree } from '@react-three/fiber';
+import { useEffect, useMemo, useRef, type RefObject } from 'react';
 import type { HomeScene, Vec3 } from '../builder/buildHome';
 import type { RoomLabel } from '../builder/visibility';
 import type { CompassMarker } from '../compass/compass';
 import { CompassMarkers, CompassRose, CompassTracker } from '../compass/Compass';
+import type { FurnitureToolbarProps } from '../overlay/FurnitureToolbar';
+import { onCanvas } from './canvasEvent';
 import { FurnitureLayer, type FurnitureHandlers, type FurnitureView } from './FurnitureLayer';
 import { HomeMeshes } from './HomeMeshes';
 import {
@@ -38,6 +40,12 @@ export interface SceneProps {
   requestGhosts?: RequestGhostView[];
   /** Set to look from a photo's pose ("view from here"). */
   viewpoint?: Viewpoint | undefined;
+  /** A touch screen: larger handles and tap targets in the 3D view. */
+  touch?: boolean;
+  /** The floating toolbar of the selected furniture item. */
+  toolbar?: FurnitureToolbarProps | undefined;
+  /** Filled with the action that puts the camera back where it started ("Reset view"). */
+  resetViewRef?: RefObject<(() => void) | undefined>;
 }
 
 /**
@@ -56,6 +64,36 @@ export function initialCamera(bounds: HomeScene['bounds'], aspect = 1): Vec3 {
   return [cx + size * 0.55, maxY + size * 0.45, cz + size * 0.75];
 }
 
+/** Inside the canvas: provides the "Reset view" action, for the view as it is sized now. */
+function ViewReset({
+  bounds,
+  target,
+  resetRef,
+}: {
+  bounds: HomeScene['bounds'];
+  target: Vec3;
+  resetRef: RefObject<(() => void) | undefined>;
+}) {
+  const get = useThree((s) => s.get);
+  const [x, y, z] = target;
+  useEffect(() => {
+    resetRef.current = () => {
+      const { camera, size } = get();
+      const controls = get().controls as unknown as {
+        target: { set(x: number, y: number, z: number): void };
+        update(): void;
+      } | null;
+      camera.position.set(...initialCamera(bounds, size.width / size.height));
+      controls?.target.set(x, y, z);
+      controls?.update();
+    };
+    return () => {
+      resetRef.current = undefined;
+    };
+  }, [get, bounds, x, y, z, resetRef]);
+  return null;
+}
+
 /** Full-size canvas; R3F resizes the renderer and camera with its container. */
 export function Scene({
   scene,
@@ -70,6 +108,9 @@ export function Scene({
   onSelectPhoto,
   requestGhosts = [],
   viewpoint,
+  touch = false,
+  toolbar,
+  resetViewRef,
 }: SceneProps) {
   const roseRef = useRef<HTMLButtonElement>(null);
   const northUpRef = useRef<() => void>(undefined);
@@ -85,7 +126,7 @@ export function Scene({
           camera.position.set(...initialCamera(scene.bounds, size.width / size.height))
         }
         // Clicking empty space clears the selection.
-        onPointerMissed={() => handlers.onSelect(undefined)}
+        onPointerMissed={(e) => onCanvas(e) && handlers.onSelect(undefined)}
         style={{ touchAction: 'none' }}
       >
         <color attach="background" args={['#cfdde8']} />
@@ -101,7 +142,7 @@ export function Scene({
           <orthographicCamera attach="shadow-camera" args={[-30, 30, 30, -30, 1, 100]} />
         </directionalLight>
         <HomeMeshes scene={scene} />
-        <FurnitureLayer items={furniture} handlers={handlers} />
+        <FurnitureLayer items={furniture} handlers={handlers} touch={touch} toolbar={toolbar} />
         <CompassMarkers markers={markers} />
         {labels.map((l) => (
           <Html key={l.id} position={l.at} center zIndexRange={[5, 0]} className="room-label">
@@ -117,7 +158,10 @@ export function Scene({
         />
         {walk && <WalkRig figure={walk.figure} view={walk.view} rose={rose} />}
         {viewpoint && <ViewpointRig viewpoint={viewpoint} rose={rose} />}
-        <PhotoMarkers markers={photoMarkers} onSelect={(id) => onSelectPhoto?.(id)} />
+        <PhotoMarkers markers={photoMarkers} touch={touch} onSelect={(id) => onSelectPhoto?.(id)} />
+        {resetViewRef && (
+          <ViewReset bounds={scene.bounds} target={target} resetRef={resetViewRef} />
+        )}
         <RequestGhosts ghosts={requestGhosts} />
         <CompassTracker northBearing={northBearing} roseRef={roseRef} northUpRef={northUpRef} />
       </Canvas>

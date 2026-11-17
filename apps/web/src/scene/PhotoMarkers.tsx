@@ -1,9 +1,11 @@
+import { Billboard } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
-import { useEffect, useMemo } from 'react';
-import type { PerspectiveCamera } from 'three';
+import { useEffect, useMemo, useRef } from 'react';
+import type { Group, PerspectiveCamera } from 'three';
 import type { PhotoPose } from '@my-home/shared';
 import type { Vec3 } from '../builder/buildHome';
 import { turnRose, type RoseTarget } from '../compass/Compass';
+import { onCanvas } from './canvasEvent';
 import { matchingVerticalFov } from '../photos/frustum';
 import { EYE_HEIGHT, FIGURE_HEIGHT, FIGURE_RADIUS } from '../walk/world';
 
@@ -21,11 +23,30 @@ export interface PhotoMarkerView {
 const MARKER_COLOR = '#1f6feb';
 const SELECTED_COLOR = '#ffd23f';
 
+/**
+ * A marker keeps the size it has from this far away, in metres: further off it is drawn larger,
+ * so the camera and the ring of a measured heading stay readable in an overview of the whole
+ * home. The view cone stays true to scale.
+ */
+const MARKER_FULL_SIZE_DISTANCE = 7;
+const MARKER_MAX_SCALE = 5;
+
+/** How much larger than life a marker is drawn from `distance` metres away. */
+export const markerScale = (distance: number) =>
+  Math.min(MARKER_MAX_SCALE, Math.max(1, distance / MARKER_FULL_SIZE_DISTANCE));
+
+/** Radius of the camera ball, and of the invisible ball around it that takes the tap. */
+const MARKER_RADIUS = 0.12;
+const TAP_RADIUS = 0.2;
+const TOUCH_TAP_RADIUS = 0.4;
+
 function PhotoMarker({
   marker,
+  touch,
   onSelect,
 }: {
   marker: PhotoMarkerView;
+  touch: boolean;
   onSelect(id: string): void;
 }) {
   const lines = useMemo(() => {
@@ -35,25 +56,47 @@ function PhotoMarker({
     return new Float32Array([p, a, p, b, p, c, p, d, a, b, b, c, c, d, d, a].flat());
   }, [marker]);
   const color = marker.selected ? SELECTED_COLOR : MARKER_COLOR;
+  const head = useRef<Group>(null);
+  useFrame(({ camera }) => {
+    const group = head.current;
+    if (group) group.scale.setScalar(markerScale(camera.position.distanceTo(group.position)));
+  });
   return (
     <group>
-      <mesh
-        position={marker.position}
-        onClick={(e) => {
-          e.stopPropagation();
-          onSelect(marker.id);
-        }}
-      >
-        <sphereGeometry args={[0.12, 16, 12]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.4} />
-      </mesh>
-      {/* A level ring, like a compass card, marks a heading the phone measured. */}
-      {marker.measured && (
-        <mesh position={marker.position} rotation={[-Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[0.2, 0.025, 8, 24]} />
+      <group ref={head} position={marker.position}>
+        <mesh>
+          <sphereGeometry args={[MARKER_RADIUS, 16, 12]} />
           <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.4} />
         </mesh>
-      )}
+        {/* The tap target: larger than the ball, and larger still for a finger. */}
+        <mesh
+          onClick={(e) => {
+            if (!onCanvas(e.nativeEvent)) return;
+            e.stopPropagation();
+            onSelect(marker.id);
+          }}
+        >
+          <sphereGeometry args={[touch ? TOUCH_TAP_RADIUS : TAP_RADIUS, 12, 8]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+        {/*
+        A ring marks a heading the phone measured. It faces the viewer, so it reads as a ring
+        around the camera from every angle, and it is drawn over walls like the view cone's
+        lines are not: a measured heading is what to look for.
+      */}
+        {marker.measured && (
+          <Billboard>
+            <mesh renderOrder={2}>
+              <ringGeometry args={[0.2, 0.27, 32]} />
+              <meshBasicMaterial color="#ffffff" transparent opacity={0.95} depthTest={false} />
+            </mesh>
+            <mesh renderOrder={3}>
+              <ringGeometry args={[0.215, 0.255, 32]} />
+              <meshBasicMaterial color={color} transparent depthTest={false} />
+            </mesh>
+          </Billboard>
+        )}
+      </group>
       <lineSegments>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[lines, 3]} />
@@ -67,13 +110,16 @@ function PhotoMarker({
 /** Camera markers with view cones for the photos; clicking one selects its photo. */
 export function PhotoMarkers({
   markers,
+  touch = false,
   onSelect,
 }: {
   markers: PhotoMarkerView[];
+  /** A touch screen: a larger tap target around each camera. */
+  touch?: boolean;
   onSelect(id: string): void;
 }) {
   return markers.map((marker) => (
-    <PhotoMarker key={marker.id} marker={marker} onSelect={onSelect} />
+    <PhotoMarker key={marker.id} marker={marker} touch={touch} onSelect={onSelect} />
   ));
 }
 

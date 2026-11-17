@@ -1,9 +1,12 @@
+import { Html } from '@react-three/drei';
 import { useThree, type ThreeEvent } from '@react-three/fiber';
-import { useRef, type ComponentType } from 'react';
-import { DoubleSide, Plane, Vector3, type Ray } from 'three';
+import { useEffect, useRef, type ComponentType } from 'react';
+import { DoubleSide, Plane, Vector3, type Camera, type Object3D, type Ray } from 'three';
 import type { Vec2, Vec3 } from '../builder/buildHome';
 import { Block, SELECTION_COLOR } from '../items/parts';
 import type { ItemRenderProps, ItemSize } from '../items/types';
+import { FurnitureToolbar, type FurnitureToolbarProps } from '../overlay/FurnitureToolbar';
+import { onCanvas, swallowNextClick } from './canvasEvent';
 
 /** One item as the scene draws it; built by the viewer from the layout and the registry. */
 export interface FurnitureView {
@@ -28,7 +31,55 @@ export interface FurnitureHandlers {
   /** The rotate handle was dragged around the item from `from` to `to` (plan points). */
   onRotate(id: string, from: Vec2, to: Vec2): void;
   onDragEnd(): void;
+  /** An item was pressed and held without moving it (touch: "more"). */
+  onLongPress?(id: string): void;
 }
+
+/**
+ * How long an item is held before it counts as a long press, and how far the finger may stray.
+ * Shorter than the browser's own long press (about 500 ms), which cancels the touch.
+ */
+const LONG_PRESS_MS = 450;
+const LONG_PRESS_SLOP = 10;
+
+/** Width of the rotate ring in metres: wider for a finger than for a mouse pointer. */
+const RING_WIDTH = 0.12;
+const TOUCH_RING_WIDTH = 0.34;
+
+/** Half the toolbar's width and its height in pixels, to keep it inside the view. */
+const TOOLBAR_HALF_WIDTH = 160;
+const TOOLBAR_HEIGHT = 48;
+/** How far above the item's top the toolbar floats, in pixels. */
+const TOOLBAR_LIFT = 44;
+
+/**
+ * Where the toolbar goes on screen: above the point it is anchored to, and pushed back inside
+ * the view when the item is near an edge.
+ */
+export function toolbarPosition(
+  anchor: [number, number],
+  size: { width: number; height: number },
+): [number, number] {
+  const clamp = (value: number, min: number, max: number) =>
+    max < min ? (min + max) / 2 : Math.max(min, Math.min(max, value));
+  return [
+    clamp(anchor[0], TOOLBAR_HALF_WIDTH + 4, size.width - TOOLBAR_HALF_WIDTH - 4),
+    clamp(anchor[1] - TOOLBAR_LIFT, TOOLBAR_HEIGHT / 2 + 4, size.height - TOOLBAR_HEIGHT / 2 - 4),
+  ];
+}
+
+const projected = new Vector3();
+const placeToolbar = (
+  anchor: Object3D,
+  camera: Camera,
+  size: { width: number; height: number },
+) => {
+  projected.setFromMatrixPosition(anchor.matrixWorld).project(camera);
+  return toolbarPosition(
+    [(projected.x + 1) * (size.width / 2), (1 - projected.y) * (size.height / 2)],
+    size,
+  );
+};
 
 const hitFloor = (ray: Ray, elevation: number): Vec2 | undefined => {
   const hit = ray.intersectPlane(new Plane(new Vector3(0, 1, 0), -elevation), new Vector3());
@@ -54,11 +105,19 @@ function useControlsLock() {
 /** Pointer handling shared by the item body (move) and its rotate ring (rotate). */
 function useDrag(item: FurnitureView, handlers: FurnitureHandlers) {
   const drag = useRef<Drag>(undefined);
+  const hold = useRef<{ timer: number; x: number; y: number } | undefined>(undefined);
   const lock = useControlsLock();
   const elevation = item.position[1];
+  const { onLongPress } = handlers;
+
+  const release = () => {
+    if (hold.current) window.clearTimeout(hold.current.timer);
+    hold.current = undefined;
+  };
+  useEffect(() => release, []);
 
   const start = (kind: Drag['kind']) => (e: ThreeEvent<PointerEvent>) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || !onCanvas(e.nativeEvent)) return;
     e.stopPropagation();
     const hit = hitFloor(e.ray, elevation);
     if (!hit) return;
@@ -72,12 +131,28 @@ function useDrag(item: FurnitureView, handlers: FurnitureHandlers) {
     };
     if (kind === 'move') handlers.onMoveStart(item.id);
     else handlers.onRotateStart(item.id);
+    release();
+    if (kind === 'move' && onLongPress) {
+      hold.current = {
+        timer: window.setTimeout(() => {
+          hold.current = undefined;
+          swallowNextClick();
+          onLongPress(item.id);
+        }, LONG_PRESS_MS),
+        x: e.nativeEvent.clientX,
+        y: e.nativeEvent.clientY,
+      };
+    }
   };
 
   const move = (e: ThreeEvent<PointerEvent>) => {
     const d = drag.current;
     if (!d || d.pointerId !== e.pointerId) return;
     e.stopPropagation();
+    // A finger that travels is dragging, not holding.
+    const h = hold.current;
+    if (h && Math.hypot(e.nativeEvent.clientX - h.x, e.nativeEvent.clientY - h.y) > LONG_PRESS_SLOP)
+      release();
     const hit = hitFloor(e.ray, elevation);
     if (!hit) return;
     if (d.kind === 'move') handlers.onMove(item.id, [hit[0] + d.offset[0], hit[1] + d.offset[1]]);
@@ -90,6 +165,7 @@ function useDrag(item: FurnitureView, handlers: FurnitureHandlers) {
     e.stopPropagation();
     (e.target as Element).releasePointerCapture(e.pointerId);
     drag.current = undefined;
+    release();
     lock(false);
     handlers.onDragEnd();
   };
@@ -97,11 +173,22 @@ function useDrag(item: FurnitureView, handlers: FurnitureHandlers) {
   return { start, move, end };
 }
 
-function FurnitureItem({ item, handlers }: { item: FurnitureView; handlers: FurnitureHandlers }) {
+function FurnitureItem({
+  item,
+  handlers,
+  touch,
+  toolbar,
+}: {
+  item: FurnitureView;
+  handlers: FurnitureHandlers;
+  touch: boolean;
+  toolbar: FurnitureToolbarProps | undefined;
+}) {
   const { start, move, end } = useDrag(item, handlers);
   const { size, Render } = item;
   const state = { selected: item.selected, colliding: item.colliding };
   const ring = Math.max(size.width, size.depth) / 2 + 0.2;
+  const ringWidth = touch ? TOUCH_RING_WIDTH : RING_WIDTH;
   return (
     <group position={item.position} rotation={[0, item.rotationY, 0]}>
       <group
@@ -131,9 +218,20 @@ function FurnitureItem({ item, handlers }: { item: FurnitureView; handlers: Furn
           onPointerUp={end}
           onPointerCancel={end}
         >
-          <ringGeometry args={[ring, ring + 0.12, 48]} />
+          <ringGeometry args={[ring, ring + ringWidth, 48]} />
           <meshBasicMaterial color={SELECTION_COLOR} side={DoubleSide} transparent opacity={0.8} />
         </mesh>
+      )}
+      {item.selected && toolbar && (
+        // Above the item's top; the room names (z-index up to 5) stay below it.
+        <Html
+          position={[0, size.height, 0]}
+          center
+          zIndexRange={[9, 6]}
+          calculatePosition={placeToolbar}
+        >
+          <FurnitureToolbar {...toolbar} />
+        </Html>
       )}
     </group>
   );
@@ -142,14 +240,26 @@ function FurnitureItem({ item, handlers }: { item: FurnitureView; handlers: Furn
 export function FurnitureLayer({
   items,
   handlers,
+  touch = false,
+  toolbar,
 }: {
   items: FurnitureView[];
   handlers: FurnitureHandlers;
+  /** A touch screen: a rotate ring wide enough for a finger. */
+  touch?: boolean;
+  /** The floating toolbar of the selected item; none on a desktop screen. */
+  toolbar?: FurnitureToolbarProps | undefined;
 }) {
   return (
     <group>
       {items.map((item) => (
-        <FurnitureItem key={item.id} item={item} handlers={handlers} />
+        <FurnitureItem
+          key={item.id}
+          item={item}
+          handlers={handlers}
+          touch={touch}
+          toolbar={toolbar}
+        />
       ))}
     </group>
   );

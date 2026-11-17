@@ -86,14 +86,16 @@ room. **Calibrate** (while Heading is on) corrects for it:
 - drag the view sideways until it matches what you see.
 
 The offset is shown in the bar, kept **per device** (in the browser's local storage, not in the home), and
-**Reset** clears it.
+**Reset** clears it. On a phone the sheet opens at the bottom, over the movement pad; its head with the offset,
+**Reset** and **Done** stays in reach while the rest scrolls.
 
 ### What is stored with a photo
 
 With Heading or Tilt on, the photo's view is the one at the **tap on the camera button**. The camera app
 that opens next hides the page, and afterwards the phone is usually tipped towards you while you read the
 sheet and type a note; so the view goes back to where it was at the tap and the phone stops driving it until
-the sheet is closed. The arrow buttons in the sheet adjust the pose from there.
+the sheet is closed; the bar says "held for the photo" meanwhile (not "paused", which is the page in the
+background). The arrow buttons in the sheet adjust the pose from there.
 
 Every photo taken while walking stores a **sensor snapshot** next to its pose
 ([photos.md](photos.md#sensor-snapshot)): whether the heading was measured by the compass or set by hand,
@@ -190,5 +192,6 @@ reads the figure from a ref every frame.
 S=.claude/skills/my-home-environments/scripts
 $S/walk-smoke.sh staging                                   # phone-sized smoke test of the movement pad
 $S/compass-smoke.sh staging                                # Heading and Tilt with mocked sensor events
+$S/mobile-smoke.sh staging                                 # the phone layout around it (docs/mobile.md)
 $S/screenshot.sh staging --viewport 390x844 --path '/?walk=first' --pad 0,-44,2000
 ```

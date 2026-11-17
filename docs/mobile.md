@@ -51,6 +51,37 @@ sheet is a rail of tabs at the right with the panel beside it, and the view keep
 
 Walking takes the whole screen: the top bar and the sheet are gone until **Exit**, and come back as they were.
 
+## Touch
+
+- **The 3D view**: one finger turns it, a pinch zooms, two fingers move it. The page itself never zooms or
+  scrolls under these (`touch-action`), and **⟲ Reset view** at the foot of the view puts the camera back where
+  it started, fitted to the view as it is now. It is hidden while looking from a photo ("View from here").
+- **Furniture**: tap an item to select it and drag it to move it. The rotate ring is wide enough for a finger.
+  The selected item's tools float next to it: rotate left and right, duplicate, delete, and **⋯** for the
+  furniture panel. A **long press** on an item (0.45 s without moving) opens that panel too.
+- **Photos**: camera markers have a tap target larger than the camera they show.
+- In the panels, on/off settings are switches and every control is at least 44 px high.
+
+The toolbar is DOM floating over the canvas (drei `Html`). R3F listens for pointer events on the element around
+the canvas, so events on such DOM reach the scene too: handlers in the scene check `onCanvas()`
+(`scene/canvasEvent.ts`) first, or a tap on a toolbar button would also clear the selection.
+
+## Hints and status
+
+- **First-run hints** show once per browser on a phone: how to move the view, where the panels are, how to start
+  walking. **Got it** dismisses them for good (`localStorage` key `my-home.hints.seen`).
+- A **status chip** next to "Reset view" says what the closed panels cannot: "Loading furniture…", "Saving…",
+  "Saved" (fades out), and what needs attention ("Offline: changes kept on this phone", "Changed elsewhere: see
+  Furniture").
+
+## The on-screen keyboard
+
+The open sheet must not end up under the keyboard. Where the browser resizes the page for the keyboard
+(`interactive-widget=resizes-content`, Chrome on Android), the layout simply shrinks. Where only the visual
+viewport shrinks (Safari on iOS), `useKeyboardViewport()` puts the visible height into `--app-height` and sets
+`keyboard-open` on the root element; the open sheet then takes all the room that is left and the focused field
+is scrolled into view.
+
 ## Opening a panel from the address
 
 For links, screenshots and tests:
@@ -59,7 +90,9 @@ For links, screenshots and tests:
   screen, `photos` and `requests` open the gallery).
 - `?sheet=collapsed`, `half` or `full` sets the size of the sheet; it is `half` when a panel is named.
 
-They combine with `?home=` and are read once when the page opens. `?walk` wins over both.
+- `?hints=off` leaves the first-run hints out, without marking them as seen.
+
+They combine with `?home=` and are read once when the page opens. `?walk` wins over the panel parameters.
 
 ## Screen edges and browser bars
 
@@ -72,30 +105,36 @@ They combine with `?home=` and are read once when the page opens. `?walk` wins o
 
 ## Code
 
-| Part                                   | Where                                   |
-| -------------------------------------- | --------------------------------------- |
-| Which layout, media queries            | `apps/web/src/overlay/useLayoutMode.ts` |
-| Sheet: tabs, sizes, dragging           | `apps/web/src/overlay/Sheet.tsx`        |
-| Top bar and level switcher             | `apps/web/src/overlay/TopBar.tsx`       |
-| View tab                               | `apps/web/src/overlay/ViewPanel.tsx`    |
-| What is on screen, `?panel`, `?sheet`  | `apps/web/src/Viewer.tsx`               |
-| Styles (`.viewer.mobile`, `.sheet`, …) | `apps/web/src/styles.css`               |
+| Part                                   | Where                                                                                |
+| -------------------------------------- | ------------------------------------------------------------------------------------ |
+| Which layout, media queries            | `apps/web/src/overlay/useLayoutMode.ts`                                              |
+| Sheet: tabs, sizes, dragging           | `apps/web/src/overlay/Sheet.tsx`                                                     |
+| Top bar and level switcher             | `apps/web/src/overlay/TopBar.tsx`                                                    |
+| View tab                               | `apps/web/src/overlay/ViewPanel.tsx`                                                 |
+| Reset view, status chip                | `apps/web/src/overlay/StageTools.tsx`                                                |
+| First-run hints                        | `apps/web/src/overlay/Hints.tsx`                                                     |
+| Furniture toolbar, long press          | `apps/web/src/overlay/FurnitureToolbar.tsx`, `apps/web/src/scene/FurnitureLayer.tsx` |
+| Keyboard                               | `apps/web/src/overlay/useKeyboardViewport.ts`                                        |
+| What is on screen, `?panel`, `?sheet`  | `apps/web/src/Viewer.tsx`                                                            |
+| Styles (`.viewer.mobile`, `.sheet`, …) | `apps/web/src/styles.css`                                                            |
 
 The size of a sheet being dragged stays in the DOM and never reaches React state: a re-render of the viewer per
 pointer move would rebuild the whole scene description.
 
 Tests: `apps/web/src/Mobile.test.tsx` (the layouts through the app, with `stubScreen()` from
-`src/test/screen.ts` standing in for `matchMedia`) and `apps/web/src/overlay/Sheet.test.tsx`.
+`src/test/screen.ts` standing in for `matchMedia`), `apps/web/src/overlay/Sheet.test.tsx` and
+`apps/web/src/overlay/Touch.test.tsx` (toolbar, long press, reset view, status chip, hints, keyboard).
 
 ## Testing on an environment
 
 ```sh
 S=.claude/skills/my-home-environments/scripts
 $S/mobile-smoke.sh staging                                  # phone layout, touch, upright and across
-$S/screenshot.sh staging --viewport 390x844 --touch         # the default view on a phone
+$S/screenshot.sh staging --viewport 390x844 --touch --path '/?hints=off'   # the default view on a phone
 $S/screenshot.sh staging --viewport 390x844 --touch --path '/?panel=furniture&sheet=full'
 $S/screenshot.sh staging --viewport 844x390 --touch --path '/?panel=view'
 ```
 
-`mobile-smoke.sh` writes only to a layout it creates itself and removes again. Headless Chromium says nothing
+`mobile-smoke.sh` places, drags, rotates, duplicates and deletes a furniture item with real touch events. It
+writes only to a layout it creates itself and removes again. Headless Chromium says nothing
 about how smooth the view is on a real phone, or about notches and browser bars: those need the phone.

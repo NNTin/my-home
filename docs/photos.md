@@ -79,7 +79,9 @@ stored snapshot a build cannot read counts as none.
 
 The gallery's detail view says where each heading came from ("Heading measured by the phone: true bearing
 84° · ±12° · declination +3° · calibration −7°", "set by hand", or "no sensor data"), and in the 3D view a
-ring around a camera marks a measured heading. `photos.sh <env> sensors <photo-id>` prints it.
+ring around a camera marks a measured heading. The ring faces the viewer and, like the camera, is drawn larger
+from far away, so it reads from every angle and in an overview of the whole home; the view cone stays true to
+scale. `photos.sh <env> sensors <photo-id>` prints it.
 
 ## Images and privacy
 

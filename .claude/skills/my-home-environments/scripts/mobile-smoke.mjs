@@ -43,7 +43,9 @@ async function smoke(out, homeId) {
   });
   /** The layout this run created: the only thing it may change, and it removes it again. */
   let ownLayout;
+  let page;
   const blocked = [];
+  const target = homeId ? `/?home=${encodeURIComponent(homeId)}` : '/';
   try {
     // A phone held upright, with a touch screen.
     const context = await browser.newContext({
@@ -70,7 +72,7 @@ async function smoke(out, homeId) {
         headers: { ...request.headers(), authorization: `Bearer ${token}` },
       });
     });
-    const page = await context.newPage();
+    page = await context.newPage();
     const errors = [];
     page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`));
     page.on('console', (message) => {
@@ -79,7 +81,6 @@ async function smoke(out, homeId) {
     // "Delete layout ...?" for the layout of this run.
     page.on('dialog', (dialog) => void dialog.accept());
 
-    const target = homeId ? `/?home=${encodeURIComponent(homeId)}` : '/';
     await page.goto(new URL(target, base).href, { waitUntil: 'networkidle', timeout: 60_000 });
     if (new URL(page.url()).host !== host)
       throw new Error('ended on another host (login redirect?)');
@@ -93,6 +94,13 @@ async function smoke(out, homeId) {
       /sheet-(collapsed|half|full)/.exec(await sheet.getAttribute('class'))?.[1];
     const tab = (name) => page.getByRole('tab', { name });
     const settle = () => page.waitForTimeout(600);
+
+    // First-run hints: there on a fresh phone, gone after "Got it".
+    const hints = page.getByRole('complementary', { name: 'How to use the viewer' });
+    check('the first-run hints show', await hints.isVisible());
+    await hints.getByRole('button', { name: 'Got it' }).tap();
+    await settle();
+    check('"Got it" dismisses the hints', (await hints.count()) === 0);
 
     // The default view: everything but the top bar and the tab bar belongs to the 3D view.
     check(
@@ -119,10 +127,15 @@ async function smoke(out, homeId) {
       'the compass is on the 3D view, clear of the bars',
       !overlap(rose, bar) && !overlap(rose, tabs),
     );
+    const reset = await box('.reset-view');
+    check(
+      '"Reset view" is on the 3D view, clear of the bars and the compass',
+      reset !== null && !overlap(reset, bar) && !overlap(reset, tabs) && !overlap(reset, rose),
+    );
     const width = await page.evaluate(() => document.scrollingElement.scrollWidth);
     check('nothing is wider than the screen', width <= PORTRAIT.width, `${width} px`);
     const small = await page
-      .locator('.topbar button, .topbar select, .sheet-bar button')
+      .locator('.topbar button, .topbar select, .sheet-bar button, .reset-view')
       .evaluateAll(
         (elements, min) =>
           elements
@@ -203,7 +216,11 @@ async function smoke(out, homeId) {
         new URL(response.url()).pathname === `/api/layouts/${ownLayout}`,
       { timeout: 20_000 },
     );
-    await furniture.locator('.catalog-item').first().tap();
+    // A piece with a solid top (not a bed, whose top is mostly air above the mattress): the touch
+    // further down aims at the middle of the item's top.
+    const catalog = furniture.locator('.catalog-item');
+    const solid = catalog.filter({ hasText: /wardrobe|desk|table/i });
+    await ((await solid.count()) > 0 ? solid : catalog).first().tap();
     await furniture.getByLabel('Selected item').waitFor({ timeout: 10_000 });
     check('a tap in the catalog places an item and selects it', true);
     check('the layout is saved', (await save).ok());
@@ -213,6 +230,102 @@ async function smoke(out, homeId) {
       ownLayout,
     );
     check('the item is saved in the layout', stored === 1, `${stored} item(s)`);
+
+    // Editing by touch with the panel closed: the item's tools float next to it.
+    await page.getByRole('button', { name: 'Close the panel' }).tap();
+    await settle();
+    const toolbar = page.locator('.item-toolbar');
+    await toolbar.waitFor({ timeout: 10_000 });
+    const view = await box('canvas');
+    const tools = await toolbar.boundingBox();
+    check(
+      'the selected item has a floating toolbar inside the 3D view',
+      tools.x >= view.x &&
+        tools.x + tools.width <= view.x + view.width + 1 &&
+        tools.y >= view.y &&
+        tools.y + tools.height <= view.y + view.height + 1,
+    );
+    const smallTools = await toolbar
+      .locator('button')
+      .evaluateAll(
+        (buttons, min) =>
+          buttons.filter((b) => b.offsetWidth < min || b.offsetHeight < min).map((b) => b.title),
+        TOUCH,
+      );
+    check(`its buttons are at least ${TOUCH} px`, smallTools.length === 0, smallTools.join(', '));
+
+    const items = () =>
+      page.evaluate(
+        async (id) => (await (await fetch(`/api/layouts/${id}`)).json()).items,
+        ownLayout,
+      );
+    /** The stored items once `done` holds for them (the app saves a moment after an edit). */
+    const until = async (done) => {
+      const deadline = Date.now() + 20_000;
+      for (;;) {
+        const list = await items();
+        if (done(list) || Date.now() > deadline) return list;
+        await page.waitForTimeout(500);
+      }
+    };
+    // Real touch events, as a finger makes them.
+    const finger = await context.newCDPSession(page);
+    const touch = (type, x, y) =>
+      finger.send('Input.dispatchTouchEvent', {
+        type,
+        touchPoints: type === 'touchEnd' ? [] : [{ x: Math.round(x), y: Math.round(y) }],
+      });
+    /**
+     * A point on the selected item: the toolbar floats 44 px above the middle of the item's top.
+     * From far away an item is only a few pixels, so aim at that middle.
+     */
+    const onItem = async () => {
+      const at = await toolbar.boundingBox();
+      return { x: at.x + at.width / 2, y: at.y + at.height / 2 + 44 + 1 };
+    };
+
+    const [placed] = await items();
+    const from = await onItem();
+    // A drag leaves the spot at once (a finger that rests there is a long press): the press and
+    // the first moves go out together, without waiting for the slow software renderer in between.
+    void touch('touchStart', from.x, from.y);
+    void touch('touchMove', from.x + 7, from.y + 4);
+    for (let step = 2; step <= 8; step++) {
+      await touch('touchMove', from.x + step * 7, from.y + step * 4);
+      await page.waitForTimeout(80);
+    }
+    await touch('touchEnd');
+    const distance = (a, b) => Math.hypot(a.position.x - b.position.x, a.position.z - b.position.z);
+    const [moved] = await until((list) => distance(list[0], placed) > 0.05);
+    check(
+      'dragging the item with a finger moves it',
+      distance(moved, placed) > 0.05,
+      `${distance(moved, placed).toFixed(2)} m`,
+    );
+
+    await toolbar.getByRole('button', { name: 'Rotate left' }).tap();
+    const [turned] = await until((list) => list[0].rotationY !== moved.rotationY);
+    check('the toolbar rotates it', turned.rotationY !== moved.rotationY);
+
+    // A long press is "more": the furniture panel opens on the item, which stays where it is.
+    const held = await onItem();
+    await touch('touchStart', held.x, held.y);
+    await page.waitForTimeout(1000);
+    await touch('touchEnd');
+    await settle();
+    check(
+      'a long press opens the furniture panel on the item',
+      (await snap()) === 'half' && (await furniture.getByLabel('Selected item').isVisible()),
+    );
+    await page.waitForTimeout(1500);
+    const [stayed] = await items();
+    check('the long press does not move it', distance(stayed, turned) < 0.01);
+
+    await toolbar.getByRole('button', { name: 'Duplicate' }).tap();
+    check('the toolbar duplicates it', (await until((list) => list.length === 2)).length === 2);
+    await toolbar.getByRole('button', { name: 'Delete' }).tap();
+    check('the toolbar deletes the copy', (await until((list) => list.length === 1)).length === 1);
+    check('without a selection the toolbar is gone', (await toolbar.count()) === 0);
 
     // Walk mode takes the whole screen and gives it back.
     await page.getByRole('button', { name: 'Walk and take photos' }).tap();
@@ -275,6 +388,20 @@ async function smoke(out, homeId) {
     check('nothing but its own layout was written', blocked.length === 0, blocked.join(', '));
     console.log(`screenshot ${out}`);
   } finally {
+    // A run that stopped half-way still removes its layout: open the panel afresh and delete it.
+    if (ownLayout !== undefined && page) {
+      const id = ownLayout;
+      const gone = await (async () => {
+        const fresh = `${target}${target.includes('?') ? '&' : '?'}panel=furniture&sheet=full&hints=off`;
+        await page.setViewportSize(PORTRAIT);
+        await page.goto(new URL(fresh, base).href, { waitUntil: 'networkidle', timeout: 60_000 });
+        await page.getByRole('region', { name: 'Furniture' }).waitFor({ timeout: 30_000 });
+        await page.waitForTimeout(2000);
+        await removeOwnLayout(page, id);
+        return page.evaluate(async (layout) => (await fetch(`/api/layouts/${layout}`)).status, id);
+      })().catch(() => undefined);
+      if (gone === 404) ownLayout = undefined;
+    }
     if (ownLayout !== undefined)
       console.log(`LEFT BEHIND: layout ${ownLayout} could not be removed; remove it in the app`);
     await browser.close();
