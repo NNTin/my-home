@@ -40,11 +40,15 @@ export interface SceneProps {
   viewpoint?: Viewpoint | undefined;
 }
 
-/** Initial camera: south-east of the building, far enough to see the whole plot. */
-export function initialCamera(bounds: HomeScene['bounds']): Vec3 {
+/**
+ * Initial camera: south-east of the building, far enough to see the whole plot. `aspect` is the
+ * view's width over its height: a view narrower than it is high (a phone held upright) sees less
+ * to the sides, so the camera stands further back by as much.
+ */
+export function initialCamera(bounds: HomeScene['bounds'], aspect = 1): Vec3 {
   const [minX, , minZ] = bounds.min;
   const [maxX, maxY, maxZ] = bounds.max;
-  const size = Math.max(maxX - minX, maxZ - minZ, 1);
+  const size = Math.max(maxX - minX, maxZ - minZ, 1) * Math.max(1, 1 / aspect);
   const cx = (minX + maxX) / 2;
   const cz = (minZ + maxZ) / 2;
   return [cx + size * 0.55, maxY + size * 0.45, cz + size * 0.75];
@@ -74,6 +78,10 @@ export function Scene({
         camera={{ position: initialCamera(scene.bounds), fov: 45, near: 0.1, far: 500 }}
         dpr={[1, 2]}
         shadows
+        // The camera is placed before the view is measured: stand back if it is a narrow one.
+        onCreated={({ camera, size }) =>
+          camera.position.set(...initialCamera(scene.bounds, size.width / size.height))
+        }
         // Clicking empty space clears the selection.
         onPointerMissed={() => handlers.onSelect(undefined)}
         style={{ touchAction: 'none' }}

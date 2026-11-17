@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# screenshot.sh <staging|production> [--path /?home=...] [--out file.png] [--wait ms] [--viewport WxH]
+# screenshot.sh <staging|production> [--path /?home=...] [--out file.png] [--wait ms] [--viewport WxH] [--touch]
 #               [--click <playwright selector>]... [--drag DX,DY]... [--pad DX,DY,MS]... [--key KEY,MS]...
 # screenshot.sh --check
 #
@@ -12,6 +12,8 @@
 # (orbits the camera). For walk mode (--path '/?walk=first' or '/?walk=third'): --pad holds the movement pad
 # deflected by DX,DY pixels (up to 44; up is negative DY and walks forward, left turns left) for MS
 # milliseconds, and --key holds a key (w, a, s, d, q, e, ArrowUp, ...) for MS milliseconds.
+# --touch emulates a phone (touch screen, coarse pointer); the phone layout also shows without it at phone
+# sizes such as 390x844 or 844x390. Open a panel with --path '/?panel=furniture&sheet=full' (docs/mobile.md).
 # The site token is attached only to requests for the environment's own host and is never printed.
 # --check installs Playwright if missing and reports its version, the Chromium path and a headless launch.
 set -euo pipefail
@@ -24,7 +26,7 @@ MY_HOME_PLAYWRIGHT_DIR=${MY_HOME_PLAYWRIGHT_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}
 export MY_HOME_PLAYWRIGHT_DIR
 
 usage() {
-  sed -n '2,16s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,18s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 
@@ -65,8 +67,13 @@ fi
 [[ $# -ge 1 ]] || usage
 resolve_env "$1"
 shift
-target=/ out='' wait_ms=6000 viewport=1440x900 actions='[]'
+target=/ out='' wait_ms=6000 viewport=1440x900 actions='[]' touch=''
 while [[ $# -gt 0 ]]; do
+  if [[ $1 == --touch ]]; then
+    touch=touch
+    shift
+    continue
+  fi
   [[ $# -ge 2 ]] || usage
   case "$1" in
     --path) target=$2 ;;
@@ -101,4 +108,4 @@ ensure_playwright
 node_cmd=(node)
 command -v ao-heavy >/dev/null 2>&1 && [[ ${AO_HEAVY_ACTIVE:-} != 1 ]] && node_cmd=(ao-heavy node)
 "$script_dir/with-site-token.sh" "$SITE_ENV" -- \
-  "${node_cmd[@]}" "$script_dir/screenshot.mjs" "$out" "$target" "$wait_ms" "$width" "$height" "$actions"
+  "${node_cmd[@]}" "$script_dir/screenshot.mjs" "$out" "$target" "$wait_ms" "$width" "$height" "$actions" "$touch"

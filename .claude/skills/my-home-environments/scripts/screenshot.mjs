@@ -1,6 +1,6 @@
 // Run by screenshot.sh; not meant to be called directly.
 //   node screenshot.mjs --check
-//   node screenshot.mjs <out.png> <path> <wait-ms> <width> <height> [actions-json]   (SITE_BASE, SITE_TOKEN from with-site-token.sh)
+//   node screenshot.mjs <out.png> <path> <wait-ms> <width> <height> [actions-json] [touch]   (SITE_BASE, SITE_TOKEN from with-site-token.sh)
 // Playwright is loaded from MY_HOME_PLAYWRIGHT_DIR, outside the repository.
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -68,13 +68,15 @@ async function runActions(page, actions) {
   }
 }
 
-async function shoot([out, target, waitMs, width, height, actions = '[]']) {
+async function shoot([out, target, waitMs, width, height, actions = '[]', touch = '']) {
   const base = process.env.SITE_BASE;
   const host = new URL(base).host;
   const browser = await chromium.launch({ args: LAUNCH_ARGS });
   try {
+    // `touch` emulates a phone: a touch screen with a coarse pointer and a mobile viewport.
     const context = await browser.newContext({
       viewport: { width: Number(width), height: Number(height) },
+      ...(touch === 'touch' && { hasTouch: true, isMobile: true }),
     });
     // The site token goes only to the environment's own host, never to any third-party request.
     await context.route('**/*', (route) => {

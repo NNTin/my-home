@@ -32,7 +32,9 @@ $S/env-status.sh all                                     # health, auth, deploye
 $S/screenshot.sh staging --out /tmp/staging.png          # render the 3D viewer in headless Chromium
 $S/screenshot.sh staging --click 'label:has-text("Souterrain")' --drag -300,0   # interact first
 $S/screenshot.sh staging --viewport 390x844 --path '/?walk=first' --pad 0,-44,2000   # walk, then shoot
+$S/screenshot.sh staging --viewport 390x844 --touch --path '/?panel=furniture'   # phone layout, a panel open
 $S/walk-smoke.sh staging                                 # phone-sized smoke test of walk mode
+$S/mobile-smoke.sh staging                               # phone layout: top bar, sheet, levels, furniture, walk
 $S/compass-smoke.sh staging                              # phone compass and tilt, with mocked sensor events
 $S/with-site-token.sh staging -- node e2e.mjs            # SITE_TOKEN and SITE_BASE for the child only
 $S/raise-env-issue.sh --dry-run staging "health fails"   # what it would post; drop --dry-run to post
@@ -51,12 +53,19 @@ $S/photo-requests.sh staging create --room souterrain-kitchen --reason "Which wa
 - `env-status.sh [staging|production|all]`: OK, DEPLOYING, PENDING, CI_FAILED or BROKEN per environment (see
   below). Exit 4 when one is BROKEN, 1 on a script
   or tool error. The output names the PR or tag staging runs.
-- `screenshot.sh <env> [--path /?home=...] [--out file.png] [--wait ms] [--viewport WxH]`: waits for the canvas
+- `screenshot.sh <env> [--path /?home=...] [--out file.png] [--wait ms] [--viewport WxH] [--touch]`: waits for the canvas
   plus `--wait` (default 6000 ms), then runs any `--click <playwright selector>` and `--drag DX,DY` (pixels from
   the canvas centre, orbits the camera) in the given order, and prints the final host, status and console/page errors. It runs in the
   shared `ao-heavy` queue when available. In walk mode (`--path '/?walk=first'` or `'/?walk=third'`, see
   `docs/walking.md`), `--pad DX,DY,MS` holds the movement pad deflected (up to 44 px; negative DY walks
-  forward, negative DX turns left) and `--key KEY,MS` holds a key.
+  forward, negative DX turns left) and `--key KEY,MS` holds a key. `--touch` emulates a phone (touch screen,
+  coarse pointer); the phone layout (`docs/mobile.md`) also shows without it at phone sizes such as 390x844 or
+  844x390, and `--path '/?panel=view|furniture|photos|requests&sheet=half|full'` opens a panel of its sheet.
+- `mobile-smoke.sh <env> [--out file.png] [--home ID]`: the phone layout at 390x844 and 844x390 with touch: the
+  3D view is clear of the top bar and the sheet, a tap opens and closes each panel, the level switcher cuts the
+  building away, a furniture item is placed, walk mode is entered and left, and held across the sheet is at the
+  side. It writes only to a **layout it creates itself and removes again**; every other write is refused inside
+  the browser.
 - `compass-smoke.sh <env> [--out file.png]`: the "Heading" and "Tilt" modes of walk mode at 390x844 with
   **mocked** orientation events (Android absolute alpha and the iOS `webkitCompassHeading` path): turning and
   tilting the mocked phone moves the figure, north is crossed smoothly, landscape is compensated, the compass

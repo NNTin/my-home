@@ -3,7 +3,8 @@
 A virtual figure walks through the home. The owner steers it on the phone to where they really stand, turns it
 the same way, and takes a photo: the photo is stored with the figure's pose ([photos.md](photos.md)).
 
-Start with **Walk and take photos** in the view controls, or open the viewer with `?walk=first` or `?walk=third`.
+Start with **Walk and take photos** in the view controls (**🚶 Walk** in the top bar [on a phone](mobile.md)),
+or open the viewer with `?walk=first` or `?walk=third`.
 
 ## Controls
 

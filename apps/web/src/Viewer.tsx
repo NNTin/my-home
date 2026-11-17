@@ -6,7 +6,7 @@ import {
   type LayoutItem,
   type PhotoRequest,
 } from '@my-home/shared';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { fetchHome, photosApi, saveHome } from './api';
 import {
   buildHome,
@@ -48,6 +48,10 @@ import { registry } from './items/registry';
 import { useLayouts } from './layouts/useLayouts';
 import { ControlPanel } from './overlay/ControlPanel';
 import { FurniturePanel, type FlaggedItem, type SelectedInfo } from './overlay/FurniturePanel';
+import { Sheet, sheetSize, type SheetSnap, type SheetTab } from './overlay/Sheet';
+import { TopBar } from './overlay/TopBar';
+import { useLayoutMode } from './overlay/useLayoutMode';
+import { ViewPanel } from './overlay/ViewPanel';
 import { filterPhotos, NO_FILTERS } from './photos/filters';
 import { aspectOf, fovHOf, frustumCorners } from './photos/frustum';
 import { PhotosPanel, type OverlaySettings, type PhotosTab } from './photos/PhotosPanel';
@@ -99,6 +103,23 @@ function initialWalk(): WalkView | undefined {
   return value === 'third' ? 'third' : 'first';
 }
 
+/** The tabs of the phone's sheet. Photos and Requests are the two lists of the gallery. */
+export type PanelId = 'view' | 'furniture' | 'photos' | 'requests';
+
+const PANELS: PanelId[] = ['view', 'furniture', 'photos', 'requests'];
+const SNAPS: SheetSnap[] = ['collapsed', 'half', 'full'];
+
+/**
+ * `?panel=view|furniture|photos|requests` opens the viewer with that panel showing, and
+ * `?sheet=collapsed|half|full` sets how far the phone's sheet is open (half when a panel is named).
+ */
+function initialPanel(): { panel: PanelId | undefined; snap: SheetSnap } {
+  const params = new URLSearchParams(window.location.search);
+  const panel = PANELS.find((p) => p === params.get('panel'));
+  const snap = SNAPS.find((s) => s === params.get('sheet'));
+  return { panel, snap: snap ?? (panel ? 'half' : 'collapsed') };
+}
+
 /** How far in front of its camera a photo's view cone is drawn, in metres. */
 const VIEW_CONE_LENGTH = 1.2;
 
@@ -117,13 +138,44 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   const [chosenVisibility, setVisibility] = useState(() => defaultVisibility(scene));
   const [walkView, setWalkView] = useState<WalkView | undefined>(initialWalk);
   const photos = usePhotos(model.id);
-  const [photosOpen, setPhotosOpen] = useState(false);
-  const [photosTab, setPhotosTab] = useState<PhotosTab>('photos');
+  const layout = useLayoutMode();
+  const mobile = layout !== 'desktop';
+  const [initial] = useState(initialPanel);
+  const [photosOpen, setPhotosOpen] = useState(
+    initial.panel === 'photos' || initial.panel === 'requests',
+  );
+  const [photosTab, setPhotosTab] = useState<PhotosTab>(
+    initial.panel === 'requests' ? 'requests' : 'photos',
+  );
+  // The phone's sheet: which of the two other panels it shows while the photos are closed, and
+  // how far it is open.
+  const [plainPanel, setPlainPanel] = useState<'view' | 'furniture'>(
+    initial.panel === 'furniture' ? 'furniture' : 'view',
+  );
+  const [snap, setSnap] = useState<SheetSnap>(initial.snap);
   const [photoFilters, setPhotoFilters] = useState(NO_FILTERS);
   const [photoId, setPhotoId] = useState<string>();
   const [viewingPhoto, setViewingPhoto] = useState(false);
   const [overlay, setOverlay] = useState<OverlaySettings>({ on: false, opacity: 0.5 });
   const [chosenRequest, setChosenRequest] = useState<string>();
+  const closePhotos = () => {
+    setPhotosOpen(false);
+    setViewingPhoto(false);
+  };
+  const panel: PanelId = photosOpen
+    ? photosTab === 'requests'
+      ? 'requests'
+      : 'photos'
+    : plainPanel;
+  const showPanel = (id: PanelId) => {
+    if (id === 'view' || id === 'furniture') {
+      closePhotos();
+      setPlainPanel(id);
+    } else {
+      setPhotosOpen(true);
+      setPhotosTab(id);
+    }
+  };
   const northBearing = northBearingOf(model.building);
   const markers = useMemo(
     () =>
@@ -446,122 +498,177 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     onDragEnd: () => {},
   };
 
+  const controls = {
+    homes,
+    homeId: model.id,
+    onSelectHome,
+    scene,
+    visibility: chosenVisibility,
+    onChange: setVisibility,
+    onWalk: () => setWalkView('first'),
+    photoCount: photos.photos.length,
+    openRequests: openRequests(photos.requests).length,
+  };
+  const photosPanel = (
+    <PhotosPanel
+      photos={photos}
+      levels={scene.levels}
+      tab={photosTab}
+      onTab={setPhotosTab}
+      selectedId={photoId}
+      onSelect={setPhotoId}
+      filters={photoFilters}
+      onFilters={setPhotoFilters}
+      viewing={viewed !== undefined}
+      onViewFromHere={setViewingPhoto}
+      overlay={overlay}
+      onOverlay={setOverlay}
+      onClose={closePhotos}
+      compact={mobile}
+    />
+  );
+  const furniturePanel = (
+    <FurniturePanel
+      layouts={layouts}
+      levelName={level?.name ?? ''}
+      rooms={plan?.rooms ?? []}
+      roomId={roomId}
+      onRoomChange={setRoomChoice}
+      categories={registry.categories}
+      onPlace={commands.place}
+      selected={selected}
+      canUndo={canUndo(editor)}
+      canRedo={canRedo(editor)}
+      onUndo={() => dispatch({ type: 'undo' })}
+      onRedo={() => dispatch({ type: 'redo' })}
+      onRotate={commands.rotate}
+      onDuplicate={commands.duplicate}
+      onDelete={commands.remove}
+      settings={settings}
+      onSettings={setSettings}
+      flagged={flagged}
+      onSelectItem={(id) => dispatch({ type: 'select', id })}
+      onRelocate={commands.relocate}
+    />
+  );
+  const tabs: SheetTab<PanelId>[] = [
+    { id: 'view', label: 'View', icon: '👁' },
+    { id: 'furniture', label: 'Furniture', icon: '🛋' },
+    { id: 'photos', label: 'Photos', icon: '📷' },
+    { id: 'requests', label: 'Requests', icon: '📌', badge: controls.openRequests },
+  ];
+  const side = layout === 'landscape';
+  const sheetShown = mobile && !walking;
+  // The 3D view ends where the sheet begins. A sheet opened all the way lies over the view
+  // instead, so the canvas is not squeezed to nothing.
+  const sheetVars = sheetShown && {
+    '--sheet-size': sheetSize(snap, side),
+    '--stage-inset': sheetSize(snap === 'full' ? 'half' : snap, side),
+  };
+
   return (
-    <>
-      <Scene
-        scene={shown}
-        target={orbitTarget(scene, visibility)}
-        furniture={furniture}
-        handlers={walking ? idle : handlers}
-        northBearing={northBearing}
-        markers={markers}
-        labels={labels}
-        walk={walkView && { figure: walk.figureRef, view: walkView }}
-        photoMarkers={photoMarkers}
-        onSelectPhoto={(id) => {
-          setPhotoId(id);
-          setPhotosTab('photos');
-          setPhotosOpen(true);
-          if (walking) setWalkView(undefined);
-        }}
-        requestGhosts={requestGhosts}
-        viewpoint={viewpoint}
-      />
-      {viewed && overlay.on && (
-        <img
-          className="photo-overlay"
-          src={photosApi.imageUrl(viewed.id)}
-          alt=""
-          style={{ opacity: overlay.opacity }}
+    <div
+      className={['viewer', mobile && `mobile ${layout}`, walking && 'walking']
+        .filter(Boolean)
+        .join(' ')}
+      style={sheetVars ? (sheetVars as CSSProperties) : undefined}
+    >
+      {sheetShown && (
+        <TopBar
+          {...controls}
+          photosOpen={photosOpen && snap !== 'collapsed'}
+          onPhotos={() => {
+            if (panel === 'photos' && snap !== 'collapsed') return setSnap('collapsed');
+            showPanel('photos');
+            if (snap === 'collapsed') setSnap('half');
+          }}
         />
       )}
-      {walkView ? (
-        <WalkHud
-          homeId={model.id}
-          walk={walk}
-          describe={describeFigure}
-          view={walkView}
-          onView={setWalkView}
-          onExit={() => setWalkView(undefined)}
-          northBearing={northBearing}
-          declination={declination}
-          onDeclination={saveDeclination}
-          calibrationTargets={targetsFor}
-          api={photosApi}
-          requests={photos.requests}
-          roomIdOf={roomIdOf}
-          onGoTo={(request) => {
-            const spot = requestSpot(request);
-            const { yaw, pitch } = walk.figureRef.current;
-            if (spot)
-              walk.place({ ...spot, yaw: request.yaw ?? yaw, pitch: request.pitch ?? pitch });
-          }}
-          onChoose={setChosenRequest}
-          onSaved={() => void photos.reload()}
-        />
-      ) : (
-        <>
-          <ControlPanel
-            homes={homes}
-            homeId={model.id}
-            onSelectHome={onSelectHome}
-            scene={scene}
-            visibility={chosenVisibility}
-            onChange={setVisibility}
-            onWalk={() => setWalkView('first')}
-            photoCount={photos.photos.length}
-            openRequests={openRequests(photos.requests).length}
-            photosOpen={photosOpen}
-            onPhotos={() => {
-              setPhotosOpen(!photosOpen);
-              setViewingPhoto(false);
+      <div className="viewer-main">
+        <div className="stage">
+          <Scene
+            scene={shown}
+            target={orbitTarget(scene, visibility)}
+            furniture={furniture}
+            handlers={walking ? idle : handlers}
+            northBearing={northBearing}
+            markers={markers}
+            labels={labels}
+            walk={walkView && { figure: walk.figureRef, view: walkView }}
+            photoMarkers={photoMarkers}
+            onSelectPhoto={(id) => {
+              setPhotoId(id);
+              setPhotosTab('photos');
+              setPhotosOpen(true);
+              if (snap === 'collapsed') setSnap('half');
+              if (walking) setWalkView(undefined);
             }}
+            requestGhosts={requestGhosts}
+            viewpoint={viewpoint}
           />
-          {photosOpen ? (
-            <PhotosPanel
-              photos={photos}
-              levels={scene.levels}
-              tab={photosTab}
-              onTab={setPhotosTab}
-              selectedId={photoId}
-              onSelect={setPhotoId}
-              filters={photoFilters}
-              onFilters={setPhotoFilters}
-              viewing={viewed !== undefined}
-              onViewFromHere={setViewingPhoto}
-              overlay={overlay}
-              onOverlay={setOverlay}
-              onClose={() => {
-                setPhotosOpen(false);
-                setViewingPhoto(false);
-              }}
-            />
-          ) : (
-            <FurniturePanel
-              layouts={layouts}
-              levelName={level?.name ?? ''}
-              rooms={plan?.rooms ?? []}
-              roomId={roomId}
-              onRoomChange={setRoomChoice}
-              categories={registry.categories}
-              onPlace={commands.place}
-              selected={selected}
-              canUndo={canUndo(editor)}
-              canRedo={canRedo(editor)}
-              onUndo={() => dispatch({ type: 'undo' })}
-              onRedo={() => dispatch({ type: 'redo' })}
-              onRotate={commands.rotate}
-              onDuplicate={commands.duplicate}
-              onDelete={commands.remove}
-              settings={settings}
-              onSettings={setSettings}
-              flagged={flagged}
-              onSelectItem={(id) => dispatch({ type: 'select', id })}
-              onRelocate={commands.relocate}
+          {viewed && overlay.on && (
+            <img
+              className="photo-overlay"
+              src={photosApi.imageUrl(viewed.id)}
+              alt=""
+              style={{ opacity: overlay.opacity }}
             />
           )}
-        </>
-      )}
-    </>
+          {walkView && (
+            <WalkHud
+              homeId={model.id}
+              walk={walk}
+              describe={describeFigure}
+              view={walkView}
+              onView={setWalkView}
+              onExit={() => setWalkView(undefined)}
+              northBearing={northBearing}
+              declination={declination}
+              onDeclination={saveDeclination}
+              calibrationTargets={targetsFor}
+              api={photosApi}
+              requests={photos.requests}
+              roomIdOf={roomIdOf}
+              onGoTo={(request) => {
+                const spot = requestSpot(request);
+                const { yaw, pitch } = walk.figureRef.current;
+                if (spot)
+                  walk.place({ ...spot, yaw: request.yaw ?? yaw, pitch: request.pitch ?? pitch });
+              }}
+              onChoose={setChosenRequest}
+              onSaved={() => void photos.reload()}
+            />
+          )}
+        </div>
+        {!walking &&
+          (mobile ? (
+            <Sheet
+              tabs={tabs}
+              active={panel}
+              onTab={showPanel}
+              snap={snap}
+              onSnap={setSnap}
+              side={side}
+            >
+              {panel === 'view' ? (
+                <ViewPanel scene={scene} visibility={chosenVisibility} onChange={setVisibility} />
+              ) : panel === 'furniture' ? (
+                furniturePanel
+              ) : (
+                photosPanel
+              )}
+            </Sheet>
+          ) : (
+            <>
+              <ControlPanel
+                {...controls}
+                photosOpen={photosOpen}
+                onPhotos={() => (photosOpen ? closePhotos() : setPhotosOpen(true))}
+              />
+              {photosOpen ? photosPanel : furniturePanel}
+            </>
+          ))}
+      </div>
+    </div>
   );
 }

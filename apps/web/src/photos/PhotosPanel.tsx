@@ -36,6 +36,11 @@ interface Props {
   overlay: OverlaySettings;
   onOverlay(overlay: OverlaySettings): void;
   onClose(): void;
+  /**
+   * Inside the phone's sheet, whose own tabs switch between the photos and the requests: no
+   * heading, no close button and no tab row, only a switch to the trash and back.
+   */
+  compact?: boolean;
 }
 
 export type PhotosTab = 'photos' | 'requests' | 'trash';
@@ -281,6 +286,7 @@ export function PhotosPanel({
   overlay,
   onOverlay,
   onClose,
+  compact = false,
 }: Props) {
   const levelName = (id: string | null) => levels.find((l) => l.id === id)?.name;
   const shown = filterPhotos(photos.photos, filters);
@@ -294,33 +300,51 @@ export function PhotosPanel({
   const forGood = (what: string) =>
     window.confirm(`Delete ${what} for good? This cannot be undone.`);
 
+  const trashSwitch = (
+    <div className="buttons">
+      <button
+        type="button"
+        aria-pressed={tab === 'trash'}
+        onClick={() => setTab(tab === 'trash' ? 'photos' : 'trash')}
+      >
+        {tab === 'trash' ? '‹ Back to the photos' : `🗑 Trash (${trashCount})`}
+      </button>
+    </div>
+  );
+
   return (
     <section className="overlay panel panel-right photos-panel" aria-label="Photos">
-      <div className="panel-head">
-        <h1>Photos</h1>
-        <button type="button" onClick={onClose}>
-          Close
-        </button>
-      </div>
-      <div className="buttons" role="tablist">
-        {(
-          [
-            ['photos', `Photos (${photos.photos.length})`],
-            ['requests', `Requests (${open.length})`],
-            ['trash', `Trash (${trashCount})`],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={tab === id}
-            onClick={() => setTab(id)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      {compact ? (
+        tab === 'trash' && trashSwitch
+      ) : (
+        <>
+          <div className="panel-head">
+            <h1>Photos</h1>
+            <button type="button" onClick={onClose}>
+              Close
+            </button>
+          </div>
+          <div className="buttons" role="tablist">
+            {(
+              [
+                ['photos', `Photos (${photos.photos.length})`],
+                ['requests', `Requests (${open.length})`],
+                ['trash', `Trash (${trashCount})`],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={tab === id}
+                onClick={() => setTab(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
       {photos.error && (
         <p className="error" role="alert">
           {photos.error}
@@ -555,6 +579,7 @@ export function PhotosPanel({
           )}
         </>
       )}
+      {compact && tab !== 'trash' && trashSwitch}
     </section>
   );
 }

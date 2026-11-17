@@ -173,7 +173,8 @@ the custom format; a plain-text dump doubles it). Requirements for the databases
 ## Browsing photos
 
 **📷 Photos** in the view controls opens the gallery in place of the furniture panel
-([`apps/web/src/photos/`](../apps/web/src/photos/)).
+([`apps/web/src/photos/`](../apps/web/src/photos/)). [On a phone](mobile.md) the photos and the requests are
+two tabs of the sheet, and the trash is behind **🗑 Trash** at the end of either.
 
 - **Photos**: thumbnails, newest first, with filters for level (or outside), room, tag, request and date. A
   click opens the detail view: the photo, where and when it was taken, the pose (position, heading in degrees
