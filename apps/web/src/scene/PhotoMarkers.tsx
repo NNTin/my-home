@@ -3,6 +3,7 @@ import { useEffect, useMemo } from 'react';
 import type { PerspectiveCamera } from 'three';
 import type { PhotoPose } from '@my-home/shared';
 import type { Vec3 } from '../builder/buildHome';
+import { turnRose, type RoseTarget } from '../compass/Compass';
 import { matchingVerticalFov } from '../photos/frustum';
 import { EYE_HEIGHT, FIGURE_HEIGHT, FIGURE_RADIUS } from '../walk/world';
 
@@ -13,6 +14,8 @@ export interface PhotoMarkerView {
   /** Corners of the image plane some way in front of the camera (see `frustumCorners`). */
   corners: Vec3[];
   selected: boolean;
+  /** The heading was measured by the phone's sensors, not set by hand. */
+  measured?: boolean;
 }
 
 const MARKER_COLOR = '#1f6feb';
@@ -44,6 +47,13 @@ function PhotoMarker({
         <sphereGeometry args={[0.12, 16, 12]} />
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.4} />
       </mesh>
+      {/* A level ring, like a compass card, marks a heading the phone measured. */}
+      {marker.measured && (
+        <mesh position={marker.position} rotation={[-Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.2, 0.025, 8, 24]} />
+          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.4} />
+        </mesh>
+      )}
       <lineSegments>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[lines, 3]} />
@@ -114,7 +124,7 @@ export interface Viewpoint {
  * "View from here": holds the 3D camera at a photo's pose with a matching field of view, so the
  * model can be compared with the photo (and the photo laid over it lines up).
  */
-export function ViewpointRig({ viewpoint }: { viewpoint: Viewpoint }) {
+export function ViewpointRig({ viewpoint, rose }: { viewpoint: Viewpoint; rose?: RoseTarget }) {
   const get = useThree((s) => s.get);
   useEffect(() => {
     const camera = get().camera as PerspectiveCamera;
@@ -132,6 +142,7 @@ export function ViewpointRig({ viewpoint }: { viewpoint: Viewpoint }) {
     const { pose } = viewpoint;
     camera.position.set(pose.position.x, pose.position.y, pose.position.z);
     camera.rotation.set(pose.pitch, pose.yaw, 0, 'YXZ');
+    if (rose) turnRose(rose, pose.yaw);
     const fov =
       (matchingVerticalFov(viewpoint.fovH, viewpoint.aspect, state.size.width / state.size.height) *
         180) /

@@ -11,13 +11,13 @@ Photos and their metadata live only in the database. They never go into the repo
 
 Everything is in the Postgres schema **`media`**, apart from the home model and the layouts in `public`:
 
-| Table                     | Content                                                                                    |
-| ------------------------- | ------------------------------------------------------------------------------------------ |
-| `media.photos`            | metadata: home, level, pose, captured room, time, note, tags, request, sizes, `deleted_at` |
-| `media.photo_blobs`       | the image bytes (`bytea`), one row per photo, so metadata queries stay light               |
-| `media.photo_thumbnails`  | the thumbnail bytes                                                                        |
-| `media.photo_requests`    | requests for new photos: target, reason, requester, status, `deleted_at`                   |
-| `media.schema_migrations` | the journal of this schema's own migrations                                                |
+| Table                     | Content                                                                                                     |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `media.photos`            | metadata: home, level, pose, captured room, time, note, tags, request, sizes, sensor snapshot, `deleted_at` |
+| `media.photo_blobs`       | the image bytes (`bytea`), one row per photo, so metadata queries stay light                                |
+| `media.photo_thumbnails`  | the thumbnail bytes                                                                                         |
+| `media.photo_requests`    | requests for new photos: target, reason, requester, status, `deleted_at`                                    |
+| `media.schema_migrations` | the journal of this schema's own migrations                                                                 |
 
 Drizzle definitions: [`apps/api/src/db/media-schema.ts`](../apps/api/src/db/media-schema.ts). Request and response
 shapes: [`packages/shared/src/photos.ts`](../packages/shared/src/photos.ts).
@@ -52,6 +52,34 @@ The home model's frame ([home-model.md](home-model.md#conventions)), metres and 
 `yaw` is the same convention as a layout item's `rotationY` and a three.js camera's `rotation.y`.
 `poseDirection()` in the shared package gives the view direction. A compass heading `h` (degrees clockwise from
 `-z`) is `yaw = -h × π / 180`. Poses only use the model's local frame: no real-world position is stored anywhere.
+
+### Sensor snapshot
+
+`sensors` on a photo is what the phone's orientation sensors said when it was taken
+([walking.md](walking.md#turning-and-tilting-with-the-phone)). It is stored in the nullable column
+`media.photos.sensors` (JSON), so photos from before it, and from builds that do not know it, have `null`.
+
+| Field                                | Meaning                                                                  |
+| ------------------------------------ | ------------------------------------------------------------------------ |
+| `source`                             | `sensor`: the heading was measured by the compass; `manual`: set by hand |
+| `tilt`                               | whether the pitch came from the phone's tilt                             |
+| `alpha`, `beta`, `gamma`, `absolute` | the raw `DeviceOrientationEvent` values                                  |
+| `compassHeading`, `compassAccuracy`  | iOS: `webkitCompassHeading` and `webkitCompassAccuracy` (± degrees)      |
+| `screenAngle`                        | `screen.orientation.angle` at the shot                                   |
+| `magneticBearing`                    | bearing of the camera from magnetic north, degrees clockwise             |
+| `declination`, `calibrationOffset`   | what was added to get the true bearing                                   |
+| `trueBearing`                        | the smoothed true bearing the photo was saved with                       |
+| `yaw`, `pitch`, `roll`               | the pose the sensors gave, in radians                                    |
+| `capturedAt`                         | when the snapshot was taken                                              |
+
+The snapshot is **orientation only**: it holds no position, and the app never uses the Geolocation API. It
+is written once. Correcting a photo's pose afterwards changes `pose` and leaves the snapshot as it was, so
+what was measured and what was corrected can be told apart. Unknown fields are dropped on upload, and a
+stored snapshot a build cannot read counts as none.
+
+The gallery's detail view says where each heading came from ("Heading measured by the phone: true bearing
+84° · ±12° · declination +3° · calibration −7°", "set by hand", or "no sensor data"), and in the 3D view a
+ring around a camera marks a measured heading. `photos.sh <env> sensors <photo-id>` prints it.
 
 ## Images and privacy
 

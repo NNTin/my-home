@@ -30,6 +30,7 @@ export const testPhoto = (overrides: Partial<Photo> = {}): Photo => ({
   requestId: null,
   image: { contentType: 'image/webp', width: 1600, height: 1200, byteSize: 1000 },
   thumbnail: { contentType: 'image/webp', width: 480, height: 360, byteSize: 100 },
+  sensors: null,
   createdAt: '2026-03-01T10:00:00.000Z',
   updatedAt: '2026-03-01T10:00:00.000Z',
   deletedAt: null,

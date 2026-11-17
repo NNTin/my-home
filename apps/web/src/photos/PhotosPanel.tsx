@@ -77,6 +77,27 @@ function Thumbnail({
   );
 }
 
+const signed = (value: number) => `${value > 0 ? '+' : ''}${Math.round(value * 10) / 10}°`;
+
+/** Where the photo's heading came from, in a sentence. */
+export function sensorSummary(photo: Pick<Photo, 'sensors'>): string {
+  const s = photo.sensors;
+  if (!s) return 'Heading: no sensor data (taken before it was recorded).';
+  if (s.source === 'manual') return 'Heading set by hand (compass off).';
+  const parts = [
+    s.trueBearing === undefined ? undefined : `true bearing ${Math.round(s.trueBearing)}°`,
+    s.compassAccuracy === undefined
+      ? 'accuracy unknown'
+      : s.compassAccuracy < 0
+        ? 'compass unreliable'
+        : `±${Math.round(s.compassAccuracy)}°`,
+    `declination ${signed(s.declination ?? 0)}`,
+    `calibration ${signed(s.calibrationOffset ?? 0)}`,
+    s.screenAngle ? `screen turned ${s.screenAngle}°` : undefined,
+  ];
+  return `🧭 Heading measured by the phone: ${parts.filter(Boolean).join(' · ')}.`;
+}
+
 const requestPlace = (
   request: PhotoRequest,
   levelName: (id: string | null) => string | undefined,
@@ -134,6 +155,9 @@ function Detail({
         At x {metres(position.x)}, z {metres(position.z)}, eye height {metres(position.y)} m ·
         heading {headingDegrees(yaw)}° · pitch {degrees(pitch)}° · view {degrees(fovHOf(photo))}°
         {photo.pose.fovH === undefined && ' (assumed)'}
+      </p>
+      <p className="note" aria-label="Heading source">
+        {sensorSummary(photo)}
       </p>
       {request && (
         <p>
@@ -390,6 +414,9 @@ export function PhotosPanel({
             />
           )}
 
+          {photos.photos.some((p) => p.sensors?.source === 'sensor') && (
+            <p className="note">In the 3D view, a ring around a camera marks a measured heading.</p>
+          )}
           {shown.length === 0 ? (
             <p className="note">
               {photos.photos.length === 0

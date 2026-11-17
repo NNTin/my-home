@@ -1,15 +1,20 @@
 import type { PhotoRequest } from '@my-home/shared';
-import { useRef, useState, type PointerEvent } from 'react';
+import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import type { PhotosApi } from '../api';
 import { activeRequest, openRequests } from '../photos/requests';
 import { CaptureSheet } from './CaptureSheet';
 import type { Figure } from './figure';
 import { Joystick } from './Joystick';
-import type { CompassState } from './useCompass';
+import type { CalibrationTarget } from './calibration';
+import { accuracyLabel } from './orientation';
+import { compassStatusText, useCompass } from './useCompass';
 import { useFigure, type Walk } from './useWalk';
+import { yawTowards } from './world';
 
 export type WalkView = 'first' | 'third';
 
+/** One tap of the look up/down buttons: 10°. */
+const TILT_STEP = (10 * Math.PI) / 180;
 /** Radians of turning per pixel dragged across the view. */
 const LOOK_SENSITIVITY = 0.005;
 
@@ -21,7 +26,13 @@ interface Props {
   view: WalkView;
   onView(view: WalkView): void;
   onExit(): void;
-  compass: CompassState;
+  /** `building.northBearing` and `building.magneticDeclination`, for the phone's compass. */
+  northBearing?: number;
+  declination?: number;
+  /** Saves a new declination for the home; rejects when that fails. */
+  onDeclination?(degrees: number): Promise<void>;
+  /** Doors and windows around the figure that the compass can be calibrated against. */
+  calibrationTargets?(figure: Figure): CalibrationTarget[];
   api: Pick<PhotosApi, 'upload' | 'update'>;
   /** Photo requests; the open ones are offered here and answered by taking a photo. */
   requests?: PhotoRequest[];
@@ -46,7 +57,10 @@ export function WalkHud({
   view,
   onView,
   onExit,
-  compass,
+  northBearing = 0,
+  declination = 0,
+  onDeclination,
+  calibrationTargets,
   api,
   requests = [],
   roomIdOf,
@@ -63,10 +77,66 @@ export function WalkHud({
     setChosenId(id);
     onChoose?.(id);
   };
-  const { setPad: onPad, lookBy: onLook, nudge: onNudge, figureRef } = walk;
+  const { setPad: onPad, nudge: onNudge, figureRef } = walk;
+  const compass = useCompass({
+    northBearing,
+    declination,
+    setFollow: walk.setFollow,
+    getFigure: () => figureRef.current,
+  });
+  const [calibrating, setCalibrating] = useState(false);
+  const [declinationText, setDeclinationText] = useState(String(declination));
+  const [declinationSaved, setDeclinationSaved] = useState<'saving' | 'saved' | 'failed'>();
+  /** The compass turns the figure / the phone's tilt sets the pitch, right now. */
+  const following = compass.heading === 'on';
+  const tilting = compass.tilt === 'on';
+  /**
+   * Turning the view by hand. While the compass turns the figure, a sideways turn is a
+   * correction of the compass (the calibration offset) instead of being undone by the next
+   * sensor event. While the phone's tilt sets the pitch, looking up or down by hand is off.
+   * Whatever the sensors do not drive stays in the owner's hands.
+   */
+  const onLook = (dYaw: number, dPitch: number) => {
+    // A turn to the left (positive yaw) is a smaller bearing.
+    if (following) compass.adjustCalibration((-dYaw * 180) / Math.PI);
+    walk.lookBy(following ? 0 : dYaw, tilting ? 0 : dPitch);
+  };
+  const accuracy = accuracyLabel(compass.accuracy);
+  const offset = `${compass.calibration > 0 ? '+' : ''}${compass.calibration}°`;
+  const statusText = compassStatusText(compass);
+  const pitchDegrees = Math.round((figure.pitch * 180) / Math.PI);
+  const saveDeclination = async () => {
+    const value = Number(declinationText);
+    if (
+      !onDeclination ||
+      declinationText.trim() === '' ||
+      !Number.isFinite(value) ||
+      Math.abs(value) > 180
+    ) {
+      return setDeclinationSaved('failed');
+    }
+    setDeclinationSaved('saving');
+    try {
+      await onDeclination(value);
+      setDeclinationSaved('saved');
+    } catch {
+      setDeclinationSaved('failed');
+    }
+  };
   const [file, setFile] = useState<Blob>();
   const drag = useRef<{ id: number; x: number; y: number } | undefined>(undefined);
   const where = describe(figure) || 'Outside';
+
+  // Some mobile browsers start scrolling the page under a vertical drag in spite of
+  // `touch-action: none`; a touch that moves on the look layer is ours alone.
+  const lookLayer = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const layer = lookLayer.current;
+    if (!layer) return;
+    const hold = (e: TouchEvent) => e.preventDefault();
+    layer.addEventListener('touchmove', hold, { passive: false });
+    return () => layer.removeEventListener('touchmove', hold);
+  }, [view]);
 
   const lookMove = (e: PointerEvent<HTMLDivElement>) => {
     const from = drag.current;
@@ -87,12 +157,14 @@ export function WalkHud({
       data-z={figure.z.toFixed(2)}
       data-y={figure.y.toFixed(2)}
       data-yaw={figure.yaw.toFixed(3)}
+      data-pitch={figure.pitch.toFixed(3)}
       data-level={figure.levelId ?? ''}
     >
       {view === 'first' && (
         <div
+          ref={lookLayer}
           className="walk-look"
-          aria-label="Drag to look around"
+          aria-label={following ? 'Drag sideways to correct the compass' : 'Drag to look around'}
           onPointerDown={(e) => {
             if (drag.current) return;
             drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
@@ -119,28 +191,123 @@ export function WalkHud({
           {view === 'first' ? 'Overview' : 'First person'}
         </button>
         {compass.supported && (
-          <button
-            type="button"
-            aria-pressed={compass.active}
-            title="Turn the figure with the phone's compass"
-            onClick={compass.toggle}
-          >
-            🧭 {compass.active ? 'On' : 'Off'}
-          </button>
+          <>
+            <button
+              type="button"
+              aria-pressed={compass.heading !== 'off'}
+              title="Turn with the phone: its compass sets the heading"
+              onClick={compass.toggleHeading}
+            >
+              🧭 Heading {compass.heading !== 'off' ? 'on' : 'off'}
+            </button>
+            <button
+              type="button"
+              aria-pressed={compass.tilt !== 'off'}
+              title="Tilt with the phone: tilting it up and down tilts the view"
+              onClick={compass.toggleTilt}
+            >
+              ↕ Tilt {compass.tilt !== 'off' ? 'on' : 'off'}
+            </button>
+          </>
+        )}
+        <span className="walk-compass" role="status" aria-label="View tilt">
+          {pitchDegrees > 0 ? '▲' : pitchDegrees < 0 ? '▼' : '◆'} {Math.abs(pitchDegrees)}°
+        </span>
+        {compass.heading !== 'off' && (
+          <>
+            <span
+              className={accuracy.poor ? 'walk-compass poor' : 'walk-compass'}
+              role="status"
+              aria-label="Compass"
+            >
+              {following ? accuracy.text : compass.heading === 'paused' ? 'paused' : '…'}
+              {compass.calibration !== 0 && ` · offset ${offset}`}
+            </span>
+            <button
+              type="button"
+              aria-expanded={calibrating}
+              onClick={() => setCalibrating(!calibrating)}
+            >
+              Calibrate
+            </button>
+          </>
         )}
         {open.length > 0 && (
           <button type="button" aria-expanded={listed} onClick={() => setListed(!listed)}>
             Requests ({open.length})
           </button>
         )}
+        {statusText && (
+          <p className="walk-notice" role="alert">
+            {statusText}
+          </p>
+        )}
         <span className="walk-keys">W A S D / arrows walk · Q E turn · drag to look</span>
       </div>
-      {compass.error && (
-        <p className="walk-notice" role="alert">
-          {compass.error}
-        </p>
+      {compass.heading !== 'off' && calibrating && !file && (
+        <section className="walk-calibrate" aria-label="Calibrate the compass">
+          <p>
+            <strong>Offset {offset}</strong>{' '}
+            <button
+              type="button"
+              onClick={compass.resetCalibration}
+              disabled={compass.calibration === 0}
+            >
+              Reset
+            </button>
+          </p>
+          <p className="hint">
+            Point the phone at one of these and tap it, or drag the view sideways until it matches
+            what you see.
+          </p>
+          <div className="capture-actions">
+            {(calibrationTargets?.(figure) ?? []).slice(0, 6).map((target) => (
+              <button
+                key={target.id}
+                type="button"
+                disabled={!following}
+                onClick={() =>
+                  compass.calibrateTo(yawTowards([target.x - figure.x, target.z - figure.z]))
+                }
+              >
+                {target.label}
+              </button>
+            ))}
+          </div>
+          <label className="walk-declination">
+            Magnetic declination (° east){' '}
+            <input
+              type="number"
+              step="0.1"
+              min={-180}
+              max={180}
+              value={declinationText}
+              onChange={(e) => {
+                setDeclinationText(e.target.value);
+                setDeclinationSaved(undefined);
+              }}
+            />
+          </label>{' '}
+          <button
+            type="button"
+            onClick={() => void saveDeclination()}
+            disabled={declinationSaved === 'saving' || Number(declinationText) === declination}
+          >
+            Save
+          </button>
+          <p className="hint" role="status">
+            {declinationSaved === 'saved' && 'Declination saved for this home.'}
+            {declinationSaved === 'failed' && 'Could not save the declination (-180 to 180).'}
+            {declinationSaved === undefined &&
+              'From a declination chart for your area; 0 if unknown. The offset above is per device.'}
+          </p>
+          <div className="capture-actions">
+            <button type="button" className="primary" onClick={() => setCalibrating(false)}>
+              Done
+            </button>
+          </div>
+        </section>
       )}
-
       {listed && !file && (
         <ul className="walk-requests" aria-label="Open photo requests">
           {open.map((r) => (
@@ -189,6 +356,7 @@ export function WalkHud({
           api={api}
           onNudge={onNudge}
           onLook={onLook}
+          getSensors={compass.snapshot}
           request={request}
           onSaved={() => {
             // An answered request is no longer the one to answer next.
@@ -200,6 +368,24 @@ export function WalkHud({
       ) : (
         <div className="walk-controls">
           <Joystick onChange={onPad} />
+          <div className="walk-tilt" role="group" aria-label="Look up and down">
+            <button
+              type="button"
+              aria-label="Look up"
+              disabled={tilting}
+              onClick={() => onLook(0, TILT_STEP)}
+            >
+              ▲
+            </button>
+            <button
+              type="button"
+              aria-label="Look down"
+              disabled={tilting}
+              onClick={() => onLook(0, -TILT_STEP)}
+            >
+              ▼
+            </button>
+          </div>
           <label className="shutter" title="Take a photo here">
             <span aria-hidden="true">📷</span>
             <input

@@ -41,6 +41,47 @@ export function poseDirection(pose: Pick<PhotoPose, 'yaw' | 'pitch'>): PhotoPosi
   };
 }
 
+/**
+ * What the phone's orientation sensors said when a photo was taken, so its viewing direction is
+ * measured rather than guessed. Orientation only: no position of any kind is in here.
+ *
+ * `source` says whether the pose's **heading** came from the compass (`sensor`) or was set by
+ * hand (`manual`); `tilt` says the same for the pitch. Angles are in degrees as the browser reports them, except `yaw`
+ * and `pitch`, which are the resulting pose in radians. Later corrections of the pose do not
+ * change the snapshot.
+ *
+ * Unknown keys are dropped rather than refused, so a build that does not know a newer field
+ * still reads the rest.
+ */
+export const PhotoSensors = z.object({
+  source: z.enum(['sensor', 'manual']),
+  /** Raw `DeviceOrientationEvent` values; `absolute` is whether `alpha` is earth-referenced. */
+  alpha: z.number().nullable().optional(),
+  beta: z.number().nullable().optional(),
+  gamma: z.number().nullable().optional(),
+  absolute: z.boolean().optional(),
+  /** iOS: `webkitCompassHeading` and `webkitCompassAccuracy` (±degrees; negative = unreliable). */
+  compassHeading: z.number().optional(),
+  compassAccuracy: z.number().optional(),
+  /** `screen.orientation.angle`: 0 portrait, 90 or 270 landscape. */
+  screenAngle: z.number().optional(),
+  /** Whether the pitch came from the phone's tilt (independent of where the heading came from). */
+  tilt: z.boolean().optional(),
+  /** Magnetic bearing of the camera, after the screen orientation was accounted for. */
+  magneticBearing: z.number().optional(),
+  /** Declination (east positive) and the device's calibration offset that were applied. */
+  declination: z.number().optional(),
+  calibrationOffset: z.number().optional(),
+  /** Smoothed true bearing of the camera: magnetic + declination + calibration offset. */
+  trueBearing: z.number().optional(),
+  /** The pose the sensors gave, in radians (plan yaw, pitch) and the camera's roll. */
+  yaw: z.number().optional(),
+  pitch: z.number().optional(),
+  roll: z.number().optional(),
+  capturedAt: Timestamp.optional(),
+});
+export type PhotoSensors = z.infer<typeof PhotoSensors>;
+
 export const MAX_PHOTO_NOTE_LENGTH = 2000;
 export const MAX_PHOTO_TAGS = 20;
 
@@ -93,6 +134,8 @@ export const Photo = z.object({
   requestId: Id.nullable(),
   image: PhotoImageInfo,
   thumbnail: PhotoImageInfo,
+  /** The sensor snapshot taken with the photo; null for photos stored without one. */
+  sensors: PhotoSensors.nullable().default(null),
   createdAt: Timestamp,
   updatedAt: Timestamp,
   /** Set while the photo is in the trash; `purgeAt` is when it is deleted for good. */
@@ -116,6 +159,7 @@ export const CreatePhotoMeta = z.strictObject({
   requestId: Id.nullish(),
   capturedRoomId: Id.nullish(),
   capturedRoomName: z.string().max(200).nullish(),
+  sensors: PhotoSensors.nullish(),
 });
 export type CreatePhotoMeta = z.input<typeof CreatePhotoMeta>;
 
@@ -133,6 +177,7 @@ export const UpdatePhotoBody = z
     requestId: Id.nullable(),
     capturedRoomId: Id.nullable(),
     capturedRoomName: z.string().max(200).nullable(),
+    sensors: PhotoSensors.nullable(),
   })
   .partial();
 export type UpdatePhotoBody = z.input<typeof UpdatePhotoBody>;

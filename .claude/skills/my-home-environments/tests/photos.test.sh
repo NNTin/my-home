@@ -58,6 +58,10 @@ check "list uses the first home and encodes the filters" \
 reset
 "$scripts/photos.sh" staging download --dir "$work/out" --level souterrain >/dev/null 2>&1
 check "download saves every listed photo and its metadata" test "$(find "$work/out" -type f | wc -l)" = 6
+reset
+out=$("$scripts/photos.sh" staging sensors aaa)
+check "sensors shows where a photo's heading came from" \
+  test "$(jq -r '.heading' <<<"$out")" = "not recorded"
 check "download writes the image bytes" grep -q 'image-bytes-of-/api/photos/bbb/image' "$work/out/bbb.webp"
 
 reset

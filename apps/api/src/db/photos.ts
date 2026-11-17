@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import {
   Photo,
   PhotoRequest,
+  PhotoSensors,
   Polygon,
   resolvePhotoRoom,
   roomAt,
@@ -46,6 +47,12 @@ const StoredModelRooms = z.object({
     }),
   ),
 });
+
+/** A stored snapshot as far as this build understands it; one it cannot read counts as none. */
+const storedSensors = (value: unknown): PhotoSensors | null => {
+  const parsed = PhotoSensors.nullable().safeParse(value ?? null);
+  return parsed.success ? parsed.data : null;
+};
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const iso = (date: Date | null) => (date ? date.toISOString() : null);
@@ -100,6 +107,7 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
         height: row.thumbnailHeight,
         byteSize: row.thumbnailByteSize,
       },
+      sensors: storedSensors(row.sensors),
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
       deletedAt: iso(row.deletedAt),
@@ -231,6 +239,7 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
             thumbnailHeight: processed.thumbnail.height,
             thumbnailByteSize: processed.thumbnail.data.byteLength,
             sha256: processed.sha256,
+            sensors: meta.sensors ?? null,
           })
           .onConflictDoNothing({ target: photos.id })
           .returning();
@@ -331,6 +340,7 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
             ...(body.note !== undefined && { note: body.note }),
             ...(body.tags !== undefined && { tags: body.tags }),
             ...(body.requestId !== undefined && { requestId: body.requestId }),
+            ...(body.sensors !== undefined && { sensors: body.sensors }),
             updatedAt: new Date(),
           })
           .where(eq(photos.id, id))

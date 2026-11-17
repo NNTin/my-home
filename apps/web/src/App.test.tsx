@@ -170,6 +170,38 @@ describe('App', () => {
       expect(levelsOf()).toEqual(new Set(['souterrain', 'ground-floor']));
     });
 
+    it('saves the magnetic declination of the home from the calibration sheet', async () => {
+      vi.stubGlobal('DeviceOrientationEvent', class {});
+      const fetchMock = stubApi();
+      render(<App />);
+      fireEvent.click(await screen.findByRole('button', { name: /Walk and take photos/ }));
+      fireEvent.click(screen.getByRole('button', { name: /Heading off/ }));
+      fireEvent.click(screen.getByRole('button', { name: 'Calibrate' }));
+      const sheet = within(screen.getByRole('region', { name: 'Calibrate the compass' }));
+      // The doors and windows of the room the figure stands in are offered as targets.
+      expect(sheet.getAllByRole('button', { name: /^(Door|Window):/ }).length).toBeGreaterThan(0);
+      expect(sheet.getByLabelText(/Magnetic declination/)).toHaveValue(0);
+
+      fireEvent.change(sheet.getByLabelText(/Magnetic declination/), { target: { value: '4' } });
+      fireEvent.click(sheet.getByRole('button', { name: 'Save' }));
+      expect(await sheet.findByText('Declination saved for this home.')).toBeInTheDocument();
+      const put = fetchMock.mock.calls.find(([, init]) => init?.method === 'PUT')!;
+      expect(put[0]).toBe('/api/homes/mock-home');
+      const saved = JSON.parse(put[1]!.body as string) as typeof mockHome;
+      expect(saved.building.magneticDeclination).toEqual({
+        value: 4,
+        source: 'measured',
+        note: 'Entered in the app',
+      });
+      // Nothing else of the home changed.
+      expect({ ...saved, building: { ...saved.building, magneticDeclination: undefined } }).toEqual(
+        {
+          ...mockHome,
+          building: { ...mockHome.building, magneticDeclination: undefined },
+        },
+      );
+    });
+
     it('opens walking directly from the address: ?walk=third', async () => {
       window.history.replaceState(null, '', '/?walk=third');
       stubApi();

@@ -13,16 +13,17 @@ The api validates every write with it and the web app validates every response w
 
 ## Conventions
 
-| Topic       | Convention                                                                           |
-| ----------- | ------------------------------------------------------------------------------------ |
-| Units       | metres                                                                               |
-| Axes        | Y-up, right-handed: `x` plan east, `y` up, `z` plan south (towards the street)       |
-| North       | `building.northBearing`: true north, degrees clockwise from `-z` (default 0)         |
-| Plan points | `{ x, z }`; polygons are lists of at least 3 points, either winding                  |
-| Ground      | `terrain.groundElevation`, normally `y = 0`                                          |
-| Elevation   | a level's `elevation` is the top of its floor slab; below-ground levels are negative |
-| Wall height | measured from the level's floor; exterior walls usually include the slab above       |
-| Ids         | letters, digits, `-` and `_`; unique across the whole document                       |
+| Topic       | Convention                                                                             |
+| ----------- | -------------------------------------------------------------------------------------- |
+| Units       | metres                                                                                 |
+| Axes        | Y-up, right-handed: `x` plan east, `y` up, `z` plan south (towards the street)         |
+| North       | `building.northBearing`: true north, degrees clockwise from `-z` (default 0)           |
+| Declination | `building.magneticDeclination`: magnetic north, degrees east of true north (default 0) |
+| Plan points | `{ x, z }`; polygons are lists of at least 3 points, either winding                    |
+| Ground      | `terrain.groundElevation`, normally `y = 0`                                            |
+| Elevation   | a level's `elevation` is the top of its floor slab; below-ground levels are negative   |
+| Wall height | measured from the level's floor; exterior walls usually include the slab above         |
+| Ids         | letters, digits, `-` and `_`; unique across the whole document                         |
 
 Ids are unique across all collections so other documents ([furniture layouts](layouts.md)) can
 reference any home, level or room by id alone. Layouts are stored separately, so changing or
@@ -80,19 +81,19 @@ it came from). Nothing else in the model or renderer changes. The only bare numb
 
 ## Structure
 
-| Field          | Content                                                                                                     |
-| -------------- | ----------------------------------------------------------------------------------------------------------- |
-| `building`     | `footprint` (exterior wall centre lines, used for slabs), `roofThickness`, `roof?`, `northBearing?`         |
-| `terrain`      | `groundElevation`, `bottomElevation` and `patches`: plan polygons (with optional `holes`) at an elevation   |
-| `levels`       | `elevation`, clear `height` and floor `slabThickness`                                                       |
-| `apartments`   | `levelIds` they occupy and, optionally, their `entrances`                                                   |
-| `rooms`        | floor `outline` on a `levelId`, optionally in an `apartmentId`                                              |
-| `walls`        | centre line `start`/`end`, `thickness`, `height`, `kind` (`exterior`/`interior`), `levelId`, `apartmentId?` |
-| `openings`     | `door`/`window` on a `wallId`: `offset` from the wall start, `width`, `height`, `sill`                      |
-| `outdoorAreas` | `garden`/`driveway`/`patio`/`path`/`road`/`gravel`/`embankment` polygons at an `elevation` (or `slope`)     |
-| `outbuildings` | optional garages, carports, sheds, porches and compost bins: a `footprint`, flat roof and edge openings     |
-| `stairs`       | optional: a walking line from one level up to another                                                       |
-| `fences`       | optional: fence lines and gates on the ground                                                               |
+| Field          | Content                                                                                                                     |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `building`     | `footprint` (exterior wall centre lines, used for slabs), `roofThickness`, `roof?`, `northBearing?`, `magneticDeclination?` |
+| `terrain`      | `groundElevation`, `bottomElevation` and `patches`: plan polygons (with optional `holes`) at an elevation                   |
+| `levels`       | `elevation`, clear `height` and floor `slabThickness`                                                                       |
+| `apartments`   | `levelIds` they occupy and, optionally, their `entrances`                                                                   |
+| `rooms`        | floor `outline` on a `levelId`, optionally in an `apartmentId`                                                              |
+| `walls`        | centre line `start`/`end`, `thickness`, `height`, `kind` (`exterior`/`interior`), `levelId`, `apartmentId?`                 |
+| `openings`     | `door`/`window` on a `wallId`: `offset` from the wall start, `width`, `height`, `sill`                                      |
+| `outdoorAreas` | `garden`/`driveway`/`patio`/`path`/`road`/`gravel`/`embankment` polygons at an `elevation` (or `slope`)                     |
+| `outbuildings` | optional garages, carports, sheds, porches and compost bins: a `footprint`, flat roof and edge openings                     |
+| `stairs`       | optional: a walking line from one level up to another                                                                       |
+| `fences`       | optional: fence lines and gates on the ground                                                                               |
 
 Terrain patches are drawn as solid blocks from `bottomElevation` up to their elevation (or their
 slope, below). Leaving the
@@ -243,6 +244,22 @@ the cutaway and furniture placement work unchanged.
 `building.northBearing` says where true north is: degrees clockwise, seen from above, from the
 plan's `-z` axis. 0 (the default) means `-z` is north and `+x` east; 90 means true north is `+x`.
 The viewer's compass and the N/E/S/W ground markers follow it; geometry does not change.
+
+`building.magneticDeclination` (optional, default 0) is how far **magnetic** north lies east (+) or west (−)
+of true north at the home, in degrees. A phone compass reports magnetic north, so the walking view needs it
+to turn a compass reading into a direction on the plan
+([walking.md](walking.md#from-the-sensors-to-the-plan)):
+
+```
+true bearing = magnetic bearing + magneticDeclination (+ the device's calibration offset)
+plan heading = true bearing + northBearing        (degrees clockwise from the plan's -z)
+yaw          = -plan heading                      (radians, counter-clockwise, as in poses)
+```
+
+Example: `northBearing` 20 and a declination of 3. A compass reading of 67° is 70° true, which is 90°
+clockwise from `-z`: the figure looks along `+x`. The owner enters the declination (from a declination chart)
+in the walking view's **Calibrate** sheet or in the home file, with the usual provenance. It is never derived
+from the home's location, which the model does not contain.
 
 ### Validation beyond the shape
 

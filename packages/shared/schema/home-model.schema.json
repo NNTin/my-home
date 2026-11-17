@@ -46,6 +46,9 @@
             },
             "northBearing": {
               "$ref": "#/$defs/Bearing"
+            },
+            "magneticDeclination": {
+              "$ref": "#/$defs/Bearing"
             }
           },
           "required": ["id", "name", "footprint", "roofThickness"],

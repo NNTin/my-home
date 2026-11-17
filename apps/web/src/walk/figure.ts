@@ -104,11 +104,14 @@ export function inputFromKeys(keys: ReadonlySet<string>): WalkInput {
   };
 }
 
-/** The movement pad: up and down walk, left and right turn, so one thumb does both. */
-export const inputFromPad = (x: number, y: number): WalkInput => ({
+/**
+ * The movement pad: up and down walk, left and right turn, so one thumb does both. While the
+ * phone's compass turns the figure (`following`), left and right sidestep instead.
+ */
+export const inputFromPad = (x: number, y: number, following = false): WalkInput => ({
   forward: 0 - y,
-  strafe: 0,
-  turn: 0 - x,
+  strafe: following ? x : 0,
+  turn: following ? 0 : 0 - x,
 });
 
 export const combineInputs = (a: WalkInput, b: WalkInput): WalkInput => ({

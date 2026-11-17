@@ -79,6 +79,10 @@ export const fetchHomes = (signal?: AbortSignal): Promise<ListHomesResponse> =>
 export const fetchHome = (id: string, signal?: AbortSignal): Promise<HomeModel> =>
   request('GET', homeUrl(id), HomeModel, { signal });
 
+/** Replaces a stored home with `model` (same id) and returns what the api stored. */
+export const saveHome = (model: HomeModel): Promise<HomeModel> =>
+  request('PUT', homeUrl(model.id), HomeModel, { body: model });
+
 export const layoutsApi = {
   list: (homeId: string, signal?: AbortSignal) =>
     request('GET', `${homeUrl(homeId)}/layouts`, ListLayoutsResponse, { signal }),

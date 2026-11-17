@@ -135,7 +135,9 @@ export function fakeApi({
     }
     if ((m = /^\/api\/homes\/([^/]+)$/.exec(url))) {
       const id = decodeURIComponent(m[1]!);
-      const model = id === 'mock-home' ? mockHome : models[id];
+      // A saved home replaces the stored one, as `PUT /api/homes/:id` does.
+      if (method === 'PUT') models[id] = body;
+      const model = models[id] ?? (id === 'mock-home' ? mockHome : undefined);
       return model ? json(model) : notFound(`Home "${id}" not found`);
     }
     if ((m = /^\/api\/layouts\/([^/]+)(\/duplicate)?$/.exec(url))) {
