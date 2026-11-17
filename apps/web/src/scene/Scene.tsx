@@ -86,7 +86,6 @@ export function initialCamera(bounds: HomeScene['bounds'], aspect = 1): Vec3 {
   return [cx + size * 0.55, maxY + size * 0.45, cz + size * 0.75];
 }
 
-/** Inside the canvas: provides the "Reset view" action, for the view as it is sized now. */
 /** What "Reset view" needs of the orbit controls. */
 export interface OrbitReset {
   enableDamping: boolean;
@@ -117,6 +116,7 @@ export function resetOrbit(
   controls?.update();
 }
 
+/** Inside the canvas: provides the "Reset view" action, for the view as it is sized now. */
 function ViewReset({
   bounds,
   target,
