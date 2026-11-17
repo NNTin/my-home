@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { horizontalFov } from './figure';
-import { focalLength35mm, prepareImage, takenAtOf } from './prepareImage';
+import { jpegHeader } from '../test/jpeg';
+import { focalLength35mm, jpegIsPortrait, prepareImage, takenAtOf } from './prepareImage';
 
 /** A minimal JPEG with an EXIF block that records only FocalLengthIn35mmFilm. */
 function jpegWithFocalLength(focal: number, littleEndian: boolean): ArrayBuffer {
@@ -44,6 +45,22 @@ describe('focalLength35mm', () => {
     expect(focalLength35mm(jpegWithFocalLength(0, true))).toBeUndefined();
     const truncated = jpegWithFocalLength(26, true).slice(0, 30);
     expect(focalLength35mm(truncated)).toBeUndefined();
+  });
+});
+
+describe('jpegIsPortrait', () => {
+  it('reads the frame size, turned by the EXIF orientation', () => {
+    expect(jpegIsPortrait(jpegHeader(3000, 4000))).toBe(true);
+    expect(jpegIsPortrait(jpegHeader(4000, 3000))).toBe(false);
+    expect(jpegIsPortrait(jpegHeader(4000, 3000, 1))).toBe(false);
+    expect(jpegIsPortrait(jpegHeader(4000, 3000, 6))).toBe(true);
+    expect(jpegIsPortrait(jpegHeader(4000, 3000, 8))).toBe(true);
+    expect(jpegIsPortrait(jpegHeader(3000, 4000, 5))).toBe(false);
+  });
+
+  it('says nothing about what is not a readable JPEG header', () => {
+    expect(jpegIsPortrait(new TextEncoder().encode('not a jpeg').buffer)).toBeUndefined();
+    expect(jpegIsPortrait(new Uint8Array([0xff, 0xd8, 0xff, 0xc0, 0, 11]).buffer)).toBeUndefined();
   });
 });
 

@@ -35,6 +35,59 @@ export function focalLength35mm(file: ArrayBuffer): number | undefined {
   return undefined;
 }
 
+/**
+ * Whether a JPEG shows a picture taller than wide, read from its header alone: the frame size
+ * (SOF marker) and the EXIF orientation, which turns it by 90° for values 5 to 8. Undefined when
+ * the header does not say. Nothing is decoded, so this costs no memory even for a 50 MP photo.
+ */
+export function jpegIsPortrait(file: ArrayBuffer): boolean | undefined {
+  const view = new DataView(file);
+  if (view.byteLength < 4 || view.getUint16(0) !== 0xffd8) return undefined;
+  let orientation = 1;
+  let offset = 2;
+  while (offset + 4 <= view.byteLength && view.getUint8(offset) === 0xff) {
+    const marker = view.getUint8(offset + 1);
+    const size = view.getUint16(offset + 2);
+    if (
+      marker === 0xe1 &&
+      offset + 10 <= view.byteLength &&
+      view.getUint32(offset + 4) === 0x45786966
+    ) {
+      orientation = readOrientation(
+        view,
+        offset + 10,
+        Math.min(view.byteLength, offset + 2 + size),
+      );
+    }
+    // SOF0 to SOF15, except DHT (C4), JPG (C8) and DAC (CC): height, then width.
+    if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+      if (offset + 9 > view.byteLength) return undefined;
+      const height = view.getUint16(offset + 5);
+      const width = view.getUint16(offset + 7);
+      if (width === 0 || height === 0) return undefined;
+      const turned = orientation >= 5 && orientation <= 8;
+      return turned ? width > height : height > width;
+    }
+    if (marker === 0xda || size < 2) break;
+    offset += 2 + size;
+  }
+  return undefined;
+}
+
+function readOrientation(view: DataView, tiff: number, end: number): number {
+  if (tiff + 8 > end) return 1;
+  const little = view.getUint16(tiff) === 0x4949;
+  const ifd = tiff + view.getUint32(tiff + 4, little);
+  if (ifd + 2 > end) return 1;
+  const count = view.getUint16(ifd, little);
+  for (let i = 0; i < count; i++) {
+    const entry = ifd + 2 + i * 12;
+    if (entry + 12 > end) return 1;
+    if (view.getUint16(entry, little) === 0x0112) return view.getUint16(entry + 8, little);
+  }
+  return 1;
+}
+
 function readFocalLength(view: DataView, tiff: number, end: number): number | undefined {
   if (tiff + 8 > end) return undefined;
   const little = view.getUint16(tiff) === 0x4949;

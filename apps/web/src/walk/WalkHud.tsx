@@ -2,6 +2,7 @@ import type { PhotoRequest, PhotoSensors } from '@my-home/shared';
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import type { PhotosApi } from '../api';
 import { activeRequest, openRequests } from '../photos/requests';
+import { CameraView, hasInPageCamera } from './CameraView';
 import { CaptureSheet } from './CaptureSheet';
 import type { Figure } from './figure';
 import { Joystick } from './Joystick';
@@ -9,6 +10,7 @@ import type { CalibrationTarget } from './calibration';
 import { accuracyLabel } from './orientation';
 import { compassStatusText, useCompass } from './useCompass';
 import { useFigure, type Walk } from './useWalk';
+import { saveWalkSession, type WalkSession } from './walkSession';
 import { yawTowards } from './world';
 
 export type WalkView = 'first' | 'third';
@@ -47,7 +49,19 @@ interface Props {
   onChoose?(requestId: string | undefined): void;
   /** Called after a photo, or a correction of its pose, was stored. */
   onSaved?(): void;
+  /**
+   * A camera is open, the page's own or the phone's camera app: the 3D view is not seen
+   * meanwhile and can stop drawing, which leaves the phone more memory for the camera.
+   */
+  onCamera?(open: boolean): void;
+  /** What a walk saved before the page was reloaded brings back (see `walkSession`). */
+  restored?: Pick<WalkSession, 'heading' | 'tilt' | 'draft'> & {
+    /** The phone's camera app was open when the page went: its photo never arrived. */
+    lostPhoto: boolean;
+  };
 }
+
+type Draft = NonNullable<WalkSession['draft']>;
 
 /**
  * The controls shown while walking: the movement pad, drag-to-look, the view switch and the
@@ -70,6 +84,8 @@ export function WalkHud({
   onGoTo,
   onChoose,
   onSaved,
+  onCamera,
+  restored,
 }: Props) {
   const figure = useFigure(walk);
   const open = openRequests(requests);
@@ -97,13 +113,145 @@ export function WalkHud({
     // The view stays where it was at the tap; the sheet's arrows adjust it from there.
     held: capture !== undefined,
   });
+  const inPage = useState(hasInPageCamera)[0];
+  /** The page's own camera is showing. */
+  const [viewfinder, setViewfinder] = useState(false);
+  /** The phone's camera app (or the gallery) is open and has not handed back a photo yet. */
+  const [away, setAway] = useState(false);
+  const [notice, setNotice] = useState(restored?.lostPhoto ?? false);
+
+  // Walk mode is kept for this tab, so a reload (mostly one while the camera app was open) comes
+  // back walking where it was. `pending` and `draft` ride along with every save.
+  const kept = useRef<Pick<WalkSession, 'pending' | 'draft'>>({
+    ...(restored?.draft && { draft: restored.draft }),
+  });
+  const heading = compass.heading !== 'off';
+  const tilting = compass.tilt !== 'off';
+  const keep = useRef(() => {});
+  useEffect(() => {
+    keep.current = () =>
+      saveWalkSession({
+        homeId,
+        view,
+        figure: figureRef.current,
+        heading,
+        tilt: tilting,
+        ...kept.current,
+      });
+    keep.current();
+  }, [homeId, view, heading, tilting, figureRef]);
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') keep.current();
+    };
+    const onPageHide = () => keep.current();
+    document.addEventListener('visibilitychange', onHide);
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      document.removeEventListener('visibilitychange', onHide);
+      window.removeEventListener('pagehide', onPageHide);
+      // Unmounted: walk mode was left (a reload does not get here).
+      saveWalkSession(undefined);
+    };
+  }, []);
+  // The sensor modes come back where the browser needs no tap to allow them (Android); iOS asks
+  // again from the buttons.
+  const resumed = useRef(false);
+  useEffect(() => {
+    if (resumed.current || !restored || !compass.supported) return;
+    resumed.current = true;
+    const ask = (DeviceOrientationEvent as unknown as { requestPermission?: unknown })
+      .requestPermission;
+    if (typeof ask === 'function') return;
+    if (restored.heading) compass.toggleHeading();
+    if (restored.tilt) compass.toggleTilt();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const cameraOpen = viewfinder || away;
+  useEffect(() => {
+    onCamera?.(cameraOpen);
+  }, [cameraOpen, onCamera]);
+  useEffect(() => () => onCamera?.(false), [onCamera]);
+  // Back from the camera app with the page still alive: whatever it hands back (or not) arrives
+  // in this page, so nothing is lost any more.
+  // Only a return counts: the page must have been left (hidden, or the focus lost) first. A
+  // picker closed without a photo usually says so (`cancel`, see `FileInput`); where it says
+  // nothing and never took the focus either (an action sheet on the page), the next touch on the
+  // page shows that the owner is back.
+  useEffect(() => {
+    if (!away) return;
+    let left = false;
+    const leave = () => {
+      if (document.visibilityState === 'hidden' || !document.hasFocus()) left = true;
+    };
+    const resume = () => {
+      delete kept.current.pending;
+      keep.current();
+      setAway(false);
+    };
+    const back = () => {
+      if (left && document.visibilityState !== 'hidden') resume();
+    };
+    const change = () => (document.visibilityState === 'hidden' ? leave() : back());
+    document.addEventListener('visibilitychange', change);
+    window.addEventListener('blur', leave);
+    window.addEventListener('focus', back);
+    window.addEventListener('pointerdown', resume, true);
+    return () => {
+      document.removeEventListener('visibilitychange', change);
+      window.removeEventListener('blur', leave);
+      window.removeEventListener('focus', back);
+      window.removeEventListener('pointerdown', resume, true);
+    };
+  }, [away]);
+
+  /** The moment of the photo: the figure and what the sensors say now. */
+  const shutter = () => {
+    tap.current = { figure: figureRef.current, sensors: compass.snapshot() };
+  };
+  const took = (photo: Blob) => {
+    const taken = tap.current;
+    // Back to the pose of the tap, whatever the phone did in between.
+    if (taken) walk.place(taken.figure);
+    setCapture({ file: photo, sensors: taken?.sensors ?? compass.snapshot() });
+    tap.current = undefined;
+    setViewfinder(false);
+    setNotice(false);
+    delete kept.current.pending;
+    keep.current();
+  };
+  /** Note and tags from before a reload, for the next photo only. */
+  const [draft, setInitialDraft] = useState(restored?.draft);
+  const setDraft = (draft: Draft | undefined) => {
+    setInitialDraft(undefined);
+    if (draft && (draft.note !== '' || draft.tags.length > 0)) kept.current.draft = draft;
+    else delete kept.current.draft;
+    keep.current();
+  };
+
+  /** The phone's camera app is opening: the tab may not survive it, so keep where it was. */
+  const leaving = () => {
+    shutter();
+    kept.current.pending = { ...tap.current!, at: Date.now() };
+    keep.current();
+    setAway(true);
+  };
+  /** The picker closed, with a photo or without one (cancelled): the page is still here. */
+  const picked = (photo: Blob | undefined) => {
+    if (photo) took(photo);
+    tap.current = undefined;
+    delete kept.current.pending;
+    keep.current();
+    setAway(false);
+  };
   const [calibrating, setCalibrating] = useState(false);
   const [declinationText, setDeclinationText] = useState(String(declination));
   const [declinationSaved, setDeclinationSaved] = useState<'saving' | 'saved' | 'failed'>();
   const [declinationSource, setDeclinationSource] = useState<DeclinationSource>('geodata');
   /** The compass turns the figure / the phone's tilt sets the pitch, right now. */
   const following = compass.heading === 'on';
-  const tilting = compass.tilt === 'on';
+  const tiltFollowing = compass.tilt === 'on';
   /**
    * Turning the view by hand. While the compass turns the figure, a sideways turn is a
    * correction of the compass (the calibration offset) instead of being undone by the next
@@ -113,7 +261,7 @@ export function WalkHud({
   const onLook = (dYaw: number, dPitch: number) => {
     // A turn to the left (positive yaw) is a smaller bearing.
     if (following) compass.adjustCalibration((-dYaw * 180) / Math.PI);
-    walk.lookBy(following ? 0 : dYaw, tilting ? 0 : dPitch);
+    walk.lookBy(following ? 0 : dYaw, tiltFollowing ? 0 : dPitch);
   };
   const accuracy = accuracyLabel(compass.accuracy);
   const offset = `${compass.calibration > 0 ? '+' : ''}${compass.calibration}°`;
@@ -379,6 +527,29 @@ export function WalkHud({
         </p>
       )}
 
+      {notice && !file && (
+        <div className="walk-notice" role="alert">
+          <p>
+            The browser reloaded the page while the camera app was open, so that photo did not
+            arrive. You are back where you took it: please take it again.
+            {inPage && ' The 📷 button now uses the camera inside this page, which avoids this.'}
+          </p>
+          <button type="button" onClick={() => setNotice(false)}>
+            OK
+          </button>
+        </div>
+      )}
+      {viewfinder && !file && (
+        <CameraView
+          onShutter={shutter}
+          onPhoto={took}
+          onClose={() => setViewfinder(false)}
+          suspended={away}
+        >
+          <FileInput camera label="Camera app" icon="📱" onOpen={leaving} onPick={picked} />
+          <FileInput label="Gallery" icon="🖼" onOpen={leaving} onPick={picked} />
+        </CameraView>
+      )}
       {file ? (
         <CaptureSheet
           file={file}
@@ -393,9 +564,15 @@ export function WalkHud({
           onSaved={() => {
             // An answered request is no longer the one to answer next.
             choose(undefined);
+            setDraft(undefined);
             onSaved?.();
           }}
-          onClose={() => setCapture(undefined)}
+          draft={draft}
+          onDraft={setDraft}
+          onClose={() => {
+            setCapture(undefined);
+            setDraft(undefined);
+          }}
         />
       ) : (
         <div className="walk-controls">
@@ -404,7 +581,7 @@ export function WalkHud({
             <button
               type="button"
               aria-label="Look up"
-              disabled={tilting}
+              disabled={tiltFollowing}
               onClick={() => onLook(0, TILT_STEP)}
             >
               ▲
@@ -412,40 +589,90 @@ export function WalkHud({
             <button
               type="button"
               aria-label="Look down"
-              disabled={tilting}
+              disabled={tiltFollowing}
               onClick={() => onLook(0, -TILT_STEP)}
             >
               ▼
             </button>
           </div>
-          <label className="shutter" title="Take a photo here">
-            <span aria-hidden="true">📷</span>
-            <input
+          {inPage ? (
+            <button
+              type="button"
+              className="shutter"
+              title="Take a photo here"
               aria-label="Take photo"
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onClick={() => {
-                // The tap on the shutter is the moment of the photo: the camera app that opens
-                // next hides the page, and the phone moves on.
-                tap.current = { figure: figureRef.current, sensors: compass.snapshot() };
-              }}
-              onChange={(e) => {
-                const picked = e.target.files?.[0];
-                if (picked) {
-                  const taken = tap.current;
-                  // Back to the pose of the tap, whatever the phone did in between.
-                  if (taken) walk.place(taken.figure);
-                  setCapture({ file: picked, sensors: taken?.sensors ?? compass.snapshot() });
-                }
-                tap.current = undefined;
-                // The same photo can be picked again after a discard.
-                e.target.value = '';
-              }}
+              onClick={() => setViewfinder(true)}
+            >
+              <span aria-hidden="true">📷</span>
+            </button>
+          ) : (
+            <FileInput
+              shutter
+              camera
+              label="Take photo"
+              icon="📷"
+              onOpen={leaving}
+              onPick={picked}
             />
-          </label>
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+interface FileInputProps {
+  /** Opens the phone's camera app; otherwise its gallery or files. */
+  camera?: boolean;
+  /** The round shutter of the walk controls, with only the icon showing. */
+  shutter?: boolean;
+  label: string;
+  icon: string;
+  /** Tapped: the moment of the photo, and the page goes to the background. */
+  onOpen(): void;
+  /** What came back, if anything. */
+  onPick(photo: File | undefined): void;
+}
+
+/** A file input styled as a button: the shutter (camera, icon only) or a labelled one. */
+function FileInput({
+  camera = false,
+  shutter = false,
+  label,
+  icon,
+  onOpen,
+  onPick,
+}: FileInputProps) {
+  // Closing the picker without a photo fires `cancel` (no React prop for it on an input).
+  const input = useRef<HTMLInputElement>(null);
+  const cancelled = useRef(onPick);
+  useEffect(() => {
+    cancelled.current = onPick;
+  });
+  useEffect(() => {
+    const element = input.current;
+    if (!element) return;
+    const cancel = () => cancelled.current(undefined);
+    element.addEventListener('cancel', cancel);
+    return () => element.removeEventListener('cancel', cancel);
+  }, []);
+  return (
+    <label className={shutter ? 'shutter' : 'camera-alt'} title={label}>
+      <span aria-hidden="true">{icon}</span>
+      {!shutter && <span>{label}</span>}
+      <input
+        ref={input}
+        aria-label={label}
+        type="file"
+        accept="image/*"
+        {...(camera && { capture: 'environment' })}
+        onClick={onOpen}
+        onChange={(e) => {
+          onPick(e.target.files?.[0]);
+          // The same photo can be picked again after a discard.
+          e.target.value = '';
+        }}
+      />
+    </label>
   );
 }

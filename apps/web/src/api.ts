@@ -125,7 +125,8 @@ function uploadPhoto(
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable && e.total > 0) onProgress?.(e.loaded / e.total);
     };
-    xhr.onerror = () => fail('network error');
+    // Also what an expired sign-on looks like: its redirect to the login page is cross-origin.
+    xhr.onerror = () => fail('no connection to the server (offline, or the sign-in has expired)');
     xhr.onabort = () => fail('cancelled');
     xhr.onload = () => {
       let json: unknown;
@@ -136,8 +137,11 @@ function uploadPhoto(
       }
       if (xhr.status < 200 || xhr.status >= 300) {
         const error = ApiError.safeParse(json);
-        return fail(error.success ? error.data.message : String(xhr.status), json);
+        if (error.success) return fail(error.data.message, json);
+        return fail(xhr.status === 413 ? '413, the photo is too large' : String(xhr.status), json);
       }
+      // A sign-on page that answered in place of the api.
+      if (json === undefined) return fail('the sign-in has expired: reload the page');
       const photo = Photo.safeParse(json);
       if (photo.success) resolve(photo.data);
       else fail('unexpected response', json);

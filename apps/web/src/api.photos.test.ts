@@ -92,14 +92,18 @@ describe('photosApi.upload', () => {
     await expect(result).rejects.toMatchObject({ status: 415 });
   });
 
-  it('rejects on a proxy error page, a network error and an unexpected body', async () => {
+  it('rejects on a proxy error page, a network error, a sign-on page and an unexpected body', async () => {
     const proxy = start();
     proxy.xhr.respond(413, '<html>Request Entity Too Large</html>');
-    await expect(proxy.result).rejects.toThrow(/failed: 413/);
+    await expect(proxy.result).rejects.toThrow(/failed: 413, the photo is too large/);
 
     const offline = start();
     offline.xhr.onerror?.();
-    await expect(offline.result).rejects.toThrow(/network error/);
+    await expect(offline.result).rejects.toThrow(/no connection.*sign-in has expired/);
+
+    const signOn = start();
+    signOn.xhr.respond(200, '<html>Sign in</html>');
+    await expect(signOn.result).rejects.toThrow(/sign-in has expired: reload the page/);
 
     const odd = start();
     odd.xhr.respond(201, { id: 'photo-1' });

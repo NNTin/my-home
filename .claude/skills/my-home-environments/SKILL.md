@@ -36,6 +36,7 @@ $S/screenshot.sh staging --viewport 390x844 --touch --path '/?panel=furniture'  
 $S/walk-smoke.sh staging                                 # phone-sized smoke test of walk mode
 $S/mobile-smoke.sh staging                               # phone layout: top bar, sheet, levels, furniture, walk
 $S/compass-smoke.sh staging                              # phone compass and tilt, with mocked sensor events
+$S/camera-smoke.sh staging                               # taking a photo with a fake camera, uploads checked
 $S/with-site-token.sh staging -- node e2e.mjs            # SITE_TOKEN and SITE_BASE for the child only
 $S/raise-env-issue.sh --dry-run staging "health fails"   # what it would post; drop --dry-run to post
 $S/photos.sh staging list --room souterrain-kitchen      # the owner's photos with their poses
@@ -75,6 +76,11 @@ $S/photo-requests.sh staging create --room souterrain-kitchen --reason "Which wa
   tilting the mocked phone moves the figure, north is crossed smoothly, landscape is compensated, the compass
   rose turns, and a captured photo carries the sensor snapshot. Read-only: the upload is intercepted in the
   browser and nothing is stored. A real phone is still needed for the checklist in `docs/walking.md`.
+- `camera-smoke.sh <env> [--out file.png]`: taking a photo in walk mode at 390x844 with touch and Chromium's
+  **fake** camera: the camera inside the page (viewfinder, shutter, sheet, save), the fallback to the camera app
+  and the gallery when the camera is refused, and walk mode coming back at the same pose with a "take it again"
+  message after a reload while the camera app was open. Each upload is parsed and checked (a `meta` JSON with a
+  valid pose and a JPEG `image`) and answered in the browser. Read-only: nothing is stored.
 - `walk-smoke.sh <env> [--out file.png]`: opens walk mode at 390x844 with touch, pushes the pad and checks that
   the figure walks, turns and stops, that the controls fit the screen and that nothing logs an error. Read-only. Playwright (pinned) is installed outside the repository in
   `${XDG_CACHE_HOME:-$HOME/.cache}/my-home-environments/playwright`, Chromium in `~/.cache/ms-playwright`;
