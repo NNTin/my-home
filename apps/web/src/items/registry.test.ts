@@ -1,3 +1,4 @@
+import { catalog, defaultParams, furnitureSize, LEGACY_FURNITURE_TYPE_IDS } from '@my-home/shared';
 import { describe, expect, it } from 'vitest';
 import { createRegistry, registry } from './registry';
 import { defineItemType, type ItemTypeModule } from './types';
@@ -71,5 +72,31 @@ describe('item-type registry', () => {
     expect(() =>
       createRegistry({ './lamp/index.tsx': module(), 'other/lamp/index.ts': module() }),
     ).toThrow(/Duplicate item type id "lamp"/);
+  });
+});
+
+describe('item modules and the shared catalogue', () => {
+  it('has a furniture.<id> type for every module, with its size and colour as defaults', () => {
+    for (const module of registry.types) {
+      const typeId = LEGACY_FURNITURE_TYPE_IDS[module.id];
+      expect(typeId, module.id).toBe(`furniture.${module.id}`);
+      const type = catalog.get(typeId!)!;
+      expect(type, module.id).toBeDefined();
+      expect(
+        { name: type.name, category: type.category, icon: type.icon, snapping: type.snapping },
+        module.id,
+      ).toEqual({
+        name: module.name,
+        category: module.category,
+        icon: module.icon,
+        snapping: module.snapping,
+      });
+      expect(type.description, module.id).toBe(module.description);
+      const values = defaultParams(type);
+      expect(furnitureSize(values), module.id).toEqual(module.size);
+      expect(values.color, module.id).toBe(module.color);
+      expect(type.footprint, module.id).toBe(module.footprint ? 'ellipse' : 'rectangle');
+    }
+    expect(catalog.types.filter((t) => t.kind === 'furniture')).toHaveLength(registry.types.length);
   });
 });

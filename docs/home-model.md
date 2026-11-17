@@ -38,17 +38,22 @@ API:
   `name` is only a display label and may be reworded or localised at any time.
 - Ids are lower-case kebab-case and say what the thing is and where, without a lookup:
 
-| Entity        | Pattern                                          | Example                                    |
-| ------------- | ------------------------------------------------ | ------------------------------------------ |
-| Apartment     | `apt-<apartment>`                                | `apt-souterrain`                           |
-| Room          | `<apartment>-<room>`                             | `souterrain-bed-room`                      |
-| Door          | `door-<apartment>-<room>-<room or outdoor area>` | `door-souterrain-corridor-patio`           |
-| Window        | `window-<apartment>-<room>-<facade>`             | `window-souterrain-kitchen-north`          |
-| Interior wall | `<apartment>-wall-<room>-<room>`                 | `souterrain-wall-corridor-bed-room`        |
-| Stair         | `stair-<apartment>-<room>-<level it leads to>`   | `stair-souterrain-stair-hall-ground-floor` |
-| Entrance      | `entrance-<apartment>-<how>`                     | `entrance-souterrain-patio`                |
-| Fence, gate   | `fence-<side>-<what it borders>`, `gate-<a>-<b>` | `gate-souterrain-patio-lane`               |
-| Outdoor area  | `<kind or role>-<apartment or side>`             | `patio-souterrain`, `garden-divider`       |
+| Entity              | Id pattern                                       | Id example                                 | Name pattern                                                          | Name example                |
+| ------------------- | ------------------------------------------------ | ------------------------------------------ | --------------------------------------------------------------------- | --------------------------- |
+| Apartment           | `apt-<apartment>`                                | `apt-souterrain`                           | free                                                                  |                             |
+| Room                | `<apartment>-<room>`                             | `souterrain-bed-room`                      | fixed two-word label (below)                                          | `Bed room`                  |
+| Door                | `door-<apartment>-<room>-<room or outdoor area>` | `door-souterrain-corridor-patio`           | interior: `<room> door`; exterior: `<Room> · <what it leads to> door` | `Corridor · patio door`     |
+| Window              | `window-<apartment>-<room>-<facade>`             | `window-souterrain-kitchen-north`          | `<Room> · <facade> window[ <n>]`                                      | `Kitchen · north window`    |
+| Roof window         | `roof-window-<facade>`                           | `roof-window-south`                        | `<Level short name> · <facade> roof window`                           | `Attic · south roof window` |
+| Outbuilding opening | `<outbuilding id>-door`                          | `shed-ground-floor-garden-door`            | `<Outbuilding name> · <what>`                                         | `Garden shed · door`        |
+| Interior wall       | `<apartment>-wall-<room>-<room>`                 | `souterrain-wall-corridor-bed-room`        | (no name)                                                             |                             |
+| Stair               | `stair-<apartment>-<room>-<level it leads to>`   | `stair-souterrain-stair-hall-ground-floor` | free                                                                  |                             |
+| Entrance            | `entrance-<apartment>-<how>`                     | `entrance-souterrain-patio`                | free                                                                  |                             |
+| Fence, gate         | `fence-<side>-<what it borders>`, `gate-<a>-<b>` | `gate-souterrain-patio-lane`               | free sentence                                                         |                             |
+| Outdoor area        | `<kind or role>-<apartment or side>`             | `patio-souterrain`, `garden-divider`       | free                                                                  |                             |
+
+Older ids that predate a pattern stay as they are (ids never change), for example the windows
+`ground-floor-window-north-1` and the outbuilding openings `garage-door` and `passage-arch`.
 
 - Room names are fixed two-word labels (`Stair hall`, `Work room`, `Bath room`, `Kitchen`,
   `Corridor`, `Living room`, `Boiler room`, `Bed room`); the id is the name in kebab-case behind the
@@ -58,6 +63,18 @@ API:
   souterrain kitchen and corridor): their outlines simply share an edge.
 - Levels that are not laid out yet keep one placeholder room (`ground-floor-interior`); it is
   replaced, not renamed, when the real rooms are added.
+
+**Names of uses.** Every opening, outbuilding opening, roof window and gate has a human `name`,
+unique in the home (ignoring case), so a name alone says which piece is meant (in the catalogue,
+in photo requests, when talking to an agent):
+
+- windows: `<Room> · <facade> window[ <n>]`; on levels without rooms yet, `<Level short name> · …`
+  (`Ground floor`, `Attic`);
+- interior doors: `<the room that is not the corridor or hall> door`, otherwise
+  `<Room A> / <Room B> door`;
+- exterior doors: `<Room> · <what it leads to> door`;
+- outbuilding openings: `<Outbuilding name> · <what>`;
+- names may be reworded at any time; ids never change.
 
 ## Dimensions and provenance
 
@@ -89,7 +106,7 @@ it came from). Nothing else in the model or renderer changes. The only bare numb
 | `apartments`   | `levelIds` they occupy and, optionally, their `entrances`                                                                   |
 | `rooms`        | floor `outline` on a `levelId`, optionally in an `apartmentId`                                                              |
 | `walls`        | centre line `start`/`end`, `thickness`, `height`, `kind` (`exterior`/`interior`), `levelId`, `apartmentId?`                 |
-| `openings`     | `door`/`window` on a `wallId`: `offset` from the wall start, `width`, `height`, `sill`                                      |
+| `openings`     | `door`/`window` on a `wallId`: `name`, `typeId`, `offset` from the wall start, `width`, `height`, `sill`                    |
 | `outdoorAreas` | `garden`/`driveway`/`patio`/`path`/`road`/`gravel`/`embankment` polygons at an `elevation` (or `slope`)                     |
 | `outbuildings` | optional garages, carports, sheds, porches and compost bins: a `footprint`, flat roof and edge openings                     |
 | `stairs`       | optional: a walking line from one level up to another                                                                       |
@@ -176,12 +193,44 @@ stairwell opening over it in the floor of `toLevelId`.
 pillars) or `gate`. `elevation` is the ground height at the start of `path`; with `endElevation`
 the ground runs linearly to that height at the end, and the fence steps down bay by bay (posts at
 most 2.5 m apart). A gate is its own short fence of kind `gate` in the fence line, with an id that
-names what it connects. Fences are always shown.
+names what it connects, and the catalogue type `"typeId": "gate.swing"` (other fence kinds have no
+`typeId`). Fences are always shown.
 
 ### Openings
 
+```json
+{
+  "id": "window-souterrain-kitchen-north", "name": "Kitchen · north window", "typeId": "window.casement",
+  "wallId": "souterrain-wall-north", "type": "window",
+  "offset": ..., "width": ..., "height": ..., "sill": ...
+}
+```
+
 `type` is `window`, `door` (drawn open), `french-door` (glazed down to the floor) or `garage-door`
-(a closed panel).
+(a closed panel); the builder draws by it. `typeId` is the [piece type](#piece-types) and must
+carry that `type` (a `door.interior` is a `door`, a `window.casement` a `window`). `name` follows
+§ Naming. Roof windows and outbuilding openings have a `name` and a `typeId` too.
+
+### Piece types
+
+Every opening, outbuilding opening, roof window and gate refers to a **catalogue type** by
+`typeId`: what kind of piece it is, which parameters it has and their defaults. The types live in
+[`packages/shared/src/catalog/`](../packages/shared/src/catalog/) (`definitions/`, one file per
+family). A parameter is **basic** (a use may change it within limits, for example a frame colour
+or a bed's width) or **design** (fixed by the type). Nothing reads the types yet when drawing
+(#38); their defaults equal what the viewer draws today.
+
+| Family    | Type ids                                                                                                        | Sits in               |
+| --------- | --------------------------------------------------------------------------------------------------------------- | --------------------- |
+| window    | `window.casement`, `window.tilt-turn` (both `type: window`), `window.roof`                                      | a wall; a roof plane  |
+| door      | `door.interior`, `door.exterior` (`door`), `door.french` (`french-door`), `door.garage` (`garage-door`)         | a wall or outbuilding |
+| gate      | `gate.swing`                                                                                                    | a fence line          |
+| furniture | `furniture.bed`, `furniture.sofa`, `furniture.table`, `furniture.chair`, `furniture.wardrobe`, `furniture.desk` | a floor               |
+
+Interior or exterior follows the wall's `kind`. **The wall windows of the real home are all
+`window.casement` placeholders** until photos show which are casement and which tilt-and-turn (both
+are drawn the same). `modelUses(model)` lists every use with its type, name, level and the rooms it
+touches.
 
 ### Outbuildings
 
@@ -276,6 +325,9 @@ and the seed script, not in the editor:
   (not a window) or a stair that starts or ends in it
 - a stair leads up to a higher level, turns at right angles and its flights leave room for the
   landings; fence points are distinct
+- every `typeId` is a known piece type that sits where the use is (`wall`, `roof`, `fence`), and a
+  wall opening's `type` is one its type carries; a gate has a `typeId`, other fences none
+- names are unique across all uses, ignoring case
 
 Errors carry a path into the document, for example
 `openings[2].width: Opening "x" spans 7.65 m to 9.15 m but wall "y" is only 8 m long`.

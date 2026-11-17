@@ -1110,6 +1110,8 @@
   "openings": [
     {
       "id": "souterrain-patio-door",
+      "name": "Living room · patio door",
+      "typeId": "door.exterior",
       "wallId": "souterrain-wall-back",
       "type": "door",
       "offset": {
@@ -1131,6 +1133,8 @@
     },
     {
       "id": "souterrain-entrance-door",
+      "name": "Hallway · entrance door",
+      "typeId": "door.exterior",
       "wallId": "souterrain-wall-back",
       "type": "door",
       "offset": {
@@ -1152,6 +1156,8 @@
     },
     {
       "id": "souterrain-kitchen-window",
+      "name": "Kitchen · back window",
+      "typeId": "window.casement",
       "wallId": "souterrain-wall-back",
       "type": "window",
       "offset": {
@@ -1173,6 +1179,8 @@
     },
     {
       "id": "souterrain-bedroom-window",
+      "name": "Bedroom · front window",
+      "typeId": "window.casement",
       "wallId": "souterrain-wall-front",
       "type": "window",
       "offset": {
@@ -1194,6 +1202,8 @@
     },
     {
       "id": "souterrain-bathroom-window",
+      "name": "Bathroom · front window",
+      "typeId": "window.casement",
       "wallId": "souterrain-wall-front",
       "type": "window",
       "offset": {
@@ -1215,6 +1225,8 @@
     },
     {
       "id": "souterrain-living-window",
+      "name": "Living room · west window",
+      "typeId": "window.casement",
       "wallId": "souterrain-wall-west",
       "type": "window",
       "offset": {
@@ -1236,6 +1248,8 @@
     },
     {
       "id": "souterrain-kitchen-side-window",
+      "name": "Kitchen · east window",
+      "typeId": "window.casement",
       "wallId": "souterrain-wall-east",
       "type": "window",
       "offset": {
@@ -1257,6 +1271,8 @@
     },
     {
       "id": "souterrain-living-door",
+      "name": "Living room door",
+      "typeId": "door.interior",
       "wallId": "souterrain-wall-hall-west",
       "type": "door",
       "offset": {
@@ -1278,6 +1294,8 @@
     },
     {
       "id": "souterrain-bedroom-door",
+      "name": "Bedroom door",
+      "typeId": "door.interior",
       "wallId": "souterrain-wall-hall-west",
       "type": "door",
       "offset": {
@@ -1299,6 +1317,8 @@
     },
     {
       "id": "souterrain-kitchen-door",
+      "name": "Kitchen door",
+      "typeId": "door.interior",
       "wallId": "souterrain-wall-hall-east",
       "type": "door",
       "offset": {
@@ -1320,6 +1340,8 @@
     },
     {
       "id": "souterrain-bathroom-door",
+      "name": "Bathroom door",
+      "typeId": "door.interior",
       "wallId": "souterrain-wall-hall-east",
       "type": "door",
       "offset": {
@@ -1341,6 +1363,8 @@
     },
     {
       "id": "ground-floor-front-window-1",
+      "name": "Ground floor · front window 1",
+      "typeId": "window.casement",
       "wallId": "ground-floor-wall-front",
       "type": "window",
       "offset": {
@@ -1362,6 +1386,8 @@
     },
     {
       "id": "ground-floor-front-window-2",
+      "name": "Ground floor · front window 2",
+      "typeId": "window.casement",
       "wallId": "ground-floor-wall-front",
       "type": "window",
       "offset": {
@@ -1383,6 +1409,8 @@
     },
     {
       "id": "ground-floor-back-window-1",
+      "name": "Ground floor · back window 1",
+      "typeId": "window.casement",
       "wallId": "ground-floor-wall-back",
       "type": "window",
       "offset": {
@@ -1404,6 +1432,8 @@
     },
     {
       "id": "ground-floor-back-window-2",
+      "name": "Ground floor · back window 2",
+      "typeId": "window.casement",
       "wallId": "ground-floor-wall-back",
       "type": "window",
       "offset": {
@@ -1425,6 +1455,8 @@
     },
     {
       "id": "ground-floor-west-window",
+      "name": "Ground floor · west window",
+      "typeId": "window.casement",
       "wallId": "ground-floor-wall-west",
       "type": "window",
       "offset": {
@@ -1446,6 +1478,8 @@
     },
     {
       "id": "ground-floor-east-window",
+      "name": "Ground floor · east window",
+      "typeId": "window.casement",
       "wallId": "ground-floor-wall-east",
       "type": "window",
       "offset": {
@@ -1467,6 +1501,8 @@
     },
     {
       "id": "ground-floor-entrance-door",
+      "name": "Ground floor · entrance door",
+      "typeId": "door.exterior",
       "wallId": "ground-floor-wall-front",
       "type": "door",
       "offset": {
@@ -1488,6 +1524,8 @@
     },
     {
       "id": "first-floor-west-window-1",
+      "name": "Attic · west window 1",
+      "typeId": "window.casement",
       "wallId": "first-floor-wall-west",
       "type": "window",
       "offset": {
@@ -1509,6 +1547,8 @@
     },
     {
       "id": "first-floor-west-window-2",
+      "name": "Attic · west window 2",
+      "typeId": "window.casement",
       "wallId": "first-floor-wall-west",
       "type": "window",
       "offset": {
@@ -1530,6 +1570,8 @@
     },
     {
       "id": "first-floor-east-window-1",
+      "name": "Attic · east window 1",
+      "typeId": "window.casement",
       "wallId": "first-floor-wall-east",
       "type": "window",
       "offset": {
@@ -1551,6 +1593,8 @@
     },
     {
       "id": "first-floor-east-window-2",
+      "name": "Attic · east window 2",
+      "typeId": "window.casement",
       "wallId": "first-floor-wall-east",
       "type": "window",
       "offset": {

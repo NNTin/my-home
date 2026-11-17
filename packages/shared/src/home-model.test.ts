@@ -11,6 +11,7 @@ import {
   type ValidationIssue,
   wallLength,
 } from './home-model';
+import { catalog, modelUses } from './catalog';
 import { ListHomesQuery } from './homes';
 
 const readJson = (path: string): unknown =>
@@ -139,6 +140,7 @@ describe('HomeModel', () => {
     home.openings.push({
       ...home.openings[0]!,
       id: 'too-wide',
+      name: 'Too wide',
       wallId: 'souterrain-wall-kitchen-bathroom',
       offset: { value: 0, source: 'mock' },
       width: { value: 5, source: 'mock' },
@@ -558,8 +560,8 @@ describe('optional structures', () => {
     const [at, garage] = byId(home.outbuildings!, 'garage');
     const [doorAt, door] = byId(garage.openings!, 'garage-door');
     door.width.value = 9;
-    garage.openings!.push({ ...structuredClone(door), id: 'x', edge: 7 });
-    garage.openings!.push({ ...structuredClone(door), id: 'y', edge: 2, width: d(1) });
+    garage.openings!.push({ ...structuredClone(door), id: 'x', name: 'X', edge: 7 });
+    garage.openings!.push({ ...structuredClone(door), id: 'y', name: 'Y', edge: 2, width: d(1) });
     garage.openEdges = [9, 2];
     const n = garage.openings!.length;
     expect(issuesOf(home).map((i) => i.path)).toEqual([
@@ -699,6 +701,172 @@ describe('optional structures', () => {
         `building.roof.windows[${windowAt}].length`,
       ]),
     );
+  });
+});
+
+describe('piece types and names', () => {
+  const at = <T extends { id: string }>(list: T[], id: string) => {
+    const i = list.findIndex((x) => x.id === id);
+    return [i, list[i]!] as const;
+  };
+  const gableOf = (home: HomeModel) =>
+    home.building.roof as Extract<HomeModel['building']['roof'], { type: 'gable' }>;
+
+  it('rejects unknown and malformed type ids', () => {
+    const home = mockHome();
+    home.openings[0]!.typeId = 'door.revolving';
+    expect(issuesOf(home)).toEqual([
+      { path: 'openings[0].typeId', message: 'Unknown piece type "door.revolving"' },
+    ]);
+    home.openings[0]!.typeId = 'Door';
+    const issues = issuesOf(home);
+    expect(issues.map((i) => i.path)).toEqual(['openings[0].typeId', 'openings[0].typeId']);
+    expect(issues.map((i) => i.message)).toEqual([
+      expect.stringMatching(/family\.name/),
+      'Unknown piece type "Door"',
+    ]);
+  });
+
+  it('rejects a type that sits somewhere else', () => {
+    const home = realHome();
+    const [i] = at(home.openings, 'ground-floor-window-south');
+    home.openings[i]!.typeId = 'window.roof';
+    const roof = gableOf(home);
+    roof.windows![0]!.typeId = 'window.casement';
+    const [g, gate] = at(home.fences!, 'gate-souterrain-patio-lane');
+    gate.typeId = 'door.exterior';
+    const [b, garage] = at(home.outbuildings!, 'garage');
+    garage.openings![0]!.typeId = 'gate.swing';
+    expect(issuesOf(home)).toEqual(
+      expect.arrayContaining([
+        {
+          path: `openings[${i}].typeId`,
+          message: 'Type "window.roof" goes in a roof, not in a wall',
+        },
+        {
+          path: 'building.roof.windows[0].typeId',
+          message: 'Type "window.casement" goes in a wall, not in a roof',
+        },
+        {
+          path: `fences[${g}].typeId`,
+          message: 'Type "door.exterior" goes in a wall, not in a fence line',
+        },
+        {
+          path: `outbuildings[${b}].openings[0].typeId`,
+          message: 'Type "gate.swing" goes in a fence line, not in a wall',
+        },
+      ]),
+    );
+  });
+
+  it("rejects a type that does not carry the opening's kind", () => {
+    const home = mockHome();
+    const [i] = at(home.openings, 'souterrain-bedroom-window');
+    home.openings[i]!.typeId = 'door.interior';
+    const [j] = at(home.openings, 'souterrain-bedroom-door');
+    home.openings[j]!.typeId = 'door.french';
+    expect(issuesOf(home)).toEqual([
+      {
+        path: `openings[${i}].typeId`,
+        message:
+          'Opening "souterrain-bedroom-window" is a window but type "door.interior" is for doors',
+      },
+      {
+        path: `openings[${j}].typeId`,
+        message:
+          'Opening "souterrain-bedroom-door" is a door but type "door.french" is for French doors',
+      },
+    ]);
+  });
+
+  it('needs a type on a gate and none on other fences', () => {
+    const home = realHome();
+    const [g, gate] = at(home.fences!, 'gate-souterrain-patio-lane');
+    delete gate.typeId;
+    const [f, fence] = at(home.fences!, 'fence-north');
+    fence.typeId = 'gate.swing';
+    const issues = issuesOf(home);
+    expect(issues).toHaveLength(2);
+    expect(issues).toEqual(
+      expect.arrayContaining([
+        {
+          path: `fences[${f}].typeId`,
+          message: 'Fence "fence-north" is a chain-link fence and takes no typeId',
+        },
+        {
+          path: `fences[${g}].typeId`,
+          message: 'Gate "gate-souterrain-patio-lane" needs a typeId',
+        },
+      ]),
+    );
+  });
+
+  it('needs a name on every opening and unique names across all uses, ignoring case', () => {
+    const home = realHome();
+    home.openings[1]!.name = home.openings[0]!.name.toUpperCase();
+    const roof = gableOf(home);
+    roof.windows![0]!.name = 'Garage · Garage door';
+    const [g, gate] = at(home.fences!, 'gate-souterrain-patio-lane');
+    gate.name = home.openings[2]!.name;
+    const [b] = at(home.outbuildings!, 'garage');
+    expect(issuesOf(home)).toEqual([
+      {
+        path: 'openings[1].name',
+        message: `Duplicate name "${home.openings[1]!.name}" (already used by openings[0])`,
+      },
+      {
+        path: 'building.roof.windows[0].name',
+        message: `Duplicate name "Garage · Garage door" (already used by outbuildings[${b}].openings[0])`,
+      },
+      {
+        path: `fences[${g}].name`,
+        message: `Duplicate name "${gate.name}" (already used by openings[2])`,
+      },
+    ]);
+
+    const unnamed = mockHome() as { openings: Record<string, unknown>[] };
+    delete unnamed.openings[0]!.name;
+    expect(issuesOf(unnamed).map((i) => i.path)).toEqual(['openings[0].name']);
+  });
+
+  it('lists every use of the mock home, with the rooms an opening touches', () => {
+    const uses = modelUses(HomeModel.parse(mockHome()));
+    expect(uses).toHaveLength(22);
+    expect(uses.every((u) => u.placement === 'wall' && u.kind === 'openings')).toBe(true);
+    expect(uses.find((u) => u.id === 'souterrain-bedroom-door')).toEqual({
+      id: 'souterrain-bedroom-door',
+      typeId: 'door.interior',
+      name: 'Bedroom door',
+      kind: 'openings',
+      placement: 'wall',
+      levelId: 'souterrain',
+      roomIds: ['souterrain-hallway', 'souterrain-bedroom'],
+      hole: { width: 0.9, height: 2.05 },
+    });
+    expect(uses.find((u) => u.id === 'souterrain-bedroom-window')?.roomIds).toEqual([
+      'souterrain-bedroom',
+    ]);
+  });
+
+  it('lists the roof window, outbuilding openings and gate of the real home', () => {
+    const uses = modelUses(HomeModel.parse(realHome()));
+    expect(uses).toHaveLength(31);
+    expect(uses.slice(-5).map((u) => [u.id, u.placement, u.typeId, u.levelId])).toEqual([
+      ['garage-door', 'outbuilding', 'door.garage', null],
+      ['passage-arch', 'outbuilding', 'door.exterior', null],
+      ['shed-ground-floor-garden-door', 'outbuilding', 'door.exterior', null],
+      ['roof-window-south', 'roof', 'window.roof', 'first-floor'],
+      ['gate-souterrain-patio-lane', 'fence', 'gate.swing', null],
+    ]);
+  });
+
+  it('gives every use of both homes a name and a known type', () => {
+    for (const home of [mockHome(), realHome()]) {
+      for (const use of modelUses(HomeModel.parse(home))) {
+        expect(use.name.trim(), use.id).not.toBe('');
+        expect(catalog.get(use.typeId), use.id).toBeDefined();
+      }
+    }
   });
 });
 

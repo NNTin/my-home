@@ -67,6 +67,8 @@ function fixture(): HomeModel {
       // Listed out of order on purpose: the builder sorts by offset.
       {
         id: 'win',
+        name: 'Window',
+        typeId: 'window.casement',
         wallId: 'w',
         type: 'window',
         offset: d(2.5),
@@ -76,6 +78,8 @@ function fixture(): HomeModel {
       },
       {
         id: 'door',
+        name: 'Door',
+        typeId: 'door.interior',
         wallId: 'w',
         type: 'door',
         offset: d(0.5),

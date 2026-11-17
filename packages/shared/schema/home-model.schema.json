@@ -234,6 +234,14 @@
               "id": {
                 "$ref": "#/$defs/Id"
               },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "typeId": {
+                "$ref": "#/$defs/TypeId"
+              },
               "wallId": {
                 "$ref": "#/$defs/Id"
               },
@@ -254,7 +262,17 @@
                 "$ref": "#/$defs/NonNegativeDimension"
               }
             },
-            "required": ["id", "wallId", "type", "offset", "width", "height", "sill"],
+            "required": [
+              "id",
+              "name",
+              "typeId",
+              "wallId",
+              "type",
+              "offset",
+              "width",
+              "height",
+              "sill"
+            ],
             "additionalProperties": false
           }
         },
@@ -493,6 +511,14 @@
         "id": {
           "$ref": "#/$defs/Id"
         },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "typeId": {
+          "$ref": "#/$defs/TypeId"
+        },
         "side": {
           "type": "string",
           "enum": ["min", "max"]
@@ -510,8 +536,14 @@
           "$ref": "#/$defs/PositiveDimension"
         }
       },
-      "required": ["id", "side", "offset", "fromEave", "width", "length"],
+      "required": ["id", "name", "typeId", "side", "offset", "fromEave", "width", "length"],
       "additionalProperties": false
+    },
+    "TypeId": {
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^[a-z][a-z0-9-]*\\.[a-z][a-z0-9-]*$",
+      "description": "A piece type in the catalogue, e.g. \"window.casement\"."
     },
     "Bearing": {
       "type": "object",
@@ -636,6 +668,14 @@
         "id": {
           "$ref": "#/$defs/Id"
         },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "typeId": {
+          "$ref": "#/$defs/TypeId"
+        },
         "type": {
           "type": "string",
           "enum": ["door", "window", "french-door", "garage-door"]
@@ -658,7 +698,7 @@
           "$ref": "#/$defs/NonNegativeDimension"
         }
       },
-      "required": ["id", "type", "edge", "offset", "width", "height", "sill"],
+      "required": ["id", "name", "typeId", "type", "edge", "offset", "width", "height", "sill"],
       "additionalProperties": false
     },
     "Stair": {
@@ -709,6 +749,9 @@
         "kind": {
           "type": "string",
           "enum": ["chain-link", "privacy", "trellis", "gate"]
+        },
+        "typeId": {
+          "$ref": "#/$defs/TypeId"
         },
         "path": {
           "minItems": 2,
