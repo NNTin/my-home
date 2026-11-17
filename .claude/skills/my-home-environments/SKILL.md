@@ -60,8 +60,8 @@ $S/photo-requests.sh staging create --room souterrain-kitchen --reason "Which wa
 - `compass-smoke.sh <env> [--out file.png]`: the "Heading" and "Tilt" modes of walk mode at 390x844 with
   **mocked** orientation events (Android absolute alpha and the iOS `webkitCompassHeading` path): turning and
   tilting the mocked phone moves the figure, north is crossed smoothly, landscape is compensated, the compass
-  rose turns, and a captured photo stores the sensor snapshot. It uploads one synthetic test photo and deletes
-  and purges exactly that one again. A real phone is still needed for the checklist in `docs/walking.md`.
+  rose turns, and a captured photo carries the sensor snapshot. Read-only: the upload is intercepted in the
+  browser and nothing is stored. A real phone is still needed for the checklist in `docs/walking.md`.
 - `walk-smoke.sh <env> [--out file.png]`: opens walk mode at 390x844 with touch, pushes the pad and checks that
   the figure walks, turns and stops, that the controls fit the screen and that nothing logs an error. Read-only. Playwright (pinned) is installed outside the repository in
   `${XDG_CACHE_HOME:-$HOME/.cache}/my-home-environments/playwright`, Chromium in `~/.cache/ms-playwright`;

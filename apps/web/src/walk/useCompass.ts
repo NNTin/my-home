@@ -35,6 +35,8 @@ export interface CompassState {
   heading: FollowStatus;
   /** "Tilt with phone": the phone's tilt sets the pitch. Works without the compass. */
   tilt: FollowStatus;
+  /** Following is held back from outside (a photo is being reviewed); not a fault. */
+  held: boolean;
   /** Why the last attempt to switch a mode on failed, if it did. */
   refusal: 'denied' | 'unavailable' | undefined;
   /** iOS: ± degrees, negative when unreliable. Undefined when the phone does not say. */
@@ -103,6 +105,11 @@ interface Options {
   setFollow(target: FollowTarget | undefined): void;
   /** The figure as it stands now, for the snapshot. */
   getFigure(): Figure;
+  /**
+   * Stops following for as long as it is true, with the modes left switched on: while a photo is
+   * being reviewed, the view must stay where it was when the photo was taken.
+   */
+  held?: boolean;
 }
 
 type Heard = 'waiting' | 'on' | 'silent';
@@ -133,6 +140,7 @@ export function useCompass({
   declination,
   setFollow,
   getFigure,
+  held = false,
 }: Options): CompassState {
   const supported = typeof DeviceOrientationEvent !== 'undefined';
   const [wantHeading, setWantHeading] = useState(false);
@@ -165,6 +173,16 @@ export function useCompass({
     if (live.current.heading) apply();
   }, [northBearing, declination, calibration, apply]);
 
+  // After a hold the modes listen afresh, like after a pause.
+  useEffect(() => {
+    if (!held) return;
+    return () => {
+      last.current = {};
+      setHeardCompass('waiting');
+      setHeardTilt('waiting');
+    };
+  }, [held]);
+
   // Following pauses while the page is hidden or another window has the focus, and starts
   // listening afresh when it comes back.
   useEffect(() => {
@@ -188,8 +206,8 @@ export function useCompass({
   }, [active]);
 
   useEffect(() => {
-    // While paused nothing listens; the cleanup of the last run has stopped the following.
-    if (!active || paused) return;
+    // While paused or held nothing listens; the cleanup of the last run has stopped the following.
+    if (!active || paused || held) return;
     live.current = { heading: wantHeading, tilt: wantTilt };
     // A reading from a mode that has been switched off is not kept.
     if (!wantHeading) delete last.current.compass;
@@ -245,7 +263,7 @@ export function useCompass({
       live.current = { heading: false, tilt: false };
       setFollow(undefined);
     };
-  }, [active, paused, wantHeading, wantTilt, apply, setFollow]);
+  }, [active, paused, held, wantHeading, wantTilt, apply, setFollow]);
 
   /** Switches a mode on (after asking for permission where the browser wants that) or off. */
   const toggle = useCallback(
@@ -357,8 +375,9 @@ export function useCompass({
 
   return {
     supported,
-    heading: statusOf(wantHeading, paused, heardCompass),
-    tilt: statusOf(wantTilt, paused, heardTilt),
+    heading: statusOf(wantHeading, paused || held, heardCompass),
+    tilt: statusOf(wantTilt, paused || held, heardTilt),
+    held,
     refusal,
     accuracy,
     calibration,
@@ -373,8 +392,10 @@ export function useCompass({
 
 /** What the HUD says about the sensors; empty when there is nothing to say. */
 export function compassStatusText(
-  state: Pick<CompassState, 'heading' | 'tilt' | 'refusal'>,
+  state: Pick<CompassState, 'heading' | 'tilt' | 'refusal'> & { held?: boolean },
 ): string {
+  // Held on purpose: nothing to report.
+  if (state.held) return '';
   if (state.refusal === 'denied') return 'The phone needs permission to read its motion sensors.';
   if (state.refusal === 'unavailable') return 'The motion sensors are not available.';
   if (state.heading === 'paused' || state.tilt === 'paused') {

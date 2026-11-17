@@ -47,7 +47,9 @@ const fakeApi = (): { [K in keyof Api]: ReturnType<typeof vi.fn<Api[K]>> } => ({
 });
 
 const onExit = vi.fn();
-const onDeclination = vi.fn<(degrees: number) => Promise<void>>(() => Promise.resolve());
+const onDeclination = vi.fn<(degrees: number, source: string) => Promise<void>>(() =>
+  Promise.resolve(),
+);
 function Harness({
   api = fakeApi(),
   requests = [],
@@ -120,6 +122,8 @@ function firePointer(target: Element, type: string, x: number, y: number, pointe
 
 const takePhoto = () => {
   const file = new File(['fake image bytes'], 'photo.jpg', { type: 'image/jpeg' });
+  // The tap on the shutter, then the camera app handing back the photo.
+  fireEvent.click(screen.getByLabelText('Take photo'));
   fireEvent.change(screen.getByLabelText('Take photo'), { target: { files: [file] } });
   return file;
 };
@@ -365,7 +369,11 @@ describe('WalkHud', () => {
       fireEvent.change(input, { target: { value: '4.5' } });
       fireEvent.click(sheet.getByRole('button', { name: 'Save' }));
       expect(await sheet.findByText('Declination saved for this home.')).toBeInTheDocument();
-      expect(onDeclination).toHaveBeenCalledWith(4.5);
+      // By default the value counts as read off a chart or model.
+      expect(onDeclination).toHaveBeenCalledWith(4.5, 'geodata');
+      fireEvent.change(sheet.getByLabelText('Where it is from'), { target: { value: 'measured' } });
+      fireEvent.click(sheet.getByRole('button', { name: 'Save' }));
+      await waitFor(() => expect(onDeclination).toHaveBeenLastCalledWith(4.5, 'measured'));
       fireEvent.change(input, { target: { value: '400' } });
       fireEvent.click(sheet.getByRole('button', { name: 'Save' }));
       expect(sheet.getByText(/Could not save/)).toBeInTheDocument();
@@ -421,6 +429,55 @@ describe('WalkHud', () => {
       expect(meta.pose.yaw).toBe(meta.sensors!.yaw);
       expect(meta.pose.pitch).toBe(meta.sensors!.pitch);
       expect(meta.pose.pitch).toBeLessThan(rad(-12));
+    });
+
+    it('stores the view of the moment the shutter was tapped, whatever the phone does afterwards', async () => {
+      const api = fakeApi();
+      render(<Harness api={api} />);
+      fireEvent.click(screen.getByRole('button', { name: /Heading off/ }));
+      fireEvent.click(screen.getByRole('button', { name: /Tilt off/ }));
+      // Aimed: facing east, tipped down 15°.
+      tiltPhone(75, 90);
+      await waitFor(() => expect(at().yaw).toBeLessThan(rad(-89)));
+      await waitFor(() => expect(pitch()).toBeLessThan(rad(-14)));
+      const aimed = { yaw: at().yaw, pitch: pitch() };
+
+      const shutter = screen.getByLabelText('Take photo');
+      const before = Date.now();
+      fireEvent.click(shutter);
+      // The camera app is open; the owner lowers the phone and turns round.
+      tiltPhone(20, 250);
+      await act(() => new Promise((resolve) => setTimeout(resolve, 250)));
+      fireEvent.change(shutter, { target: { files: [new File(['x'], 'photo.jpg')] } });
+      // Back on the page, reading the sheet with the phone tipped towards them.
+      tiltPhone(30, 310);
+      tiltPhone(25, 300);
+      await act(() => new Promise((resolve) => setTimeout(resolve, 300)));
+      // The view has gone back to where it was aimed and stays there.
+      expect(at().yaw).toBeCloseTo(aimed.yaw, 2);
+      expect(pitch()).toBeCloseTo(aimed.pitch, 2);
+      // No complaint about the sensors while the sheet holds them.
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+      // The arrows still adjust, from the frozen pose.
+      fireEvent.click(screen.getByRole('button', { name: 'Turn left' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Save photo' }));
+      await screen.findByText('Photo saved');
+      const { pose, sensors } = api.upload.mock.calls[0]![1];
+      expect(pose.yaw).toBeCloseTo(aimed.yaw + rad(5), 2);
+      expect(pose.pitch).toBeCloseTo(aimed.pitch, 2);
+      // The snapshot is the one from the tap: its raw angles, its view, its time.
+      expect(sensors).toMatchObject({ source: 'sensor', alpha: 270, beta: 75, tilt: true });
+      expect(sensors!.yaw).toBeCloseTo(aimed.yaw, 2);
+      expect(sensors!.pitch).toBeCloseTo(aimed.pitch, 2);
+      expect(Date.parse(sensors!.capturedAt!)).toBeGreaterThanOrEqual(before);
+      expect(Date.parse(sensors!.capturedAt!)).toBeLessThan(before + 200);
+
+      // Closing the sheet lets the phone drive the view again.
+      fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+      tiltPhone(90, 0);
+      await waitFor(() => expect(Math.abs(at().yaw)).toBeLessThan(rad(1)));
+      await waitFor(() => expect(Math.abs(pitch())).toBeLessThan(rad(1)));
     });
 
     it('marks a photo as tilted by the phone but headed by hand when only the tilt is on', async () => {
@@ -480,8 +537,9 @@ describe('WalkHud', () => {
       expect(meta.pose.pitch).toBeCloseTo((5 * Math.PI) / 180);
       expect(meta.pose.fovH).toBeGreaterThan(0.5);
       expect(Date.parse(meta.takenAt!)).not.toBeNaN();
-      // No sensors in use: the snapshot says the view was set by hand.
-      expect(meta.sensors).toMatchObject({ source: 'manual', yaw: meta.pose.yaw });
+      // No sensors in use: the snapshot says the view was set by hand. It is the view at the tap
+      // on the shutter; the pose has the adjustments made in the sheet on top.
+      expect(meta.sensors).toMatchObject({ source: 'manual', yaw: 0, pitch: 0 });
     });
 
     it('shows the upload progress', async () => {

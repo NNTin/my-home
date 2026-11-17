@@ -7,7 +7,7 @@ import {
   type PhotoRequest,
 } from '@my-home/shared';
 import { useEffect, useMemo, useState } from 'react';
-import { photosApi, saveHome } from './api';
+import { fetchHome, photosApi, saveHome } from './api';
 import {
   buildHome,
   type HomeScene,
@@ -59,7 +59,7 @@ import { Scene } from './scene/Scene';
 import { calibrationTargets } from './walk/calibration';
 import type { Figure } from './walk/figure';
 import { useWalk } from './walk/useWalk';
-import { WalkHud, type WalkView } from './walk/WalkHud';
+import { WalkHud, type DeclinationSource, type WalkView } from './walk/WalkHud';
 import { buildWalkWorld, placeAt, startPose, type FurnitureBlocker } from './walk/world';
 
 const shownLevels = (scene: HomeScene, v: Visibility) =>
@@ -169,13 +169,17 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   const walk = useWalk(world, start, walking);
   // Magnetic declination of the home: from the model, and editable while walking.
   const [declination, setDeclination] = useState(() => magneticDeclinationOf(model.building));
-  const saveDeclination = async (degrees: number) => {
+  const saveDeclination = async (degrees: number, source: DeclinationSource) => {
+    // The home may have changed since this page loaded (an agent correcting walls, another tab),
+    // and saving replaces the whole home: change the declination on what is stored now.
+    const current = await fetchHome(model.id);
+    const note =
+      source === 'measured'
+        ? 'Measured on site, entered in the app'
+        : 'From a declination chart or model, entered in the app';
     const saved = await saveHome({
-      ...model,
-      building: {
-        ...model.building,
-        magneticDeclination: { value: degrees, source: 'measured', note: 'Entered in the app' },
-      },
+      ...current,
+      building: { ...current.building, magneticDeclination: { value: degrees, source, note } },
     });
     setDeclination(magneticDeclinationOf(saved.building));
   };

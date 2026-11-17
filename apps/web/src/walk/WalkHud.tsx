@@ -1,4 +1,4 @@
-import type { PhotoRequest } from '@my-home/shared';
+import type { PhotoRequest, PhotoSensors } from '@my-home/shared';
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import type { PhotosApi } from '../api';
 import { activeRequest, openRequests } from '../photos/requests';
@@ -12,6 +12,9 @@ import { useFigure, type Walk } from './useWalk';
 import { yawTowards } from './world';
 
 export type WalkView = 'first' | 'third';
+
+/** Where a declination value comes from: read off a chart or model, or measured at the home. */
+export type DeclinationSource = 'geodata' | 'measured';
 
 /** One tap of the look up/down buttons: 10°. */
 const TILT_STEP = (10 * Math.PI) / 180;
@@ -30,7 +33,7 @@ interface Props {
   northBearing?: number;
   declination?: number;
   /** Saves a new declination for the home; rejects when that fails. */
-  onDeclination?(degrees: number): Promise<void>;
+  onDeclination?(degrees: number, source: DeclinationSource): Promise<void>;
   /** Doors and windows around the figure that the compass can be calibrated against. */
   calibrationTargets?(figure: Figure): CalibrationTarget[];
   api: Pick<PhotosApi, 'upload' | 'update'>;
@@ -78,15 +81,26 @@ export function WalkHud({
     onChoose?.(id);
   };
   const { setPad: onPad, nudge: onNudge, figureRef } = walk;
+  /**
+   * The photo being reviewed, with what the sensors said **when the shutter was tapped**. Between
+   * the tap and the save the owner reads the sheet and types, usually with the phone tipped
+   * towards them: none of that may end up in the photo's pose.
+   */
+  const [capture, setCapture] = useState<{ file: Blob; sensors: PhotoSensors }>();
+  const tap = useRef<{ figure: Figure; sensors: PhotoSensors } | undefined>(undefined);
+  const file = capture?.file;
   const compass = useCompass({
     northBearing,
     declination,
     setFollow: walk.setFollow,
     getFigure: () => figureRef.current,
+    // The view stays where it was at the tap; the sheet's arrows adjust it from there.
+    held: capture !== undefined,
   });
   const [calibrating, setCalibrating] = useState(false);
   const [declinationText, setDeclinationText] = useState(String(declination));
   const [declinationSaved, setDeclinationSaved] = useState<'saving' | 'saved' | 'failed'>();
+  const [declinationSource, setDeclinationSource] = useState<DeclinationSource>('geodata');
   /** The compass turns the figure / the phone's tilt sets the pitch, right now. */
   const following = compass.heading === 'on';
   const tilting = compass.tilt === 'on';
@@ -117,13 +131,12 @@ export function WalkHud({
     }
     setDeclinationSaved('saving');
     try {
-      await onDeclination(value);
+      await onDeclination(value, declinationSource);
       setDeclinationSaved('saved');
     } catch {
       setDeclinationSaved('failed');
     }
   };
-  const [file, setFile] = useState<Blob>();
   const drag = useRef<{ id: number; x: number; y: number } | undefined>(undefined);
   const where = describe(figure) || 'Outside';
 
@@ -288,10 +301,23 @@ export function WalkHud({
               }}
             />
           </label>{' '}
+          <label className="walk-declination">
+            Where it is from{' '}
+            <select
+              value={declinationSource}
+              onChange={(e) => {
+                setDeclinationSource(e.target.value as DeclinationSource);
+                setDeclinationSaved(undefined);
+              }}
+            >
+              <option value="geodata">a declination chart or model</option>
+              <option value="measured">measured on site</option>
+            </select>
+          </label>{' '}
           <button
             type="button"
             onClick={() => void saveDeclination()}
-            disabled={declinationSaved === 'saving' || Number(declinationText) === declination}
+            disabled={declinationSaved === 'saving' || declinationSaved === 'saved'}
           >
             Save
           </button>
@@ -356,14 +382,14 @@ export function WalkHud({
           api={api}
           onNudge={onNudge}
           onLook={onLook}
-          getSensors={compass.snapshot}
+          getSensors={() => capture!.sensors}
           request={request}
           onSaved={() => {
             // An answered request is no longer the one to answer next.
             choose(undefined);
             onSaved?.();
           }}
-          onClose={() => setFile(undefined)}
+          onClose={() => setCapture(undefined)}
         />
       ) : (
         <div className="walk-controls">
@@ -393,9 +419,20 @@ export function WalkHud({
               type="file"
               accept="image/*"
               capture="environment"
+              onClick={() => {
+                // The tap on the shutter is the moment of the photo: the camera app that opens
+                // next hides the page, and the phone moves on.
+                tap.current = { figure: figureRef.current, sensors: compass.snapshot() };
+              }}
               onChange={(e) => {
                 const picked = e.target.files?.[0];
-                if (picked) setFile(picked);
+                if (picked) {
+                  const taken = tap.current;
+                  // Back to the pose of the tap, whatever the phone did in between.
+                  if (taken) walk.place(taken.figure);
+                  setCapture({ file: picked, sensors: taken?.sensors ?? compass.snapshot() });
+                }
+                tap.current = undefined;
                 // The same photo can be picked again after a discard.
                 e.target.value = '';
               }}

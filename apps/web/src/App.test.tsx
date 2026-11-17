@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import type { SceneProps } from './scene/Scene';
@@ -172,7 +172,8 @@ describe('App', () => {
 
     it('saves the magnetic declination of the home from the calibration sheet', async () => {
       vi.stubGlobal('DeviceOrientationEvent', class {});
-      const fetchMock = stubApi();
+      const models: Record<string, unknown> = {};
+      const fetchMock = stubApi(undefined, models);
       render(<App />);
       fireEvent.click(await screen.findByRole('button', { name: /Walk and take photos/ }));
       fireEvent.click(screen.getByRole('button', { name: /Heading off/ }));
@@ -182,24 +183,44 @@ describe('App', () => {
       expect(sheet.getAllByRole('button', { name: /^(Door|Window):/ }).length).toBeGreaterThan(0);
       expect(sheet.getByLabelText(/Magnetic declination/)).toHaveValue(0);
 
+      // While the page is open, the stored home changes: an agent corrects it through the api.
+      const corrected = {
+        ...mockHome,
+        name: 'Mock home, corrected by an agent',
+        rooms: mockHome.rooms.map((r, i) => (i === 0 ? { ...r, name: 'Renamed room' } : r)),
+      };
+      models['mock-home'] = corrected;
+
       fireEvent.change(sheet.getByLabelText(/Magnetic declination/), { target: { value: '4' } });
       fireEvent.click(sheet.getByRole('button', { name: 'Save' }));
       expect(await sheet.findByText('Declination saved for this home.')).toBeInTheDocument();
-      const put = fetchMock.mock.calls.find(([, init]) => init?.method === 'PUT')!;
-      expect(put[0]).toBe('/api/homes/mock-home');
-      const saved = JSON.parse(put[1]!.body as string) as typeof mockHome;
+      const puts = () => fetchMock.mock.calls.filter(([, init]) => init?.method === 'PUT');
+      expect(puts()[0]![0]).toBe('/api/homes/mock-home');
+      const saved = JSON.parse(puts()[0]![1]!.body as string) as typeof mockHome;
+      // By default the value counts as read off a chart or model.
       expect(saved.building.magneticDeclination).toEqual({
         value: 4,
-        source: 'measured',
-        note: 'Entered in the app',
+        source: 'geodata',
+        note: 'From a declination chart or model, entered in the app',
       });
-      // Nothing else of the home changed.
+      // The save is made on the home as it is stored now: the agent's correction survives, and
+      // nothing but the declination differs from it.
+      expect(saved.name).toBe('Mock home, corrected by an agent');
+      expect(saved.rooms[0]!.name).toBe('Renamed room');
       expect({ ...saved, building: { ...saved.building, magneticDeclination: undefined } }).toEqual(
         {
-          ...mockHome,
-          building: { ...mockHome.building, magneticDeclination: undefined },
+          ...corrected,
+          building: { ...corrected.building, magneticDeclination: undefined },
         },
       );
+
+      // The provenance can be set to a measurement on site.
+      fireEvent.change(sheet.getByLabelText('Where it is from'), { target: { value: 'measured' } });
+      fireEvent.click(sheet.getByRole('button', { name: 'Save' }));
+      await waitFor(() => expect(puts()).toHaveLength(2));
+      const measured = JSON.parse(puts()[1]![1]!.body as string) as typeof mockHome;
+      expect(measured.building.magneticDeclination).toMatchObject({ value: 4, source: 'measured' });
+      expect(measured.name).toBe('Mock home, corrected by an agent');
     });
 
     it('opens walking directly from the address: ?walk=third', async () => {

@@ -73,7 +73,7 @@ One chain, in [`apps/web/src/walk/orientation.ts`](../apps/web/src/walk/orientat
 
 The **declination** is a setting of the home, `building.magneticDeclination`
 ([home-model.md](home-model.md#orientation)). Enter it once in the **Calibrate** sheet from a declination chart
-for your area; it is 0 until then. The app never works it out from a location, and never asks for one.
+for your area; it is 0 until then. The sheet also asks where the value is from (a chart or model, or measured on site), which is stored as its provenance. Saving changes only the declination of the home as it is stored at that moment, so edits made elsewhere in the meantime are kept. The app never works it out from a location, and never asks for one.
 
 ### Calibrating
 
@@ -88,6 +88,11 @@ The offset is shown in the bar, kept **per device** (in the browser's local stor
 **Reset** clears it.
 
 ### What is stored with a photo
+
+With Heading or Tilt on, the photo's view is the one at the **tap on the camera button**. The camera app
+that opens next hides the page, and afterwards the phone is usually tipped towards you while you read the
+sheet and type a note; so the view goes back to where it was at the tap and the phone stops driving it until
+the sheet is closed. The arrow buttons in the sheet adjust the pose from there.
 
 Every photo taken while walking stores a **sensor snapshot** next to its pose
 ([photos.md](photos.md#sensor-snapshot)): whether the heading was measured by the compass or set by hand,

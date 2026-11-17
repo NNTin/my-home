@@ -7,15 +7,16 @@
 # crossed smoothly, jitter is ignored, landscape is compensated, tilt changes the pitch (also on its own),
 # the compass rose turns, a sideways drag corrects the compass, and a captured photo stores the sensor
 # snapshot. Exit 0 when every check passes.
-# It uploads ONE synthetic test photo and deletes and purges exactly that photo again; nothing else is
-# changed. A real phone is still needed for what mocks cannot show: see the checklist in docs/walking.md.
+# Read-only, like walk-smoke.sh: the photo it "takes" is synthetic and its upload is intercepted in the
+# browser, so nothing is stored, changed or deleted on the environment.
+# A real phone is still needed for what mocks cannot show: see the checklist in docs/walking.md.
 set -euo pipefail
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=lib.sh
 source "$script_dir/lib.sh"
 
 usage() {
-  sed -n '2,11s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,12s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 

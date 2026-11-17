@@ -73,8 +73,9 @@ check "annotate patches the note and merges tags" \
 for command in delete purge restore; do
   check "photos.sh has no $command command" fails "$scripts/photos.sh" staging "$command" aaa
 done
-check "no script sends a DELETE" fails grep -lE -- '-X +DELETE' "$scripts"/photo*.sh
-check "no script purges or empties the trash" fails grep -lE -- '/purge|trash/empty' "$scripts"/photo*.sh
+# That holds for every script of the skill, the browser-driven smoke tests included.
+check "no script sends a DELETE" fails grep -lE -- "-X +DELETE|method: *'DELETE'" "$scripts"/*.sh "$scripts"/*.mjs
+check "no script purges or empties the trash" fails grep -lE -- '/purge|trash/empty' "$scripts"/*.sh "$scripts"/*.mjs
 
 reset
 "$scripts/photo-requests.sh" staging create --room souterrain-kitchen --at 4.5,-6 --heading-deg 90 \

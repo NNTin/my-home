@@ -3,8 +3,9 @@
 // Smoke test of the phone-sensor modes in walk mode, on a phone-sized screen, with MOCKED orientation
 // events: no real device is involved. Covers the Android path (absolute alpha), the iOS path
 // (webkitCompassHeading after a permission tap), tilt on its own, the crossing of north, landscape,
-// the compass rose, the calibration drag and the sensor snapshot of a captured photo. The one photo it
-// uploads is its own test data and is deleted and purged at the end.
+// the compass rose, the calibration drag and the sensor snapshot of a captured photo.
+// Read-only: the upload of that photo is intercepted in the browser and answered here, so nothing
+// reaches the environment's photo store and there is nothing to remove afterwards.
 // The functions handed to page.evaluate() and addInitScript() run in the page, not in Node:
 /* global window, screen, DeviceOrientationEvent */
 import { createRequire } from 'node:module';
@@ -225,16 +226,50 @@ async function android(browser, home) {
   await s.face(90, 75);
   const shot = await s.settle((v) => Math.abs(v.pitch + 15) < 3 && apart(v.heading, plan(90)) < 3);
   await s.page.locator('.shutter input').setInputFiles(photoFile);
-  await s.page.getByLabel('Note').fill('compass-smoke test photo: safe to remove');
-  const [response] = await Promise.all([
-    s.page.waitForResponse((r) => r.url().includes('/photos') && r.request().method() === 'POST', {
-      timeout: 120_000,
-    }),
-    s.button('Save photo').click(),
-  ]);
-  const photo = await response.json();
+  await s.page.getByLabel('Note').fill('compass-smoke: not stored');
+  // The upload never leaves the browser: it is caught here, its `meta` part is read, and the page
+  // gets the answer the api would give. Nothing is stored.
+  let meta;
+  await s.page.route('**/api/homes/*/photos', async (route) => {
+    const request = route.request();
+    if (request.method() !== 'POST') return route.continue();
+    const body = request.postDataBuffer()?.toString('utf8') ?? '';
+    meta = JSON.parse(/name="meta"\r\n\r\n([\s\S]*?)\r\n--/.exec(body)?.[1] ?? 'null');
+    const image = { contentType: 'image/webp', width: 320, height: 240, byteSize: 1 };
+    const now = new Date().toISOString();
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 'compass-smoke-not-stored',
+        homeId: home.id,
+        levelId: meta?.levelId ?? null,
+        pose: meta?.pose,
+        capturedRoomId: null,
+        capturedRoomName: null,
+        capturedRoomStatus: 'none',
+        room: null,
+        levelInModel: true,
+        takenAt: meta?.takenAt ?? now,
+        note: meta?.note ?? '',
+        tags: meta?.tags ?? [],
+        requestId: null,
+        image,
+        thumbnail: image,
+        sensors: meta?.sensors ?? null,
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+        purgeAt: null,
+      }),
+    });
+  });
+  await s.button('Save photo').click();
+  await s.page.getByText('Photo saved').waitFor({ timeout: 30_000 });
+  await s.page.unroute('**/api/homes/*/photos');
+  const photo = meta ?? {};
   const sensors = photo.sensors ?? {};
-  check('the photo is stored', response.status() === 201, String(response.status()));
+  check('the upload carries the pose and a sensor snapshot', Boolean(meta?.pose && meta?.sensors));
   check(
     'its snapshot says the heading was measured',
     sensors.source === 'sensor',
@@ -262,6 +297,10 @@ async function android(browser, home) {
   );
   await s.button('Done').click();
 
+  // With the sheet closed the modes listen afresh: the next event has the phone drive the view again.
+  await s.face(90, 75);
+  await s.settle((v) => apart(v.heading, plan(90)) < 3);
+  await s.page.waitForTimeout(1500);
   // A sideways drag corrects the compass instead of being undone by the next event.
   const before = await s.read();
   await s.page.mouse.move(195, 420);
@@ -279,7 +318,6 @@ async function android(browser, home) {
   check('the offset is shown', /offset \+1\d/.test(await s.page.locator('.walk-bar').innerText()));
   await s.page.screenshot({ path: out, timeout: 120_000 });
   await s.context.close();
-  return photo.id;
 }
 
 async function ios(browser, home) {
@@ -370,27 +408,17 @@ async function ios(browser, home) {
 const browser = await chromium.launch({
   args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
 });
-let photoId;
 try {
-  const api = async (pathname, init = {}) => {
-    const response = await fetch(base + pathname, { redirect: 'manual', ...init, headers: auth });
-    if (!response.ok)
-      throw new Error(`${init.method ?? 'GET'} ${pathname}: HTTP ${response.status}`);
-    return response.status === 204 ? undefined : response.json();
+  // Reading only: the homes, for the north bearing and the declination to expect.
+  const api = async (pathname) => {
+    const response = await fetch(base + pathname, { redirect: 'manual', headers: auth });
+    if (!response.ok) throw new Error(`GET ${pathname}: HTTP ${response.status}`);
+    return response.json();
   };
   const homes = await api('/api/homes');
   const home = await api(`/api/homes/${homes.items[0].id}`);
-  try {
-    photoId = await android(browser, home);
-    await ios(browser, home);
-  } finally {
-    // Remove the test photo this run uploaded, and nothing else.
-    if (photoId) {
-      await api(`/api/photos/${photoId}`, { method: 'DELETE' });
-      await api(`/api/photos/${photoId}/purge`, { method: 'POST' });
-      console.log('test photo deleted and purged');
-    }
-  }
+  await android(browser, home);
+  await ios(browser, home);
   check(
     'no console or page errors',
     errors.length === 0,
