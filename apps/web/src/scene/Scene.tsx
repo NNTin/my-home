@@ -48,6 +48,13 @@ export interface SceneProps {
   resetViewRef?: RefObject<(() => void) | undefined>;
 }
 
+/** Device pixel ratio the canvas renders at, as [min, max]; lower on a phone. */
+const DPR: [number, number] = [1, 2];
+export const PHONE_DPR: [number, number] = [1, 1.5];
+/** Size of the sun's shadow map; a quarter of the texels on a phone. */
+const SHADOW_MAP: [number, number] = [2048, 2048];
+const PHONE_SHADOW_MAP: [number, number] = [1024, 1024];
+
 /**
  * Initial camera: south-east of the building, far enough to see the whole plot. `aspect` is the
  * view's width over its height: a view narrower than it is high (a phone held upright) sees less
@@ -119,7 +126,10 @@ export function Scene({
     <>
       <Canvas
         camera={{ position: initialCamera(scene.bounds), fov: 45, near: 0.1, far: 500 }}
-        dpr={[1, 2]}
+        // A phone has more pixels per inch than it can fill at a steady rate, and a battery: a
+        // capped pixel ratio, and a new frame only when something changed (docs/mobile.md).
+        dpr={touch ? PHONE_DPR : DPR}
+        frameloop={touch ? 'demand' : 'always'}
         shadows
         // The camera is placed before the view is measured: stand back if it is a narrow one.
         onCreated={({ camera, size }) =>
@@ -135,7 +145,7 @@ export function Scene({
           position={[20, 30, 15]}
           intensity={1.6}
           castShadow
-          shadow-mapSize={[2048, 2048]}
+          shadow-mapSize={touch ? PHONE_SHADOW_MAP : SHADOW_MAP}
           shadow-bias={-0.0005}
           shadow-normalBias={0.03}
         >

@@ -109,6 +109,13 @@ jobs:
                 and .building.roof.type == "gable" and (.outdoorAreas | length) == 3'
           curl -fsS http://localhost:8080/api/homes/mock-home/export | jq -e '.id == "mock-home"'
           curl -fsS http://localhost:8080/ | grep -q '<div id="root">'
+          # The web app manifest and its icons (installable app).
+          curl -fsS -D manifest.headers -o manifest.json http://localhost:8080/manifest.webmanifest
+          grep -qi '^content-type: application/manifest+json' manifest.headers
+          jq -e '.display == "standalone" and .start_url == "/"' manifest.json
+          for icon in $(jq -r '.icons[].src' manifest.json) /icons/apple-touch-icon.png; do
+            curl -fsS -o /dev/null "http://localhost:8080$icon"
+          done
           curl -fsS http://localhost:8080/api/health/live | jq -e '.status == "ok"'
       - name: Smoke test layouts
         run: |

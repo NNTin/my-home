@@ -42,7 +42,10 @@ export interface ItemTypeModule {
   /** Unique id stored in layouts (`typeId`); must equal the module folder name. */
   id: string;
   name: string;
-  /** Catalog group, e.g. "Bedroom". Any string; the catalog groups types by it. */
+  /**
+   * Catalog group. Any string; the catalog groups types by it. Where a group stands for a kind of
+   * room, it is spelled like the rooms of the home ("Bed room", "Work room"): one vocabulary.
+   */
   category: string;
   /** Short icon for the catalog (an emoji or a few characters). */
   icon: string;

@@ -4,7 +4,7 @@ import { defineItemType } from '../types';
 export default defineItemType({
   id: 'wardrobe',
   name: 'Wardrobe',
-  category: 'Bedroom',
+  category: 'Bed room',
   icon: '🚪',
   description: 'Two-door wardrobe; stands with its back to a wall.',
   size: { width: 1.2, depth: 0.6, height: 2.0 },

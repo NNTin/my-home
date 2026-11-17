@@ -68,6 +68,17 @@ export function toolbarPosition(
   ];
 }
 
+/**
+ * Whether the item the toolbar belongs to is in the picture, given its anchor in normalised
+ * device coordinates: in front of the camera and inside the view, or just outside it (the toolbar
+ * is then held at the edge). An item behind the camera projects to a mirrored point on screen.
+ */
+export const toolbarInView = (ndc: { x: number; y: number; z: number }) =>
+  ndc.z < 1 && Math.abs(ndc.x) <= TOOLBAR_VIEW_MARGIN && Math.abs(ndc.y) <= TOOLBAR_VIEW_MARGIN;
+const TOOLBAR_VIEW_MARGIN = 1.15;
+/** Where a toolbar goes whose item is out of the picture: nowhere to be seen or tapped. */
+const OUT_OF_VIEW: [number, number] = [-10000, -10000];
+
 const projected = new Vector3();
 const placeToolbar = (
   anchor: Object3D,
@@ -75,6 +86,7 @@ const placeToolbar = (
   size: { width: number; height: number },
 ) => {
   projected.setFromMatrixPosition(anchor.matrixWorld).project(camera);
+  if (!toolbarInView(projected)) return OUT_OF_VIEW;
   return toolbarPosition(
     [(projected.x + 1) * (size.width / 2), (1 - projected.y) * (size.height / 2)],
     size,

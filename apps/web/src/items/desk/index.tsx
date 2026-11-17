@@ -4,7 +4,7 @@ import { defineItemType } from '../types';
 export default defineItemType({
   id: 'desk',
   name: 'Desk',
-  category: 'Office',
+  category: 'Work room',
   icon: '🖥️',
   description: 'Work desk; usually against a wall.',
   size: { width: 1.4, depth: 0.7, height: 0.75 },

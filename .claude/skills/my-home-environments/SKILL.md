@@ -66,7 +66,9 @@ $S/photo-requests.sh staging create --room souterrain-kitchen --reason "Which wa
   3D view is clear of the top bar and the sheet, the first-run hints are dismissed, a tap opens and closes each
   panel, the level switcher cuts the building away, a furniture item is placed and then dragged, rotated,
   long-pressed, duplicated and deleted with real touch events, walk mode is entered and left, and held across
-  the sheet is at the side. It writes only to a **layout it creates itself and removes again**; every other write is refused inside
+  the sheet is at the side. It also counts WebGL draw calls (nothing is drawn while nothing moves, a finger
+  or "Reset view" draws again), checks the canvas' pixel ratio (at most 1.5), that every control has a name,
+  and that the web app manifest and its icons are served. It writes only to a **layout it creates itself and removes again**; every other write is refused inside
   the browser.
 - `compass-smoke.sh <env> [--out file.png]`: the "Heading" and "Tilt" modes of walk mode at 390x844 with
   **mocked** orientation events (Android absolute alpha and the iOS `webkitCompassHeading` path): turning and

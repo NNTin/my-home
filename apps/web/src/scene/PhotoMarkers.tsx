@@ -1,7 +1,7 @@
 import { Billboard } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
-import type { Group, PerspectiveCamera } from 'three';
+import type { Group, Mesh, PerspectiveCamera } from 'three';
 import type { PhotoPose } from '@my-home/shared';
 import type { Vec3 } from '../builder/buildHome';
 import { turnRose, type RoseTarget } from '../compass/Compass';
@@ -39,6 +39,19 @@ export const markerScale = (distance: number) =>
 const MARKER_RADIUS = 0.12;
 const TAP_RADIUS = 0.2;
 const TOUCH_TAP_RADIUS = 0.4;
+/** The tap target grows with the marker only this far, and otherwise just covers the ball. */
+const TAP_MAX_SCALE = 2;
+
+/**
+ * Radius in metres of what takes the tap on a marker drawn `scale` times larger than life. It
+ * always covers the ball that is drawn, but does not grow with the ring around it: a tap near a
+ * camera in an overview must not open its photo by accident.
+ */
+export const markerTapRadius = (scale: number, touch: boolean) =>
+  Math.max(
+    MARKER_RADIUS * scale * 1.1,
+    (touch ? TOUCH_TAP_RADIUS : TAP_RADIUS) * Math.min(scale, TAP_MAX_SCALE),
+  );
 
 function PhotoMarker({
   marker,
@@ -57,9 +70,14 @@ function PhotoMarker({
   }, [marker]);
   const color = marker.selected ? SELECTED_COLOR : MARKER_COLOR;
   const head = useRef<Group>(null);
+  const tap = useRef<Mesh>(null);
   useFrame(({ camera }) => {
     const group = head.current;
-    if (group) group.scale.setScalar(markerScale(camera.position.distanceTo(group.position)));
+    if (!group) return;
+    const scale = markerScale(camera.position.distanceTo(group.position));
+    group.scale.setScalar(scale);
+    // The tap target is a unit ball inside the scaled group: undo the group's scale.
+    tap.current?.scale.setScalar(markerTapRadius(scale, touch) / scale);
   });
   return (
     <group>
@@ -70,13 +88,14 @@ function PhotoMarker({
         </mesh>
         {/* The tap target: larger than the ball, and larger still for a finger. */}
         <mesh
+          ref={tap}
           onClick={(e) => {
             if (!onCanvas(e.nativeEvent)) return;
             e.stopPropagation();
             onSelect(marker.id);
           }}
         >
-          <sphereGeometry args={[touch ? TOUCH_TAP_RADIUS : TAP_RADIUS, 12, 8]} />
+          <sphereGeometry args={[1, 12, 8]} />
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
         {/*
@@ -175,11 +194,14 @@ export function ViewpointRig({ viewpoint, rose }: { viewpoint: Viewpoint; rose?:
   useEffect(() => {
     const camera = get().camera as PerspectiveCamera;
     const { x, y, z } = viewpoint.pose.position;
+    // Where frames are drawn on demand: one for the new view, and one for leaving it.
+    get().invalidate();
     return () => {
       // Back to the orbit view: step back out of the building.
       camera.fov = 45;
       camera.updateProjectionMatrix();
       camera.position.set(x + 5, y + 8, z + 8);
+      get().invalidate();
     };
   }, [get, viewpoint]);
 

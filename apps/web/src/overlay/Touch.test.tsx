@@ -1,8 +1,8 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
-import { toolbarPosition } from '../scene/FurnitureLayer';
-import { markerScale } from '../scene/PhotoMarkers';
+import { toolbarInView, toolbarPosition } from '../scene/FurnitureLayer';
+import { markerScale, markerTapRadius } from '../scene/PhotoMarkers';
 import type { SceneProps } from '../scene/Scene';
 import { fakeApi } from '../test/fakeApi';
 import { layoutItem, testPhoto } from '../test/fixtures';
@@ -114,6 +114,8 @@ describe('furniture by touch', () => {
     expect(sheet()).toHaveClass('sheet-half');
     expect(tab(/Furniture/)).toHaveAttribute('aria-selected', 'true');
     expect(furniture()[0]).toMatchObject({ selected: true, position: at });
+    // Nothing was changed, so nothing is saved and nothing claims to be.
+    expect(screen.queryByRole('status', { name: 'Status' })).not.toBeInTheDocument();
   });
 
   it('has no toolbar while walking', async () => {
@@ -154,6 +156,33 @@ describe('toolbarPosition', () => {
   });
   it('is centred in a view narrower than itself', () => {
     expect(toolbarPosition([10, 300], { width: 300, height: 600 })[0]).toBe(150);
+  });
+});
+
+describe('toolbarInView', () => {
+  it('shows the toolbar for an item in the picture or just beside it', () => {
+    expect(toolbarInView({ x: 0, y: 0, z: 0.5 })).toBe(true);
+    expect(toolbarInView({ x: -1.1, y: 0.9, z: 0.9 })).toBe(true);
+  });
+  it('hides it for an item behind the camera or well off-screen', () => {
+    // Behind the camera a point projects beyond the far plane, mirrored onto the screen.
+    expect(toolbarInView({ x: 0.2, y: -0.3, z: 1.4 })).toBe(false);
+    expect(toolbarInView({ x: 1.6, y: 0, z: 0.5 })).toBe(false);
+    expect(toolbarInView({ x: 0, y: -2, z: 0.5 })).toBe(false);
+  });
+});
+
+describe('markerTapRadius', () => {
+  it('is the comfortable target up close, larger for a finger', () => {
+    expect(markerTapRadius(1, false)).toBe(0.2);
+    expect(markerTapRadius(1, true)).toBe(0.4);
+  });
+  it('stops growing with the marker, but always covers the ball that is drawn', () => {
+    expect(markerTapRadius(2, true)).toBe(0.8);
+    // Five times life-size: the ring is 1.35 m out, the target stays well inside it.
+    expect(markerTapRadius(5, true)).toBe(0.8);
+    expect(markerTapRadius(5, false)).toBeCloseTo(0.66);
+    expect(markerTapRadius(5, false)).toBeGreaterThan(0.12 * 5);
   });
 });
 
