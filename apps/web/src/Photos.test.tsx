@@ -222,6 +222,57 @@ describe('photo gallery', () => {
     ).toHaveValue('Coat rack');
   });
 
+  it('says where each heading came from and marks measured ones in 3D', async () => {
+    const measured = testPhoto({
+      id: 'measured',
+      sensors: {
+        source: 'sensor',
+        alpha: 271.5,
+        beta: 84,
+        gamma: -2,
+        absolute: true,
+        compassAccuracy: 12,
+        screenAngle: 90,
+        declination: 3,
+        calibrationOffset: -7,
+        trueBearing: 84.4,
+        yaw: 0,
+        pitch: 0,
+      },
+    });
+    const byHand = testPhoto({
+      id: 'by-hand',
+      sensors: { source: 'manual', yaw: 0, pitch: 0 },
+      takenAt: '2026-03-02T10:00:00.000Z',
+      capturedRoomName: 'Kitchen',
+      room: { id: 'souterrain-kitchen', name: 'Kitchen' },
+    });
+    const { panel } = await openGallery({
+      photos: [upstairs, garden, byHand, measured],
+      requests: [],
+    });
+    const source = () =>
+      within(panel.getByRole('group', { name: 'Photo details' })).getByLabelText('Heading source');
+
+    fireEvent.click(panel.getByRole('img', { name: /^Hallway,/ }));
+    expect(source()).toHaveTextContent(
+      '🧭 Heading measured by the phone: true bearing 84° · ±12° · declination +3° · calibration -7° · screen turned 90°.',
+    );
+    fireEvent.click(panel.getByRole('img', { name: /^Kitchen,/ }));
+    expect(source()).toHaveTextContent('Heading set by hand (compass off).');
+    // An older photo without a snapshot still displays.
+    fireEvent.click(panel.getByRole('img', { name: /^Old room,/ }));
+    expect(source()).toHaveTextContent('no sensor data');
+
+    expect(Object.fromEntries(lastScene!.photoMarkers!.map((m) => [m.id, m.measured]))).toEqual({
+      measured: true,
+      'by-hand': false,
+      upstairs: false,
+      garden: false,
+    });
+    expect(panel.getByText(/a ring around a camera marks a measured heading/)).toBeInTheDocument();
+  });
+
   it('keeps showing a photo whose room is not in this model', async () => {
     const { panel } = await openGallery();
     fireEvent.click(panel.getByRole('img', { name: /^Old room,/ }));

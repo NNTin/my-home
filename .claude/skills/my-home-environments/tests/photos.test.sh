@@ -58,6 +58,10 @@ check "list uses the first home and encodes the filters" \
 reset
 "$scripts/photos.sh" staging download --dir "$work/out" --level souterrain >/dev/null 2>&1
 check "download saves every listed photo and its metadata" test "$(find "$work/out" -type f | wc -l)" = 6
+reset
+out=$("$scripts/photos.sh" staging sensors aaa)
+check "sensors shows where a photo's heading came from" \
+  test "$(jq -r '.heading' <<<"$out")" = "not recorded"
 check "download writes the image bytes" grep -q 'image-bytes-of-/api/photos/bbb/image' "$work/out/bbb.webp"
 
 reset
@@ -69,8 +73,9 @@ check "annotate patches the note and merges tags" \
 for command in delete purge restore; do
   check "photos.sh has no $command command" fails "$scripts/photos.sh" staging "$command" aaa
 done
-check "no script sends a DELETE" fails grep -lE -- '-X +DELETE' "$scripts"/photo*.sh
-check "no script purges or empties the trash" fails grep -lE -- '/purge|trash/empty' "$scripts"/photo*.sh
+# That holds for every script of the skill, the browser-driven smoke tests included.
+check "no script sends a DELETE" fails grep -lE -- "-X +DELETE|method: *'DELETE'" "$scripts"/*.sh "$scripts"/*.mjs
+check "no script purges or empties the trash" fails grep -lE -- '/purge|trash/empty' "$scripts"/*.sh "$scripts"/*.mjs
 
 reset
 "$scripts/photo-requests.sh" staging create --room souterrain-kitchen --at 4.5,-6 --heading-deg 90 \

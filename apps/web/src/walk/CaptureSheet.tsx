@@ -1,4 +1,4 @@
-import type { Photo, PhotoRequest } from '@my-home/shared';
+import type { Photo, PhotoRequest, PhotoSensors } from '@my-home/shared';
 import { useEffect, useRef, useState } from 'react';
 import type { PhotosApi } from '../api';
 import { poseOf, type Figure } from './figure';
@@ -28,6 +28,8 @@ interface Props {
   api: Pick<PhotosApi, 'upload' | 'update'>;
   onNudge(forward: number, right: number): void;
   onLook(dYaw: number, dPitch: number): void;
+  /** What the phone's sensors say at the moment of saving (or that the view was set by hand). */
+  getSensors?(): PhotoSensors;
   /** The open photo request this photo would answer, if the figure is at one. */
   request?: PhotoRequest | undefined;
   /** Called after the photo, or a correction of its pose, was stored. */
@@ -48,6 +50,7 @@ export function CaptureSheet({
   api,
   onNudge,
   onLook,
+  getSensors,
   request,
   onSaved,
   onClose,
@@ -80,6 +83,7 @@ export function CaptureSheet({
           takenAt: takenAtOf(file),
           note,
           tags,
+          ...(getSensors && { sensors: getSensors() }),
           ...(request && answers && { requestId: request.id }),
         },
         image.blob,

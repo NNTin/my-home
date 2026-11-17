@@ -1,3 +1,4 @@
+import type { PhotoSensors } from '@my-home/shared';
 import {
   customType,
   doublePrecision,
@@ -56,6 +57,7 @@ export const photos = media.table(
     thumbnailHeight: integer('thumbnail_height').notNull(),
     thumbnailByteSize: integer('thumbnail_byte_size').notNull(),
     sha256: text('sha256').notNull(),
+    sensors: jsonb('sensors').$type<PhotoSensors>(),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
     updatedAt: timestamptz('updated_at').notNull().defaultNow(),
     deletedAt: timestamptz('deleted_at'),

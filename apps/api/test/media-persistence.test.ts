@@ -70,7 +70,15 @@ describe('the media schema outlives resets and other branches', () => {
         })
       ).json(),
     );
-    const kept = await upload({ note: 'Radiator', tags: ['wall'], requestId: request.id });
+    const sensors = {
+      source: 'sensor',
+      alpha: 271.5,
+      beta: 84,
+      gamma: -2,
+      absolute: true,
+      yaw: -1.5,
+    };
+    const kept = await upload({ note: 'Radiator', tags: ['wall'], requestId: request.id, sensors });
     const trashed = await upload({ note: 'Blurry' });
     await inject('DELETE', `/api/photos/${trashed.id}`);
     const trashedRequest = PhotoRequest.parse(
@@ -86,6 +94,7 @@ describe('the media schema outlives resets and other branches', () => {
 
     const before = await snapshot();
     expect(before.photos.items.map((p) => p.id)).toEqual([kept.id]);
+    expect(before.photos.items[0]!.sensors).toEqual(sensors);
     expect(before.trash.photos.map((p) => p.id)).toEqual([trashed.id]);
     expect(before.trash.requests.map((r) => r.id)).toEqual([trashedRequest.id]);
     expect(before.blobs).toHaveLength(2);

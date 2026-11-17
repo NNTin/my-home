@@ -1,6 +1,7 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useRef, type RefObject } from 'react';
 import type { Group, PerspectiveCamera, Vector3 } from 'three';
+import { turnRose, type RoseTarget } from '../compass/Compass';
 import type { Figure } from '../walk/figure';
 import { EYE_HEIGHT, FIGURE_HEIGHT, FIGURE_RADIUS } from '../walk/world';
 
@@ -8,6 +9,11 @@ export interface WalkRigProps {
   figure: RefObject<Figure>;
   /** `first`: the camera is the figure's eyes. `third`: it orbits the figure from above. */
   view: 'first' | 'third';
+}
+
+interface Props extends WalkRigProps {
+  /** The HUD compass rose, which in first person follows where the figure looks. */
+  rose?: RoseTarget;
 }
 
 const FIRST_PERSON_FOV = 70;
@@ -25,7 +31,7 @@ interface OrbitLike {
  * walking never re-renders React. In the overview the orbit controls stay usable: their target
  * rides along with the figure.
  */
-export function WalkRig({ figure, view }: WalkRigProps) {
+export function WalkRig({ figure, view, rose }: Props) {
   const get = useThree((s) => s.get);
   const group = useRef<Group>(null);
   const feet = useRef(figure.current.y);
@@ -62,6 +68,7 @@ export function WalkRig({ figure, view }: WalkRigProps) {
     if (view === 'first') {
       camera.position.set(f.x, y + EYE_HEIGHT, f.z);
       camera.rotation.set(f.pitch, f.yaw, 0, 'YXZ');
+      if (rose) turnRose(rose, f.yaw);
     } else if (controls) {
       const dx = f.x - controls.target.x;
       const dy = y + 1 - controls.target.y;

@@ -144,6 +144,8 @@ describe('inputs', () => {
     expect(inputFromPad(0, -1)).toEqual({ forward: 1, strafe: 0, turn: 0 });
     expect(inputFromPad(-1, 0)).toMatchObject({ forward: 0, turn: 1 });
     expect(inputFromPad(0.5, 0.5)).toMatchObject({ forward: -0.5, turn: -0.5 });
+    // While the compass turns the figure, left and right sidestep instead of turning.
+    expect(inputFromPad(0.5, -1, true)).toEqual({ forward: 1, strafe: 0.5, turn: 0 });
   });
 
   it('combines pad and keys within limits', () => {

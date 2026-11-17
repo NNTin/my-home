@@ -17,6 +17,7 @@ import {
   type Figure,
   type WalkInput,
 } from './figure';
+import { easeAngle, type FollowTarget } from './orientation';
 import type { WalkWorld } from './world';
 
 export interface Walk {
@@ -37,6 +38,12 @@ export interface Walk {
   setYaw(yaw: number): void;
   /** Puts the figure somewhere else at once (a jump to a photo request's spot). */
   place(figure: Figure): void;
+  /**
+   * Follow mode: the view to turn to (the phone's compass heading, its tilt, or both), or
+   * undefined to stop. The figure eases towards it every frame, so switching on blends in
+   * instead of snapping.
+   */
+  setFollow(target: FollowTarget | undefined): void;
 }
 
 /**
@@ -81,6 +88,10 @@ export function useWalk(world: WalkWorld, start: Figure, active: boolean): Walk 
   const pad = useRef<WalkInput>(NO_INPUT);
   const keys = useRef(new Set<string>());
   const tapped = useRef(new Set<string>());
+  const padXY = useRef<[number, number]>([0, 0]);
+  const follow = useRef<FollowTarget | undefined>(undefined);
+  // Whether the view is on its way to the follow target, per axis (see `easeAngle`).
+  const easing = useRef({ yaw: false, pitch: false });
   useEffect(() => {
     worldRef.current = world;
   }, [world]);
@@ -98,8 +109,28 @@ export function useWalk(world: WalkWorld, start: Figure, active: boolean): Walk 
       // A key tapped between two frames still counts for one.
       const held = new Set([...keys.current, ...tapped.current]);
       tapped.current.clear();
-      const input = combineInputs(pad.current, inputFromKeys(held));
-      figureRef.current = advance(worldRef.current, figureRef.current, input, dt);
+      const target = follow.current;
+      const keysInput = inputFromKeys(held);
+      // While the phone turns the figure, the turn keys have nothing to do.
+      const turning = target?.yaw !== undefined;
+      const input = combineInputs(pad.current, turning ? { ...keysInput, turn: 0 } : keysInput);
+      let next = advance(worldRef.current, figureRef.current, input, dt);
+      if (target) {
+        const ease = (axis: 'yaw' | 'pitch') => {
+          const to = target[axis];
+          if (to === undefined) {
+            easing.current[axis] = false;
+            return next[axis];
+          }
+          const eased = easeAngle(next[axis], to, dt, easing.current[axis]);
+          easing.current[axis] = eased.moving;
+          return eased.value;
+        };
+        const yaw = ease('yaw');
+        const pitch = ease('pitch');
+        if (yaw !== next.yaw || pitch !== next.pitch) next = { ...next, yaw, pitch };
+      }
+      figureRef.current = next;
       if (figureRef.current !== published && now - publishedAt >= PUBLISH_INTERVAL_MS) {
         published = figureRef.current;
         publishedAt = now;
@@ -137,7 +168,19 @@ export function useWalk(world: WalkWorld, start: Figure, active: boolean): Walk 
   }, [active]);
 
   const setPad = useCallback((x: number, y: number) => {
-    pad.current = inputFromPad(x, y);
+    padXY.current = [x, y];
+    pad.current = inputFromPad(x, y, follow.current?.yaw !== undefined);
+  }, []);
+  const setFollow = useCallback((target: FollowTarget | undefined) => {
+    const changed = (follow.current?.yaw === undefined) !== (target?.yaw === undefined);
+    // Switching a mode on blends all the way to where the phone points, however near that is.
+    if (target?.yaw !== undefined && follow.current?.yaw === undefined) easing.current.yaw = true;
+    if (target?.pitch !== undefined && follow.current?.pitch === undefined) {
+      easing.current.pitch = true;
+    }
+    follow.current = target;
+    // The pad's left and right mean something else while the phone turns the figure.
+    if (changed) pad.current = inputFromPad(...padXY.current, target?.yaw !== undefined);
   }, []);
   const lookBy = useCallback((dYaw: number, dPitch: number) => {
     figureRef.current = look(figureRef.current, dYaw, dPitch);
@@ -159,5 +202,16 @@ export function useWalk(world: WalkWorld, start: Figure, active: boolean): Walk 
     figureRef.current = figure;
   }, []);
 
-  return { figureRef, levelId, published, subscribe, setPad, lookBy, nudge, setYaw, place };
+  return {
+    figureRef,
+    levelId,
+    published,
+    subscribe,
+    setPad,
+    lookBy,
+    nudge,
+    setYaw,
+    place,
+    setFollow,
+  };
 }

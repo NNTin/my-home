@@ -177,6 +177,86 @@ describe('photos API', () => {
     });
   });
 
+  describe('sensor snapshot', () => {
+    // Orientation only, made-up values: what a phone reports when a photo is taken.
+    const sensors = {
+      source: 'sensor' as const,
+      alpha: 271.5,
+      beta: 84,
+      gamma: -2,
+      absolute: true,
+      screenAngle: 0,
+      magneticBearing: 88.5,
+      declination: 3,
+      calibrationOffset: -7,
+      trueBearing: 84.5,
+      yaw: -1.5,
+      pitch: -0.1,
+      roll: 0.02,
+      capturedAt: '2026-03-01T10:00:00.000Z',
+    };
+
+    it('is stored with the photo and returned by get and list', async () => {
+      const photo = await upload({ sensors });
+      expect(photo.sensors).toEqual(sensors);
+      expect(Photo.parse((await inject('GET', `/api/photos/${photo.id}`)).json()).sensors).toEqual(
+        sensors,
+      );
+      expect((await list()).items[0]!.sensors).toEqual(sensors);
+
+      const ios = await upload({
+        sensors: { source: 'sensor', compassHeading: 120, compassAccuracy: 15, beta: 80, gamma: 1 },
+      });
+      expect(ios.sensors).toMatchObject({ compassHeading: 120, compassAccuracy: 15 });
+      const manual = await upload({ sensors: { source: 'manual', yaw: 0.5, pitch: 0 } });
+      expect(manual.sensors).toEqual({ source: 'manual', yaw: 0.5, pitch: 0 });
+    });
+
+    it('is optional: clients that send none still work, and the photo has null', async () => {
+      const photo = await upload();
+      expect(photo.sensors).toBeNull();
+      expect((await upload({ sensors: null })).sensors).toBeNull();
+    });
+
+    it('survives a correction of the pose, and can be set or cleared on its own', async () => {
+      const photo = await upload({ sensors });
+      const pose = { position: inKitchen, yaw: 1, pitch: 0.2 };
+      const moved = Photo.parse(
+        (await inject('PATCH', `/api/photos/${photo.id}`, { pose })).json(),
+      );
+      expect(moved.pose).toEqual(pose);
+      // What the sensors said at the shot stays, next to the corrected pose.
+      expect(moved.sensors).toEqual(sensors);
+
+      const manual = { source: 'manual' as const, yaw: 1, pitch: 0.2 };
+      const set = await inject('PATCH', `/api/photos/${photo.id}`, { sensors: manual });
+      expect(Photo.parse(set.json()).sensors).toEqual(manual);
+      const cleared = await inject('PATCH', `/api/photos/${photo.id}`, { sensors: null });
+      expect(Photo.parse(cleared.json()).sensors).toBeNull();
+    });
+
+    it('rejects a malformed snapshot and drops keys it does not know', async () => {
+      const bad = await post(meta({ sensors: { source: 'gps' } as never }));
+      expect(bad.statusCode).toBe(400);
+      expect(bad.json().message).toMatch(/sensors/);
+      const extra = await upload({
+        sensors: { source: 'sensor', alpha: 1, latitude: 1, longitude: 2 } as never,
+      });
+      expect(extra.sensors).toEqual({ source: 'sensor', alpha: 1 });
+    });
+
+    it('reads a photo whose stored snapshot it cannot understand as having none', async () => {
+      const photo = await upload({ sensors });
+      await ctx.database.db
+        .update(photos)
+        .set({ sensors: { source: 'from-a-newer-branch' } as never })
+        .where(eq(photos.id, photo.id));
+      const res = await inject('GET', `/api/photos/${photo.id}`);
+      expect(res.statusCode).toBe(200);
+      expect(Photo.parse(res.json()).sensors).toBeNull();
+    });
+  });
+
   describe('list filters', () => {
     it('filters by level, room, tag, request, place and date, newest first, with paging', async () => {
       const bedroom = await upload({ takenAt: '2026-03-01T10:00:00Z', tags: ['wall'] });

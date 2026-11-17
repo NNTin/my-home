@@ -37,6 +37,23 @@ export function CompassRose({
   );
 }
 
+/** The HUD compass rose and the home's north, for views the orbit controls do not drive. */
+export interface RoseTarget {
+  ref: RefObject<HTMLButtonElement | null>;
+  /** `building.northBearing`. */
+  northBearing: number;
+}
+
+/**
+ * Turns the rose for a camera that looks along a plan yaw (first person, "view from here"). The
+ * orbit tracker below only hears the orbit controls, which are off in those views.
+ */
+export function turnRose(rose: RoseTarget, yaw: number) {
+  const value = `${compassRotation(rose.northBearing, yaw)}deg`;
+  const style = rose.ref.current?.style;
+  if (style && style.getPropertyValue('--rose') !== value) style.setProperty('--rose', value);
+}
+
 /** What the tracker needs from drei's OrbitControls (three-stdlib). */
 interface Controls {
   target: Vector3;

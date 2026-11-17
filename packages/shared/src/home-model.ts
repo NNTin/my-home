@@ -136,6 +136,13 @@ export const Building = z.strictObject({
    * Omitted means 0, i.e. true north is -z.
    */
   northBearing: Bearing.optional(),
+  /**
+   * Magnetic declination at the home: how far magnetic north lies east (+) or west (-) of true
+   * north, in degrees. A phone compass reports magnetic north; this turns it into true north.
+   * Omitted means 0. Entered by the owner (from a declination chart), never derived from the
+   * home's location by the app.
+   */
+  magneticDeclination: Bearing.optional(),
 });
 export type Building = z.infer<typeof Building>;
 
@@ -145,6 +152,10 @@ export const roofOf = (building: Pick<Building, 'roof'>): Roof => building.roof 
 /** True north in degrees clockwise from the plan's -z axis (0 when not set). */
 export const northBearingOf = (building: Pick<Building, 'northBearing'>): number =>
   building.northBearing?.value ?? 0;
+
+/** Magnetic declination in degrees, east positive (0 when not set). */
+export const magneticDeclinationOf = (building: Pick<Building, 'magneticDeclination'>): number =>
+  building.magneticDeclination?.value ?? 0;
 
 /**
  * A plane that falls linearly across the bounding box of an outline: `elevation` at the high edge,

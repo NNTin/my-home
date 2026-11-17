@@ -9,6 +9,8 @@
 #                                       saves <id>.webp and <id>.json into DIR (default: a new temp dir)
 #   annotate <photo-id> [--note TEXT] [--tag TAG]...
 #                                       sets the note and/or adds tags
+#   sensors <photo-id>                  the phone's sensor snapshot of a photo: whether its heading was
+#                                       measured by the compass or set by hand, accuracy, tilt, declination
 #
 # Filters: --home ID (default: the first home), --level ID, --room ID, --near X,Z,RADIUS (metres on the plan),
 #          --tag TAG, --request ID, --since TIME, --until TIME (ISO 8601, by the time the photo was taken)
@@ -19,7 +21,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/photos-lib.sh"
 
 usage() {
-  sed -n '2,15s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,19s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 
@@ -73,9 +75,17 @@ case "$command" in
       api "$env" "/api/photos/$id" >"$dir/$id.json"
       api "$env" "/api/photos/$id/$kind" >"$dir/$id.webp"
       jq -r --arg file "$dir/$id.webp" \
-        '"\($file)\t\(.capturedRoomName // .room.name // "no room")\t\(.takenAt)\t\(.note)"' "$dir/$id.json"
+        '"\($file)\t\(.capturedRoomName // .room.name // "no room")\t\(.takenAt)\theading: \(
+          if .sensors.source == "sensor" then "measured" elif .sensors then "by hand" else "not recorded" end
+        )\t\(.note)"' "$dir/$id.json"
     done
     printf '%d photo(s) in %s\n' "${#ids[@]}" "$dir" >&2
+    ;;
+  sensors)
+    [[ ${#ids[@]} -eq 1 ]] || usage
+    api "$env" "/api/photos/${ids[0]}" | jq '{id, pose, sensors, heading: (
+      if .sensors.source == "sensor" then "measured by the phone" elif .sensors then "set by hand"
+      else "not recorded" end)}'
     ;;
   annotate)
     [[ ${#ids[@]} -eq 1 ]] || usage

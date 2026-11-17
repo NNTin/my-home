@@ -33,6 +33,7 @@ $S/screenshot.sh staging --out /tmp/staging.png          # render the 3D viewer 
 $S/screenshot.sh staging --click 'label:has-text("Souterrain")' --drag -300,0   # interact first
 $S/screenshot.sh staging --viewport 390x844 --path '/?walk=first' --pad 0,-44,2000   # walk, then shoot
 $S/walk-smoke.sh staging                                 # phone-sized smoke test of walk mode
+$S/compass-smoke.sh staging                              # phone compass and tilt, with mocked sensor events
 $S/with-site-token.sh staging -- node e2e.mjs            # SITE_TOKEN and SITE_BASE for the child only
 $S/raise-env-issue.sh --dry-run staging "health fails"   # what it would post; drop --dry-run to post
 $S/photos.sh staging list --room souterrain-kitchen      # the owner's photos with their poses
@@ -56,6 +57,11 @@ $S/photo-requests.sh staging create --room souterrain-kitchen --reason "Which wa
   shared `ao-heavy` queue when available. In walk mode (`--path '/?walk=first'` or `'/?walk=third'`, see
   `docs/walking.md`), `--pad DX,DY,MS` holds the movement pad deflected (up to 44 px; negative DY walks
   forward, negative DX turns left) and `--key KEY,MS` holds a key.
+- `compass-smoke.sh <env> [--out file.png]`: the "Heading" and "Tilt" modes of walk mode at 390x844 with
+  **mocked** orientation events (Android absolute alpha and the iOS `webkitCompassHeading` path): turning and
+  tilting the mocked phone moves the figure, north is crossed smoothly, landscape is compensated, the compass
+  rose turns, and a captured photo carries the sensor snapshot. Read-only: the upload is intercepted in the
+  browser and nothing is stored. A real phone is still needed for the checklist in `docs/walking.md`.
 - `walk-smoke.sh <env> [--out file.png]`: opens walk mode at 390x844 with touch, pushes the pad and checks that
   the figure walks, turns and stops, that the controls fit the screen and that nothing logs an error. Read-only. Playwright (pinned) is installed outside the repository in
   `${XDG_CACHE_HOME:-$HOME/.cache}/my-home-environments/playwright`, Chromium in `~/.cache/ms-playwright`;
@@ -72,7 +78,9 @@ furniture. `--home` defaults to the first home.
 
 - `photos.sh <env> list [filters]`: metadata as JSON, newest first. Filters: `--room ID`, `--level ID`,
   `--near X,Z,RADIUS` (metres on the plan), `--tag TAG`, `--request ID`, `--since TIME`, `--until TIME`.
-- `photos.sh <env> get <photo-id>`: one photo's metadata (pose, captured room, note, tags).
+- `photos.sh <env> get <photo-id>`: one photo's metadata (pose, captured room, note, tags, sensor snapshot).
+- `photos.sh <env> sensors <photo-id>`: whether the photo's heading was measured by the phone's compass or
+  set by hand, with the raw sensor values. Trust a measured heading more, but mind its accuracy.
 - `photos.sh <env> download [--dir DIR] [--thumbnail] <photo-id>... | [filters]`: saves `<id>.webp` and
   `<id>.json`. Use a temp or artifact directory, **never the repository**.
 - `photos.sh <env> annotate <photo-id> [--note TEXT] [--tag TAG]...`: record what the photo shows.

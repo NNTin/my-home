@@ -1,6 +1,6 @@
 import { Html, OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import type { HomeScene, Vec3 } from '../builder/buildHome';
 import type { RoomLabel } from '../builder/visibility';
 import type { CompassMarker } from '../compass/compass';
@@ -67,6 +67,7 @@ export function Scene({
 }: SceneProps) {
   const roseRef = useRef<HTMLButtonElement>(null);
   const northUpRef = useRef<() => void>(undefined);
+  const rose = useMemo(() => ({ ref: roseRef, northBearing }), [northBearing]);
   return (
     <>
       <Canvas
@@ -104,8 +105,8 @@ export function Scene({
           // In first person the camera is the figure's eyes; dragging looks around instead.
           enabled={walk?.view !== 'first' && !viewpoint}
         />
-        {walk && <WalkRig figure={walk.figure} view={walk.view} />}
-        {viewpoint && <ViewpointRig viewpoint={viewpoint} />}
+        {walk && <WalkRig figure={walk.figure} view={walk.view} rose={rose} />}
+        {viewpoint && <ViewpointRig viewpoint={viewpoint} rose={rose} />}
         <PhotoMarkers markers={photoMarkers} onSelect={(id) => onSelectPhoto?.(id)} />
         <RequestGhosts ghosts={requestGhosts} />
         <CompassTracker northBearing={northBearing} roseRef={roseRef} northUpRef={northUpRef} />

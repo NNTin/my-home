@@ -1,4 +1,5 @@
 import {
+  magneticDeclinationOf,
   northBearingOf,
   type HomeModel,
   type HomeSummary,
@@ -6,7 +7,7 @@ import {
   type PhotoRequest,
 } from '@my-home/shared';
 import { useEffect, useMemo, useState } from 'react';
-import { photosApi } from './api';
+import { fetchHome, photosApi, saveHome } from './api';
 import {
   buildHome,
   type HomeScene,
@@ -55,10 +56,10 @@ import { usePhotos } from './photos/usePhotos';
 import type { FurnitureHandlers, FurnitureView } from './scene/FurnitureLayer';
 import type { PhotoMarkerView, RequestGhostView, Viewpoint } from './scene/PhotoMarkers';
 import { Scene } from './scene/Scene';
+import { calibrationTargets } from './walk/calibration';
 import type { Figure } from './walk/figure';
-import { useCompass } from './walk/useCompass';
 import { useWalk } from './walk/useWalk';
-import { WalkHud, type WalkView } from './walk/WalkHud';
+import { WalkHud, type DeclinationSource, type WalkView } from './walk/WalkHud';
 import { buildWalkWorld, placeAt, startPose, type FurnitureBlocker } from './walk/world';
 
 const shownLevels = (scene: HomeScene, v: Visibility) =>
@@ -166,7 +167,27 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   }, [model]);
   const walking = walkView !== undefined;
   const walk = useWalk(world, start, walking);
-  const compass = useCompass(northBearing, walk.setYaw);
+  // Magnetic declination of the home: from the model, and editable while walking.
+  const [declination, setDeclination] = useState(() => magneticDeclinationOf(model.building));
+  const saveDeclination = async (degrees: number, source: DeclinationSource) => {
+    // The home may have changed since this page loaded (an agent correcting walls, another tab),
+    // and saving replaces the whole home: change the declination on what is stored now.
+    const current = await fetchHome(model.id);
+    const note =
+      source === 'measured'
+        ? 'Measured on site, entered in the app'
+        : 'From a declination chart or model, entered in the app';
+    const saved = await saveHome({
+      ...current,
+      building: { ...current.building, magneticDeclination: { value: degrees, source, note } },
+    });
+    setDeclination(magneticDeclinationOf(saved.building));
+  };
+  const targetsFor = (figure: Figure) => {
+    const figurePlan = figure.levelId === undefined ? undefined : ctx.plans.get(figure.levelId);
+    const room = figurePlan && roomAt(figurePlan, [figure.x, figure.z]);
+    return calibrationTargets(model, figure.levelId, [figure.x, figure.z], room?.outline);
+  };
   const figureLevel = scene.levels.find((l) => l.id === walk.levelId);
   const describeFigure = (figure: Figure) => {
     const on = scene.levels.find((l) => l.id === figure.levelId);
@@ -213,6 +234,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
         position: [p.pose.position.x, p.pose.position.y, p.pose.position.z],
         corners: frustumCorners(p.pose, fovHOf(p), aspectOf(p), VIEW_CONE_LENGTH),
         selected: p.id === photoId,
+        measured: p.sensors?.source === 'sensor',
       }));
   }, [markersShown, scene, visibility, photos.photos, photoFilters, photoId]);
 
@@ -461,7 +483,10 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
           view={walkView}
           onView={setWalkView}
           onExit={() => setWalkView(undefined)}
-          compass={compass}
+          northBearing={northBearing}
+          declination={declination}
+          onDeclination={saveDeclination}
+          calibrationTargets={targetsFor}
           api={photosApi}
           requests={photos.requests}
           roomIdOf={roomIdOf}
