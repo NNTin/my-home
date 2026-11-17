@@ -131,9 +131,10 @@ case "$command" in
   move)
     [[ ${#args[@]} -eq 1 && -n $at ]] || usage
     current=$(placement "${args[0]}")
-    body=$(jq -c --argjson position "$(position_json "$at")" --arg r "$rotation" \
-      --argjson rad "$([[ -n $rotation ]] && radians "$rotation" || echo null)" \
-      '{version, position: $position} + (if $r == "" then {} else {rotationY: $rad} end)' <<<"$current")
+    rad=null
+    [[ -z $rotation ]] || rad=$(radians "$rotation")
+    body=$(jq -c --argjson position "$(position_json "$at")" --argjson rad "$rad" \
+      '{version, position: $position} + (if $rad == null then {} else {rotationY: $rad} end)' <<<"$current")
     uapi "$(base)/placements/${args[0]}" -X PATCH --json "$body" | jq .
     ;;
   rename)
