@@ -33,6 +33,9 @@ $S/screenshot.sh staging --out /tmp/staging.png          # render the 3D viewer 
 $S/screenshot.sh staging --click 'label:has-text("Souterrain")' --drag -300,0   # interact first
 $S/screenshot.sh staging --viewport 390x844 --path '/?walk=first' --pad 0,-44,2000   # walk, then shoot
 $S/screenshot.sh staging --viewport 390x844 --touch --path '/?panel=furniture'   # phone layout, a panel open
+$S/screenshot.sh staging --canvas --out /tmp/view.png   # the 3D canvas only, no UI text
+$S/visual-diff.sh staging shoot --out /tmp/vd-main         # 8 fixed canvas views + manifest (commit)
+$S/visual-diff.sh compare /tmp/vd-main /tmp/vd-pr          # identical, or differing pixels + diff PNGs
 $S/walk-smoke.sh staging                                 # phone-sized smoke test of walk mode
 $S/mobile-smoke.sh staging                               # phone layout: top bar, sheet, levels, furniture, walk
 $S/compass-smoke.sh staging                              # Sensors / Manual camera modes, mocked sensor events
@@ -63,6 +66,20 @@ $S/photo-requests.sh staging create --room souterrain-kitchen --reason "Which wa
   coarse pointer); the phone layout (`docs/mobile.md`) also shows without it at phone sizes such as 390x844 or
   844x390, and `--path '/?panel=view|furniture|photos|requests&sheet=half|full'` opens a panel of its sheet.
   Add `&hints=off` there, or the first-run hints cover the foot of the view in every fresh browser.
+- `screenshot.sh --canvas` shoots only the 3D canvas: every other element is hidden and the shot is clipped to
+  the canvas, so UI text (photo count, room names, panels) cannot make two shots differ. With a `--drag`, page
+  time is paused before the first drag and runs exactly 1 s of frames after each action (Playwright's fake
+  clock), so the orbit controls' damping ends in the same place however slow the renderer is.
+- `visual-diff.sh <env> shoot --out DIR [--only VIEW]...`: pixel-exact visual regression of the 3D view,
+  read-only. Shoots canvas-only screenshots of fixed views (desktop 1440x900: `default`, the cutaways
+  `souterrain`, `ground-floor` and `first-floor`, `orbit-180` (`--drag 600,0`), `steep` (`--drag 0,250`, from above),
+  `mock-home`; phone 390x844: `phone`; all with `hints=off`) into `DIR/<view>.png` plus `DIR/manifest.json`
+  (deployed commit, view arguments, sha256). It reads the deployed commit before and after and fails if a
+  deploy happened in between. `visual-diff.sh compare DIR_A DIR_B` prints a Markdown table per view:
+  identical (same sha256) or the number of differing pixels and `DIR_B/diff-<view>.png` (differences red over
+  a faded copy of A), decoded in headless Chromium. Exit 0 all identical, 5 some differ, 1 on an error.
+  Two shoots of the same commit are byte-identical, so a renderer refactor is checked by shooting `main` and
+  the PR on staging (shared: do both in one go and re-shoot if another deploy lands in between).
 - `mobile-smoke.sh <env> [--out file.png] [--home ID]`: the phone layout at 390x844 and 844x390 with touch: the
   3D view is clear of the top bar and the sheet, the first-run hints are dismissed, a tap opens and closes each
   panel, the level switcher cuts the building away, a furniture item is placed and then dragged, rotated,

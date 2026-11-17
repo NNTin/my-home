@@ -4,7 +4,7 @@ import realHomeJson from '../../../../data/homes/home.json';
 import { buildHome, type Vec2 } from '../builder/buildHome';
 import { createContext } from '../editor/operations';
 import { roomAt } from '../editor/placement';
-import { registry } from '../items/registry';
+import { furniture } from '../catalog/furniture';
 import { mockHome } from '../test/fixtures';
 import {
   buildWalkWorld,
@@ -22,7 +22,7 @@ import {
 const home = HomeModel.parse(structuredClone(realHomeJson));
 const scene = buildHome(home);
 const world = buildWalkWorld(home, scene);
-const plans = createContext(home, registry).plans;
+const plans = createContext(home, furniture).plans;
 const SOUTERRAIN = -2.6;
 const PATIO = -1.65;
 

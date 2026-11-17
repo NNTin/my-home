@@ -1,23 +1,23 @@
 import { Html } from '@react-three/drei';
 import { useThree, type ThreeEvent } from '@react-three/fiber';
-import { useEffect, useRef, type ComponentType } from 'react';
+import { useEffect, useRef } from 'react';
 import { DoubleSide, Plane, Vector3, type Camera, type Object3D, type Ray } from 'three';
 import type { Vec2, Vec3 } from '../builder/buildHome';
-import { Block, SELECTION_COLOR } from '../items/parts';
-import type { ItemRenderProps, ItemSize } from '../items/types';
+import type { ItemSize } from '../catalog/furniture';
+import { PartsMesh, SELECTION_COLOR } from '../catalog/PartsMesh';
+import type { Part } from '../catalog/types';
 import { FurnitureToolbar, type FurnitureToolbarProps } from '../overlay/FurnitureToolbar';
 import { onCanvas, swallowNextClick } from './canvasEvent';
 
-/** One item as the scene draws it; built by the viewer from the layout and the registry. */
+/** One item as the scene draws it; built by the viewer from the layout and the catalogue. */
 export interface FurnitureView {
   id: string;
   /** World position of the item's floor centre. */
   position: Vec3;
   rotationY: number;
   size: ItemSize;
-  color: string;
-  /** Undefined for an unknown item type: drawn as a plain box. */
-  Render?: ComponentType<ItemRenderProps>;
+  /** In the item's local frame; an unknown type is a plain box (`unknownParts`). */
+  parts: Part[];
   selected: boolean;
   colliding: boolean;
 }
@@ -197,7 +197,7 @@ function FurnitureItem({
   toolbar: FurnitureToolbarProps | undefined;
 }) {
   const { start, move, end } = useDrag(item, handlers);
-  const { size, Render } = item;
+  const { size } = item;
   const state = { selected: item.selected, colliding: item.colliding };
   const ring = Math.max(size.width, size.depth) / 2 + 0.2;
   const ringWidth = touch ? TOUCH_RING_WIDTH : RING_WIDTH;
@@ -209,16 +209,7 @@ function FurnitureItem({
         onPointerUp={end}
         onPointerCancel={end}
       >
-        {Render ? (
-          <Render size={size} color={item.color} {...state} />
-        ) : (
-          <Block
-            position={[0, size.height / 2, 0]}
-            size={[size.width, size.height, size.depth]}
-            color={item.color}
-            state={state}
-          />
-        )}
+        <PartsMesh parts={item.parts} state={state} />
       </group>
       {item.selected && (
         // Rotate handle: a flat ring on the floor around the item.

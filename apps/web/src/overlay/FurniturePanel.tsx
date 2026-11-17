@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import type { EditorSettings } from '../editor/operations';
-import type { CatalogCategory } from '../items/registry';
+import type { FurnitureCategory } from '../catalog/furniture';
 import type { LayoutsController } from '../layouts/useLayouts';
 import type { SaveStatus } from '../layouts/saver';
 
@@ -24,7 +24,7 @@ interface Props {
   rooms: { id: string; name: string }[];
   roomId: string | undefined;
   onRoomChange(id: string): void;
-  categories: CatalogCategory[];
+  categories: FurnitureCategory[];
   onPlace(typeId: string): void;
   selected: SelectedInfo | undefined;
   canUndo: boolean;

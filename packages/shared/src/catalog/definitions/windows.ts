@@ -1,7 +1,7 @@
 import { defineType } from '../types';
 import { color, count, fixedLength, number } from './specs';
 
-/** Frame and pane of today's wall windows (`openingParts` in the web builder). */
+/** Frame and pane of the wall windows (`catalog/openings/frame.ts` in the web app). */
 const wallWindowParams = {
   frameColor: color('Frame colour', '#f7f7f5'),
   sashes: count('Sashes', 1, 1, 4, { minWidth: 0.25, one: 'sash', other: 'sashes' }),

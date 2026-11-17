@@ -5,7 +5,7 @@ import realHomeJson from '../../../../data/homes/home.json';
 import { buildHome, type Vec2 } from '../builder/buildHome';
 import { createContext } from '../editor/operations';
 import { roomAt } from '../editor/placement';
-import { registry } from '../items/registry';
+import { furniture } from '../catalog/furniture';
 import { mockHome } from '../test/fixtures';
 import type { Figure } from './figure';
 import { Minimap, MINIMAP_KEY, type MapSpot } from './Minimap';
@@ -13,7 +13,7 @@ import { groundLevelId, minimapLevels } from './minimap';
 import { buildWalkWorld, placeAt, walk, type Footing } from './world';
 
 const scene = buildHome(mockHome);
-const levels = minimapLevels(scene, createContext(mockHome, registry).plans, 'souterrain');
+const levels = minimapLevels(scene, createContext(mockHome, furniture).plans, 'souterrain');
 const start: Figure = { x: 0.5, z: 0, y: -1.2, levelId: 'souterrain', yaw: 0, pitch: 0 };
 
 function setup(props: Partial<Parameters<typeof Minimap>[0]> = {}): ReturnType<typeof render> & {
@@ -160,7 +160,7 @@ describe('Minimap', () => {
     const home = HomeModel.parse(structuredClone(realHomeJson));
     const homeScene = buildHome(home);
     const world = buildWalkWorld(home, homeScene);
-    const plans = createContext(home, registry).plans;
+    const plans = createContext(home, furniture).plans;
     const homeLevels = minimapLevels(
       homeScene,
       plans,

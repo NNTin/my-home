@@ -1,5 +1,6 @@
+import type { LayoutItem } from '@my-home/shared';
 import { describe, expect, it } from 'vitest';
-import { registry } from '../items/registry';
+import { furniture } from '../catalog/furniture';
 import { layoutItem, mockHome } from '../test/fixtures';
 import {
   collisions,
@@ -13,8 +14,8 @@ import {
   rotateItem,
 } from './operations';
 
-const ctx = createContext(mockHome, registry);
-const free = createContext(mockHome, registry, {
+const ctx = createContext(mockHome, furniture);
+const free = createContext(mockHome, furniture, {
   ...defaultSettings,
   grid: false,
   wallSnap: false,
@@ -57,6 +58,20 @@ describe('editor operations', () => {
     expect(moved.position.x).toBeCloseTo(-4.05);
     expect(moved.position.z).toBeCloseTo(2.06);
     expect(collisions(ctx, [moved]).size).toBe(0);
+  });
+
+  it('sizes an item from its props: a wider bed snaps and collides with its own footprint', () => {
+    const wide = { width: 1.8 };
+    // Flush with the same wall: the left edge stays put, the centre moves by half the extra width.
+    expect(moveItem(ctx, layoutItem(), [-4, 2.2]).position.x).toBeCloseTo(-4.05);
+    expect(moveItem(ctx, layoutItem({ props: wide }), [-4, 2.2]).position.x).toBeCloseTo(-3.95);
+    // Two beds 1.7 m apart: 1.6 m wide they fit side by side, 1.8 m wide they overlap.
+    const pair = (props: LayoutItem['props']) => [
+      layoutItem({ id: 'a', props, position: { x: -3.6, z: 2.06 } }),
+      layoutItem({ id: 'b', props, position: { x: -1.9, z: 2.06 } }),
+    ];
+    expect(collisions(ctx, pair({})).size).toBe(0);
+    expect([...collisions(ctx, pair(wide)).keys()].sort()).toEqual(['a', 'b']);
   });
 
   it('keeps items inside the apartment', () => {

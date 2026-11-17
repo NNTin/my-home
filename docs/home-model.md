@@ -217,8 +217,8 @@ Every opening, outbuilding opening, roof window and gate refers to a **catalogue
 `typeId`: what kind of piece it is, which parameters it has and their defaults. The types live in
 [`packages/shared/src/catalog/`](../packages/shared/src/catalog/) (`definitions/`, one file per
 family). A parameter is **basic** (a use may change it within limits, for example a frame colour
-or a bed's width) or **design** (fixed by the type). Nothing reads the types yet when drawing
-(#38); their defaults equal what the viewer draws today.
+or a bed's width) or **design** (fixed by the type). The viewer draws every use with the piece
+module of its type (`apps/web/src/catalog/`, see [adding-piece-type.md](adding-piece-type.md)).
 
 | Family    | Type ids                                                                                                        | Sits in               |
 | --------- | --------------------------------------------------------------------------------------------------------------- | --------------------- |

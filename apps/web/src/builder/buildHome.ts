@@ -1,14 +1,24 @@
 import {
+  catalog,
+  effectiveParams,
   roofOf,
   wallLength,
   type HomeModel,
   type Opening,
-  type Point,
-  type Polygon,
+  type ParamValues,
   type Slope,
   type Stair,
   type Wall,
 } from '@my-home/shared';
+import { gateParts, gateSpec } from '../catalog/gate/swing';
+import { numberParam } from '../catalog/parts';
+import { pieces } from '../catalog/registry';
+import type { Part } from '../catalog/types';
+import { fenceLine, fenceSpec } from './fence';
+import { EPS, rotationFor, toOutline, toVec2 } from './plan';
+
+export { FENCE_BAY } from './fence';
+export { rotationFor } from './plan';
 
 /**
  * Pure model -> render descriptor builder. No three.js or GPU here, so it is unit-tested directly;
@@ -57,7 +67,19 @@ export interface RoofPlaneDescriptor extends ProfileSolid {
   levelId: string;
 }
 
-export interface OpeningDescriptor extends Box {
+/**
+ * A use of a catalogue type in the model (an opening, a roof window, a gate): its type, name,
+ * effective parameter values and the parts its piece module draws for them. Opening and roof
+ * window parts are in the local frame of the descriptor's box; a gate's are in the plan.
+ */
+export interface PieceUse {
+  typeId: string;
+  name: string;
+  values: ParamValues;
+  parts: Part[];
+}
+
+export interface OpeningDescriptor extends Box, PieceUse {
   id: string;
   wallId: string;
   levelId: string;
@@ -165,8 +187,11 @@ export interface StairDescriptor {
   well: Vec2[];
 }
 
-/** A fence: posts and one panel per bay, stepped along sloping ground. */
-export interface FenceDescriptor {
+/**
+ * A fence: posts and one panel per bay, stepped along sloping ground. A gate is also a use of its
+ * catalogue type (`typeId`, `values`, `parts`), drawn from its parts.
+ */
+export interface FenceDescriptor extends Partial<Omit<PieceUse, 'name'>> {
   id: string;
   name: string;
   kind: NonNullable<HomeModel['fences']>[number]['kind'];
@@ -175,7 +200,7 @@ export interface FenceDescriptor {
 }
 
 /** An opening in an outbuilding wall. */
-export interface OutbuildingOpeningDescriptor extends Box {
+export interface OutbuildingOpeningDescriptor extends Box, PieceUse {
   id: string;
   type: Opening['type'];
 }
@@ -195,7 +220,7 @@ export interface OutbuildingDescriptor {
  * box is turned by `tilt` about its local x, then by `rotationY` about y (Euler order YXZ), so
  * its local +z runs down the slope.
  */
-export interface RoofWindowDescriptor {
+export interface RoofWindowDescriptor extends PieceUse {
   id: string;
   levelId: string;
   center: Vec3;
@@ -239,13 +264,17 @@ export interface HomeScene {
 
 /** Room floors and outdoor surfaces float this far above their base to avoid z-fighting. */
 export const SURFACE_OFFSET = 0.01;
-const EPS = 1e-6;
 
-const toVec2 = (p: Point): Vec2 => [p.x.value, p.z.value];
-const toOutline = (polygon: Polygon): Vec2[] => polygon.map(toVec2);
+/** Basic parameter overrides by use id (opening, roof window or gate id). */
+export type PieceOverrides = ReadonlyMap<string, ParamValues>;
 
-/** Rotation about +y that maps the local +x axis onto the plan direction (dx, dz). */
-export const rotationFor = (dx: number, dz: number) => Math.atan2(-dz, dx);
+/** The piece module and effective values of the use `id` of `typeId`. */
+function pieceUse(typeId: string, id: string, overrides: PieceOverrides | undefined) {
+  const type = catalog.get(typeId);
+  const piece = pieces.get(typeId);
+  if (!type || !piece) throw new Error(`Unknown piece type "${typeId}" of ${id}`);
+  return { piece, values: effectiveParams(type, overrides?.get(id)).values };
+}
 
 /** World position of the outline point `[x, y]` of a profile solid, at local depth `z`. */
 export function solidPoint(solid: ProfileSolid, [x, y]: Vec2, z = 0): Vec3 {
@@ -430,7 +459,7 @@ export function splitWall(
   return spans;
 }
 
-export function buildHome(model: HomeModel): HomeScene {
+export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeScene {
   const levels: LevelInfo[] = [...model.levels]
     .sort((a, b) => a.elevation.value - b.elevation.value)
     .map((l, index) => ({
@@ -499,10 +528,15 @@ export function buildHome(model: HomeModel): HomeScene {
     for (const o of wallOpenings) {
       const width = o.width.value;
       const height = o.height.value;
+      const { piece, values } = pieceUse(o.typeId, o.id, overrides);
       openings.push({
         ...common,
         id: o.id,
         type: o.type,
+        typeId: o.typeId,
+        name: o.name,
+        values,
+        parts: piece.parts(values, { width, height, wallDepth: thickness }),
         center: at(o.offset.value + width / 2, base + o.sill.value + height / 2),
         size: [width, height, thickness],
         rotationY,
@@ -590,11 +624,11 @@ export function buildHome(model: HomeModel): HomeScene {
     };
   });
 
-  const fences = (model.fences ?? []).map(buildFence);
-  const outbuildings = (model.outbuildings ?? []).map(buildOutbuilding);
+  const fences = (model.fences ?? []).map((f) => buildFence(f, overrides));
+  const outbuildings = (model.outbuildings ?? []).map((b) => buildOutbuilding(b, overrides));
   const roof = roofOf(model.building);
   const roofWindows =
-    gable && roof.type === 'gable' ? gableRoofWindows(gable, roof.windows ?? []) : [];
+    gable && roof.type === 'gable' ? gableRoofWindows(gable, roof.windows ?? [], overrides) : [];
 
   return {
     levels,
@@ -651,17 +685,20 @@ function roofCeiling(g: Gable, wall: Wall, base: number) {
 export function gableRoofWindows(
   g: Gable,
   windows: NonNullable<Extract<HomeModel['building']['roof'], { type: 'gable' }>['windows']>,
+  overrides?: PieceOverrides,
 ): RoofWindowDescriptor[] {
   const tilt = Math.atan(g.slope);
   const top = g.thickness * Math.hypot(1, g.slope);
   return windows.map((w) => {
     const width = w.width.value;
     const length = w.length.value;
+    const { piece, values } = pieceUse(w.typeId, w.id, overrides);
+    const thickness = numberParam(values, 'thickness');
     // Horizontal distance from the footprint edge to the window's centre.
     const inset = (w.fromEave.value + length / 2) * Math.cos(tilt);
     const across = w.side === 'max' ? g.across[1] - inset : g.across[0] + inset;
     const along = g.along[0] + w.offset.value + width / 2;
-    const y = roofUnderside(g, across) + top + ROOF_WINDOW_THICKNESS / 2 / Math.cos(tilt);
+    const y = roofUnderside(g, across) + top + thickness / 2 / Math.cos(tilt);
     const quarter = Math.PI / 2;
     const rotationY =
       g.ridgeAxis === 'x'
@@ -674,19 +711,22 @@ export function gableRoofWindows(
     return {
       id: w.id,
       levelId: g.levelId,
+      typeId: w.typeId,
+      name: w.name,
+      values,
+      parts: piece.parts(values, { width, height: length, wallDepth: thickness }),
       center: g.ridgeAxis === 'x' ? [along, y, across] : [across, y, along],
-      size: [width, ROOF_WINDOW_THICKNESS, length],
+      size: [width, thickness, length],
       rotationY,
       tilt,
     };
   });
 }
 
-const ROOF_WINDOW_THICKNESS = 0.06;
-
 /** Walls along every footprint edge (overlapping at the corners), openings and a flat roof. */
 export function buildOutbuilding(
   b: NonNullable<HomeModel['outbuildings']>[number],
+  overrides?: PieceOverrides,
 ): OutbuildingDescriptor {
   const floor = b.floorElevation.value;
   const height = b.height.value;
@@ -727,9 +767,14 @@ export function buildOutbuilding(
       });
     });
     for (const o of edgeOpenings) {
+      const { piece, values } = pieceUse(o.typeId, o.id, overrides);
       openings.push({
         id: o.id,
         type: o.type,
+        typeId: o.typeId,
+        name: o.name,
+        values,
+        parts: piece.parts(values, { width: o.width.value, height: o.height.value, wallDepth: t }),
         center: at(
           t / 2 + o.offset.value + o.width.value / 2,
           floor + o.sill.value + o.height.value / 2,
@@ -916,73 +961,27 @@ export function buildStair(stair: Stair, from: number, to: number): StairDescrip
   };
 }
 
-/** Fence posts stand at most this far apart. */
-export const FENCE_BAY = 2.5;
-const FENCE_PANEL_DEPTH = 0.04;
-/** Posts are metal profiles, except the brick pillars of a trellis fence. */
-const FENCE_POST: Record<FenceDescriptor['kind'], number> = {
-  'chain-link': 0.08,
-  privacy: 0.08,
-  gate: 0.1,
-  trellis: 0.24,
-};
-/** How far a post stands above its panels. */
-const FENCE_POST_EXTRA = 0.1;
-
 /**
- * Posts and panels along a fence line. The ground runs linearly from `elevation` to
- * `endElevation` along the whole path; each bay's panel is level, at the ground height of its
- * middle, so a fence on a slope steps down bay by bay.
+ * Posts and panels along a fence line (see `fenceLine`). A gate is built with the sizes of its
+ * type's effective parameters and carries the parts its piece draws; other fences use the
+ * per-kind constants.
  */
-export function buildFence(fence: NonNullable<HomeModel['fences']>[number]): FenceDescriptor {
+export function buildFence(
+  fence: NonNullable<HomeModel['fences']>[number],
+  overrides?: PieceOverrides,
+): FenceDescriptor {
   const points = toOutline(fence.path);
-  const height = fence.height.value;
-  const size = FENCE_POST[fence.kind];
-  const lengths = points.slice(0, -1).map(([x, z], i) => {
-    const [ex, ez] = points[i + 1]!;
-    return Math.hypot(ex - x, ez - z);
-  });
-  const total = lengths.reduce((sum, l) => sum + l, 0);
   const start = fence.elevation.value;
   const end = fence.endElevation?.value ?? start;
-  const groundAt = (distance: number) => start + ((end - start) * distance) / Math.max(total, EPS);
-
-  const posts: FenceDescriptor['posts'] = [];
-  const panels: FenceDescriptor['panels'] = [];
-  // Neighbouring panels differ by at most this much in height; posts cover half of it each way.
-  const step = (Math.abs(end - start) / Math.max(total, EPS)) * FENCE_BAY;
-  const post = ([x, z]: Vec2, distance: number, rotationY: number) => {
-    const ground = groundAt(distance);
-    posts.push({
-      id: `${fence.id}:post:${posts.length}`,
-      center: [x, ground + (height + FENCE_POST_EXTRA) / 2, z],
-      size: [size, height + FENCE_POST_EXTRA + step, size],
-      rotationY,
-    });
-  };
-  let walked = 0;
-  lengths.forEach((length, i) => {
-    if (length < EPS) return;
-    const [sx, sz] = points[i]!;
-    const [ex, ez] = points[i + 1]!;
-    const [dx, dz] = [(ex - sx) / length, (ez - sz) / length];
-    const rotationY = rotationFor(dx, dz);
-    const bays = Math.ceil(length / FENCE_BAY - EPS);
-    const bay = length / bays;
-    for (let j = 0; j < bays; j++) {
-      post([sx + dx * j * bay, sz + dz * j * bay], walked + j * bay, rotationY);
-      const mid = (j + 0.5) * bay;
-      panels.push({
-        id: `${fence.id}:panel:${panels.length}`,
-        center: [sx + dx * mid, groundAt(walked + mid) + height / 2, sz + dz * mid],
-        size: [bay, height, FENCE_PANEL_DEPTH],
-        rotationY,
-      });
-    }
-    walked += length;
-    if (i === lengths.length - 1) post([ex, ez], walked, rotationY);
-  });
-  return { id: fence.id, name: fence.name, kind: fence.kind, posts, panels };
+  const common = { id: fence.id, name: fence.name, kind: fence.kind };
+  if (fence.kind !== 'gate') {
+    const line = fenceLine(fence.id, points, fence.height.value, start, end, fenceSpec(fence.kind));
+    return { ...common, ...line };
+  }
+  if (!fence.typeId) throw new Error(`Gate ${fence.id} has no typeId`);
+  const { values } = pieceUse(fence.typeId, fence.id, overrides);
+  const line = fenceLine(fence.id, points, fence.height.value, start, end, gateSpec(values));
+  return { ...common, ...line, typeId: fence.typeId, values, parts: gateParts(values, line) };
 }
 
 function boundsOf(points: Vec3[]) {
@@ -995,42 +994,4 @@ function boundsOf(points: Vec3[]) {
     }
   }
   return points.length ? { min, max } : { min: [0, 0, 0] as Vec3, max: [0, 0, 0] as Vec3 };
-}
-
-export const FRAME_WIDTH = 0.06;
-const FRAME_DEPTH = 0.1;
-const GLASS_DEPTH = 0.02;
-
-/**
- * Frame members and glass of an opening, in the opening's local space (centre at the origin,
- * width along x). Windows get a full frame and a pane; doors a frame without a sill, left open;
- * French doors a pane down to the floor; garage doors a closed panel.
- */
-export function openingParts(opening: Pick<OpeningDescriptor, 'type' | 'size'>): {
-  frame: Box[];
-  glass?: Box;
-  panel?: Box;
-} {
-  const [w, h, wallDepth] = opening.size;
-  const f = Math.min(FRAME_WIDTH, w / 4, h / 4);
-  const d = Math.min(FRAME_DEPTH, wallDepth);
-  const box = (x: number, y: number, sx: number, sy: number, sz = d): Box => ({
-    center: [x, y, 0],
-    size: [sx, sy, sz],
-    rotationY: 0,
-  });
-  const frame = [
-    box(-w / 2 + f / 2, 0, f, h),
-    box(w / 2 - f / 2, 0, f, h),
-    box(0, h / 2 - f / 2, w - 2 * f, f),
-  ];
-  if (opening.type === 'door') return { frame };
-  if (opening.type === 'french-door') {
-    return { frame, glass: box(0, -f / 2, w - 2 * f, h - f, GLASS_DEPTH) };
-  }
-  if (opening.type === 'garage-door') {
-    return { frame, panel: box(0, -f / 2, w - 2 * f, h - f, GLASS_DEPTH * 2) };
-  }
-  frame.push(box(0, -h / 2 + f / 2, w - 2 * f, f));
-  return { frame, glass: box(0, 0, w - 2 * f, h - 2 * f, GLASS_DEPTH) };
 }

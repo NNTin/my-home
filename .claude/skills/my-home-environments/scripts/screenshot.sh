@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # screenshot.sh <staging|production> [--path /?home=...] [--out file.png] [--wait ms] [--viewport WxH] [--touch]
-#               [--click <playwright selector>]... [--drag DX,DY]... [--pad DX,DY,MS]... [--key KEY,MS]...
+#               [--canvas] [--click <playwright selector>]... [--drag DX,DY]... [--pad DX,DY,MS]... [--key KEY,MS]...
 # screenshot.sh --check
 #
 # Screenshots the 3D viewer in headless Chromium (Playwright, kept outside the repository in
@@ -14,6 +14,9 @@
 # milliseconds, and --key holds a key (w, a, s, d, q, e, ArrowUp, ...) for MS milliseconds.
 # --touch emulates a phone (touch screen, coarse pointer); the phone layout also shows without it at phone
 # sizes such as 390x844 or 844x390. Open a panel with --path '/?panel=furniture&sheet=full' (docs/mobile.md).
+# --canvas shoots only the 3D canvas: every other element is hidden and the shot is clipped to the canvas, so UI
+# text (photo count, room names, panels) is left out; after a --drag page time is paused and advanced by a fixed
+# amount, so the shot does not depend on the frame rate. visual-diff.sh uses it.
 # The site token is attached only to requests for the environment's own host and is never printed.
 # --check installs Playwright if missing and reports its version, the Chromium path and a headless launch.
 set -euo pipefail
@@ -26,7 +29,7 @@ MY_HOME_PLAYWRIGHT_DIR=${MY_HOME_PLAYWRIGHT_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}
 export MY_HOME_PLAYWRIGHT_DIR
 
 usage() {
-  sed -n '2,18s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,21s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 
@@ -67,10 +70,15 @@ fi
 [[ $# -ge 1 ]] || usage
 resolve_env "$1"
 shift
-target=/ out='' wait_ms=6000 viewport=1440x900 actions='[]' touch=''
+target=/ out='' wait_ms=6000 viewport=1440x900 actions='[]' touch='' canvas=''
 while [[ $# -gt 0 ]]; do
   if [[ $1 == --touch ]]; then
     touch='touch'
+    shift
+    continue
+  fi
+  if [[ $1 == --canvas ]]; then
+    canvas='canvas'
     shift
     continue
   fi
@@ -108,4 +116,4 @@ ensure_playwright
 node_cmd=(node)
 command -v ao-heavy >/dev/null 2>&1 && [[ ${AO_HEAVY_ACTIVE:-} != 1 ]] && node_cmd=(ao-heavy node)
 "$script_dir/with-site-token.sh" "$SITE_ENV" -- \
-  "${node_cmd[@]}" "$script_dir/screenshot.mjs" "$out" "$target" "$wait_ms" "$width" "$height" "$actions" "$touch"
+  "${node_cmd[@]}" "$script_dir/screenshot.mjs" "$out" "$target" "$wait_ms" "$width" "$height" "$actions" "$touch" "$canvas"

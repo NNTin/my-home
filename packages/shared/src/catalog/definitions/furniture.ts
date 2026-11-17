@@ -1,7 +1,7 @@
 import { defineType } from '../types';
 import { color, fixedLength, length } from './specs';
 
-// Names, icons, categories, descriptions, sizes and colours as in apps/web/src/items/*/index.tsx.
+// Drawn by the piece modules in apps/web/src/catalog/furniture/<name>/index.ts.
 
 export const bed = defineType({
   id: 'furniture.bed',

@@ -5,3 +5,5 @@ coverage/
 apps/api/drizzle/meta/
 # Helm templates are Go templates, not YAML.
 charts/*/templates/
+# Golden render records: written by vitest, compared byte for byte
+apps/web/src/catalog/__golden__/

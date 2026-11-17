@@ -5,7 +5,6 @@ import {
   buildHome,
   buildOutbuilding,
   gableOf,
-  openingParts,
   resolveSlope,
   roofUnderside,
   slopeY,
@@ -145,18 +144,5 @@ describe('roof windows', () => {
     const attic = { ...defaultVisibility(scene), maxLevelIndex: 2 };
     expect(visibleScene(scene, attic).roofWindows).toEqual([]);
     expect(visibleScene(scene, attic).outbuildings).toHaveLength(4);
-  });
-});
-
-describe('openingParts for door types', () => {
-  it('glazes French doors to the floor and closes garage doors with a panel', () => {
-    const french = openingParts({ type: 'french-door', size: [2, 2.2, 0.36] });
-    expect(french.frame).toHaveLength(3);
-    expect(french.glass!.size[1]).toBeCloseTo(2.2 - 0.06);
-    expect(french.panel).toBeUndefined();
-    const garage = openingParts({ type: 'garage-door', size: [2.5, 2.1, 0.24] });
-    expect(garage.frame).toHaveLength(3);
-    expect(garage.glass).toBeUndefined();
-    expect(garage.panel!.size[0]).toBeCloseTo(2.5 - 0.12);
   });
 });

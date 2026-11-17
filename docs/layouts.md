@@ -32,8 +32,10 @@ request with them and the web app every response.
 
 - `position` is the item's centre on the plan in metres (x east, z south, as in the
   [home model](home-model.md)); `rotationY` is in radians, counter-clockwise seen from above.
-- `typeId` refers to a furniture type in the web app's registry
-  ([adding a type](adding-furniture-type.md)); `props` holds free-form JSON per item.
+- `typeId` refers to a furniture type by its id without the family (`bed` for the catalogue type
+  `furniture.bed`, [adding a type](adding-piece-type.md)); `props` holds free-form JSON per item,
+  read as overrides of the type's basic parameters (e.g. `{ "width": 1.8 }`; invalid ones are
+  ignored).
 - Items reference the building **only by id** (`levelId`, `roomId`). `roomId` is recomputed when an
   item moves.
 - Item ids are unique within a layout.

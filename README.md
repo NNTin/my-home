@@ -35,7 +35,7 @@ loaded from the api (orbit with the mouse) with a panel for the per-level cutawa
 toggles, and a **Furniture** panel to place, move and rotate furniture in named layouts that are
 saved to the api. See [docs/home-model.md](docs/home-model.md) for the model and how to load other
 homes, [docs/layouts.md](docs/layouts.md) for layouts and the editor,
-[docs/adding-furniture-type.md](docs/adding-furniture-type.md) to add a furniture type, and
+[docs/adding-piece-type.md](docs/adding-piece-type.md) to add a window, door or furniture type, and
 [docs/walking.md](docs/walking.md) for walking a figure through the home and taking photos with it,
 [docs/photos.md](docs/photos.md) for how those photos and photo requests are stored, and
 [docs/mobile.md](docs/mobile.md) for the layout on a phone (top bar and sheet).
@@ -83,7 +83,7 @@ A pre-commit hook (husky + lint-staged) lints and formats staged files.
 apps/web/            Vite + React + R3F viewer
   src/builder/       pure home model -> render descriptors (no three.js)
   src/editor/        pure furniture logic: placement, snapping, collision, undo/redo
-  src/items/         item-type registry; one folder per furniture type
+  src/catalog/       piece modules: how each window, door, gate and furniture type is drawn
   src/layouts/       layout persistence: auto-save, localStorage drafts
   src/scene/         R3F components drawing the descriptors and the furniture
   src/overlay/       HTML overlay (view controls, furniture panel; the phone's top bar and sheet)

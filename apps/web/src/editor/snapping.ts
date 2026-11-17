@@ -1,5 +1,5 @@
 import type { Vec2 } from '../builder/buildHome';
-import type { WallSnap } from '../items/types';
+import type { WallSnap } from '../catalog/furniture';
 import type { PlanWall } from './floorPlan';
 import { angleDiff, dot, length, normalizeAngle, rotate, scale, sub, transform } from './geometry';
 
