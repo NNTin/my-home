@@ -1,6 +1,6 @@
 // Run by screenshot.sh; not meant to be called directly.
 //   node screenshot.mjs --check
-//   node screenshot.mjs <out.png> <path> <wait-ms> <width> <height> [actions-json] [touch]   (SITE_BASE, SITE_TOKEN from with-site-token.sh)
+//   node screenshot.mjs <out.png> <path> <wait-ms> <width> <height> [actions-json] [touch] [canvas]   (SITE_BASE, SITE_TOKEN from with-site-token.sh)
 // Playwright is loaded from MY_HOME_PLAYWRIGHT_DIR, outside the repository.
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -68,7 +68,16 @@ async function runActions(page, actions) {
   }
 }
 
-async function shoot([out, target, waitMs, width, height, actions = '[]', touch = '']) {
+async function shoot([
+  out,
+  target,
+  waitMs,
+  width,
+  height,
+  actions = '[]',
+  touch = '',
+  canvas = '',
+]) {
   const base = process.env.SITE_BASE;
   const host = new URL(base).host;
   const browser = await chromium.launch({ args: LAUNCH_ARGS });
@@ -104,7 +113,17 @@ async function shoot([out, target, waitMs, width, height, actions = '[]', touch 
     await page.waitForTimeout(Number(waitMs));
     console.log(`title ${await page.title()}`);
     await runActions(page, JSON.parse(actions));
-    await page.screenshot({ path: out });
+    if (canvas === 'canvas') {
+      // Only the 3D view: hide every other element (visibility keeps the layout, so nothing redraws)
+      // and clip to the canvas.
+      await page.addStyleTag({
+        content: '* { visibility: hidden !important; } canvas { visibility: visible !important; }',
+      });
+      await page.waitForTimeout(500);
+      await page.locator('canvas').first().screenshot({ path: out, animations: 'disabled' });
+    } else {
+      await page.screenshot({ path: out });
+    }
     console.log(`errors ${errors.length ? '' : 'none'}`);
     for (const error of errors.slice(0, 10)) console.log(`  ${redact(error)}`);
     console.log(`screenshot ${out}`);
