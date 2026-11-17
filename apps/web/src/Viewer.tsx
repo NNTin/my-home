@@ -68,6 +68,7 @@ import { calibrationTargets } from './walk/calibration';
 import type { Figure } from './walk/figure';
 import { useWalk } from './walk/useWalk';
 import { WalkHud, type DeclinationSource, type WalkView } from './walk/WalkHud';
+import { loadWalkSession } from './walk/walkSession';
 import { buildWalkWorld, placeAt, startPose, type FurnitureBlocker } from './walk/world';
 
 const shownLevels = (scene: HomeScene, v: Visibility) =>
@@ -140,7 +141,14 @@ interface Props {
 export function Viewer({ model, homes, onSelectHome }: Props) {
   const scene = useMemo(() => buildHome(model), [model]);
   const [chosenVisibility, setVisibility] = useState(() => defaultVisibility(scene));
-  const [walkView, setWalkView] = useState<WalkView | undefined>(initialWalk);
+  // A walk this tab was on before the page was reloaded comes back. It is newer than the address,
+  // which a reload keeps: `?walk=first` must not put the figure back at the start.
+  const [restored] = useState(() => loadWalkSession(model.id));
+  const [walkView, setWalkView] = useState<WalkView | undefined>(
+    () => restored?.view ?? initialWalk(),
+  );
+  /** A camera covers the view: the scene stops drawing meanwhile. */
+  const [cameraOpen, setCameraOpen] = useState(false);
   const photos = usePhotos(model.id);
   const layout = useLayoutMode();
   const mobile = layout !== 'desktop';
@@ -218,6 +226,9 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     return buildWalkWorld(model, scene, blockers);
   }, [model, scene, ctx, items]);
   const start = useMemo(() => {
+    // Where the restored walk stood: where the shutter was tapped, if a photo was on its way.
+    const back = restored && (restored.pending?.figure ?? restored.figure);
+    if (back) return back;
     const pose = startPose(model, world) ?? { x: 0, z: 0, y: 0, yaw: 0 };
     return { ...pose, pitch: 0 };
     // Only where the figure first appears: it must not jump when furniture changes the world.
@@ -640,6 +651,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
             }}
             requestGhosts={requestGhosts}
             viewpoint={viewpoint}
+            paused={walking && cameraOpen}
           />
           {viewed && overlay.on && (
             <img
@@ -686,6 +698,15 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
               }}
               onChoose={setChosenRequest}
               onSaved={() => void photos.reload()}
+              onCamera={setCameraOpen}
+              restored={
+                restored && {
+                  heading: restored.heading,
+                  tilt: restored.tilt,
+                  draft: restored.draft,
+                  lostPhoto: restored.pending !== undefined,
+                }
+              }
             />
           )}
         </div>

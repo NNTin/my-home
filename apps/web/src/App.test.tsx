@@ -4,6 +4,7 @@ import { App } from './App';
 import type { SceneProps } from './scene/Scene';
 import { fakeApi, homeSummary } from './test/fakeApi';
 import { mockHome } from './test/fixtures';
+import { WALK_SESSION_KEY } from './walk/walkSession';
 
 // jsdom has no WebGL, so the R3F canvas is replaced with a stub that exposes what it would draw.
 let lastScene: SceneProps | undefined;
@@ -30,6 +31,7 @@ describe('App', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     localStorage.clear();
+    sessionStorage.clear();
     lastScene = undefined;
     window.history.replaceState(null, '', '/');
   });
@@ -221,6 +223,66 @@ describe('App', () => {
       const measured = JSON.parse(puts()[1]![1]!.body as string) as typeof mockHome;
       expect(measured.building.magneticDeclination).toMatchObject({ value: 4, source: 'measured' });
       expect(measured.name).toBe('Mock home, corrected by an agent');
+    });
+
+    it('comes back walking where the shutter was tapped when the camera app reloaded the page', async () => {
+      stubApi();
+      const first = render(<App />);
+      fireEvent.click(await screen.findByRole('button', { name: /Walk and take photos/ }));
+      fireEvent.click(screen.getByRole('button', { name: 'Overview' }));
+      const figure = { ...lastScene!.walk!.figure.current };
+      // The shutter opens the phone's camera app: the scene stops drawing meanwhile.
+      fireEvent.click(screen.getByLabelText('Take photo'));
+      expect(lastScene?.paused).toBe(true);
+      // The browser throws the tab away and loads the page afresh: no React cleanup runs, and
+      // sessionStorage is all that is left.
+      const kept = sessionStorage.getItem(WALK_SESSION_KEY);
+      expect(JSON.parse(kept!)).toMatchObject({ homeId: 'mock-home', view: 'third' });
+      first.unmount();
+      sessionStorage.setItem(WALK_SESSION_KEY, kept!);
+
+      render(<App />);
+      expect(await screen.findByRole('application', { name: 'Movement pad' })).toBeInTheDocument();
+      expect(lastScene?.walk?.view).toBe('third');
+      expect(lastScene?.walk?.figure.current).toMatchObject(figure);
+      expect(lastScene?.paused).toBe(false);
+      const notice = screen.getByRole('alert');
+      expect(notice).toHaveTextContent(/reloaded the page while the camera app was open/);
+      expect(notice).toHaveTextContent(/please take it again/);
+      fireEvent.click(within(notice).getByRole('button', { name: 'OK' }));
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('prefers the walk of this tab to the ?walk of the address, which a reload keeps', async () => {
+      window.history.replaceState(null, '', '/?walk=first');
+      const figure = { x: 0.5, z: 1, y: -1.2, levelId: 'souterrain', yaw: 1, pitch: 0 };
+      sessionStorage.setItem(
+        WALK_SESSION_KEY,
+        JSON.stringify({
+          homeId: 'mock-home',
+          view: 'third',
+          figure,
+          heading: false,
+          tilt: false,
+          pending: { figure, sensors: { source: 'manual' }, at: 1 },
+          savedAt: Date.now(),
+        }),
+      );
+      stubApi();
+      render(<App />);
+      expect(await screen.findByRole('application', { name: 'Movement pad' })).toBeInTheDocument();
+      expect(lastScene?.walk?.view).toBe('third');
+      expect(lastScene?.walk?.figure.current).toMatchObject(figure);
+      expect(screen.getByRole('alert')).toHaveTextContent(/please take it again/);
+    });
+
+    it('forgets the walk on exit, so a reload then shows the viewer', async () => {
+      stubApi();
+      render(<App />);
+      fireEvent.click(await screen.findByRole('button', { name: /Walk and take photos/ }));
+      expect(sessionStorage.getItem(WALK_SESSION_KEY)).not.toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: /Exit/ }));
+      expect(sessionStorage.getItem(WALK_SESSION_KEY)).toBeNull();
     });
 
     it('opens walking directly from the address: ?walk=third', async () => {

@@ -8,14 +8,14 @@ or open the viewer with `?walk=first` or `?walk=third`.
 
 ## Controls
 
-|              | Phone                                        | Desktop                                  |
-| ------------ | -------------------------------------------- | ---------------------------------------- |
-| Walk         | movement pad: push up or down                | `W` `S` or `↑` `↓`                       |
-| Turn         | movement pad: push left or right             | `Q` `E` or `←` `→`                       |
-| Sidestep     |                                              | `A` `D`                                  |
-| Look around  | drag on the view (first person), or **▲ ▼**  | drag on the view with the mouse          |
-| Switch view  | **Overview** / **First person**              | the same                                 |
-| Take a photo | the camera button (opens the phone's camera) | the camera button (opens a file chooser) |
+|              | Phone                                          | Desktop                                    |
+| ------------ | ---------------------------------------------- | ------------------------------------------ |
+| Walk         | movement pad: push up or down                  | `W` `S` or `↑` `↓`                         |
+| Turn         | movement pad: push left or right               | `Q` `E` or `←` `→`                         |
+| Sidestep     |                                                | `A` `D`                                    |
+| Look around  | drag on the view (first person), or **▲ ▼**    | drag on the view with the mouse            |
+| Switch view  | **Overview** / **First person**                | the same                                   |
+| Take a photo | the camera button (the camera inside the page) | the camera button (webcam or file chooser) |
 
 The pad both walks and turns, so one thumb is enough in portrait. In first person the camera is the figure's
 eyes; the whole building is drawn and room names are hidden. In the overview the camera orbits the figure
@@ -91,8 +91,8 @@ The offset is shown in the bar, kept **per device** (in the browser's local stor
 
 ### What is stored with a photo
 
-With Heading or Tilt on, the photo's view is the one at the **tap on the camera button**. The camera app
-that opens next hides the page, and afterwards the phone is usually tipped towards you while you read the
+With Heading or Tilt on, the photo's view is the one at the **tap on the shutter** (or, with the camera
+app, on the button that opens it). The camera app hides the page, and afterwards the phone is usually tipped towards you while you read the
 sheet and type a note; so the view goes back to where it was at the tap and the phone stops driving it until
 the sheet is closed; the bar says "held for the photo" meanwhile (not "paused", which is the page in the
 background). The arrow buttons in the sheet adjust the pose from there.
@@ -132,6 +132,12 @@ the home:
     measured by the phone", and does its view cone (with a ring) point the way you faced?
 14. **Without sensors.** Switch both modes off: do dragging and **▲ ▼** look around? iPhone, in a fresh tab:
     refuse the permission. Is there a clear message, and do dragging and **▲ ▼** still work?
+15. **Camera in the page.** Tap the camera button: is the browser's camera prompt shown once, then the back
+    camera's picture, the right way up, also in landscape? Take a photo and save it: is it sharp, and does
+    the gallery show it with its pose? Then try **📱 Camera app** and **🖼 Gallery** from the viewfinder.
+16. **Back from the camera app.** Turn Heading on, walk somewhere, open **📱 Camera app**, take a photo and
+    press OK. Does the sheet show the photo? If the browser reloads the page instead, does it come back
+    walking at the same spot, with Heading on (Android), and a message to take the photo again?
 
 ## What blocks the figure
 
@@ -155,13 +161,35 @@ the cutaway and the photo's `levelId` follow.
 
 ## Taking a photo
 
-1. Walk to where you stand and look the way you look. Press the camera button and take the photo.
+1. Walk to where you stand and look the way you look. Press the camera button: the camera opens **inside the
+   page** (the browser asks once for the camera). Press the round shutter. **📱 Camera app** and **🖼 Gallery**
+   are there too, and are what is left when the camera is not allowed or the browser has no camera access.
 2. The sheet shows the photo, where the figure is, a note field and tags. The arrow buttons move the figure by
    10 cm or turn and tilt it by 5°, for fine corrections.
 3. **Save photo** uploads it with the figure's pose **at that moment**: position (eye height), yaw, pitch, level
    and the camera's horizontal field of view. A progress bar shows the upload; if it fails, the photo and the
    note stay and **Try again** repeats it.
 4. Afterwards **Update pose** corrects the pose of the saved photo from the figure's current pose.
+
+### Why the camera is inside the page
+
+A phone browser may throw a tab away while it is in the background, and a camera app in front of a heavy 3D
+page is exactly that. When the camera app returns, the browser loads the page afresh: the photo it handed back
+is gone, and so was the walk (seen with Samsung Internet on a Galaxy S23). So:
+
+- the camera button opens the camera **inside the page** (`getUserMedia`, `CameraView.tsx`): the page never
+  goes to the background. The shutter takes the camera's full-resolution still where the browser offers
+  `ImageCapture` (Chrome, Samsung Internet), otherwise the video frame at the stream's full size;
+- while any camera is open the 3D view stops drawing, which leaves the phone more memory;
+- walk mode is kept for the tab in `sessionStorage` (`walkSession.ts`): the view, the figure, Heading and
+  Tilt, the note and tags being typed, and, while the camera app is open, the pose and sensors of the tap.
+  After a reload the page comes back walking there (also over `?walk=` in the address, which a reload keeps)
+  and, if a photo was on its way, says that it was lost and asks to take it again. Leaving walk mode forgets
+  it. Heading and Tilt come back on by themselves where the browser asks no permission (Android); an iPhone
+  needs a tap on them again.
+
+If an upload fails, the sheet keeps the photo, says why (no connection or an expired sign-in included) and
+offers **Save a copy on the phone** before trying again.
 
 When an agent or the owner has [asked for a photo](photos.md#photo-requests), the spot shows as a translucent
 ghost figure and the request's question appears when the figure reaches it. The sheet then offers "Answers the
@@ -181,6 +209,8 @@ typical phone camera (26 mm).
 | Frame loop, keyboard, follow easing   | `apps/web/src/walk/useWalk.ts`                                        |
 | Sensor maths, compass and tilt modes  | `apps/web/src/walk/orientation.ts`, `useCompass.ts`, `calibration.ts` |
 | Controls, capture sheet               | `apps/web/src/walk/WalkHud.tsx`, `CaptureSheet.tsx`, `Joystick.tsx`   |
+| Camera inside the page                | `apps/web/src/walk/CameraView.tsx`                                    |
+| Walk kept across a reload             | `apps/web/src/walk/walkSession.ts`                                    |
 | Figure and camera in the 3D scene     | `apps/web/src/scene/WalkRig.tsx`                                      |
 
 The frame loop runs outside the canvas and only the controls re-render while the figure moves; the 3D scene
@@ -192,6 +222,7 @@ reads the figure from a ref every frame.
 S=.claude/skills/my-home-environments/scripts
 $S/walk-smoke.sh staging                                   # phone-sized smoke test of the movement pad
 $S/compass-smoke.sh staging                                # Heading and Tilt with mocked sensor events
+$S/camera-smoke.sh staging                                 # taking a photo with a fake camera, and a reload
 $S/mobile-smoke.sh staging                                 # the phone layout around it (docs/mobile.md)
 $S/screenshot.sh staging --viewport 390x844 --path '/?walk=first' --pad 0,-44,2000
 ```

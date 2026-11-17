@@ -34,6 +34,10 @@ interface Props {
   request?: PhotoRequest | undefined;
   /** Called after the photo, or a correction of its pose, was stored. */
   onSaved?(): void;
+  /** Note and tags to start from, kept from before a reload. */
+  draft?: { note: string; tags: string[] } | undefined;
+  /** Called as the note or the tags change, so they can be kept. */
+  onDraft?(draft: { note: string; tags: string[] }): void;
   onClose(): void;
 }
 
@@ -53,17 +57,30 @@ export function CaptureSheet({
   getSensors,
   request,
   onSaved,
+  draft,
+  onDraft,
   onClose,
 }: Props) {
   const [phase, setPhase] = useState<Phase>({ step: 'compose' });
   const [answers, setAnswers] = useState(true);
-  const [note, setNote] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
+  const [note, setNoteState] = useState(draft?.note ?? '');
+  const [tags, setTagsState] = useState<string[]>(draft?.tags ?? []);
+  const setNote = (value: string) => {
+    setNoteState(value);
+    onDraft?.({ note: value, tags });
+  };
+  const setTags = (value: string[]) => {
+    setTagsState(value);
+    onDraft?.({ note, tags: value });
+  };
   // The preview URL lives exactly as long as the effect, so it is never used after being revoked.
+  // The same URL lets the owner keep a copy on the phone when the upload fails.
   const preview = useRef<HTMLImageElement>(null);
+  const copy = useRef<HTMLAnchorElement>(null);
   useEffect(() => {
     const url = URL.createObjectURL(file);
     if (preview.current) preview.current.src = url;
+    if (copy.current) copy.current.href = url;
     return () => URL.revokeObjectURL(url);
   }, [file]);
   // Resizing starts right away, so it is usually done when Save is pressed.
@@ -228,9 +245,19 @@ export function CaptureSheet({
           )}
           {phase.step === 'failed' && (
             <p role="alert" className="error">
-              Upload failed: {phase.message}
+              Upload failed: {phase.message}. The photo stays here: try again, or save a copy on the
+              phone first.
             </p>
           )}
+          {/* Always rendered, so the effect above can give it the photo's URL. */}
+          <a
+            ref={copy}
+            className="capture-copy"
+            download={`photo-${takenAtOf(file).replace(/[:.]/g, '-')}.jpg`}
+            hidden={phase.step !== 'failed'}
+          >
+            Save a copy on the phone
+          </a>
           <div className="capture-actions">
             <button type="button" onClick={onClose} disabled={busy}>
               Discard

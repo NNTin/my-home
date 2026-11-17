@@ -46,6 +46,20 @@ export interface SceneProps {
   toolbar?: FurnitureToolbarProps | undefined;
   /** Filled with the action that puts the camera back where it started ("Reset view"). */
   resetViewRef?: RefObject<(() => void) | undefined>;
+  /** Draw no frames for now: something covers the view (the camera while walking). */
+  paused?: boolean;
+}
+
+/** Stops the frame loop while `paused`, and puts back whichever loop ran before. */
+function PauseFrames({ paused }: { paused: boolean }) {
+  const get = useThree((state) => state.get);
+  useEffect(() => {
+    if (!paused) return;
+    const { frameloop, setFrameloop } = get();
+    setFrameloop('never');
+    return () => setFrameloop(frameloop);
+  }, [paused, get]);
+  return null;
 }
 
 /** Device pixel ratio the canvas renders at, as [min, max]; lower on a phone. */
@@ -118,6 +132,7 @@ export function Scene({
   touch = false,
   toolbar,
   resetViewRef,
+  paused = false,
 }: SceneProps) {
   const roseRef = useRef<HTMLButtonElement>(null);
   const northUpRef = useRef<() => void>(undefined);
@@ -139,6 +154,7 @@ export function Scene({
         onPointerMissed={(e) => onCanvas(e) && handlers.onSelect(undefined)}
         style={{ touchAction: 'none' }}
       >
+        <PauseFrames paused={paused} />
         <color attach="background" args={['#cfdde8']} />
         <hemisphereLight args={['#ffffff', '#5b5040', 0.8]} />
         <directionalLight

@@ -7,6 +7,7 @@ import { mockHome, testRequest } from '../test/fixtures';
 import type { Figure } from './figure';
 import { useWalk } from './useWalk';
 import { WalkHud, type WalkView } from './WalkHud';
+import { WALK_SESSION_KEY } from './walkSession';
 import { buildWalkWorld, EYE_HEIGHT } from './world';
 
 // Mock home, souterrain (floor at -1.2): the hallway is x -0.5…1.5, z -4…4.
@@ -56,12 +57,16 @@ function Harness({
   onSaved,
   northBearing = 0,
   declination = 0,
+  onCamera,
+  restored,
 }: {
   api?: Api;
   requests?: PhotoRequest[];
   onSaved?: () => void;
   northBearing?: number;
   declination?: number;
+  onCamera?: (open: boolean) => void;
+  restored?: Parameters<typeof WalkHud>[0]['restored'];
 }) {
   const walk = useWalk(world, start, true);
   const [view, setView] = useState<WalkView>('first');
@@ -85,6 +90,8 @@ function Harness({
       requests={requests}
       roomIdOf={() => 'souterrain-hallway'}
       {...(onSaved && { onSaved })}
+      {...(onCamera && { onCamera })}
+      {...(restored && { restored })}
     />
   );
 }
@@ -135,6 +142,7 @@ describe('WalkHud', () => {
   });
   afterEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
   });
 
   it('shows where the figure is', () => {
@@ -718,6 +726,199 @@ describe('WalkHud', () => {
         takePhoto();
         expect(screen.queryByLabelText(/Answers the request/)).not.toBeInTheDocument();
       });
+    });
+  });
+
+  const kept = () => JSON.parse(sessionStorage.getItem(WALK_SESSION_KEY) ?? 'null');
+
+  describe('when the camera app takes the page away', () => {
+    it('keeps the walk and the pose of the tap for this tab, and forgets them on exit', () => {
+      const view = render(<Harness />);
+      expect(kept()).toMatchObject({ homeId: 'mock-home', view: 'first', figure: start });
+      expect(kept().pending).toBeUndefined();
+
+      fireEvent.click(screen.getByLabelText('Take photo'));
+      expect(kept().pending).toMatchObject({ figure: start, sensors: { source: 'manual' } });
+      // The photo arrived: nothing is on its way any more.
+      fireEvent.change(screen.getByLabelText('Take photo'), {
+        target: { files: [new File(['x'], 'photo.jpg', { type: 'image/jpeg' })] },
+      });
+      expect(kept().pending).toBeUndefined();
+
+      view.unmount();
+      expect(sessionStorage.getItem(WALK_SESSION_KEY)).toBeNull();
+    });
+
+    it('stops the scene while the camera app is open, and starts it when the page is back', () => {
+      const onCamera = vi.fn();
+      render(<Harness onCamera={onCamera} />);
+      expect(onCamera).toHaveBeenLastCalledWith(false);
+      fireEvent.click(screen.getByLabelText('Take photo'));
+      expect(onCamera).toHaveBeenLastCalledWith(true);
+      // A focus without having left first is not a return.
+      act(() => void window.dispatchEvent(new Event('focus')));
+      expect(onCamera).toHaveBeenLastCalledWith(true);
+      // Back without a photo (cancelled): the page lived, so nothing was lost either.
+      vi.spyOn(document, 'hasFocus').mockReturnValueOnce(false);
+      act(() => void window.dispatchEvent(new Event('blur')));
+      act(() => void window.dispatchEvent(new Event('focus')));
+      expect(onCamera).toHaveBeenLastCalledWith(false);
+      expect(kept().pending).toBeUndefined();
+    });
+
+    it('says that the photo was lost when the page was reloaded meanwhile', () => {
+      render(<Harness restored={{ heading: false, tilt: false, lostPhoto: true }} />);
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        /reloaded the page while the camera app was open.*please take it again/,
+      );
+      takePhoto();
+      expect(screen.queryByText(/reloaded the page/)).not.toBeInTheDocument();
+    });
+
+    it('keeps the note and tags being typed, and offers them again after a reload', async () => {
+      const first = render(<Harness />);
+      takePhoto();
+      fireEvent.change(screen.getByLabelText('Note'), { target: { value: 'Kitchen window' } });
+      fireEvent.click(screen.getByLabelText('window'));
+      expect(kept().draft).toEqual({ note: 'Kitchen window', tags: ['window'] });
+      const draft = kept().draft;
+      first.unmount();
+
+      const api = fakeApi();
+      render(
+        <Harness api={api} restored={{ heading: false, tilt: false, lostPhoto: true, draft }} />,
+      );
+      takePhoto();
+      expect(screen.getByLabelText('Note')).toHaveValue('Kitchen window');
+      fireEvent.click(screen.getByRole('button', { name: 'Save photo' }));
+      await screen.findByText('Photo saved');
+      expect(api.upload.mock.calls[0]![1]).toMatchObject({
+        note: 'Kitchen window',
+        tags: ['window'],
+      });
+      // Saved: the next photo starts blank.
+      expect(kept().draft).toBeUndefined();
+    });
+
+    it('switches the sensor modes back on where no permission is asked (Android)', () => {
+      vi.stubGlobal('DeviceOrientationEvent', class extends Event {});
+      render(<Harness restored={{ heading: true, tilt: true, lostPhoto: false }} />);
+      expect(screen.getByRole('button', { name: /Heading on/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Tilt on/ })).toBeInTheDocument();
+      vi.unstubAllGlobals();
+    });
+
+    it('offers a copy of the photo when the upload fails', async () => {
+      const api = fakeApi();
+      api.upload.mockRejectedValueOnce(new Error('no connection to the server'));
+      render(<Harness api={api} />);
+      takePhoto();
+      expect(screen.getByText('Save a copy on the phone')).not.toBeVisible();
+      fireEvent.click(screen.getByRole('button', { name: 'Save photo' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(/The photo stays here/);
+      const copy = screen.getByText('Save a copy on the phone');
+      expect(copy).toBeVisible();
+      expect(copy).toHaveAttribute('href', 'blob:preview');
+      expect(copy.getAttribute('download')).toMatch(/^photo-.*\.jpg$/);
+    });
+  });
+
+  describe('with the camera inside the page', () => {
+    const track = { stop: vi.fn(), kind: 'video' };
+    const stream = { getTracks: () => [track], getVideoTracks: () => [track] };
+    const getUserMedia = vi.fn<(c: MediaStreamConstraints) => Promise<unknown>>();
+    beforeEach(() => {
+      getUserMedia.mockResolvedValue(stream);
+      Object.defineProperty(navigator, 'mediaDevices', {
+        configurable: true,
+        value: { getUserMedia },
+      });
+      vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+      vi.spyOn(HTMLVideoElement.prototype, 'videoWidth', 'get').mockReturnValue(1080);
+      vi.spyOn(HTMLVideoElement.prototype, 'videoHeight', 'get').mockReturnValue(1920);
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+        drawImage: vi.fn(),
+      } as unknown as CanvasRenderingContext2D);
+      vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(function (
+        this: HTMLCanvasElement,
+        done,
+      ) {
+        done(new Blob([`frame ${this.width}x${this.height}`], { type: 'image/jpeg' }));
+      });
+    });
+    afterEach(() => {
+      Reflect.deleteProperty(navigator, 'mediaDevices');
+      vi.restoreAllMocks();
+    });
+
+    it('takes the photo in the page, without the camera app, and uploads the frame', async () => {
+      const api = fakeApi();
+      const onCamera = vi.fn();
+      render(<Harness api={api} onCamera={onCamera} />);
+      const shutter = screen.getByRole('button', { name: 'Take photo' });
+      fireEvent.click(shutter);
+      const camera = within(screen.getByRole('region', { name: 'Camera' }));
+      expect(onCamera).toHaveBeenLastCalledWith(true);
+      expect(getUserMedia).toHaveBeenCalledWith(
+        expect.objectContaining({
+          video: expect.objectContaining({ facingMode: { ideal: 'environment' } }),
+        }),
+      );
+      const take = camera.getByRole('button', { name: 'Take the photo' });
+      await waitFor(() => expect(take).toBeEnabled());
+      // Nothing about a camera app on its way: the page never leaves.
+      expect(kept().pending).toBeUndefined();
+      fireEvent.click(take);
+
+      const sheet = within(await screen.findByRole('region', { name: 'New photo' }));
+      expect(screen.queryByRole('region', { name: 'Camera' })).not.toBeInTheDocument();
+      expect(track.stop).toHaveBeenCalled();
+      expect(onCamera).toHaveBeenLastCalledWith(false);
+      fireEvent.click(sheet.getByRole('button', { name: 'Save photo' }));
+      await sheet.findByText('Photo saved');
+      const [, meta, image] = api.upload.mock.calls[0]!;
+      expect(await image.text()).toBe('frame 1080x1920');
+      expect(meta.pose.position.x).toBeCloseTo(start.x);
+      expect(meta.sensors).toMatchObject({ source: 'manual' });
+    });
+
+    it('falls back to the camera app and the gallery when the camera is not allowed', async () => {
+      getUserMedia.mockRejectedValue(
+        Object.assign(new Error('denied'), { name: 'NotAllowedError' }),
+      );
+      render(<Harness />);
+      fireEvent.click(screen.getByRole('button', { name: 'Take photo' }));
+      const camera = within(screen.getByRole('region', { name: 'Camera' }));
+      expect(await camera.findByRole('alert')).toHaveTextContent(/not allowed for this site/);
+      expect(camera.getByRole('button', { name: 'Take the photo' })).toBeDisabled();
+      expect(camera.getByLabelText('Camera app')).toHaveAttribute('capture', 'environment');
+      const gallery = camera.getByLabelText('Gallery');
+      expect(gallery).toHaveAttribute('type', 'file');
+      expect(gallery).not.toHaveAttribute('capture');
+
+      fireEvent.click(gallery);
+      fireEvent.change(gallery, {
+        target: { files: [new File(['picked'], 'old.jpg', { type: 'image/jpeg' })] },
+      });
+      expect(await screen.findByRole('region', { name: 'New photo' })).toBeInTheDocument();
+      expect(screen.queryByRole('region', { name: 'Camera' })).not.toBeInTheDocument();
+    });
+
+    it('lets go of the camera while the camera app is open from the viewfinder', async () => {
+      render(<Harness />);
+      fireEvent.click(screen.getByRole('button', { name: 'Take photo' }));
+      const camera = within(screen.getByRole('region', { name: 'Camera' }));
+      await waitFor(() =>
+        expect(camera.getByRole('button', { name: 'Take the photo' })).toBeEnabled(),
+      );
+      fireEvent.click(camera.getByLabelText('Camera app'));
+      expect(track.stop).toHaveBeenCalled();
+      expect(kept().pending).toBeDefined();
+      // Back with the page alive: the viewfinder takes the camera again.
+      vi.spyOn(document, 'hasFocus').mockReturnValueOnce(false);
+      act(() => void window.dispatchEvent(new Event('blur')));
+      act(() => void window.dispatchEvent(new Event('focus')));
+      await waitFor(() => expect(getUserMedia).toHaveBeenCalledTimes(2));
     });
   });
 });
