@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { jpegIsPortrait } from './prepareImage';
 
 /** Whether this browser can show the camera inside the page (HTTPS and `getUserMedia`). */
 export function hasInPageCamera(): boolean {
@@ -42,17 +43,18 @@ async function frameOf(video: HTMLVideoElement): Promise<Blob> {
 /**
  * The photo at the camera's full resolution where the browser offers `ImageCapture` (Chrome and
  * Samsung Internet on Android), else the video frame. A full-resolution photo that comes back
- * turned against what the viewfinder showed is not used: the frame is what the owner saw.
+ * turned against what the viewfinder showed, or whose header does not say, is not used: the frame
+ * is what the owner saw.
  */
 export async function grabPhoto(video: HTMLVideoElement, track?: MediaStreamTrack): Promise<Blob> {
   const Capture = (window as unknown as { ImageCapture?: ImageCaptureConstructor }).ImageCapture;
   if (Capture && track) {
     try {
       const photo = await new Capture(track).takePhoto();
-      const bitmap = await createImageBitmap(photo, { imageOrientation: 'from-image' });
-      const upright = bitmap.height > bitmap.width;
-      bitmap.close();
-      if (photo.size > 0 && upright === video.videoHeight > video.videoWidth) return photo;
+      // Its header is enough to tell which way up it is: decoding a full-size still only for
+      // that would cost the memory this page is short of.
+      const portrait = jpegIsPortrait(await photo.slice(0, 256 * 1024).arrayBuffer());
+      if (photo.size > 0 && portrait === video.videoHeight > video.videoWidth) return photo;
     } catch {
       // Not every camera can take a still while streaming: the frame will do.
     }

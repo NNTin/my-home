@@ -749,6 +749,24 @@ describe('WalkHud', () => {
       expect(sessionStorage.getItem(WALK_SESSION_KEY)).toBeNull();
     });
 
+    it('starts the scene again on a cancelled picker, or on the next touch where none says so', () => {
+      const onCamera = vi.fn();
+      render(<Harness onCamera={onCamera} />);
+      const input = screen.getByLabelText('Take photo');
+      fireEvent.click(input);
+      expect(onCamera).toHaveBeenLastCalledWith(true);
+      act(() => void input.dispatchEvent(new Event('cancel')));
+      expect(onCamera).toHaveBeenLastCalledWith(false);
+      expect(kept().pending).toBeUndefined();
+
+      // A picker that says nothing at all: the next touch on the page.
+      fireEvent.click(input);
+      expect(onCamera).toHaveBeenLastCalledWith(true);
+      fireEvent.pointerDown(hud());
+      expect(onCamera).toHaveBeenLastCalledWith(false);
+      expect(kept().pending).toBeUndefined();
+    });
+
     it('stops the scene while the camera app is open, and starts it when the page is back', () => {
       const onCamera = vi.fn();
       render(<Harness onCamera={onCamera} />);
@@ -919,6 +937,27 @@ describe('WalkHud', () => {
       act(() => void window.dispatchEvent(new Event('blur')));
       act(() => void window.dispatchEvent(new Event('focus')));
       await waitFor(() => expect(getUserMedia).toHaveBeenCalledTimes(2));
+    });
+
+    it('resumes the scene and the viewfinder when the picker is closed without a photo', async () => {
+      const onCamera = vi.fn();
+      render(<Harness onCamera={onCamera} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Take photo' }));
+      const camera = within(screen.getByRole('region', { name: 'Camera' }));
+      await waitFor(() =>
+        expect(camera.getByRole('button', { name: 'Take the photo' })).toBeEnabled(),
+      );
+      const gallery = camera.getByLabelText('Gallery');
+      fireEvent.click(gallery);
+      expect(camera.getByRole('button', { name: 'Take the photo' })).toBeDisabled();
+      // Closed without taking the focus away (an action sheet on the page): only `cancel` says so.
+      act(() => void gallery.dispatchEvent(new Event('cancel')));
+      await waitFor(() => expect(getUserMedia).toHaveBeenCalledTimes(2));
+      await waitFor(() =>
+        expect(camera.getByRole('button', { name: 'Take the photo' })).toBeEnabled(),
+      );
+      expect(kept().pending).toBeUndefined();
+      expect(screen.getByRole('region', { name: 'Camera' })).toBeInTheDocument();
     });
   });
 });

@@ -175,27 +175,34 @@ export function WalkHud({
   useEffect(() => () => onCamera?.(false), [onCamera]);
   // Back from the camera app with the page still alive: whatever it hands back (or not) arrives
   // in this page, so nothing is lost any more.
-  // Only a return counts: the page must have been left (hidden, or the focus lost) first.
+  // Only a return counts: the page must have been left (hidden, or the focus lost) first. A
+  // picker closed without a photo usually says so (`cancel`, see `FileInput`); where it says
+  // nothing and never took the focus either (an action sheet on the page), the next touch on the
+  // page shows that the owner is back.
   useEffect(() => {
     if (!away) return;
     let left = false;
     const leave = () => {
       if (document.visibilityState === 'hidden' || !document.hasFocus()) left = true;
     };
-    const back = () => {
-      if (!left || document.visibilityState === 'hidden') return;
+    const resume = () => {
       delete kept.current.pending;
       keep.current();
       setAway(false);
+    };
+    const back = () => {
+      if (left && document.visibilityState !== 'hidden') resume();
     };
     const change = () => (document.visibilityState === 'hidden' ? leave() : back());
     document.addEventListener('visibilitychange', change);
     window.addEventListener('blur', leave);
     window.addEventListener('focus', back);
+    window.addEventListener('pointerdown', resume, true);
     return () => {
       document.removeEventListener('visibilitychange', change);
       window.removeEventListener('blur', leave);
       window.removeEventListener('focus', back);
+      window.removeEventListener('pointerdown', resume, true);
     };
   }, [away]);
 
@@ -230,9 +237,12 @@ export function WalkHud({
     keep.current();
     setAway(true);
   };
+  /** The picker closed, with a photo or without one (cancelled): the page is still here. */
   const picked = (photo: Blob | undefined) => {
     if (photo) took(photo);
     tap.current = undefined;
+    delete kept.current.pending;
+    keep.current();
     setAway(false);
   };
   const [calibrating, setCalibrating] = useState(false);
@@ -633,11 +643,25 @@ function FileInput({
   onOpen,
   onPick,
 }: FileInputProps) {
+  // Closing the picker without a photo fires `cancel` (no React prop for it on an input).
+  const input = useRef<HTMLInputElement>(null);
+  const cancelled = useRef(onPick);
+  useEffect(() => {
+    cancelled.current = onPick;
+  });
+  useEffect(() => {
+    const element = input.current;
+    if (!element) return;
+    const cancel = () => cancelled.current(undefined);
+    element.addEventListener('cancel', cancel);
+    return () => element.removeEventListener('cancel', cancel);
+  }, []);
   return (
     <label className={shutter ? 'shutter' : 'camera-alt'} title={label}>
       <span aria-hidden="true">{icon}</span>
       {!shutter && <span>{label}</span>}
       <input
+        ref={input}
         aria-label={label}
         type="file"
         accept="image/*"

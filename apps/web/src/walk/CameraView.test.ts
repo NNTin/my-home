@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { grabPhoto } from './CameraView';
+import { jpegHeader } from '../test/jpeg';
 
 describe('grabPhoto', () => {
   const track = {} as MediaStreamTrack;
@@ -23,17 +24,16 @@ describe('grabPhoto', () => {
     vi.unstubAllGlobals();
   });
 
-  const withImageCapture = (photo: Blob | Error, size: [number, number]) => {
+  const decode = vi.fn();
+  const withImageCapture = (photo: Blob | Error) => {
     vi.stubGlobal(
       'ImageCapture',
       class {
         takePhoto = () => (photo instanceof Error ? Promise.reject(photo) : Promise.resolve(photo));
       },
     );
-    vi.stubGlobal(
-      'createImageBitmap',
-      vi.fn(() => Promise.resolve({ width: size[0], height: size[1], close: vi.fn() })),
-    );
+    // The photo is never decoded: its header says which way up it is.
+    vi.stubGlobal('createImageBitmap', decode);
   };
 
   it('uses the frame of the video at its full size without ImageCapture', async () => {
@@ -41,15 +41,22 @@ describe('grabPhoto', () => {
   });
 
   it("takes the camera's full-resolution photo where ImageCapture is there", async () => {
-    const photo = new Blob(['full photo']);
-    withImageCapture(photo, [3000, 4000]);
+    const photo = new Blob([jpegHeader(3000, 4000)]);
+    withImageCapture(photo);
     expect(await grabPhoto(video, track)).toBe(photo);
+    // Taken across, and turned upright by its EXIF orientation: also the right way up.
+    const turned = new Blob([jpegHeader(4000, 3000, 6)]);
+    withImageCapture(turned);
+    expect(await grabPhoto(video, track)).toBe(turned);
+    expect(decode).not.toHaveBeenCalled();
   });
 
-  it('keeps to the frame when the photo is turned against the viewfinder or fails', async () => {
-    withImageCapture(new Blob(['sideways']), [4000, 3000]);
+  it('keeps to the frame when the photo is turned against the viewfinder, unreadable or fails', async () => {
+    withImageCapture(new Blob([jpegHeader(4000, 3000)]));
     expect(await (await grabPhoto(video, track)).text()).toBe('frame 1080x1920');
-    withImageCapture(new Error('not while streaming'), [3000, 4000]);
+    withImageCapture(new Blob(['no jpeg header']));
+    expect(await (await grabPhoto(video, track)).text()).toBe('frame 1080x1920');
+    withImageCapture(new Error('not while streaming'));
     expect(await (await grabPhoto(video, track)).text()).toBe('frame 1080x1920');
   });
 
