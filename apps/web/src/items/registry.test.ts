@@ -27,10 +27,10 @@ describe('item-type registry', () => {
       'wardrobe',
     ]);
     expect(registry.categories.map((c) => c.name)).toEqual([
-      'Bedroom',
+      'Bed room',
       'Dining',
       'Living room',
-      'Office',
+      'Work room',
     ]);
     expect(registry.get('bed')?.snapping.wall).toBe('back');
   });

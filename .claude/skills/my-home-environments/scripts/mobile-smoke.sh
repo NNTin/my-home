@@ -5,7 +5,9 @@
 # collapsed sheet leave the 3D view free, a tap opens and closes each panel, the level switcher cuts the
 # building away, a furniture item is placed and then dragged, rotated, long-pressed, duplicated and deleted by
 # touch, walk mode is entered and left, and held across the sheet is at the side. Ends with a screenshot (and
-# <out>-landscape.png). Exit 0 when every check passes.
+# <out>-landscape.png). Also: nothing is drawn while nothing moves (WebGL draw calls are counted), the canvas'
+# pixel ratio is capped, every control has a name, and the web app manifest and its icons are served.
+# Exit 0 when every check passes.
 # It writes only to a layout it creates itself and removes again; every other write (photos, photo
 # requests, other layouts, the home) is refused inside the browser. Uses the Playwright set-up of
 # screenshot.sh. --home picks a home by id (default: the first one).
@@ -15,7 +17,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$script_dir/lib.sh"
 
 usage() {
-  sed -n '2,11s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,13s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 

@@ -96,6 +96,8 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
     case 'dragCancel': {
       if (!state.drag) return state;
       const { before } = state.drag;
+      // A press that moved nothing (a long press) is not an edit: nothing to save.
+      if (state.items.includes(before)) return withoutDrag(state);
       return {
         ...withoutDrag(state),
         items: state.items.map((i) => (i.id === before.id ? before : i)),

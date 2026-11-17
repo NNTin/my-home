@@ -1490,7 +1490,8 @@ body {
   z-index: 1;
   box-sizing: border-box;
   max-width: 30rem;
-  max-height: 70%;
+  /* Never up into the bar, which wraps to four rows (about 16 rem) on the narrowest phones. */
+  max-height: min(70%, calc(100% - 16.5rem));
   padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
   border-radius: 0.75rem 0.75rem 0 0;
   background: rgb(20 24 30 / 0.97);
@@ -1528,4 +1529,19 @@ body {
 .viewer.mobile .walk-declination select {
   flex: 1;
   min-width: 0;
+}
+
+/* Less motion for those who ask for it: the sheet and the switches change at once. */
+@media (prefers-reduced-motion: reduce) {
+  .sheet,
+  .sheet-side,
+  .sheet .panel .toggle input,
+  .sheet .panel .toggle input::before {
+    transition: none;
+  }
+
+  .status-chip.fading {
+    animation-duration: 0.01s;
+    animation-delay: 2.5s;
+  }
 }

@@ -21,6 +21,13 @@ const ORBIT_FOV = 45;
 /** How fast the drawn figure follows a change of height (per second), so steps look smooth. */
 const HEIGHT_EASE = 12;
 
+/** Below this difference in metres the drawn figure counts as having reached its height. */
+const HEIGHT_SETTLED = 0.002;
+
+/** Whether two figures would be drawn the same. */
+export const sameFigure = (a: Figure, b: Figure) =>
+  a.x === b.x && a.y === b.y && a.z === b.z && a.yaw === b.yaw && a.pitch === b.pitch;
+
 interface OrbitLike {
   target: Vector3;
   update(): void;
@@ -35,6 +42,22 @@ export function WalkRig({ figure, view, rose }: Props) {
   const get = useThree((s) => s.get);
   const group = useRef<Group>(null);
   const feet = useRef(figure.current.y);
+
+  // Where frames are drawn on demand (a phone), the figure asks for one whenever it has moved.
+  // The walk loop runs outside the canvas and moves it without telling anyone.
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    let last: Figure | undefined;
+    let frame = requestAnimationFrame(function watch() {
+      const f = figure.current;
+      if (!last || !sameFigure(f, last)) {
+        last = f;
+        invalidate();
+      }
+      frame = requestAnimationFrame(watch);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [figure, invalidate]);
 
   useEffect(() => {
     const camera = get().camera as PerspectiveCamera;
@@ -62,6 +85,9 @@ export function WalkRig({ figure, view, rose }: Props) {
     const controls = state.controls as OrbitLike | null;
     const f = figure.current;
     feet.current += (f.y - feet.current) * Math.min(1, dt * HEIGHT_EASE);
+    // Still easing towards the figure's height: one more frame.
+    if (Math.abs(f.y - feet.current) > HEIGHT_SETTLED) state.invalidate();
+    else feet.current = f.y;
     const y = feet.current;
     group.current?.position.set(f.x, y, f.z);
     if (group.current) group.current.rotation.y = f.yaw;

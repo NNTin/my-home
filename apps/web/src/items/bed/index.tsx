@@ -4,7 +4,7 @@ import { defineItemType } from '../types';
 export default defineItemType({
   id: 'bed',
   name: 'Bed',
-  category: 'Bedroom',
+  category: 'Bed room',
   icon: '🛏️',
   description: 'Double bed; the headboard is its back.',
   size: { width: 1.6, depth: 2.0, height: 0.5 },

@@ -103,6 +103,55 @@ They combine with `?home=` and are read once when the page opens. `?walk` wins o
 - Controls in the top bar and the sheet are at least 44 px high, and fields are 16 px so iOS does not zoom the
   page when one is focused.
 
+## Battery and heat
+
+On a phone (the same condition as the phone layout) the 3D view:
+
+- renders **on demand**: a new frame only when something changed (the camera, the scene, the size of the view),
+  not sixty times a second. Orbiting, dragging furniture and the panels ask for frames by themselves. While
+  walking, the walk loop runs outside the canvas, so `WalkRig` watches the figure and asks for a frame whenever
+  it has moved, and once more while the figure still eases to a new height;
+- caps the **device pixel ratio** at 1.5 (2 on a desktop screen): a phone with a ratio of 3 would otherwise
+  shade four times as many pixels for little visible gain;
+- uses a **1024 px shadow map** instead of 2048 px.
+
+Anything new that moves the camera or an object from outside React and the orbit controls (a timer, a sensor)
+must call `invalidate()` on a phone, or the picture stays as it was until the next touch.
+
+## Installing it
+
+The app can be installed to the home screen ("Add to Home Screen" in Safari, "Install app" in Chrome) and then
+opens in its own window without the browser's bars.
+
+- [`apps/web/public/manifest.webmanifest`](../apps/web/public/manifest.webmanifest): name, `display:
+standalone`, start and scope `/`, the theme colour, and the icons in `apps/web/public/icons/` (192 and
+  512 px, a maskable 512 px one, the SVG they are drawn from, and the 180 px `apple-touch-icon.png` for iOS).
+- **Behind the sign-on**: browsers fetch a manifest without cookies unless told otherwise, and the sign-on would
+  answer that with a redirect to its login page. The `<link rel="manifest">` therefore has
+  `crossorigin="use-credentials"`. When the session has expired, the installed app opens the sign-on page
+  first, like the browser does, and then the viewer.
+- There is **no service worker**: nothing is cached for offline use, on purpose. Cached pages behind a
+  sign-on show stale content after a deploy or a sign-out, and layout drafts already survive a lost
+  connection ([layouts.md](layouts.md#saving-in-the-web-app)).
+- nginx serves the manifest as `application/manifest+json`, revalidated on every load; CI checks that the image
+  serves it and every icon.
+
+To redraw the icons, edit `icons/icon.svg` and render it to the PNG sizes (any SVG renderer; they were made
+with headless Chromium at 192, 512 and 180 px, the maskable one from the same drawing, which keeps its subject
+inside the middle 80 %).
+
+## Accessibility
+
+- Every control has an accessible name: icon-only buttons (the toolbar, the sheet's arrow and size buttons)
+  carry `aria-label`s, the level switcher's short labels keep the level's full name.
+- The level switcher is a radio group and the sheet's tabs a tab list: one stop in the tab order each, moved
+  through with the arrow keys (Home and End for the tabs); Enter or Space opens a tab.
+- Focus is visible on every control (a light blue outline, 9:1 against the panels). Measured contrast: text on
+  the panels 11.8:1, notes and inactive tabs above 7:1, the weakest label (the selected level in the top bar)
+  6.8:1; switches and their borders above 3:1.
+- Status changes are announced (`role="status"` on the status chip and the save state, `role="alert"` on
+  errors), and `prefers-reduced-motion` switches the sheet's and the switches' transitions off.
+
 ## Code
 
 | Part                                   | Where                                                                                |

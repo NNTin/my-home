@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#1d2129"/>
+  <!-- A house seen from the south-east: lit front, shaded side, pitched roof. Kept inside the middle 80 % for maskable icons. -->
+  <polygon points="96,236 256,116 416,236 416,268 256,148 96,268" fill="#8a5a44"/>
+  <polygon points="256,148 416,268 416,236 256,116" fill="#6b4535"/>
+  <rect x="128" y="250" width="256" height="150" fill="#d9d2c3"/>
+  <polygon points="128,250 256,154 384,250" fill="#d9d2c3"/>
+  <rect x="176" y="296" width="60" height="104" fill="#5b4033"/>
+  <rect x="276" y="296" width="72" height="56" fill="#a8d4ff"/>
+  <rect x="96" y="400" width="320" height="16" fill="#4c8c3f"/>
+</svg>

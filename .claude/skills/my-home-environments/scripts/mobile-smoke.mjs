@@ -3,7 +3,7 @@
 // Smoke test of the phone layout on a touch screen: the top bar, the sheet with its panels, the level
 // switcher, furniture in a layout of its own, walk mode, and the side sheet with the phone held across.
 // Playwright is loaded from MY_HOME_PLAYWRIGHT_DIR.
-/* global document */
+/* global document, window, WebGL2RenderingContext */
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
@@ -52,6 +52,24 @@ async function smoke(out, homeId) {
       viewport: PORTRAIT,
       hasTouch: true,
       isMobile: true,
+      // A phone's screen is finer than this; 2 is enough to see that the canvas stops at 1.5.
+      deviceScaleFactor: 2,
+    });
+    // Counts what the page draws with WebGL, to tell a view at rest from one that keeps rendering.
+    await context.addInitScript(() => {
+      window.__draws = 0;
+      for (const name of [
+        'drawElements',
+        'drawArrays',
+        'drawElementsInstanced',
+        'drawArraysInstanced',
+      ]) {
+        const original = WebGL2RenderingContext.prototype[name];
+        WebGL2RenderingContext.prototype[name] = function (...args) {
+          window.__draws++;
+          return original.apply(this, args);
+        };
+      }
     });
     await context.route('**/*', (route) => {
       const request = route.request();
@@ -94,6 +112,13 @@ async function smoke(out, homeId) {
       /sheet-(collapsed|half|full)/.exec(await sheet.getAttribute('class'))?.[1];
     const tab = (name) => page.getByRole('tab', { name });
     const settle = () => page.waitForTimeout(600);
+    // Real touch events, as a finger makes them.
+    const finger = await context.newCDPSession(page);
+    const touch = (type, x, y) =>
+      finger.send('Input.dispatchTouchEvent', {
+        type,
+        touchPoints: type === 'touchEnd' ? [] : [{ x: Math.round(x), y: Math.round(y) }],
+      });
 
     // First-run hints: there on a fresh phone, gone after "Got it".
     const hints = page.getByRole('complementary', { name: 'How to use the viewer' });
@@ -153,6 +178,98 @@ async function smoke(out, homeId) {
       small.join(', '),
     );
 
+    // Every control says what it is, to a screen reader as well.
+    const unnamed = () =>
+      page
+        .locator('button, select, input:not([type=hidden]), textarea, [role=tab], [role=radio]')
+        .evaluateAll((controls) =>
+          controls
+            .filter((c) => c.getClientRects().length > 0)
+            .filter(
+              (c) =>
+                !(
+                  c.getAttribute('aria-label') ||
+                  c.labels?.[0]?.textContent.trim() ||
+                  c.textContent.trim() ||
+                  c.title
+                ),
+            )
+            .map((c) => c.outerHTML.slice(0, 80)),
+        );
+    const named = async (where) => {
+      const list = await unnamed();
+      check(`every control ${where} has a name`, list.length === 0, list.slice(0, 3).join(' | '));
+    };
+    await named('of the default view');
+
+    // At rest nothing is drawn: the phone renders a frame only when something changed.
+    const draws = () => page.evaluate(() => window.__draws);
+    await page.waitForTimeout(3000);
+    const resting = await draws();
+    await page.waitForTimeout(2000);
+    const idle = (await draws()) - resting;
+    check('the 3D view rests when nothing moves', idle === 0, `${idle} draw calls in 2 s`);
+    // One finger turns the view, and "Reset view" puts it back: both are drawn.
+    const middle = { x: canvas.x + canvas.width / 2, y: canvas.y + canvas.height / 2 };
+    await touch('touchStart', middle.x, middle.y);
+    for (let step = 1; step <= 5; step++) await touch('touchMove', middle.x + step * 12, middle.y);
+    await touch('touchEnd');
+    await page.waitForTimeout(1500);
+    const orbited = (await draws()) - resting - idle;
+    check('turning the view with a finger draws it', orbited > 0, `${orbited} draw calls`);
+    await page.getByRole('button', { name: /Reset view/ }).tap();
+    await page.waitForTimeout(3000);
+    const back = (await draws()) - resting - idle - orbited;
+    check('"Reset view" draws it again', back > 0, `${back} draw calls`);
+    // The orbit eases out over some frames (slow here, under software rendering), then all is still.
+    let calm = await draws();
+    let rested = false;
+    for (let tries = 0; tries < 15 && !rested; tries++) {
+      await page.waitForTimeout(2000);
+      const now = await draws();
+      rested = now === calm;
+      calm = now;
+    }
+    check('and it comes to rest again', rested);
+    const ratio = await page.locator('canvas').evaluate((c) => c.width / c.clientWidth);
+    check(
+      'the canvas is not drawn finer than 1.5 device pixels',
+      ratio <= 1.5 + 0.01,
+      ratio.toFixed(2),
+    );
+
+    // Installable: the manifest and its icons answer, with the session's credentials.
+    const app = await page.evaluate(async () => {
+      const link = document.querySelector('link[rel=manifest]');
+      if (!link) return { link: false };
+      const response = await fetch(link.href, { credentials: 'include' });
+      const manifest = response.ok ? await response.json() : {};
+      const icons = [];
+      for (const icon of manifest.icons ?? [])
+        icons.push((await fetch(new URL(icon.src, link.href), { credentials: 'include' })).status);
+      return {
+        link: true,
+        credentials: link.crossOrigin,
+        status: response.status,
+        type: response.headers.get('content-type'),
+        display: manifest.display,
+        icons,
+      };
+    });
+    check(
+      'the web app manifest is served and asks for a standalone window',
+      app.link && app.status === 200 && app.display === 'standalone',
+      JSON.stringify(app),
+    );
+    check(
+      'the manifest is fetched with credentials (the site is behind a sign-on)',
+      app.credentials === 'use-credentials',
+    );
+    check(
+      'its icons are served',
+      app.icons?.length >= 3 && app.icons.every((status) => status === 200),
+    );
+
     // The sheet: one tap opens a panel, one tap closes it.
     await tab(/View/).tap();
     await settle();
@@ -161,6 +278,7 @@ async function smoke(out, homeId) {
       'the View panel shows',
       await page.getByRole('region', { name: 'View controls' }).isVisible(),
     );
+    await named('of the View panel');
     const half = await box('canvas');
     check(
       'the 3D view ends where the open sheet begins',
@@ -198,6 +316,7 @@ async function smoke(out, homeId) {
     await settle();
     const furniture = page.getByRole('region', { name: 'Furniture' });
     check('the Furniture panel shows', await furniture.isVisible());
+    await named('of the Furniture panel');
     const saved = () => furniture.getByRole('status').filter({ hasText: 'All changes saved' });
     const created = page.waitForResponse(
       (response) =>
@@ -268,13 +387,6 @@ async function smoke(out, homeId) {
         await page.waitForTimeout(500);
       }
     };
-    // Real touch events, as a finger makes them.
-    const finger = await context.newCDPSession(page);
-    const touch = (type, x, y) =>
-      finger.send('Input.dispatchTouchEvent', {
-        type,
-        touchPoints: type === 'touchEnd' ? [] : [{ x: Math.round(x), y: Math.round(y) }],
-      });
     /**
      * A point on the selected item: the toolbar floats 44 px above the middle of the item's top.
      * From far away an item is only a few pixels, so aim at that middle.

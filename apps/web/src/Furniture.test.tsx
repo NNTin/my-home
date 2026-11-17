@@ -56,7 +56,7 @@ describe('furniture editor', () => {
     await renderApp();
     expect(panel().getByLabelText('Name')).toHaveValue('Default layout');
     expect([...api.layouts.values()].map((l) => l.name)).toEqual(['Default layout']);
-    for (const group of ['Bedroom', 'Dining', 'Living room', 'Office'])
+    for (const group of ['Bed room', 'Dining', 'Living room', 'Work room'])
       expect(panel().getByRole('group', { name: group })).toBeInTheDocument();
     expect(
       panel().getAllByRole('button', { name: /Bed|Sofa|Round table|Chair|Wardrobe|Desk/ }),

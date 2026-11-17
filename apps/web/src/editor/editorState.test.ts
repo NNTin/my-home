@@ -50,6 +50,16 @@ describe('editorReducer', () => {
     expect(cancelled.history.past).toHaveLength(1);
   });
 
+  it('does not count a cancelled press that moved nothing as a change', () => {
+    const placed = run([{ type: 'edit', label: 'Place', items: [a] }]);
+    const held = run([{ type: 'dragStart', id: 'a' }, { type: 'dragCancel' }], placed);
+    expect(held.drag).toBeUndefined();
+    expect(held.items).toBe(placed.items);
+    // Nothing to save: the revision is what autosave watches.
+    expect(held.revision).toBe(placed.revision);
+    expect(held.selectedId).toBe('a');
+  });
+
   it('records nothing for a drag that does not move, or an edit that changes nothing', () => {
     const placed = run([{ type: 'edit', label: 'Place', items: [a] }]);
     const still = run([{ type: 'dragStart', id: 'a' }, { type: 'dragEnd' }], placed);

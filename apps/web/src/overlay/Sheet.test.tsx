@@ -108,6 +108,31 @@ describe('Sheet', () => {
     expect(snapOf()).toBe('collapsed');
   });
 
+  it('is one stop in the tab order, with the arrow keys moving between the tabs', () => {
+    render(<Harness start="half" />);
+    expect(tab('View')).toHaveAttribute('tabindex', '0');
+    expect(tab(/Furniture/)).toHaveAttribute('tabindex', '-1');
+
+    tab('View').focus();
+    fireEvent.keyDown(tab('View'), { key: 'ArrowRight' });
+    expect(tab(/Furniture/)).toHaveFocus();
+    // Moving the focus opens nothing by itself.
+    expect(screen.getByRole('tabpanel')).toHaveTextContent('Content of view');
+    fireEvent.keyDown(tab(/Furniture/), { key: 'ArrowRight' });
+    expect(tab('View')).toHaveFocus();
+    fireEvent.keyDown(tab('View'), { key: 'End' });
+    expect(tab(/Furniture/)).toHaveFocus();
+    fireEvent.keyDown(tab(/Furniture/), { key: 'Home' });
+    expect(tab('View')).toHaveFocus();
+    fireEvent.keyDown(tab('View'), { key: 'ArrowUp' });
+    expect(tab(/Furniture/)).toHaveFocus();
+
+    fireEvent.click(tab(/Furniture/));
+    expect(screen.getByRole('tabpanel')).toHaveTextContent('Content of furniture');
+    expect(tab(/Furniture/)).toHaveAttribute('tabindex', '0');
+    expect(tab('View')).toHaveAttribute('tabindex', '-1');
+  });
+
   it('is a rail of tabs at the side when the phone is held across', () => {
     render(<Harness side />);
     expect(sheet()).toHaveClass('sheet-side');

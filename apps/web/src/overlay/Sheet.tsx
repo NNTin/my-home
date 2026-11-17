@@ -1,4 +1,4 @@
-import { useEffect, useRef, type PointerEvent, type ReactNode } from 'react';
+import { useEffect, useRef, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 
 /** How much of the screen the sheet takes: only its tabs, about half, or all of it. */
 export type SheetSnap = 'collapsed' | 'half' | 'full';
@@ -159,6 +159,25 @@ export function Sheet<T extends string>({
     };
   }, []);
 
+  // The tabs are one stop in the tab order; the arrow keys move between them (Home and End to
+  // the first and last), and Enter or Space opens the one in focus.
+  const onTabKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    const all = [...e.currentTarget.querySelectorAll<HTMLElement>('[role="tab"]')];
+    const at = all.indexOf(document.activeElement as HTMLElement);
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    const next =
+      e.key === 'Home'
+        ? all[0]
+        : e.key === 'End'
+          ? all.at(-1)
+          : step !== undefined && at >= 0
+            ? all[(at + step + all.length) % all.length]
+            : undefined;
+    if (!next) return;
+    e.preventDefault();
+    next.focus();
+  };
+
   const select = (id: T) => {
     if (id === active && open) return onSnap('collapsed');
     onTab(id);
@@ -188,6 +207,7 @@ export function Sheet<T extends string>({
           role="tablist"
           aria-label="Panels"
           aria-orientation={side ? 'vertical' : 'horizontal'}
+          onKeyDown={onTabKey}
         >
           {tabs.map((tab) => (
             <button
@@ -197,6 +217,7 @@ export function Sheet<T extends string>({
               id={`sheet-tab-${tab.id}`}
               aria-selected={tab.id === active}
               aria-controls="sheet-panel"
+              tabIndex={tab.id === active ? 0 : -1}
               onClick={() => select(tab.id)}
             >
               <span className="sheet-tab-icon" aria-hidden="true">
