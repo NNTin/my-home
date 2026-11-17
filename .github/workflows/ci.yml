@@ -198,17 +198,19 @@ jobs:
           set -euo pipefail
           base=http://localhost:8080/api
           home=$base/homes/mock-home
-          agent=(-H 'X-My-Home-Actor: agent' -H 'content-type: application/json')
+          # The JSON content type only with a body: Fastify answers 400 to an empty JSON body.
+          agent=(-H 'X-My-Home-Actor: agent')
+          json=(-H 'X-My-Home-Actor: agent' -H 'content-type: application/json')
           # nginx passes the identity header on; the api maps the agent's username.
           curl -fsS "$base/whoami" -H 'X-Authentik-Username: nntin-bot' \
             | jq -e '. == {"username":"nntin-bot","actor":"agent","actorSource":"identity"}'
           curl -fsS "$base/whoami" "${agent[@]}" | jq -e '.actor == "agent" and .actorSource == "declared"'
           curl -fsS "$base/catalog/types" | jq -e 'any(.items[]; .id == "furniture.bed")'
-          bed=$(curl -fsS -X POST "$home/placements" "${agent[@]}" \
+          bed=$(curl -fsS -X POST "$home/placements" "${json[@]}" \
             --data '{"typeId":"furniture.bed","levelId":"souterrain","position":{"x":-3,"z":2.5},"rotationY":0}')
           echo "$bed" | jq -e '.roomId == "souterrain-bedroom" and .version == 1'
           id=$(echo "$bed" | jq -er '.id')
-          curl -fsS -X PATCH "$home/placements/$id" "${agent[@]}" --data '{"version":1,"params":{"width":1.8}}' \
+          curl -fsS -X PATCH "$home/placements/$id" "${json[@]}" --data '{"version":1,"params":{"width":1.8}}' \
             | jq -e '.params.width == 1.8 and .version == 2'
           history=$(curl -fsS "$home/uses/$id/history")
           echo "$history" | jq -e '.items | length == 2 and all(.[]; .actor == "agent")
