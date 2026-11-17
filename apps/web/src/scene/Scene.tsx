@@ -87,6 +87,36 @@ export function initialCamera(bounds: HomeScene['bounds'], aspect = 1): Vec3 {
 }
 
 /** Inside the canvas: provides the "Reset view" action, for the view as it is sized now. */
+/** What "Reset view" needs of the orbit controls. */
+export interface OrbitReset {
+  enableDamping: boolean;
+  target: { set(x: number, y: number, z: number): void };
+  update(): boolean | void;
+}
+
+/**
+ * Puts the orbit camera back at `position` looking at `target`, exactly and at once. A swipe just
+ * before still has damping left: the controls would keep applying it, turning the view away from
+ * the reset pose and drawing a frame each time for about a hundred frames (a few seconds on a
+ * phone, half a minute under software rendering). It is spent first, with damping off.
+ */
+export function resetOrbit(
+  controls: OrbitReset | null,
+  camera: { position: { set(x: number, y: number, z: number): void } },
+  position: Vec3,
+  target: Vec3,
+) {
+  if (controls) {
+    const damping = controls.enableDamping;
+    controls.enableDamping = false;
+    controls.update();
+    controls.enableDamping = damping;
+  }
+  camera.position.set(...position);
+  controls?.target.set(...target);
+  controls?.update();
+}
+
 function ViewReset({
   bounds,
   target,
@@ -100,14 +130,13 @@ function ViewReset({
   const [x, y, z] = target;
   useEffect(() => {
     resetRef.current = () => {
-      const { camera, size } = get();
-      const controls = get().controls as unknown as {
-        target: { set(x: number, y: number, z: number): void };
-        update(): void;
-      } | null;
-      camera.position.set(...initialCamera(bounds, size.width / size.height));
-      controls?.target.set(x, y, z);
-      controls?.update();
+      const { camera, size, controls } = get();
+      resetOrbit(
+        controls as unknown as OrbitReset | null,
+        camera,
+        initialCamera(bounds, size.width / size.height),
+        [x, y, z],
+      );
     };
     return () => {
       resetRef.current = undefined;

@@ -221,10 +221,11 @@ async function smoke(out, homeId) {
     await page.waitForTimeout(3000);
     const back = (await draws()) - resting - idle - orbited;
     check('"Reset view" draws it again', back > 0, `${back} draw calls`);
-    // The orbit eases out over some frames (slow here, under software rendering), then all is still.
+    // "Reset view" also drops what is left of the swipe's easing (it would turn the view away again
+    // and draw a hundred more frames, half a minute under software rendering): all is still at once.
     let calm = await draws();
     let rested = false;
-    for (let tries = 0; tries < 15 && !rested; tries++) {
+    for (let tries = 0; tries < 3 && !rested; tries++) {
       await page.waitForTimeout(2000);
       const now = await draws();
       rested = now === calm;
@@ -420,9 +421,13 @@ async function smoke(out, homeId) {
     check('the toolbar rotates it', turned.rotationY !== moved.rotationY);
 
     // A long press is "more": the furniture panel opens on the item, which stays where it is.
-    const held = await onItem();
+    // Pressed where the drag ended: the item followed the finger there. (The toolbar is no guide
+    // here: near the edge of the view it is pushed back inside, away from the item.) The finger
+    // stays down until the panel opens, however slow the renderer is, then lets go.
+    const held = { x: from.x + 8 * 7, y: from.y + 8 * 4 };
     await touch('touchStart', held.x, held.y);
-    await page.waitForTimeout(1000);
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline && (await snap()) !== 'half') await page.waitForTimeout(100);
     await touch('touchEnd');
     await settle();
     check(
