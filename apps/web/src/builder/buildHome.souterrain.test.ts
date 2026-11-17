@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import realHomeJson from '../../../../data/homes/home.json';
 import { collisions, createContext, createItem } from '../editor/operations';
 import { roomAt } from '../editor/placement';
-import { registry } from '../items/registry';
+import { furniture } from '../catalog/furniture';
 import {
   boxCorners,
   buildFence,
@@ -139,7 +139,7 @@ describe('the souterrain rooms', () => {
   });
 
   it('are listed by the furniture editor, which places items inside the chosen room', () => {
-    const ctx = createContext(home(), registry);
+    const ctx = createContext(home(), furniture);
     const plan = ctx.plans.get('souterrain')!;
     expect(plan.rooms.map((r) => r.name)).toEqual(SOUTERRAIN_ROOMS);
     for (const room of plan.rooms) {

@@ -1,14 +1,16 @@
 import type { HomeModel, LayoutItem } from '@my-home/shared';
 import type { Vec2 } from '../builder/buildHome';
-import type { ItemTypeRegistry } from '../items/registry';
-import type { ItemSize, ItemTypeModule } from '../items/types';
+import { UNKNOWN_SIZE, type FurnitureRegistry, type ResolvedFurniture } from '../catalog/furniture';
 import { findCollisions, type Collision } from './collision';
 import { floorPlan, type FloorPlan } from './floorPlan';
 import { normalizeAngle, rectangle, transform } from './geometry';
 import { constrainMove, isInside, allowedArea, placementPosition, roomAt } from './placement';
 import { snapAngle, snapToGrid, snapToWalls, DEFAULT_GRID_STEP } from './snapping';
 
-/** Editing operations on layout items: pure functions of the home, the registry and settings. */
+/**
+ * Editing operations on layout items: pure functions of the home, the furniture types and
+ * settings. An item is sized from its type's effective values (`LayoutItem.props` as overrides).
+ */
 
 export interface EditorSettings {
   grid: boolean;
@@ -26,31 +28,28 @@ export const defaultSettings: EditorSettings = {
 };
 
 export interface EditorContext {
-  registry: ItemTypeRegistry;
+  furniture: FurnitureRegistry;
   plans: Map<string, FloorPlan>;
   settings: EditorSettings;
 }
 
 export function createContext(
   model: HomeModel,
-  registry: ItemTypeRegistry,
+  furniture: FurnitureRegistry,
   settings: EditorSettings = defaultSettings,
 ): EditorContext {
   const plans = new Map<string, FloorPlan>();
   for (const level of model.levels) plans.set(level.id, floorPlan(model, level.id)!);
-  return { registry, plans, settings };
+  return { furniture, plans, settings };
 }
 
-/** Items of an unknown type (e.g. a removed module) are drawn and collide as this box. */
-export const UNKNOWN_SIZE: ItemSize = { width: 0.5, depth: 0.5, height: 0.5 };
+export { UNKNOWN_SIZE };
 
-export const typeOf = (ctx: EditorContext, item: LayoutItem): ItemTypeModule | undefined =>
-  ctx.registry.get(item.typeId);
+export const typeOf = (ctx: EditorContext, item: LayoutItem): ResolvedFurniture | undefined =>
+  ctx.furniture.resolve(item.typeId, item.props);
 
-export const localFootprint = (ctx: EditorContext, item: LayoutItem): Vec2[] => {
-  const type = typeOf(ctx, item);
-  return type ? ctx.registry.footprint(type) : rectangle(UNKNOWN_SIZE.width, UNKNOWN_SIZE.depth);
-};
+export const localFootprint = (ctx: EditorContext, item: LayoutItem): Vec2[] =>
+  typeOf(ctx, item)?.footprint ?? rectangle(UNKNOWN_SIZE.width, UNKNOWN_SIZE.depth);
 
 export const positionOf = (item: LayoutItem): Vec2 => [item.position.x, item.position.z];
 
@@ -168,7 +167,7 @@ export function moveItem(ctx: EditorContext, item: LayoutItem, target: Vec2): La
       position: p,
       rotationY,
       footprint: localFootprint(ctx, item),
-      rule: type.snapping.wall,
+      rule: type.snapping,
       walls: plan.walls,
     });
     p = snapped.position;

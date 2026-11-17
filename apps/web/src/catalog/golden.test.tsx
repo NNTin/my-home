@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import realHomeJson from '../../../../data/homes/home.json';
 import mockHomeJson from '../../../../data/homes/mock-home.json';
 import { buildHome } from '../builder/buildHome';
-import { registry } from '../items/registry';
 import { FurnitureLayer, type FurnitureView } from '../scene/FurnitureLayer';
 import { HomeMeshes } from '../scene/HomeMeshes';
+import { furniture, unknownParts } from './furniture';
 import { goldenJson, renderRecords } from './renderRecords';
 
 /**
@@ -31,23 +31,27 @@ function furnitureViews(): FurnitureView[] {
     { selected: true, colliding: false },
     { selected: false, colliding: true },
   ];
-  const views = registry.types.flatMap((type, i) =>
-    states.map((state, j): FurnitureView => ({
-      id: `${type.id}-${j}`,
-      position: [i * 3, 0.25 * j, j * 3],
-      rotationY: 0.3 * j,
-      size: type.size,
-      color: type.color,
-      Render: type.Render,
-      ...state,
-    })),
+  const types = furniture.categories.flatMap((c) => c.types);
+  const views = types.flatMap((type, i) =>
+    states.map((state, j): FurnitureView => {
+      const { size, parts } = furniture.resolve(type.id)!;
+      return {
+        id: `${type.id}-${j}`,
+        position: [i * 3, 0.25 * j, j * 3],
+        rotationY: 0.3 * j,
+        size,
+        parts,
+        ...state,
+      };
+    }),
   );
+  const size = { width: 0.6, depth: 0.6, height: 0.6 };
   views.push({
     id: 'unknown',
     position: [-3, 0, 0],
     rotationY: 0,
-    size: { width: 0.6, depth: 0.6, height: 0.6 },
-    color: '#8a8a8a',
+    size,
+    parts: unknownParts(size, '#8a8a8a'),
     selected: false,
     colliding: false,
   });

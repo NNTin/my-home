@@ -15,6 +15,7 @@ import {
   type Vec2,
   type Vec3,
 } from './builder/buildHome';
+import { furniture as furnitureTypes, UNKNOWN_SIZE, unknownParts } from './catalog/furniture';
 import { compassMarkers } from './compass/compass';
 import {
   defaultVisibility,
@@ -37,14 +38,13 @@ import {
   relocateItem,
   rotateItem,
   setRotation,
-  UNKNOWN_SIZE,
+  typeOf,
   worldFootprint,
   type EditorSettings,
 } from './editor/operations';
 import { roomAt } from './editor/placement';
 import { shortcutFor } from './editor/shortcuts';
 import { rotationFromDrag } from './editor/snapping';
-import { registry } from './items/registry';
 import { useLayouts } from './layouts/useLayouts';
 import { ControlPanel } from './overlay/ControlPanel';
 import { FurniturePanel, type FlaggedItem, type SelectedInfo } from './overlay/FurniturePanel';
@@ -129,7 +129,6 @@ function initialPanel(): { panel: PanelId | undefined; snap: SheetSnap } {
 /** How far in front of its camera a photo's view cone is drawn, in metres. */
 const VIEW_CONE_LENGTH = 1.2;
 
-const UNKNOWN_COLOR = '#9e9e9e';
 const newId = () => crypto.randomUUID();
 
 interface Props {
@@ -211,20 +210,19 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   const { editor, actions } = layouts;
   const { dispatch } = actions;
   const [settings, setSettings] = useState<EditorSettings>(defaultSettings);
-  const ctx = useMemo(() => createContext(model, registry, settings), [model, settings]);
+  const ctx = useMemo(() => createContext(model, furnitureTypes, settings), [model, settings]);
 
   const { items } = editor;
 
   // The figure: blocked by walls, fences and the furniture of the active layout.
   const world = useMemo(() => {
     const blockers = items.flatMap((item): FurnitureBlocker[] => {
-      const type = registry.get(item.typeId);
       return ctx.plans.has(item.levelId)
         ? [
             {
               levelId: item.levelId,
               polygon: worldFootprint(ctx, item),
-              height: (type?.size ?? UNKNOWN_SIZE).height,
+              height: (typeOf(ctx, item)?.size ?? UNKNOWN_SIZE).height,
             },
           ]
         : [];
@@ -381,15 +379,14 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
       if (!p || !levels.has(item.levelId)) return [];
       const apartment = p.rooms.find((r) => r.id === item.roomId)?.apartmentId;
       if (apartment !== undefined && hiddenApartments.has(apartment)) return [];
-      const type = registry.get(item.typeId);
+      const type = typeOf(ctx, item);
       return [
         {
           id: item.id,
           position: [item.position.x, p.elevation, item.position.z] as Vec3,
           rotationY: item.rotationY,
           size: type?.size ?? UNKNOWN_SIZE,
-          color: type?.color ?? UNKNOWN_COLOR,
-          ...(type && { Render: type.Render }),
+          parts: type?.parts ?? unknownParts(),
           selected: item.id === editor.selectedId,
           colliding: found.has(item.id),
         },
@@ -398,7 +395,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   }, [ctx, items, found, scene, visibility, editor.selectedId]);
 
   const nameOf = (item: LayoutItem) =>
-    registry.get(item.typeId)?.name ?? `Unknown type "${item.typeId}"`;
+    furnitureTypes.get(item.typeId)?.name ?? `Unknown type "${item.typeId}"`;
 
   const edit = (label: string, next: LayoutItem[], selectedId?: string | null) =>
     dispatch({ type: 'edit', label, items: next, ...(selectedId !== undefined && { selectedId }) });
@@ -600,7 +597,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
       rooms={plan?.rooms ?? []}
       roomId={roomId}
       onRoomChange={setRoomChoice}
-      categories={registry.categories}
+      categories={furnitureTypes.categories}
       onPlace={commands.place}
       selected={selected}
       canUndo={canUndo(editor)}

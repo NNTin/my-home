@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildHome } from '../builder/buildHome';
 import { createContext } from '../editor/operations';
-import { registry } from '../items/registry';
+import { furniture } from '../catalog/furniture';
 import { mockHome, testRequest } from '../test/fixtures';
 import type { Figure } from './figure';
 import { useWalk } from './useWalk';
@@ -17,7 +17,7 @@ import { buildWalkWorld, EYE_HEIGHT } from './world';
 const world = buildWalkWorld(mockHome, buildHome(mockHome));
 const mapLevels = minimapLevels(
   buildHome(mockHome),
-  createContext(mockHome, registry).plans,
+  createContext(mockHome, furniture).plans,
   'souterrain',
 );
 const start: Figure = { x: 0.5, z: 0, y: -1.2, levelId: 'souterrain', yaw: 0, pitch: 0 };

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import realHomeJson from '../../../../data/homes/home.json';
 import { buildHome } from '../builder/buildHome';
 import { createContext } from '../editor/operations';
-import { registry } from '../items/registry';
+import { furniture } from '../catalog/furniture';
 import { mockHome } from '../test/fixtures';
 import {
   fromMap,
@@ -20,7 +20,7 @@ import { buildWalkWorld, placeAt, standAt } from './world';
 const mockScene = buildHome(mockHome);
 const mockLevels = minimapLevels(
   mockScene,
-  createContext(mockHome, registry).plans,
+  createContext(mockHome, furniture).plans,
   groundLevelId(mockScene, 0),
 );
 
@@ -50,7 +50,7 @@ describe('minimap plan data', () => {
     const home = HomeModel.parse(structuredClone(realHomeJson));
     const scene = buildHome(home);
     const ground = groundLevelId(scene, home.terrain.groundElevation.value);
-    const levels = minimapLevels(scene, createContext(home, registry).plans, ground);
+    const levels = minimapLevels(scene, createContext(home, furniture).plans, ground);
     const [stair] = scene.stairs;
     for (const id of [stair!.levelId, stair!.toLevelId]) {
       expect(levels.get(id)!.stairs.find((s) => s.id === stair!.id)).toMatchObject({

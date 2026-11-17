@@ -11,20 +11,22 @@ import {
   type BufferGeometry,
 } from 'three';
 import {
-  openingParts,
   slopeY,
   type Box,
   type HomeScene,
-  type OpeningDescriptor,
+  type PieceUse,
   type PlaneSlope,
   type Prism,
   type ProfileSolid,
   type RoofWindowDescriptor,
   type Surface,
   type Vec2,
+  type Vec3,
 } from '../builder/buildHome';
+import { PartsMesh } from '../catalog/PartsMesh';
 
-// Thin rendering layer: every shape and position comes from the builder's descriptors.
+// Thin rendering layer: every shape and position comes from the builder's descriptors. Windows,
+// doors and gates are drawn from the parts of their piece modules (src/catalog).
 
 const colors = {
   exterior: '#d8d2c4',
@@ -32,9 +34,6 @@ const colors = {
   floorSlab: '#a6a29b',
   roof: '#7d5f50',
   terrain: '#7c6a4f',
-  frame: '#f7f7f5',
-  doorFrame: '#7b5a3c',
-  glass: '#a8d4ff',
   garden: '#5e9b4c',
   driveway: '#8e8c88',
   patio: '#b8a184',
@@ -46,7 +45,6 @@ const colors = {
   fencePost: '#3d4043',
   brickPillar: '#9a5b40',
   outbuilding: '#e4e0d6',
-  garageDoor: '#8a8d90',
 } as const;
 
 /** Wall colours of outbuildings that are not rendered like the house. */
@@ -55,11 +53,11 @@ const outbuildingColors: Partial<Record<HomeScene['outbuildings'][number]['kind'
   compost: '#3c4038',
 };
 
+/** Fences other than gates (a gate is drawn from its piece). */
 const fenceColors = {
   'chain-link': '#4a4e52',
   privacy: '#2c2e30',
   trellis: '#7a5a3a',
-  gate: '#6c7176',
 } as const;
 
 /** Contour lines are a darker shade of the surface they lie on. */
@@ -196,31 +194,22 @@ function SurfaceMesh({ surface, color }: { surface: Surface; color: string }) {
   );
 }
 
-function OpeningMesh({
-  opening,
-}: {
-  opening: Pick<OpeningDescriptor, 'type' | 'size' | 'center' | 'rotationY'>;
-}) {
-  const { frame, glass, panel } = useMemo(() => openingParts(opening), [opening]);
-  const frameColor = opening.type === 'door' ? colors.doorFrame : colors.frame;
+/** A window or door: its parts in the frame of its hole. */
+function OpeningMesh({ opening }: { opening: PieceUse & { center: Vec3; rotationY: number } }) {
   return (
     <group position={opening.center} rotation={[0, opening.rotationY, 0]}>
-      {frame.map((part, i) => (
-        <BoxMesh key={i} box={part} color={frameColor} />
-      ))}
-      {glass && <BoxMesh box={glass} color={colors.glass} transparent />}
-      {panel && <BoxMesh box={panel} color={colors.garageDoor} />}
+      <PartsMesh parts={opening.parts} />
     </group>
   );
 }
 
+/** A roof window: its parts turned by `tilt`, then by `rotationY` (YXZ) onto the roof plane. */
 function RoofWindowMesh({ window: w }: { window: RoofWindowDescriptor }) {
   const rotation = useMemo(() => new Euler(w.tilt, w.rotationY, 0, 'YXZ'), [w]);
   return (
-    <mesh position={w.center} rotation={rotation} castShadow>
-      <boxGeometry args={w.size} />
-      <meshStandardMaterial color={colors.glass} metalness={0.3} roughness={0.2} />
-    </mesh>
+    <group position={w.center} rotation={rotation}>
+      <PartsMesh parts={w.parts} />
+    </group>
   );
 }
 
@@ -274,25 +263,31 @@ export function HomeMeshes({ scene }: { scene: HomeScene }) {
       {scene.stairs.flatMap((s) =>
         s.steps.map((step) => <BoxMesh key={step.id} box={step} color={colors.stair} />),
       )}
-      {scene.fences.map((f) => (
-        <group key={f.id}>
-          {f.posts.map((post) => (
-            <BoxMesh
-              key={post.id}
-              box={post}
-              color={f.kind === 'trellis' ? colors.brickPillar : colors.fencePost}
-            />
-          ))}
-          {f.panels.map((panel) => (
-            <BoxMesh
-              key={panel.id}
-              box={panel}
-              color={fenceColors[f.kind]}
-              transparent={f.kind === 'chain-link'}
-            />
-          ))}
-        </group>
-      ))}
+      {scene.fences.map((f) =>
+        f.parts ? (
+          <group key={f.id}>
+            <PartsMesh parts={f.parts} />
+          </group>
+        ) : (
+          <group key={f.id}>
+            {f.posts.map((post) => (
+              <BoxMesh
+                key={post.id}
+                box={post}
+                color={f.kind === 'trellis' ? colors.brickPillar : colors.fencePost}
+              />
+            ))}
+            {f.panels.map((panel) => (
+              <BoxMesh
+                key={panel.id}
+                box={panel}
+                color={fenceColors[f.kind as keyof typeof fenceColors]}
+                transparent={f.kind === 'chain-link'}
+              />
+            ))}
+          </group>
+        ),
+      )}
       {scene.outbuildings.map((b) => (
         <group key={b.id}>
           {b.walls.map((w) => (

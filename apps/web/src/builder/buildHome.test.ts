@@ -4,7 +4,6 @@ import mockHomeJson from '../../../../data/homes/mock-home.json';
 import {
   buildHome,
   clipSpan,
-  openingParts,
   rotationFor,
   solidPoint,
   splitWall,
@@ -375,20 +374,6 @@ describe('gable roof', () => {
 
   it('includes the roof in the bounds', () => {
     expect(scene.bounds.max[1]).toBeCloseTo(5.5 + 0.2 * Math.SQRT2);
-  });
-});
-
-describe('openingParts', () => {
-  it('frames a window on four sides and adds glass', () => {
-    const { frame, glass } = openingParts({ type: 'window', size: [1, 1, 0.3] });
-    expect(frame).toHaveLength(4);
-    expect(glass?.size).toEqual([0.88, 0.88, 0.02]);
-  });
-
-  it('leaves a door open at the bottom', () => {
-    const { frame, glass } = openingParts({ type: 'door', size: [1, 2, 0.3] });
-    expect(frame).toHaveLength(3);
-    expect(glass).toBeUndefined();
   });
 });
 
