@@ -193,6 +193,37 @@ jobs:
           docker compose restart api
           docker compose up -d --no-build --wait --wait-timeout 120
           test "$(curl -fsS --retry 5 --retry-connrefused "$base/photos/$id/image" | sha256sum)" = "$sum"
+      - name: Smoke test uses
+        run: |
+          set -euo pipefail
+          base=http://localhost:8080/api
+          home=$base/homes/mock-home
+          agent=(-H 'X-My-Home-Actor: agent' -H 'content-type: application/json')
+          # nginx passes the identity header on; the api maps the agent's username.
+          curl -fsS "$base/whoami" -H 'X-Authentik-Username: nntin-bot' \
+            | jq -e '. == {"username":"nntin-bot","actor":"agent","actorSource":"identity"}'
+          curl -fsS "$base/whoami" "${agent[@]}" | jq -e '.actor == "agent" and .actorSource == "declared"'
+          curl -fsS "$base/catalog/types" | jq -e 'any(.items[]; .id == "furniture.bed")'
+          bed=$(curl -fsS -X POST "$home/placements" "${agent[@]}" \
+            --data '{"typeId":"furniture.bed","levelId":"souterrain","position":{"x":-3,"z":2.5},"rotationY":0}')
+          echo "$bed" | jq -e '.roomId == "souterrain-bedroom" and .version == 1'
+          id=$(echo "$bed" | jq -er '.id')
+          curl -fsS -X PATCH "$home/placements/$id" "${agent[@]}" --data '{"version":1,"params":{"width":1.8}}' \
+            | jq -e '.params.width == 1.8 and .version == 2'
+          history=$(curl -fsS "$home/uses/$id/history")
+          echo "$history" | jq -e '.items | length == 2 and all(.[]; .actor == "agent")
+            and .[0].changes[0].text == "width 160.0 cm → 180.0 cm"'
+          entry=$(echo "$history" | jq -er '.items[0].id')
+          curl -fsS -X POST "$home/uses/$id/history/$entry/undo" "${agent[@]}" \
+            | jq -e '.entry.action == "undo" and .use.overrides == {}'
+          test "$(curl -sS -o /dev/null -w '%{http_code}' -X POST "$home/uses/$id/history/$entry/undo")" = 409
+          curl -fsS "$base/catalog/usage" | jq -e '.counts["furniture.bed"] >= 1'
+          # A staging deploy (reset, migrate, seed) keeps the placement and its history.
+          docker compose run --rm --no-deps -e ALLOW_DATABASE_RESET=true api node dist/reset.js
+          curl -fsS "$home/placements" | jq -e --arg id "$id" 'any(.items[]; .id == $id)'
+          curl -fsS "$home/uses/$id/history" | jq -e '.items | length == 3'
+          curl -fsS -X DELETE "$home/placements/$id?version=3" "${agent[@]}" | jq -e '.removedAt != null'
+          curl -fsS "$home/placements" | jq -e '.items == []'
       - name: Show logs
         if: failure()
         run: docker compose logs

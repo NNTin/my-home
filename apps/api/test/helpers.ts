@@ -5,6 +5,7 @@ import { loadConfig } from '../src/config';
 import { createDatabase } from '../src/db/client';
 import { photoRequests, photos } from '../src/db/media-schema';
 import { homes } from '../src/db/schema';
+import { history, issuedIds, openingOverrides, placements } from '../src/db/userdata-schema';
 
 /**
  * Builds the app against in-memory PGlite, or against the Postgres in DATABASE_URL (CI).
@@ -36,6 +37,30 @@ type TestApp = Awaited<ReturnType<typeof createTestApp>>;
 export async function clearMedia({ database }: Pick<TestApp, 'database'>) {
   await database.db.delete(photos);
   await database.db.delete(photoRequests);
+}
+
+/** Empties the test database's userdata tables (placements, overrides, history, issued ids). */
+export async function clearUserdata({ database }: Pick<TestApp, 'database'>) {
+  await database.db.delete(placements);
+  await database.db.delete(openingOverrides);
+  await database.db.delete(history);
+  await database.db.delete(issuedIds);
+}
+
+/** `app.inject` with a JSON body; `actor` sends the declared `X-My-Home-Actor` header. */
+export function injector({ app }: Pick<TestApp, 'app'>) {
+  return (
+    method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE',
+    url: string,
+    payload?: unknown,
+    headers: Record<string, string> = {},
+  ) =>
+    app.inject({
+      method,
+      url,
+      headers,
+      ...(payload !== undefined && { payload: payload as object }),
+    });
 }
 
 /** A synthetic test image: a flat colour, no metadata unless `exif` is given. */

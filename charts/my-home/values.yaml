@@ -22,6 +22,8 @@ rollout:
 api:
   replicas: 1
   logLevel: info
+  # SSO usernames (comma-separated) recorded as `agent` in the history (docs/userdata.md).
+  agentUsernames: nntin-bot
   resources:
     requests: { cpu: 25m, memory: 96Mi }
     # Head-room for decoding and re-encoding one full-size phone photo at a time (docs/photos.md).

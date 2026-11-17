@@ -32,6 +32,7 @@ COPY --from=prod-deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY apps/api/package.json ./apps/api/
 COPY apps/api/drizzle ./apps/api/drizzle
 COPY apps/api/media-migrations ./apps/api/media-migrations
+COPY apps/api/userdata-migrations ./apps/api/userdata-migrations
 # Home files seeded on start (SEED_ON_START, SEED_FILE); resolved from dist/ as ../../../data.
 COPY data/homes ./data/homes
 COPY --from=build /app/apps/api/dist ./apps/api/dist

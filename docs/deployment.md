@@ -37,9 +37,10 @@ flowchart LR
    pre-deploy hook runs:
    - production: `node dist/migrate.js`;
    - staging: `node dist/reset.js`, which drops the `public` and `drizzle` schemas (homes, layouts and their
-     migration journal), migrates and seeds the real and the mock home. It never touches the `media` schema:
-     **photos and photo requests survive every staging deploy**, whichever branch is deployed
-     ([photos.md](photos.md#persistence)).
+     migration journal), migrates and seeds the real and the mock home. It never touches the `media` and
+     `userdata` schemas: **photos, photo requests, furniture placements, opening overrides and their history
+     survive every staging deploy**, whichever branch is deployed ([photos.md](photos.md#persistence),
+     [userdata.md](userdata.md#persistence)).
 4. `deploy` waits until `https://<host>/api/health/live` reports the commit. Then GitHub marks the deployment
    successful and the previous deployment of that environment inactive.
 
@@ -89,15 +90,20 @@ Since photos ([photos.md](photos.md)) the **staging database is no longer throwa
 owner's photos, which exist nowhere else until they are copied to production. The databases are provisioned in
 NNTin/lair.nntin.xyz; this repository only states what it needs from both of them:
 
-| Requirement    | Production and staging                                                                                       |
-| -------------- | ------------------------------------------------------------------------------------------------------------ |
-| Storage        | PostgreSQL data on a persistent volume that survives pod restarts and redeploys                              |
-| Schema to keep | `media` (tables `photos`, `photo_blobs`, `photo_thumbnails`, `photo_requests`, `schema_migrations`)          |
-| Expected size  | about 1 MB per photo; plan for 2,000 photos: **2 GiB of data, at least 5 GiB volume** per database           |
-| Backup         | daily `pg_dump` in custom format that includes the `media` schema, 14 days kept (about 2 GiB each when full) |
-| Restore        | restoring only the photos must be possible: `pg_restore --schema=media`                                      |
-| Database role  | may create the `media` schema (`CREATE` on the database), as it already recreates `public` on staging        |
-| Request size   | the ingress in front of the web container accepts request bodies of at least 32 MB (photo uploads)           |
+| Requirement    | Production and staging                                                                                        |
+| -------------- | ------------------------------------------------------------------------------------------------------------- |
+| Storage        | PostgreSQL data on a persistent volume that survives pod restarts and redeploys                               |
+| Schema to keep | `media` (tables `photos`, `photo_blobs`, `photo_thumbnails`, `photo_requests`, `schema_migrations`)           |
+| Schema to keep | `userdata` (tables `placements`, `opening_overrides`, `history`, `issued_ids`, `schema_migrations`)           |
+| Expected size  | about 1 MB per photo; plan for 2,000 photos: **2 GiB of data, at least 5 GiB volume** per database            |
+| Backup         | daily `pg_dump` in custom format that includes the `media` and `userdata` schemas, 14 days kept               |
+| Restore        | restoring one schema must be possible: `pg_restore --schema=media`, `pg_restore --schema=userdata`            |
+| Database role  | may create the `media` and `userdata` schemas (`CREATE` on the database), as it recreates `public` on staging |
+| Request size   | the ingress in front of the web container accepts request bodies of at least 32 MB (photo uploads)            |
+
+`userdata` is small (one row per placement, per overridden opening and per change; a few MB at most). Production's
+full dump already includes it; adding it to the staging dump is an infrastructure follow-up of #39 in
+NNTin/lair.nntin.xyz, and until then staging's `userdata` is test data that a database loss would take with it.
 
 A staging backup may leave out `public` and `drizzle`: they are recreated by every deploy. The api's memory limit
 is 512Mi (`charts/my-home/values.yaml`) because it decodes one full-size photo at a time.

@@ -73,8 +73,11 @@ check "annotate patches the note and merges tags" \
 for command in delete purge restore; do
   check "photos.sh has no $command command" fails "$scripts/photos.sh" staging "$command" aaa
 done
-# That holds for every script of the skill, the browser-driven smoke tests included.
-check "no script sends a DELETE" fails grep -lE -- "-X +DELETE|method: *'DELETE'" "$scripts"/*.sh "$scripts"/*.mjs
+# That holds for every script of the skill, the browser-driven smoke tests included. (uses.sh moves furniture
+# placements to their trash; tests/uses.test.sh checks that this is its only DELETE.)
+others=()
+for f in "$scripts"/*.sh "$scripts"/*.mjs; do [[ ${f##*/} == uses.sh ]] || others+=("$f"); done
+check "no script sends a DELETE" fails grep -lE -- "-X +DELETE|method: *'DELETE'" "${others[@]}"
 check "no script purges or empties the trash" fails grep -lE -- '/purge|trash/empty' "$scripts"/*.sh "$scripts"/*.mjs
 
 reset
