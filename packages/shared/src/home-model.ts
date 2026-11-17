@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import { catalog } from './catalog/catalog';
+import { TypeId } from './catalog/ids';
+import type { CatalogType } from './catalog/types';
 
 /**
  * The home model: the single source of truth for the building.
@@ -78,7 +81,7 @@ export const Pitch = z
   .meta({ id: 'Pitch', description: 'A roof pitch in degrees (0 to 80) with provenance.' });
 export type Pitch = z.infer<typeof Pitch>;
 
-const Name = z.string().min(1).max(200);
+export const Name = z.string().min(1).max(200);
 
 /** The default: a flat slab of `building.roofThickness` on top of the highest level. */
 export const FlatRoof = z.strictObject({ type: z.literal('flat') }).meta({ id: 'FlatRoof' });
@@ -87,6 +90,10 @@ export const FlatRoof = z.strictObject({ type: z.literal('flat') }).meta({ id: '
 export const RoofWindow = z
   .strictObject({
     id: Id,
+    /** Human name, unique in the home, e.g. "Attic · south roof window". */
+    name: Name,
+    /** The catalogue type (`placement: 'roof'`), e.g. `window.roof`. */
+    typeId: TypeId,
     /** Roof plane: `min` slopes down towards the lower across-ridge coordinate, `max` the higher. */
     side: z.enum(['min', 'max']),
     /** Distance along the ridge from the footprint's lower end to the window's near edge. */
@@ -259,7 +266,12 @@ export type OpeningType = z.infer<typeof OpeningType>;
 
 export const Opening = z.strictObject({
   id: Id,
+  /** Human name, unique in the home, e.g. "Bed room · east window" (docs/home-model.md § Naming). */
+  name: Name,
+  /** The catalogue type (`placement: 'wall'`), e.g. `window.casement`. */
+  typeId: TypeId,
   wallId: Id,
+  /** Coarse kind the builder draws by; must be one of the type's `openingTypes`. */
   type: OpeningType,
   /** Distance along the wall from its `start` to the near edge of the opening. */
   offset: NonNegativeDimension,
@@ -306,6 +318,10 @@ export type OutbuildingKind = z.infer<typeof OutbuildingKind>;
 export const OutbuildingOpening = z
   .strictObject({
     id: Id,
+    /** Human name, unique in the home, e.g. "Garage · garage door". */
+    name: Name,
+    /** The catalogue type (`placement: 'wall'`), e.g. `door.garage`. */
+    typeId: TypeId,
     type: OpeningType,
     /** Index of the footprint point the edge starts at (an index, not a length). */
     edge: z.number().int().nonnegative(),
@@ -371,6 +387,8 @@ export const Fence = z
     id: Id,
     name: Name,
     kind: FenceKind,
+    /** The catalogue type (`placement: 'fence'`): required for a gate, absent for other kinds. */
+    typeId: TypeId.optional(),
     path: z.array(Point).min(2),
     /** Ground height at the start of `path`. */
     elevation: Dimension,
@@ -410,7 +428,7 @@ export const wallLength = (wall: Pick<Wall, 'start' | 'end'>) =>
   Math.hypot(wall.end.x.value - wall.start.x.value, wall.end.z.value - wall.start.z.value);
 
 /** Distance from a plan point to the nearest edge of a polygon. */
-function distanceToOutline(x: number, z: number, outline: Polygon): number {
+export function distanceToOutline(x: number, z: number, outline: Polygon): number {
   return Math.min(
     ...outline.map((a, i) => {
       const b = outline[(i + 1) % outline.length]!;
@@ -431,6 +449,26 @@ export function insideOutline(x: number, z: number, outline: Polygon): boolean {
     if (az > z !== bz > z && x < ax + ((z - az) / (bz - az)) * (bx - ax)) inside = !inside;
   });
   return inside;
+}
+
+/**
+ * Whether an opening stands on a wall along the room's outline (both its edges within half the
+ * wall's thickness of it), so it leads into, or looks out of, that room.
+ */
+export function openingTouchesRoom(
+  opening: Pick<Opening, 'offset' | 'width'>,
+  wall: Wall,
+  room: Room,
+): boolean {
+  if (wall.levelId !== room.levelId) return false;
+  const length = wallLength(wall);
+  const reach = wall.thickness.value / 2 + EPS;
+  return [opening.offset.value, opening.offset.value + opening.width.value].every((along) => {
+    const t = length ? along / length : 0;
+    const x = wall.start.x.value + (wall.end.x.value - wall.start.x.value) * t;
+    const z = wall.start.z.value + (wall.end.z.value - wall.start.z.value) * t;
+    return distanceToOutline(x, z, room.outline) <= reach;
+  });
 }
 
 const fmt = (n: number) => `${Math.round(n * 1000) / 1000} m`;
@@ -502,18 +540,9 @@ function checkSemantics(model: z.infer<typeof HomeModelShape>, ctx: z.Refinement
   const rooms = new Map(model.rooms.map((r) => [r.id, r]));
   const openings = new Map(model.openings.map((o) => [o.id, o]));
   const stairs = new Map((model.stairs ?? []).map((s) => [s.id, s]));
-  /** Whether a door stands on a wall along the room's outline, so it leads into that room. */
   const doorTouches = (door: Opening, room: Room) => {
     const wall = walls.get(door.wallId);
-    if (!wall || wall.levelId !== room.levelId) return false;
-    const length = wallLength(wall);
-    const reach = wall.thickness.value / 2 + EPS;
-    return [door.offset.value, door.offset.value + door.width.value].every((along) => {
-      const t = length ? along / length : 0;
-      const x = wall.start.x.value + (wall.end.x.value - wall.start.x.value) * t;
-      const z = wall.start.z.value + (wall.end.z.value - wall.start.z.value) * t;
-      return distanceToOutline(x, z, room.outline) <= reach;
-    });
+    return wall !== undefined && openingTouchesRoom(door, wall, room);
   };
   /** Whether a stair starts or arrives in the room. */
   const stairTouches = (stair: Stair, room: Room) => {
@@ -690,6 +719,8 @@ function checkSemantics(model: z.infer<typeof HomeModelShape>, ctx: z.Refinement
     }
   });
 
+  checkTypesAndNames(model, issue);
+
   if (roof?.type === 'gable' && roof.windows?.length) {
     const xs = model.building.footprint.map((p) => p.x.value);
     const zs = model.building.footprint.map((p) => p.z.value);
@@ -706,6 +737,92 @@ function checkSemantics(model: z.infer<typeof HomeModelShape>, ctx: z.Refinement
       }
     });
   }
+}
+
+const openingTypePlural: Record<OpeningType, string> = {
+  door: 'doors',
+  window: 'windows',
+  'french-door': 'French doors',
+  'garage-door': 'garage doors',
+};
+const article = (word: string) => (/^[aeiou]/i.test(word) ? `an ${word}` : `a ${word}`);
+
+/** Catalogue types of the uses (`typeId`), where they sit, and unique names. */
+function checkTypesAndNames(
+  model: z.infer<typeof HomeModelShape>,
+  issue: (path: (string | number)[], message: string) => void,
+) {
+  const placementName = { wall: 'a wall', roof: 'a roof', fence: 'a fence line', floor: 'a floor' };
+  /** The type for `typeId` when it exists and sits where `placement` says, else undefined. */
+  const typeAt = (
+    typeId: string,
+    placement: CatalogType['placement'],
+    path: (string | number)[],
+  ): CatalogType | undefined => {
+    const type = catalog.get(typeId);
+    if (!type) issue([...path, 'typeId'], `Unknown piece type "${typeId}"`);
+    else if (type.placement !== placement) {
+      issue(
+        [...path, 'typeId'],
+        `Type "${typeId}" goes in ${placementName[type.placement]}, not in ${placementName[placement]}`,
+      );
+    } else return type;
+    return undefined;
+  };
+  const checkOpeningType = (
+    o: { id: string; type: OpeningType; typeId: string },
+    path: (string | number)[],
+  ) => {
+    const type = typeAt(o.typeId, 'wall', path);
+    if (type?.openingTypes && !type.openingTypes.includes(o.type)) {
+      const allowed = type.openingTypes.map((t) => openingTypePlural[t]).join(' and ');
+      issue(
+        [...path, 'typeId'],
+        `Opening "${o.id}" is ${article(o.type.replace('-', ' '))} but type "${o.typeId}" is for ${allowed}`,
+      );
+    }
+  };
+
+  // Names are unique (case-insensitive) across every use, so a name alone finds it.
+  const names = new Map<string, string>();
+  const claimName = (name: string, path: (string | number)[]) => {
+    const key = name.trim().toLowerCase();
+    const previous = names.get(key);
+    if (previous)
+      issue([...path, 'name'], `Duplicate name "${name}" (already used by ${previous})`);
+    else names.set(key, formatPath(path));
+  };
+
+  model.openings.forEach((o, i) => {
+    checkOpeningType(o, ['openings', i]);
+    claimName(o.name, ['openings', i]);
+  });
+  model.outbuildings?.forEach((b, i) =>
+    b.openings?.forEach((o, j) => {
+      checkOpeningType(o, ['outbuildings', i, 'openings', j]);
+      claimName(o.name, ['outbuildings', i, 'openings', j]);
+    }),
+  );
+  const roof = model.building.roof;
+  if (roof?.type === 'gable') {
+    roof.windows?.forEach((w, i) => {
+      const path = ['building', 'roof', 'windows', i];
+      typeAt(w.typeId, 'roof', path);
+      claimName(w.name, path);
+    });
+  }
+  model.fences?.forEach((f, i) => {
+    const path = ['fences', i];
+    if (f.kind !== 'gate') {
+      if (f.typeId !== undefined) {
+        issue([...path, 'typeId'], `Fence "${f.id}" is a ${f.kind} fence and takes no typeId`);
+      }
+      return;
+    }
+    if (f.typeId === undefined) issue([...path, 'typeId'], `Gate "${f.id}" needs a typeId`);
+    else typeAt(f.typeId, 'fence', path);
+    claimName(f.name, path);
+  });
 }
 
 export const HomeModel = HomeModelShape.superRefine(checkSemantics).meta({

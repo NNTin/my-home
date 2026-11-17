@@ -5,6 +5,14 @@ The registry ([`registry.ts`](../apps/web/src/items/registry.ts)) finds every
 `src/items/<type>/index.tsx` at build time with `import.meta.glob`, so adding a folder is all it
 takes: no change to the registry, the catalog, the editor, the API or the database.
 
+> **Also add a shared definition.** Each furniture type now also has a catalogue type
+> `furniture.<id>` in
+> [`packages/shared/src/catalog/definitions/furniture.ts`](../packages/shared/src/catalog/definitions/furniture.ts)
+> (its parameters: colour and sizes, basic or design, with limits). Its defaults must equal the
+> module's `size` and `color`, and its name, category, icon and description the module's;
+> `registry.test.ts` checks this. This guide is rewritten when the viewer draws from the types
+> (#38).
+
 ## 1. Create the folder
 
 The folder name is the type id that layouts store as `typeId`. Use letters, digits, `-` and `_`.
