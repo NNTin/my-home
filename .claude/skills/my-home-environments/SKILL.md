@@ -35,7 +35,7 @@ $S/screenshot.sh staging --viewport 390x844 --path '/?walk=first' --pad 0,-44,20
 $S/screenshot.sh staging --viewport 390x844 --touch --path '/?panel=furniture'   # phone layout, a panel open
 $S/walk-smoke.sh staging                                 # phone-sized smoke test of walk mode
 $S/mobile-smoke.sh staging                               # phone layout: top bar, sheet, levels, furniture, walk
-$S/compass-smoke.sh staging                              # phone compass and tilt, with mocked sensor events
+$S/compass-smoke.sh staging                              # Sensors / Manual camera modes, mocked sensor events
 $S/camera-smoke.sh staging                               # taking a photo with a fake camera, uploads checked
 $S/with-site-token.sh staging -- node e2e.mjs            # SITE_TOKEN and SITE_BASE for the child only
 $S/raise-env-issue.sh --dry-run staging "health fails"   # what it would post; drop --dry-run to post
@@ -71,18 +71,22 @@ $S/photo-requests.sh staging create --room souterrain-kitchen --reason "Which wa
   or "Reset view" draws again), checks the canvas' pixel ratio (at most 1.5), that every control has a name,
   and that the web app manifest and its icons are served. It writes only to a **layout it creates itself and removes again**; every other write is refused inside
   the browser.
-- `compass-smoke.sh <env> [--out file.png]`: the "Heading" and "Tilt" modes of walk mode at 390x844 with
-  **mocked** orientation events (Android absolute alpha and the iOS `webkitCompassHeading` path): turning and
-  tilting the mocked phone moves the figure, north is crossed smoothly, landscape is compensated, the compass
-  rose turns, and a captured photo carries the sensor snapshot. Read-only: the upload is intercepted in the
-  browser and nothing is stored. A real phone is still needed for the checklist in `docs/walking.md`.
+- `compass-smoke.sh <env> [--out file.png]`: the camera modes of walk mode (Sensors / Manual) at 390x844 with
+  **mocked** orientation events (Android absolute alpha and the iOS `webkitCompassHeading` path). Manual mode
+  ignores the events and turns by drag and ▲; Sensor mode turns and tilts the figure with the mocked phone (north
+  crossed smoothly, landscape compensated, the compass rose turns), ignores every drag, hides ▲▼ and sidesteps
+  with the pad; a refusal or silence falls back to Manual, the mode survives a reload, and a captured photo
+  carries the sensor snapshot. Read-only: the upload is intercepted in the browser and nothing is stored. A real
+  phone is still needed for the checklist in `docs/walking.md`.
 - `camera-smoke.sh <env> [--out file.png]`: taking a photo in walk mode at 390x844 with touch and Chromium's
   **fake** camera: the camera inside the page (viewfinder, shutter, sheet, save), the fallback to the camera app
   and the gallery when the camera is refused, and walk mode coming back at the same pose with a "take it again"
   message after a reload while the camera app was open. Each upload is parsed and checked (a `meta` JSON with a
   valid pose and a JPEG `image`) and answered in the browser. Read-only: nothing is stored.
 - `walk-smoke.sh <env> [--out file.png]`: opens walk mode at 390x844 with touch, pushes the pad and checks that
-  the figure walks, turns and stops, that the controls fit the screen and that nothing logs an error. Read-only. Playwright (pinned) is installed outside the repository in
+  the figure walks, turns and stops, that the controls and the minimap fit without overlapping, that the
+  minimap tracks the figure, and, after putting the figure at the stair from the enlarged map, that the pad
+  walks it up and the minimap switches level; nothing may log an error. Read-only. Playwright (pinned) is installed outside the repository in
   `${XDG_CACHE_HOME:-$HOME/.cache}/my-home-environments/playwright`, Chromium in `~/.cache/ms-playwright`;
   `screenshot.sh --check` installs them if missing and verifies a headless launch.
 - `raise-env-issue.sh [--dry-run] [--force] <env> <summary> [details-file]`: refuses (exit 3) unless

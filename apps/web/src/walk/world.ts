@@ -389,6 +389,26 @@ export function placeAt(world: WalkWorld, point: Vec2, y: number): Footing | und
   return best && footing(point, best);
 }
 
+/**
+ * Where the figure may be set down at a plan point near height `y` (a tap on the map): on
+ * something it can stand on with headroom, and clear of walls, fences and furniture by the same
+ * rules as walking (a spot right next to a wall moves out of it a little). Undefined where it
+ * cannot stand.
+ */
+export function standAt(
+  world: WalkWorld,
+  point: Vec2,
+  y: number,
+  radius = FIGURE_RADIUS,
+): Footing | undefined {
+  const near = placeAt(world, point, y);
+  if (!near || Math.abs(near.y - y) > MAX_STEP * 2) return undefined;
+  const free = pushOut(world, point, near.y, radius);
+  if (!free || length(sub(free, point)) > radius * 2) return undefined;
+  const support = supportAt(world, free, near.y);
+  return support && footing(free, support);
+}
+
 export interface StartPose extends Footing {
   yaw: number;
 }

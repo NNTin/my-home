@@ -360,10 +360,22 @@ body {
 
 /* In the flow of the bar, on a row of its own, so it never covers a button. */
 .walk-bar .walk-notice {
+  /* Not the floating notice of a lost photo (below): a row of the bar. */
+  position: static;
   flex-basis: 100%;
   margin: 0;
   color: #ffcc80;
   pointer-events: none;
+}
+
+/* The camera mode: one switch, Sensors or Manual; the chosen one is lit. */
+.walk-bar .walk-mode {
+  flex: 0 0 auto;
+}
+
+.walk-bar .walk-mode button {
+  flex: 0 0 auto;
+  padding: 0 0.625rem;
 }
 
 .walk-controls {
@@ -794,6 +806,213 @@ body {
 
 .walk-request {
   border: 1px solid #ffd23f;
+}
+
+/* Above the minimap, which sits above the camera button. */
+.walk-hud .walk-request {
+  bottom: calc(15.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+/*
+ * The minimap: bottom right, above the camera button and the look ▲▼ column, so it never
+ * covers the pad, the shutter or the bar. Its sheet (enlarged) is laid out like the others.
+ */
+.walk-map-slot {
+  display: contents;
+}
+
+.walk-hud .walk-map {
+  position: absolute;
+  right: calc(1.25rem + env(safe-area-inset-right, 0px));
+  bottom: calc(7.75rem + env(safe-area-inset-bottom, 0px));
+  width: 10rem;
+  height: 10rem;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background: rgb(10 14 20 / 0.72);
+  cursor: zoom-in;
+  pointer-events: auto;
+}
+
+.viewer.mobile .walk-hud .walk-map {
+  width: 7rem;
+  height: 7rem;
+}
+
+.walk-map-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.walk-map-large {
+  position: absolute;
+  right: calc(1.25rem + env(safe-area-inset-right, 0px));
+  bottom: calc(7.75rem + env(safe-area-inset-bottom, 0px));
+  z-index: 1;
+  display: flex;
+  box-sizing: border-box;
+  flex-direction: column;
+  width: min(26rem, calc(100% - 2.5rem));
+  height: min(30rem, calc(100% - 14rem));
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  background: rgb(20 24 30 / 0.97);
+  pointer-events: auto;
+}
+
+.walk-map-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  align-items: center;
+}
+
+.walk-map-head strong {
+  margin-right: auto;
+}
+
+.walk-map-head .segmented {
+  flex: 0 0 auto;
+}
+
+.walk-map-head .segmented button {
+  flex: 0 0 auto;
+  padding: 0 0.5rem;
+}
+
+.walk-map-large .hint {
+  margin: 0.25rem 0;
+}
+
+.walk-map-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  cursor: pointer;
+}
+
+.walk-map-large button[aria-pressed='true'] {
+  border-color: #a8d4ff;
+  background: rgb(40 90 140 / 0.85);
+}
+
+.viewer.mobile .walk-map-large {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: auto;
+  max-width: 30rem;
+  /* Below the bar, like the calibration sheet. */
+  height: min(75%, calc(100% - 16.5rem));
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+  border-radius: 0.75rem 0.75rem 0 0;
+}
+
+/* Held across, the bar is one row: the map takes the height below it. */
+.viewer.mobile.landscape .walk-map-large {
+  height: calc(100% - 4.75rem - env(safe-area-inset-top, 0px));
+}
+
+.viewer.mobile.landscape .walk-map-large .hint {
+  display: none;
+}
+
+.map-footprint {
+  fill: rgb(255 255 255 / 0.04);
+  stroke: rgb(255 255 255 / 0.25);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+.map-room {
+  fill: rgb(255 255 255 / 0.08);
+  stroke: rgb(255 255 255 / 0.2);
+  stroke-width: 0.5px;
+  vector-effect: non-scaling-stroke;
+}
+
+.map-room.here {
+  fill: rgb(120 180 255 / 0.3);
+}
+
+.map-wall {
+  fill: #e8eaed;
+}
+
+.map-window {
+  fill: #6ec3ff;
+}
+
+.map-door {
+  fill: #c9925a;
+}
+
+.map-stair {
+  fill: rgb(255 210 63 / 0.35);
+  stroke: rgb(255 210 63 / 0.8);
+  stroke-width: 0.5px;
+  vector-effect: non-scaling-stroke;
+}
+
+.map-fence {
+  fill: rgb(255 255 255 / 0.55);
+}
+
+.map-gate {
+  fill: #8bd17c;
+}
+
+.map-label {
+  fill: #fff;
+  paint-order: stroke;
+  stroke: rgb(0 0 0 / 0.75);
+  stroke-linejoin: round;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+}
+
+.map-request {
+  fill: rgb(255 210 63 / 0.25);
+  stroke: #ffd23f;
+  stroke-dasharray: 2 2;
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+}
+
+.map-request.active {
+  fill: rgb(255 210 63 / 0.6);
+  stroke-dasharray: none;
+}
+
+.map-photo path {
+  fill: rgb(110 195 255 / 0.35);
+}
+
+.map-photo circle {
+  fill: #6ec3ff;
+}
+
+.map-cone {
+  fill: rgb(255 210 63 / 0.45);
+}
+
+.map-figure circle {
+  fill: #e4572e;
+  stroke: #fff;
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+}
+
+.map-north path {
+  fill: #e4572e;
+}
+
+.map-north text {
+  fill: #fff;
+  font-weight: 700;
+  text-anchor: middle;
 }
 
 .walk-requests {

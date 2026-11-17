@@ -45,8 +45,11 @@ export function WalkRig({ figure, view, rose }: Props) {
 
   // Where frames are drawn on demand (a phone), the figure asks for one whenever it has moved.
   // The walk loop runs outside the canvas and moves it without telling anyone.
+  // Where every frame is drawn anyway (desktop), there is nothing to ask for.
   const invalidate = useThree((s) => s.invalidate);
+  const onDemand = useThree((s) => s.frameloop === 'demand');
   useEffect(() => {
+    if (!onDemand) return;
     let last: Figure | undefined;
     let frame = requestAnimationFrame(function watch() {
       const f = figure.current;
@@ -57,7 +60,7 @@ export function WalkRig({ figure, view, rose }: Props) {
       frame = requestAnimationFrame(watch);
     });
     return () => cancelAnimationFrame(frame);
-  }, [figure, invalidate]);
+  }, [figure, invalidate, onDemand]);
 
   useEffect(() => {
     const camera = get().camera as PerspectiveCamera;

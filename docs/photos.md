@@ -56,7 +56,7 @@ The home model's frame ([home-model.md](home-model.md#conventions)), metres and 
 ### Sensor snapshot
 
 `sensors` on a photo is what the phone's orientation sensors said when it was taken
-([walking.md](walking.md#turning-and-tilting-with-the-phone)). It is stored in the nullable column
+([walking.md](walking.md#camera-modes-sensors-and-manual)). It is stored in the nullable column
 `media.photos.sensors` (JSON), so photos from before it, and from builds that do not know it, have `null`.
 
 | Field                                | Meaning                                                                  |

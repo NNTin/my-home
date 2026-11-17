@@ -4,6 +4,7 @@ import { App } from './App';
 import type { SceneProps } from './scene/Scene';
 import { fakeApi, homeSummary } from './test/fakeApi';
 import { mockHome } from './test/fixtures';
+import { stubScreen } from './test/screen';
 import { WALK_SESSION_KEY } from './walk/walkSession';
 
 // jsdom has no WebGL, so the R3F canvas is replaced with a stub that exposes what it would draw.
@@ -174,11 +175,13 @@ describe('App', () => {
 
     it('saves the magnetic declination of the home from the calibration sheet', async () => {
       vi.stubGlobal('DeviceOrientationEvent', class {});
+      // The camera modes are offered on phones.
+      stubScreen('portrait');
       const models: Record<string, unknown> = {};
       const fetchMock = stubApi(undefined, models);
       render(<App />);
       fireEvent.click(await screen.findByRole('button', { name: /Walk and take photos/ }));
-      fireEvent.click(screen.getByRole('button', { name: /Heading off/ }));
+      fireEvent.click(screen.getByRole('radio', { name: /Sensors/ }));
       fireEvent.click(screen.getByRole('button', { name: 'Calibrate' }));
       const sheet = within(screen.getByRole('region', { name: 'Calibrate the compass' }));
       // The doors and windows of the room the figure stands in are offered as targets.
