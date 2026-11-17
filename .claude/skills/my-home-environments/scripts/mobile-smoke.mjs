@@ -402,9 +402,13 @@ async function smoke(out, homeId) {
     // A drag leaves the spot at once (a finger that rests there is a long press): the press and
     // the first moves go out together, without waiting for the slow software renderer in between.
     void touch('touchStart', from.x, from.y);
-    void touch('touchMove', from.x + 7, from.y + 4);
-    for (let step = 2; step <= 8; step++) {
-      await touch('touchMove', from.x + step * 7, from.y + step * 4);
+    const dragStep = { x: 7, y: 4 };
+    const dragSteps = 8;
+    /** Where the finger let go: the item followed it there. */
+    const dropped = { x: from.x + dragSteps * dragStep.x, y: from.y + dragSteps * dragStep.y };
+    void touch('touchMove', from.x + dragStep.x, from.y + dragStep.y);
+    for (let step = 2; step <= dragSteps; step++) {
+      await touch('touchMove', from.x + step * dragStep.x, from.y + step * dragStep.y);
       await page.waitForTimeout(80);
     }
     await touch('touchEnd');
@@ -424,8 +428,7 @@ async function smoke(out, homeId) {
     // Pressed where the drag ended: the item followed the finger there. (The toolbar is no guide
     // here: near the edge of the view it is pushed back inside, away from the item.) The finger
     // stays down until the panel opens, however slow the renderer is, then lets go.
-    const held = { x: from.x + 8 * 7, y: from.y + 8 * 4 };
-    await touch('touchStart', held.x, held.y);
+    await touch('touchStart', dropped.x, dropped.y);
     const deadline = Date.now() + 5000;
     while (Date.now() < deadline && (await snap()) !== 'half') await page.waitForTimeout(100);
     await touch('touchEnd');

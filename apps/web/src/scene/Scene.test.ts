@@ -27,8 +27,9 @@ describe('initialCamera', () => {
 
 describe('resetOrbit', () => {
   /**
-   * Orbit controls with damping on, as drei sets them up (drei's are three-stdlib's port of
-   * these), after a quick swipe.
+   * Orbit controls with damping on, as drei sets them up, after a quick swipe. These are three's
+   * own OrbitControls; drei runs three-stdlib's port of them, which damps the same way (the app
+   * does not depend on three-stdlib directly, so the test does not either).
    */
   function swiped() {
     const camera = new PerspectiveCamera();
