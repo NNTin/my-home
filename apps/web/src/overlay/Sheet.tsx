@@ -101,7 +101,8 @@ export function Sheet<T extends string>({
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     const element = sheet.current;
-    if (drag.current || !element || e.button > 0) return;
+    // A second finger does not take over a drag; a press that never became one is replaced.
+    if (drag.current?.moved || !element || e.button > 0) return;
     const box = element.getBoundingClientRect();
     drag.current = { pointerId: e.pointerId, from: along(e), size: box[axis], moved: false };
     dragged.current = false;
@@ -111,6 +112,9 @@ export function Sheet<T extends string>({
     const d = drag.current;
     const element = sheet.current;
     if (!element || d?.pointerId !== e.pointerId) return;
+    // A mouse that moves over the bar with no button down is not dragging: its release was
+    // missed (outside the window).
+    if (e.pointerType === 'mouse' && e.buttons === 0) return finish(e.pointerId);
     // The sheet grows towards the top (or the left): against the pointer's coordinate.
     const delta = d.from - along(e);
     if (!d.moved) {
@@ -124,10 +128,10 @@ export function Sheet<T extends string>({
     element.style[axis] = `${Math.max(0, Math.min(available, d.size + delta))}px`;
   };
 
-  const onPointerEnd = (e: PointerEvent<HTMLDivElement>) => {
+  const finish = (pointerId: number) => {
     const d = drag.current;
     const element = sheet.current;
-    if (d?.pointerId !== e.pointerId) return;
+    if (d?.pointerId !== pointerId) return;
     drag.current = undefined;
     if (!element || !d.moved) return;
     dragged.current = true;
@@ -138,6 +142,22 @@ export function Sheet<T extends string>({
     element.style[axis] = '';
     onSnap(nearestSnap(size, available, collapsed, side));
   };
+
+  // The press ends wherever the pointer is released. Until it has become a drag the pointer is
+  // not captured, so a release over the panel or outside the sheet never reaches the bar.
+  const finishRef = useRef(finish);
+  useEffect(() => {
+    finishRef.current = finish;
+  });
+  useEffect(() => {
+    const end = (e: globalThis.PointerEvent) => finishRef.current(e.pointerId);
+    window.addEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
+    return () => {
+      window.removeEventListener('pointerup', end);
+      window.removeEventListener('pointercancel', end);
+    };
+  }, []);
 
   const select = (id: T) => {
     if (id === active && open) return onSnap('collapsed');
@@ -156,8 +176,6 @@ export function Sheet<T extends string>({
         className="sheet-bar"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
-        onPointerUp={onPointerEnd}
-        onPointerCancel={onPointerEnd}
         // The click that ends a drag belongs to the drag, not to the tab under the finger.
         onClickCapture={(e) => {
           if (!dragged.current) return;

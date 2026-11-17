@@ -182,6 +182,54 @@ describe('Sheet', () => {
       expect(tab(/Furniture/)).toHaveAttribute('aria-selected', 'true');
     });
 
+    it('recovers from a press that is released outside the bar', () => {
+      layOut('height', 56, 700);
+      render(<Harness start="half" />);
+      const bar = tab('View').closest('.sheet-bar')!;
+      const body = screen.getByRole('tabpanel');
+      const mouse = (buttons: number) => ({ pointerType: 'mouse', buttons });
+
+      // A press on a tab, a small move down into the panel, and the release there: the bar
+      // never sees the pointer go up.
+      fireEvent(tab('View'), pointerEvent('pointerdown', 100, 380, 1, mouse(1)));
+      fireEvent(body, pointerEvent('pointermove', 100, 384, 1, mouse(1)));
+      fireEvent(body, pointerEvent('pointerup', 100, 384, 1, mouse(0)));
+
+      // Moving the mouse over the bar with no button down drags nothing.
+      fireEvent(bar, pointerEvent('pointermove', 100, 200, 1, mouse(0)));
+      fireEvent(bar, pointerEvent('pointermove', 100, 100, 1, mouse(0)));
+      expect(sheet().style.height).toBe('');
+      expect(sheet()).not.toHaveClass('dragging');
+      expect(snapOf()).toBe('half');
+
+      // And the next drag is a drag: from the 56 px the layout reports, 300 px up.
+      fireEvent(bar, pointerEvent('pointerdown', 100, 400, 1, mouse(1)));
+      fireEvent(bar, pointerEvent('pointermove', 100, 100, 1, mouse(1)));
+      expect(sheet().style.height).toBe('356px');
+      fireEvent(bar, pointerEvent('pointerup', 100, 100, 1, mouse(0)));
+      expect(snapOf()).toBe('half');
+      expect(sheet().style.height).toBe('');
+    });
+
+    it('drops a mouse press whose release was missed outside the window', () => {
+      layOut('height', 56, 700);
+      render(<Harness />);
+      const bar = tab('View').closest('.sheet-bar')!;
+      const mouse = (buttons: number) => ({ pointerType: 'mouse', buttons });
+      fireEvent(bar, pointerEvent('pointerdown', 100, 680, 1, mouse(1)));
+      // No pointerup at all; the mouse comes back with no button down.
+      fireEvent(bar, pointerEvent('pointermove', 100, 300, 1, mouse(0)));
+      expect(sheet().style.height).toBe('');
+      expect(snapOf()).toBe('collapsed');
+      // A stale press does not block the next one either.
+      fireEvent(bar, pointerEvent('pointerdown', 100, 680, 1, mouse(1)));
+      fireEvent(bar, pointerEvent('pointerdown', 100, 680, 1, mouse(1)));
+      fireEvent(bar, pointerEvent('pointermove', 100, 380, 1, mouse(1)));
+      expect(sheet().style.height).toBe('356px');
+      fireEvent(window, pointerEvent('pointerup', 100, 380, 1, mouse(0)));
+      expect(snapOf()).toBe('half');
+    });
+
     it('is dragged sideways when it is at the side', () => {
       layOut('width', 64, 844);
       render(<Harness side />);

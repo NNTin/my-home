@@ -33,8 +33,22 @@ export function stubScreen(initial: LayoutMode) {
 }
 
 /** jsdom has no PointerEvent: a MouseEvent with a pointer id is what the handlers need. */
-export function pointerEvent(type: string, x: number, y: number, pointerId = 1) {
-  const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y });
+export function pointerEvent(
+  type: string,
+  x: number,
+  y: number,
+  pointerId = 1,
+  /** `pointerType: 'mouse'` with `buttons` for what only a mouse does (moving with no button down). */
+  extra: { pointerType?: string; buttons?: number } = {},
+) {
+  const event = new MouseEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    clientX: x,
+    clientY: y,
+    buttons: extra.buttons ?? 0,
+  });
   Object.defineProperty(event, 'pointerId', { value: pointerId });
+  if (extra.pointerType) Object.defineProperty(event, 'pointerType', { value: extra.pointerType });
   return event;
 }
