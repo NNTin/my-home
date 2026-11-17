@@ -1,7 +1,7 @@
 import { defineType } from '../types';
 import { color, count, fixedLength, number } from './specs';
 
-/** Doors are drawn open: a frame without a sill and no leaf yet (`openingParts`). */
+/** Doors are drawn open: a frame without a sill and no leaf yet (`catalog/openings/frame.ts`). */
 const doorFrameParams = {
   frameColor: color('Frame colour', '#7b5a3c'),
   frameWidth: fixedLength('Frame width', 0.06),

@@ -17,7 +17,7 @@ export interface CatalogType {
   name: string;
   description: string;
   icon: string;
-  /** Furniture: "Bed room", "Dining", … (as the item registry in the web app). */
+  /** Furniture: "Bed room", "Dining", … (the groups of the furniture catalogue panel). */
   category?: string;
   placement: Placement;
   /** Wall openings: the home model `Opening.type` values this type may carry. */
