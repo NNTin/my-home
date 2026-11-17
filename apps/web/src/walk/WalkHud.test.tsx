@@ -348,6 +348,52 @@ describe('WalkHud', () => {
       expect(at().yaw).toBeLessThan(rad(-97));
     });
 
+    it('says that the view is held for the photo, not that the sensors are paused', async () => {
+      render(<Harness />);
+      fireEvent.click(screen.getByRole('button', { name: /Heading off/ }));
+      tiltPhone(90, 30);
+      const chip = () => screen.getByRole('status', { name: 'Compass' });
+      await waitFor(() => expect(chip()).toHaveTextContent('accuracy unknown'));
+
+      // The capture sheet is open: the view stays where it was at the tap.
+      takePhoto();
+      expect(chip()).toHaveTextContent('held for the photo');
+      expect(chip()).not.toHaveTextContent('paused');
+      // And nothing claims that the page is in the background.
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+      tiltPhone(90, 30);
+      await waitFor(() => expect(chip()).toHaveTextContent('accuracy unknown'));
+
+      // A page in the background is the other thing, and keeps its own word.
+      Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+      fireEvent(document, new Event('visibilitychange'));
+      expect(chip()).toHaveTextContent('paused');
+      expect(chip()).not.toHaveTextContent('held');
+      Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+      fireEvent(document, new Event('visibilitychange'));
+    });
+
+    it('keeps the offset, Reset and Done at the head of the calibration sheet', async () => {
+      render(<Harness />);
+      fireEvent.click(screen.getByRole('button', { name: /Heading off/ }));
+      tiltPhone(90, 8);
+      await waitFor(() =>
+        expect(screen.getByRole('status', { name: 'Compass' })).toBeInTheDocument(),
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Calibrate' }));
+      const sheet = screen.getByRole('region', { name: 'Calibrate the compass' });
+      const head = sheet.firstElementChild as HTMLElement;
+      expect(head).toHaveClass('walk-calibrate-head');
+      expect(head).toHaveTextContent('Offset 0°');
+      expect(within(head).getByRole('button', { name: 'Reset' })).toBeDisabled();
+      fireEvent.click(within(head).getByRole('button', { name: 'Done' }));
+      expect(
+        screen.queryByRole('region', { name: 'Calibrate the compass' }),
+      ).not.toBeInTheDocument();
+    });
+
     it('calibrates against a door, shows and resets the offset, and saves the declination', async () => {
       render(<Harness />);
       fireEvent.click(screen.getByRole('button', { name: /Heading off/ }));

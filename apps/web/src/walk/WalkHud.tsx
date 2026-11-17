@@ -233,7 +233,14 @@ export function WalkHud({
               role="status"
               aria-label="Compass"
             >
-              {following ? accuracy.text : compass.heading === 'paused' ? 'paused' : '…'}
+              {following
+                ? accuracy.text
+                : compass.held
+                  ? // Not the same as a page in the background: the view waits for the photo.
+                    'held for the photo'
+                  : compass.heading === 'paused'
+                    ? 'paused'
+                    : '…'}
               {compass.calibration !== 0 && ` · offset ${offset}`}
             </span>
             <button
@@ -259,8 +266,9 @@ export function WalkHud({
       </div>
       {compass.heading !== 'off' && calibrating && !file && (
         <section className="walk-calibrate" aria-label="Calibrate the compass">
-          <p>
-            <strong>Offset {offset}</strong>{' '}
+          {/* Always in reach, whatever the rest of the sheet scrolls to. */}
+          <div className="walk-calibrate-head">
+            <strong>Offset {offset}</strong>
             <button
               type="button"
               onClick={compass.resetCalibration}
@@ -268,7 +276,10 @@ export function WalkHud({
             >
               Reset
             </button>
-          </p>
+            <button type="button" className="primary" onClick={() => setCalibrating(false)}>
+              Done
+            </button>
+          </div>
           <p className="hint">
             Point the phone at one of these and tap it, or drag the view sideways until it matches
             what you see.
@@ -327,11 +338,6 @@ export function WalkHud({
             {declinationSaved === undefined &&
               'From a declination chart for your area; 0 if unknown. The offset above is per device.'}
           </p>
-          <div className="capture-actions">
-            <button type="button" className="primary" onClick={() => setCalibrating(false)}>
-              Done
-            </button>
-          </div>
         </section>
       )}
       {listed && !file && (

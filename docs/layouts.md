@@ -97,8 +97,9 @@ curl -X POST localhost:3000/api/homes/mock-home/layouts/import \
 
 The **Furniture** panel (the Furniture tab of the sheet [on a phone](mobile.md)) adds items to the highest
 level shown by the cutaway ("Add to …"), in the selected room. Click an item to select it, drag it on the floor to move it and drag the blue ring
-to rotate it (in the chosen step, or freely). Touch works the same way, with the panel buttons for
-rotate, duplicate and delete.
+to rotate it (in the chosen step, or freely). Touch works the same way; [on a phone](mobile.md#touch) the
+ring is wider, the selected item's tools (rotate, duplicate, delete) float next to it, and a long press on an
+item opens the panel.
 
 | Key                       | Action                      |
 | ------------------------- | --------------------------- |

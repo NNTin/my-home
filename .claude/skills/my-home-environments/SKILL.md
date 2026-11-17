@@ -61,10 +61,12 @@ $S/photo-requests.sh staging create --room souterrain-kitchen --reason "Which wa
   forward, negative DX turns left) and `--key KEY,MS` holds a key. `--touch` emulates a phone (touch screen,
   coarse pointer); the phone layout (`docs/mobile.md`) also shows without it at phone sizes such as 390x844 or
   844x390, and `--path '/?panel=view|furniture|photos|requests&sheet=half|full'` opens a panel of its sheet.
+  Add `&hints=off` there, or the first-run hints cover the foot of the view in every fresh browser.
 - `mobile-smoke.sh <env> [--out file.png] [--home ID]`: the phone layout at 390x844 and 844x390 with touch: the
-  3D view is clear of the top bar and the sheet, a tap opens and closes each panel, the level switcher cuts the
-  building away, a furniture item is placed, walk mode is entered and left, and held across the sheet is at the
-  side. It writes only to a **layout it creates itself and removes again**; every other write is refused inside
+  3D view is clear of the top bar and the sheet, the first-run hints are dismissed, a tap opens and closes each
+  panel, the level switcher cuts the building away, a furniture item is placed and then dragged, rotated,
+  long-pressed, duplicated and deleted with real touch events, walk mode is entered and left, and held across
+  the sheet is at the side. It writes only to a **layout it creates itself and removes again**; every other write is refused inside
   the browser.
 - `compass-smoke.sh <env> [--out file.png]`: the "Heading" and "Tilt" modes of walk mode at 390x844 with
   **mocked** orientation events (Android absolute alpha and the iOS `webkitCompassHeading` path): turning and

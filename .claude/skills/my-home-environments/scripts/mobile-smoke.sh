@@ -3,8 +3,9 @@
 #
 # Smoke test of the phone layout (390x844 and 844x390, touch) in headless Chromium: the top bar and the
 # collapsed sheet leave the 3D view free, a tap opens and closes each panel, the level switcher cuts the
-# building away, a furniture item is placed, walk mode is entered and left, and held across the sheet is at
-# the side. Ends with a screenshot (and <out>-landscape.png). Exit 0 when every check passes.
+# building away, a furniture item is placed and then dragged, rotated, long-pressed, duplicated and deleted by
+# touch, walk mode is entered and left, and held across the sheet is at the side. Ends with a screenshot (and
+# <out>-landscape.png). Exit 0 when every check passes.
 # It writes only to a layout it creates itself and removes again; every other write (photos, photo
 # requests, other layouts, the home) is refused inside the browser. Uses the Playwright set-up of
 # screenshot.sh. --home picks a home by id (default: the first one).
@@ -14,7 +15,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$script_dir/lib.sh"
 
 usage() {
-  sed -n '2,10s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,11s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 

@@ -20,8 +20,11 @@ body {
 .app {
   position: relative;
   overflow: hidden;
-  /* The visible height on a phone, where the browser's bars come and go. */
-  height: 100dvh;
+  /*
+   * The visible height on a phone, where the browser's bars come and go; with the on-screen
+   * keyboard open, what it leaves free (overlay/useKeyboardViewport.ts).
+   */
+  height: var(--app-height, 100dvh);
 }
 
 /* The viewer fills the app; the stage holds the 3D view and what floats on it. */
@@ -764,6 +767,8 @@ body {
   --sheet-collapsed: calc(3.5rem + env(safe-area-inset-bottom, 0px));
   /* Dark native controls: select lists, date pickers, checkboxes. */
   color-scheme: dark;
+  /* Panels scroll, but a pinch or a double tap on them does not zoom the page under the 3D view. */
+  touch-action: pan-x pan-y;
   display: flex;
   flex-direction: column;
 }
@@ -1134,6 +1139,7 @@ body {
 .sheet .panel button:not(.link, .thumbnail),
 .sheet .panel .button {
   display: inline-flex;
+  gap: 0.375rem;
   align-items: center;
   padding: 0.25rem 0.875rem;
 }
@@ -1165,11 +1171,50 @@ body {
   min-width: 0;
 }
 
+/* On and off as a switch at the end of its row, large enough for a thumb. */
+.sheet .panel .toggle {
+  flex-direction: row-reverse;
+  justify-content: space-between;
+}
+
 .sheet .panel .toggle input {
+  position: relative;
   flex: none;
+  width: 2.875rem;
+  height: 1.75rem;
+  margin: 0;
+  border: 1px solid rgb(255 255 255 / 0.4);
+  border-radius: 0.875rem;
+  appearance: none;
+  background: rgb(255 255 255 / 0.18);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.sheet .panel .toggle input::before {
+  position: absolute;
+  top: 0.125rem;
+  left: 0.125rem;
   width: 1.375rem;
   height: 1.375rem;
-  margin: 0;
+  border-radius: 50%;
+  background: #fff;
+  content: '';
+  transition: transform 0.15s ease;
+}
+
+.sheet .panel .toggle input:checked {
+  border-color: #a8d4ff;
+  background: #2f7fd0;
+}
+
+.sheet .panel .toggle input:checked::before {
+  transform: translateX(1.125rem);
+}
+
+.sheet .panel .toggle input:focus-visible {
+  outline: 2px solid #a8d4ff;
+  outline-offset: 2px;
 }
 
 .sheet .panel .catalog-item {
@@ -1225,4 +1270,262 @@ body {
 
 .toggle-group summary::-webkit-details-marker {
   display: none;
+}
+
+/* With the on-screen keyboard open, the open sheet takes all the room that is left. */
+.keyboard-open .viewer.mobile .sheet:not(.sheet-collapsed, .sheet-side) {
+  height: 100%;
+}
+
+.keyboard-open .viewer.mobile.landscape .topbar {
+  display: none;
+}
+
+/* At the foot of the phone's 3D view: "Reset view" and the status chip. */
+.stage-tools {
+  position: absolute;
+  bottom: 0.75rem;
+  left: calc(0.75rem + env(safe-area-inset-left, 0px));
+  /* Above the room names, below the hints. */
+  z-index: 6;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  max-width: calc(100% - 1.5rem);
+  pointer-events: none;
+}
+
+.stage-tools > * {
+  pointer-events: auto;
+}
+
+.reset-view,
+.status-chip {
+  box-sizing: border-box;
+  border: 1px solid rgb(255 255 255 / 0.35);
+  border-radius: 1.375rem;
+  background: rgb(20 24 30 / 0.85);
+  color: #e8eaed;
+  font: inherit;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.reset-view {
+  min-height: 2.75rem;
+  padding: 0 0.875rem;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.reset-view:focus-visible {
+  outline: 2px solid #a8d4ff;
+  outline-offset: 2px;
+}
+
+.status-chip {
+  padding: 0.375rem 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-chip[hidden] {
+  display: none;
+}
+
+.status-chip.warn {
+  border-color: #ffcc80;
+  color: #ffcc80;
+}
+
+.status-chip.fading {
+  animation: status-fade 2.5s ease forwards;
+}
+
+@keyframes status-fade {
+  0%,
+  70% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+/* First-run hints, over the foot of the 3D view until dismissed. */
+.hints {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 4.25rem;
+  left: 0.75rem;
+  z-index: 7;
+  box-sizing: border-box;
+  max-width: 24rem;
+  max-height: calc(100% - 5rem);
+  margin: 0 auto;
+  padding: 0.75rem 1rem;
+  overflow-y: auto;
+  border: 1px solid #a8d4ff;
+  border-radius: 0.75rem;
+  background: rgb(20 24 30 / 0.95);
+  font-size: 0.9375rem;
+}
+
+.hints ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hints li + li {
+  margin-top: 0.5rem;
+}
+
+.hints button {
+  display: block;
+  min-width: 6rem;
+  min-height: 2.75rem;
+  margin: 0.75rem 0 0 auto;
+  padding: 0 1rem;
+  border: 1px solid #a8d4ff;
+  border-radius: 0.5rem;
+  background: rgb(40 90 140 / 0.85);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* The tools of the selected furniture item, floating next to it in the 3D view. */
+.item-toolbar {
+  display: flex;
+  gap: 0.125rem;
+  align-items: center;
+  padding: 0.125rem;
+  border: 1px solid rgb(255 255 255 / 0.3);
+  border-radius: 0.75rem;
+  background: rgb(20 24 30 / 0.94);
+  color: #e8eaed;
+  font-family: system-ui, sans-serif;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.item-toolbar-name {
+  max-width: 4.5rem;
+  padding: 0 0.375rem 0 0.5rem;
+  overflow: hidden;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+
+.item-toolbar button {
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.5rem;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 1.25rem;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.item-toolbar button:active {
+  background: rgb(255 255 255 / 0.15);
+}
+
+.item-toolbar button:focus-visible {
+  outline: 2px solid #a8d4ff;
+  outline-offset: -2px;
+}
+
+/* Walking on a phone: controls a thumb can hit. */
+.viewer.mobile .walk-hud button {
+  min-height: 2.75rem;
+}
+
+.viewer.mobile .walk-hud .chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 0.875rem;
+}
+
+.viewer.mobile .walk-tilt button {
+  width: 3rem;
+}
+
+/* The calibration sheet's head stays in reach while the rest scrolls. */
+.walk-calibrate-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin: -0.5rem -0.75rem 0;
+  padding: 0.5rem 0.75rem;
+  background: rgb(20 24 30);
+}
+
+.walk-calibrate-head strong {
+  margin-right: auto;
+}
+
+/*
+ * On a phone the calibration sheet and the list of requests are sheets at the bottom, over the
+ * movement pad (which neither needs), instead of a box squeezed in between the bar and the pad.
+ */
+.viewer.mobile .walk-calibrate,
+.viewer.mobile .walk-requests {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  box-sizing: border-box;
+  max-width: 30rem;
+  max-height: 70%;
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  border-radius: 0.75rem 0.75rem 0 0;
+  background: rgb(20 24 30 / 0.97);
+}
+
+.viewer.mobile .walk-calibrate .capture-actions {
+  justify-content: flex-start;
+}
+
+.viewer.mobile .walk-calibrate-head + .hint {
+  margin-top: 0.5rem;
+}
+
+.viewer.mobile.landscape .walk-calibrate,
+.viewer.mobile.landscape .walk-requests {
+  max-height: 72%;
+}
+
+.viewer.mobile .walk-declination {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  min-height: 2.75rem;
+  margin-top: 0.375rem;
+}
+
+.viewer.mobile .walk-declination input,
+.viewer.mobile .walk-declination select {
+  box-sizing: border-box;
+  min-height: 2.75rem;
+  font: inherit;
+  font-size: 1rem;
+}
+
+.viewer.mobile .walk-declination select {
+  flex: 1;
+  min-width: 0;
 }

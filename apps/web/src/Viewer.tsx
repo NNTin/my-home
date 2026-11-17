@@ -6,7 +6,7 @@ import {
   type LayoutItem,
   type PhotoRequest,
 } from '@my-home/shared';
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { fetchHome, photosApi, saveHome } from './api';
 import {
   buildHome,
@@ -48,8 +48,12 @@ import { registry } from './items/registry';
 import { useLayouts } from './layouts/useLayouts';
 import { ControlPanel } from './overlay/ControlPanel';
 import { FurniturePanel, type FlaggedItem, type SelectedInfo } from './overlay/FurniturePanel';
+import type { FurnitureToolbarProps } from './overlay/FurnitureToolbar';
+import { Hints } from './overlay/Hints';
 import { Sheet, sheetSize, type SheetSnap, type SheetTab } from './overlay/Sheet';
+import { StageTools } from './overlay/StageTools';
 import { TopBar } from './overlay/TopBar';
+import { useKeyboardViewport } from './overlay/useKeyboardViewport';
 import { useLayoutMode } from './overlay/useLayoutMode';
 import { ViewPanel } from './overlay/ViewPanel';
 import { filterPhotos, NO_FILTERS } from './photos/filters';
@@ -140,6 +144,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   const photos = usePhotos(model.id);
   const layout = useLayoutMode();
   const mobile = layout !== 'desktop';
+  useKeyboardViewport(mobile);
+  const resetView = useRef<(() => void) | undefined>(undefined);
   const [initial] = useState(initialPanel);
   const [photosOpen, setPhotosOpen] = useState(
     initial.panel === 'photos' || initial.panel === 'requests',
@@ -424,6 +430,21 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     onDragEnd: () => dispatch({ type: 'dragEnd' }),
   };
 
+  // On a phone a long press on an item opens the furniture panel on it ("more").
+  const showFurniture = () => {
+    showPanel('furniture');
+    if (snap === 'collapsed') setSnap('half');
+  };
+  const touchHandlers: FurnitureHandlers = {
+    ...handlers,
+    onLongPress(id) {
+      // The press began a move: end it, so the panel opens on an item that stays where it is.
+      dispatch({ type: 'dragCancel' });
+      dispatch({ type: 'select', id });
+      showFurniture();
+    },
+  };
+
   // Keyboard shortcuts (see editor/shortcuts.ts).
   const onKey = (e: KeyboardEvent) => {
     // While walking the keys steer the figure; the furniture editor is put away.
@@ -557,6 +578,17 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     { id: 'photos', label: 'Photos', icon: '📷' },
     { id: 'requests', label: 'Requests', icon: '📌', badge: controls.openRequests },
   ];
+  // The tools of the selected item float next to it on a phone, so they need no panel.
+  const toolbar: FurnitureToolbarProps | undefined =
+    mobile && !walking && selectedItem
+      ? {
+          name: nameOf(selectedItem),
+          onRotate: commands.rotate,
+          onDuplicate: commands.duplicate,
+          onDelete: commands.remove,
+          onMore: showFurniture,
+        }
+      : undefined;
   const side = layout === 'landscape';
   const sheetShown = mobile && !walking;
   // The 3D view ends where the sheet begins. A sheet opened all the way lies over the view
@@ -590,7 +622,10 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
             scene={shown}
             target={orbitTarget(scene, visibility)}
             furniture={furniture}
-            handlers={walking ? idle : handlers}
+            handlers={walking ? idle : mobile ? touchHandlers : handlers}
+            touch={mobile}
+            toolbar={toolbar}
+            resetViewRef={resetView}
             northBearing={northBearing}
             markers={markers}
             labels={labels}
@@ -613,6 +648,20 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
               alt=""
               style={{ opacity: overlay.opacity }}
             />
+          )}
+          {sheetShown && (
+            <>
+              <StageTools
+                status={{
+                  loading: layouts.loading,
+                  save: layouts.saveState.status,
+                  edited: editor.revision > 0,
+                  photosError: photos.error,
+                }}
+                onResetView={viewed ? undefined : () => resetView.current?.()}
+              />
+              <Hints side={side} />
+            </>
           )}
           {walkView && (
             <WalkHud
