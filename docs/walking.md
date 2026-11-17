@@ -45,7 +45,9 @@ The choice is remembered per device (localStorage). On an iPhone the tap on **Se
 read the motion sensors. Switching to Sensors eases the view to where the phone points over about 0.3 s instead
 of snapping. The view follows a turn within that time, and ignores changes under 1.5° while at rest, so a phone
 held still gives a still view. When the permission is refused, or no compass and tilt data arrive within 2 s,
-the switch falls back to **Manual** and the bar says why. The sensors pause while the page is in the background
+the switch falls back to **Manual** and the bar says why. Sensor mode needs a **compass**: a device that
+reports only its tilt (no absolute orientation and no `webkitCompassHeading`) falls back to Manual too, since
+the heading would otherwise be left without any control. The sensors pause while the page is in the background
 and resume by themselves.
 
 When the walk starts in Sensor mode (remembered, or restored after a reload), it switches on by itself where the

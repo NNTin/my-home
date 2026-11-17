@@ -265,7 +265,9 @@ export function WalkHud({
     if (!sensorMode) walk.lookBy(dYaw, dPitch);
   };
   const chooseMode = (mode: CameraMode) => {
-    if (mode !== compass.mode) compass.setMode(mode);
+    // Always passed on, also for the mode already shown: a tap is the owner's choice, which must
+    // win over a quiet permission answer for a restored Sensor mode that is still on its way.
+    compass.setMode(mode);
     if (mode === 'manual') setCalibrating(false);
   };
   // A radio group moves with the arrow keys and has one tab stop.

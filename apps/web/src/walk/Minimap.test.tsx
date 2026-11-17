@@ -111,6 +111,24 @@ describe('Minimap', () => {
     expect(screen.getByRole('button', { name: /Tap to enlarge/ })).toBeInTheDocument();
   });
 
+  it('stands still while a spot is picked, also heading-up as the figure turns', () => {
+    const { rerenderWith } = setup({ onPlace: () => true });
+    fireEvent.click(screen.getByRole('button', { name: /Tap to enlarge/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Move/ }));
+    rerenderWith({ figure: { ...start, yaw: Math.PI / 2 }, onPlace: () => true });
+    expect(svg().dataset.rotation).toBe('0.0');
+    // A change of orientation turns it once, then it stands still again.
+    fireEvent.click(screen.getByRole('radio', { name: /North/ }));
+    expect(svg().dataset.rotation).toBe('-30.0');
+    fireEvent.click(screen.getByRole('radio', { name: /Heading/ }));
+    expect(svg().dataset.rotation).toBe('90.0');
+    rerenderWith({ figure: { ...start, yaw: Math.PI }, onPlace: () => true });
+    expect(svg().dataset.rotation).toBe('90.0');
+    // Done picking: it follows the figure again.
+    fireEvent.click(screen.getByRole('button', { name: /Move/ }));
+    expect(svg().dataset.rotation).toBe('180.0');
+  });
+
   it('sets the figure down where the enlarged map is tapped, only where it can stand', () => {
     const onPlace = vi.fn<(point: Vec2, levelId: string) => boolean>(() => false);
     setup({ onPlace, northBearing: 0 });
