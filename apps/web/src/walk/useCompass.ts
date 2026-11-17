@@ -197,6 +197,8 @@ export function useCompass({
   const live = useRef(false);
   const settings = useRef<CompassSettings>({ northBearing, declination, calibration });
 
+  /** The owner picked a mode on the switch: a later answer to the quiet request below is too late. */
+  const chosen = useRef(false);
   // Sensor mode to come back to where the browser has a permission function: ask without a tap.
   // Chrome answers at once; Safari refuses a request that no tap started, and Manual stays.
   useEffect(() => {
@@ -207,7 +209,7 @@ export function useCompass({
       .then(() => request.call(DeviceOrientationEvent))
       .then(
         (result) => {
-          if (current && result === 'granted') setWanted(true);
+          if (current && !chosen.current && result === 'granted') setWanted(true);
         },
         () => {},
       );
@@ -322,6 +324,7 @@ export function useCompass({
 
   const setMode = useCallback(
     (mode: CameraMode) => {
+      chosen.current = true;
       if (mode === 'manual') {
         storeCameraMode('manual');
         setRefusal(undefined);

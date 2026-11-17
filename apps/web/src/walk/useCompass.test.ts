@@ -137,6 +137,21 @@ describe('useCompass', () => {
     expect(storedCameraMode()).toBe('manual');
   });
 
+  it('lets a tap on Manual win over a quiet permission answer that is still on its way', async () => {
+    let answer: (result: string) => void = () => {};
+    vi.stubGlobal(
+      'DeviceOrientationEvent',
+      Object.assign(class {}, {
+        requestPermission: () => new Promise<string>((resolve) => (answer = resolve)),
+      }),
+    );
+    const { result } = setup({ initialMode: 'sensors' });
+    // The owner taps Manual before the browser has answered.
+    act(() => result.current.setMode('manual'));
+    await act(async () => answer('granted'));
+    expect(result.current.mode).toBe('manual');
+  });
+
   it('never follows a relative event as a compass, and falls back to Manual without data', () => {
     vi.useFakeTimers();
     const { result, setFollow } = setup();

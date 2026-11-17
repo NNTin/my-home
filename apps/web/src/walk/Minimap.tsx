@@ -109,7 +109,12 @@ export function Minimap({
   const levelId = figure.levelId ?? groundLevelId;
   const level = levelId === undefined ? undefined : levels.get(levelId);
 
-  const rotation = mapRotation(settings.orientation, figure.yaw, northBearing);
+  /**
+   * While a spot is being picked the enlarged map stands still: heading-up would otherwise turn
+   * it under the finger as the phone (Sensor mode) or the figure turns.
+   */
+  const [frozen, setFrozen] = useState<number>();
+  const rotation = frozen ?? mapRotation(settings.orientation, figure.yaw, northBearing);
   const view: MapView | undefined = useMemo(() => {
     if (!level) return undefined;
     if (!large) {
@@ -130,6 +135,7 @@ export function Minimap({
     () =>
       level && {
         footprint: path([level.footprint]),
+        rooms: new Map(level.rooms.map((r) => [r.id, path([r.outline])])),
         walls: path(level.walls),
         doors: path(level.doors),
         windows: path(level.windows),
@@ -166,7 +172,7 @@ export function Minimap({
             key={r.id}
             className={r.id === roomId ? 'map-room here' : 'map-room'}
             data-room={r.id}
-            d={path([r.outline])}
+            d={shapes.rooms.get(r.id)}
           />
         ))}
         {level.stairs.map((stair) => (
@@ -250,6 +256,7 @@ export function Minimap({
   const shrink = () => {
     setLarge(false);
     setPlacing(false);
+    setFrozen(undefined);
     setRefused(false);
   };
   const tap = (e: MouseEvent<HTMLDivElement>) => {
@@ -281,7 +288,13 @@ export function Minimap({
               type="button"
               role="radio"
               aria-checked={settings.orientation === orientation}
-              onClick={() => change({ orientation })}
+              onClick={() => {
+                change({ orientation });
+                // Picking a spot: turn once to the chosen orientation, then stand still again.
+                if (frozen !== undefined) {
+                  setFrozen(mapRotation(orientation, figure.yaw, northBearing));
+                }
+              }}
             >
               {text}
             </button>
@@ -303,6 +316,7 @@ export function Minimap({
             title="Tap a spot on the map to put the figure there"
             onClick={() => {
               setPlacing(!placing);
+              setFrozen(placing ? undefined : rotation);
               setRefused(false);
             }}
           >
