@@ -251,6 +251,13 @@ describe('App', () => {
       expect(notice).toHaveTextContent(/please take it again/);
       fireEvent.click(within(notice).getByRole('button', { name: 'OK' }));
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+      // The restored walk is over once left: walking again is a fresh walk, without the notice.
+      fireEvent.click(screen.getByRole('button', { name: /Exit/ }));
+      fireEvent.click(screen.getByRole('button', { name: /Walk and take photos/ }));
+      expect(screen.getByRole('application', { name: 'Movement pad' })).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(screen.queryByText(/reloaded the page/)).not.toBeInTheDocument();
     });
 
     it('prefers the walk of this tab to the ?walk of the address, which a reload keeps', async () => {

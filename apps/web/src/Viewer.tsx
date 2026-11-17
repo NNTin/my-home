@@ -143,10 +143,15 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   const [chosenVisibility, setVisibility] = useState(() => defaultVisibility(scene));
   // A walk this tab was on before the page was reloaded comes back. It is newer than the address,
   // which a reload keeps: `?walk=first` must not put the figure back at the start.
-  const [restored] = useState(() => loadWalkSession(model.id));
+  // It is for that one walk only: leaving walk mode forgets it (see `leaveWalk`).
+  const [restored, setRestored] = useState(() => loadWalkSession(model.id));
   const [walkView, setWalkView] = useState<WalkView | undefined>(
     () => restored?.view ?? initialWalk(),
   );
+  const leaveWalk = () => {
+    setWalkView(undefined);
+    setRestored(undefined);
+  };
   /** A camera covers the view: the scene stops drawing meanwhile. */
   const [cameraOpen, setCameraOpen] = useState(false);
   const photos = usePhotos(model.id);
@@ -647,7 +652,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
               setPhotosTab('photos');
               setPhotosOpen(true);
               if (snap === 'collapsed') setSnap('half');
-              if (walking) setWalkView(undefined);
+              if (walking) leaveWalk();
             }}
             requestGhosts={requestGhosts}
             viewpoint={viewpoint}
@@ -682,7 +687,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
               describe={describeFigure}
               view={walkView}
               onView={setWalkView}
-              onExit={() => setWalkView(undefined)}
+              onExit={leaveWalk}
               northBearing={northBearing}
               declination={declination}
               onDeclination={saveDeclination}
