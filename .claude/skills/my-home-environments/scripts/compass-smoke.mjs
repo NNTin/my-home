@@ -381,7 +381,20 @@ async function android(browser, home) {
   // The mode is kept over a reload, and comes back on by itself where no permission is asked.
   await s.page.reload({ waitUntil: 'networkidle', timeout: 60_000 });
   await s.hud.waitFor({ timeout: 60_000 });
-  check('after a reload Sensor mode is back on', (await s.read()).mode === 'sensors');
+  // The phone keeps reporting its orientation, as a real one does: without any data Sensor mode
+  // falls back to Manual after 2 s, so a read that comes late must not find it silent.
+  let restored = await s.read();
+  for (const deadline = Date.now() + 15_000; Date.now() < deadline;) {
+    await s.face(90);
+    restored = await s.read();
+    if (restored.mode === 'sensors' && apart(restored.heading, plan(90)) < 3) break;
+    await s.page.waitForTimeout(250);
+  }
+  check(
+    'after a reload Sensor mode is back on and follows the phone',
+    restored.mode === 'sensors' && apart(restored.heading, plan(90)) < 3,
+    `${restored.mode}, ${restored.heading.toFixed(1)}°`,
+  );
   await s.mode(/Manual/).click();
   await s.page.waitForTimeout(500);
   const manual = await s.read();
