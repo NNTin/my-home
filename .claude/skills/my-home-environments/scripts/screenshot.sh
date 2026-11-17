@@ -15,7 +15,8 @@
 # --touch emulates a phone (touch screen, coarse pointer); the phone layout also shows without it at phone
 # sizes such as 390x844 or 844x390. Open a panel with --path '/?panel=furniture&sheet=full' (docs/mobile.md).
 # --canvas shoots only the 3D canvas: every other element is hidden and the shot is clipped to the canvas, so UI
-# text (photo count, room names, panels) is left out. visual-diff.sh uses it.
+# text (photo count, room names, panels) is left out; after a --drag page time is paused and advanced by a fixed
+# amount, so the shot does not depend on the frame rate. visual-diff.sh uses it.
 # The site token is attached only to requests for the environment's own host and is never printed.
 # --check installs Playwright if missing and reports its version, the Chromium path and a headless launch.
 set -euo pipefail
@@ -28,7 +29,7 @@ MY_HOME_PLAYWRIGHT_DIR=${MY_HOME_PLAYWRIGHT_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}
 export MY_HOME_PLAYWRIGHT_DIR
 
 usage() {
-  sed -n '2,20s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,21s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 

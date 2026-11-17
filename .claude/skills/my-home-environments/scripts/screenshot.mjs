@@ -2,12 +2,20 @@
 //   node screenshot.mjs --check
 //   node screenshot.mjs <out.png> <path> <wait-ms> <width> <height> [actions-json] [touch] [canvas]   (SITE_BASE, SITE_TOKEN from with-site-token.sh)
 // Playwright is loaded from MY_HOME_PLAYWRIGHT_DIR, outside the repository.
+import { writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
 const require = createRequire(path.join(process.env.MY_HOME_PLAYWRIGHT_DIR, 'package.json'));
 const { chromium } = require('playwright');
 const { version } = require('playwright/package.json');
+
+/**
+ * --canvas with a drag: page time is paused before the first drag and runs exactly this long after
+ * each action. The orbit controls' damping then ends in the same place on every run, however fast
+ * or slow the software renderer is (at 1-4 frames per second, waiting in real time does not do).
+ */
+const SETTLE_MS = 1000;
 
 const LAUNCH_ARGS = ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'];
 const token = process.env.SITE_TOKEN ?? '';
@@ -31,7 +39,8 @@ async function check() {
  * Runs `[{ click: selector } | { drag: [dx, dy] } | { pad: [dx, dy, ms] } | { key: [key, ms] }]` in order.
  * Drags start at the canvas centre; `pad` holds the walk mode's movement pad deflected, `key` holds a key.
  */
-async function runActions(page, actions) {
+async function runActions(page, actions, settle) {
+  let paused = false;
   for (const action of actions) {
     if (action.click !== undefined) {
       console.log(`click ${action.click}`);
@@ -55,6 +64,12 @@ async function runActions(page, actions) {
       await page.keyboard.up(key);
     } else if (action.drag) {
       const [dx, dy] = action.drag;
+      if (settle && !paused) {
+        // Not earlier: Playwright's clicks wait for animation frames, which a paused clock stops.
+        await page.clock.install();
+        await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+        paused = true;
+      }
       const box = await page.locator('canvas').first().boundingBox();
       const x = box.x + box.width / 2;
       const y = box.y + box.height / 2;
@@ -64,8 +79,10 @@ async function runActions(page, actions) {
       await page.mouse.move(x + dx, y + dy, { steps: 20 });
       await page.mouse.up();
     }
-    await page.waitForTimeout(1000);
+    if (paused) await page.clock.runFor(SETTLE_MS);
+    else await page.waitForTimeout(1000);
   }
+  return paused;
 }
 
 async function shoot([
@@ -112,7 +129,7 @@ async function shoot([
     await page.waitForSelector('canvas', { timeout: 30_000 });
     await page.waitForTimeout(Number(waitMs));
     console.log(`title ${await page.title()}`);
-    await runActions(page, JSON.parse(actions));
+    const paused = await runActions(page, JSON.parse(actions), canvas === 'canvas');
     if (canvas === 'canvas') {
       // Only the 3D view: hide every other element (visibility keeps the layout, so nothing redraws)
       // and clip to the canvas.
@@ -120,7 +137,18 @@ async function shoot([
         content: '* { visibility: hidden !important; } canvas { visibility: visible !important; }',
       });
       await page.waitForTimeout(500);
-      await page.locator('canvas').first().screenshot({ path: out, animations: 'disabled' });
+      if (paused) {
+        // Playwright's screenshots wait for an animation frame; the browser's own capture does not.
+        const { x, y, width, height } = await page.locator('canvas').first().boundingBox();
+        const cdp = await context.newCDPSession(page);
+        const { data } = await cdp.send('Page.captureScreenshot', {
+          format: 'png',
+          clip: { x, y, width, height, scale: 1 },
+        });
+        writeFileSync(out, Buffer.from(data, 'base64'));
+      } else {
+        await page.locator('canvas').first().screenshot({ path: out, animations: 'disabled' });
+      }
     } else {
       await page.screenshot({ path: out });
     }

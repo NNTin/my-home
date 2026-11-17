@@ -67,10 +67,12 @@ $S/photo-requests.sh staging create --room souterrain-kitchen --reason "Which wa
   844x390, and `--path '/?panel=view|furniture|photos|requests&sheet=half|full'` opens a panel of its sheet.
   Add `&hints=off` there, or the first-run hints cover the foot of the view in every fresh browser.
 - `screenshot.sh --canvas` shoots only the 3D canvas: every other element is hidden and the shot is clipped to
-  the canvas, so UI text (photo count, room names, panels) cannot make two shots differ.
+  the canvas, so UI text (photo count, room names, panels) cannot make two shots differ. With a `--drag`, page
+  time is paused before the first drag and runs exactly 1 s of frames after each action (Playwright's fake
+  clock), so the orbit controls' damping ends in the same place however slow the renderer is.
 - `visual-diff.sh <env> shoot --out DIR [--only VIEW]...`: pixel-exact visual regression of the 3D view,
   read-only. Shoots canvas-only screenshots of fixed views (desktop 1440x900: `default`, the cutaways
-  `souterrain`, `ground-floor` and `first-floor`, `orbit-180` (`--drag 600,0`), `steep` (`--drag 0,-250`),
+  `souterrain`, `ground-floor` and `first-floor`, `orbit-180` (`--drag 600,0`), `steep` (`--drag 0,250`, from above),
   `mock-home`; phone 390x844: `phone`; all with `hints=off`) into `DIR/<view>.png` plus `DIR/manifest.json`
   (deployed commit, view arguments, sha256). It reads the deployed commit before and after and fails if a
   deploy happened in between. `visual-diff.sh compare DIR_A DIR_B` prints a Markdown table per view:
