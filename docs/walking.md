@@ -8,49 +8,49 @@ or open the viewer with `?walk=first` or `?walk=third`.
 
 ## Controls
 
-|              | Phone                                          | Desktop                                    |
-| ------------ | ---------------------------------------------- | ------------------------------------------ |
-| Walk         | movement pad: push up or down                  | `W` `S` or `↑` `↓`                         |
-| Turn         | movement pad: push left or right               | `Q` `E` or `←` `→`                         |
-| Sidestep     |                                                | `A` `D`                                    |
-| Look around  | drag on the view (first person), or **▲ ▼**    | drag on the view with the mouse            |
-| Switch view  | **Overview** / **First person**                | the same                                   |
-| Take a photo | the camera button (the camera inside the page) | the camera button (webcam or file chooser) |
+|              | Phone, Manual mode                             | Phone, Sensor mode       | Desktop                                    |
+| ------------ | ---------------------------------------------- | ------------------------ | ------------------------------------------ |
+| Walk         | movement pad: push up or down                  | the same                 | `W` `S` or `↑` `↓`                         |
+| Turn         | movement pad: push left or right               | turn the phone           | `Q` `E` or `←` `→`                         |
+| Sidestep     |                                                | movement pad: left/right | `A` `D`                                    |
+| Look around  | drag on the view (first person), or **▲ ▼**    | tilt and turn the phone  | drag on the view with the mouse            |
+| Switch view  | **Overview** / **First person**                | the same                 | the same                                   |
+| Take a photo | the camera button (the camera inside the page) | the same                 | the camera button (webcam or file chooser) |
 
-The pad both walks and turns, so one thumb is enough in portrait. In first person the camera is the figure's
-eyes; the whole building is drawn and room names are hidden. In the overview the camera orbits the figure
-(drag and pinch as usual) and the **cutaway follows the figure's level**, so you look into the floor it is on;
-outdoors the whole building shows.
+The pad both walks and turns in Manual mode, so one thumb is enough in portrait. In first person the camera is
+the figure's eyes; the whole building is drawn and room names are hidden. In the overview the camera orbits the
+figure (drag and pinch as usual) and the **cutaway follows the figure's level**, so you look into the floor it is
+on; outdoors the whole building shows.
 
-On a phone, **🧭 Heading** and **↕ Tilt** hand parts of the view to the phone's sensors; see
-[Turning and tilting with the phone](#turning-and-tilting-with-the-phone). **▲ ▼** next to the camera button
-look up and down in steps of 10°, and the bar shows the current tilt.
+On a phone, one switch in the bar, **📱 Sensors** ⟷ **✋ Manual**, says who sets the view's angle; see
+[Camera modes](#camera-modes-sensors-and-manual). In Manual mode **▲ ▼** next to the camera button look up and
+down in steps of 10°, and the bar shows the current tilt. A [minimap](#minimap) in the bottom right corner shows
+where the figure is and which way it looks.
 
-## Turning and tilting with the phone
+## Camera modes: Sensors and Manual
 
-Two independent modes, each a button in the bar on devices with orientation sensors:
+Two exclusive modes, chosen with one switch in the bar. The switch is there on phones and tablets with
+orientation sensors; a desktop is always in Manual mode (keys and mouse) and shows no switch.
 
-- **↕ Tilt**: tilting the phone up and down tilts the view. With the phone upright and its camera level the
-  view is level; tipping the top away from you looks down, towards you looks up. It needs only gravity, so it
-  works everywhere, also where the compass does not, and without **Heading**.
-- **🧭 Heading**: the phone's compass turns the figure, so facing a wall in the real room faces it in the model.
+- **✋ Manual** (the default): the phone's motion sensors are **not listened to at all** (no listeners, no
+  battery cost). The view is turned and tilted by hand: drag on the view, **▲ ▼**, and the pad's left and right
+  turn; up and down walk.
+- **📱 Sensors**: the phone's orientation sets **heading and tilt**, so facing a wall in the real room faces it
+  in the model, and tipping the phone up looks up. Touch can **only walk**: dragging the view changes nothing
+  (sideways or up and down), **▲ ▼** are hidden, the pad's up and down walk where the phone points and its left
+  and right **sidestep**; nothing turns the figure by hand (not the turn keys either). Calibration is in the
+  **Calibrate** sheet only.
 
-On an iPhone the first tap asks for permission to read the motion sensors; one answer covers both modes.
-Whatever the sensors do not drive stays in your hands:
+The choice is remembered per device (localStorage). On an iPhone the tap on **Sensors** asks for permission to
+read the motion sensors. Switching to Sensors eases the view to where the phone points over about 0.3 s instead
+of snapping. The view follows a turn within that time, and ignores changes under 1.5° while at rest, so a phone
+held still gives a still view. When the permission is refused, or no compass and tilt data arrive within 2 s,
+the switch falls back to **Manual** and the bar says why. The sensors pause while the page is in the background
+and resume by themselves.
 
-| Control                 | Heading off    | Heading on                                              |
-| ----------------------- | -------------- | ------------------------------------------------------- |
-| Drag sideways           | turns the view | corrects the compass (the offset shows as "offset +7°") |
-| Movement pad left/right | turns          | sidesteps (the phone does the turning)                  |
-
-| Control               | Tilt off          | Tilt on                           |
-| --------------------- | ----------------- | --------------------------------- |
-| Drag up/down, **▲ ▼** | looks up and down | ignored (the phone sets the tilt) |
-
-Switching a mode on eases the view to where the phone points over about 0.3 s instead of snapping. The view
-follows a turn within that time, and ignores changes under 1.5° while at rest, so a phone held still gives a
-still view. The bar says when a mode gets no data from the device, and when the sensors are paused because
-the page is in the background; they resume by themselves.
+When the walk starts in Sensor mode (remembered, or restored after a reload), it switches on by itself where the
+browser grants the sensors without a tap (Chrome on Android); an iPhone starts in Manual mode until the switch
+is tapped.
 
 ### From the sensors to the plan
 
@@ -79,11 +79,9 @@ for your area; it is 0 until then. The sheet also asks where the value is from (
 ### Calibrating
 
 Steel, appliances and wiring bend a compass indoors, often by several degrees and differently from room to
-room. **Calibrate** (while Heading is on) corrects for it:
-
-- point the phone at one of the listed doors or windows of the room and tap its name: the offset becomes the
-  difference between where the compass says you look and where that opening is in the model; or
-- drag the view sideways until it matches what you see.
+room. **Calibrate** (in Sensor mode) corrects for it: point the phone at one of the listed doors or windows of
+the room and tap its name, and the offset becomes the difference between where the compass says you look and
+where that opening is in the model. Dragging the view never changes it.
 
 The offset is shown in the bar, kept **per device** (in the browser's local storage, not in the home), and
 **Reset** clears it. On a phone the sheet opens at the bottom, over the movement pad; its head with the offset,
@@ -91,7 +89,7 @@ The offset is shown in the bar, kept **per device** (in the browser's local stor
 
 ### What is stored with a photo
 
-With Heading or Tilt on, the photo's view is the one at the **tap on the shutter** (or, with the camera
+In Sensor mode, the photo's view is the one at the **tap on the shutter** (or, with the camera
 app, on the button that opens it). The camera app hides the page, and afterwards the phone is usually tipped towards you while you read the
 sheet and type a note; so the view goes back to where it was at the tap and the phone stops driving it until
 the sheet is closed; the bar says "held for the photo" meanwhile (not "paused", which is the page in the
@@ -100,7 +98,8 @@ background). The arrow buttons in the sheet adjust the pose from there.
 Every photo taken while walking stores a **sensor snapshot** next to its pose
 ([photos.md](photos.md#sensor-snapshot)): whether the heading was measured by the compass or set by hand,
 whether the tilt came from the phone, the raw angles, the accuracy, and the declination and offset that were
-applied. Only orientation: nothing about where the phone is.
+applied. Only orientation: nothing about where the phone is. A photo taken in Manual mode stores
+`source: manual` and no tilt.
 
 ### Checking it on real phones
 
@@ -108,36 +107,66 @@ applied. Only orientation: nothing about where the phone is.
 phone shows is this list, to be run on **Android Chrome** and **iPhone Safari** at `?walk=first`, standing in
 the home:
 
-1. **Buttons and permission.** Are there **🧭 Heading** and **↕ Tilt** buttons? Tap **Tilt**. iPhone: a
-   permission prompt must appear; allow it. Android: note whether one appears. Does the button show "on"?
+1. **Switch and permission.** Is there one **📱 Sensors / ✋ Manual** switch, on Manual? Tap **Sensors**.
+   iPhone: a permission prompt must appear; allow it. Android: note whether one appears. Is Sensors lit?
 2. **Tilt.** Hold the phone upright: the bar should show about 0°. Tip it down towards the floor and up
    towards the ceiling. Does the view follow, the right way round, and stop near straight up and down?
-3. **Tilt at rest.** Hold it still for ten seconds. Does the view tremble?
-4. **Heading.** Tap **Heading**. Turn slowly through a full circle. Does the view turn with you, the same
-   way, without jumps, also when passing north?
+3. **At rest.** Hold it still for ten seconds. Does the view tremble?
+4. **Heading.** Turn slowly through a full circle. Does the view turn with you, the same way, without jumps,
+   also when passing north?
 5. **Does it face the right way?** Stand in the corridor and point the phone at a door you can identify in
    the model. Is that door in the middle of the view? Note how many degrees it is off and to which side.
 6. **Calibrate.** Open **Calibrate**, point at that door, tap its name. Is it centred now? Walk to a second
    room and check another door: how far off is it there?
-7. **Drag to correct.** With Heading on, drag sideways. Does the view turn and "offset" change, and does it
-   stay when you let go?
+7. **Touch only walks.** In Sensor mode, drag on the view sideways and up and down: does the view stay put?
+   Are **▲ ▼** gone? Push the pad up: do you walk where the phone points? Left and right: do you sidestep,
+   without turning?
 8. **Landscape.** Turn the phone to landscape, both ways. Does the view still face where the camera points,
-   and does tilting still work?
-9. **Compass rose.** Does the small compass rose turn as you turn?
-10. **Walking.** Push the movement pad up: do you walk where the phone points? Left and right: do you
-    sidestep?
-11. **Accuracy.** iPhone: is "±N°" shown, and does it change when you wave the phone in a figure of eight?
-12. **Away and back.** Switch to another app and back, and lock and unlock the phone. Do the modes resume?
-13. **Capture.** With both modes on, take a photo and save it. In the gallery, does its detail say "Heading
+   and does tilting still work? Does nothing overlap (bar, switch, minimap, pad, camera button)?
+9. **Compass rose and minimap.** Do the compass rose and the minimap turn as you turn?
+10. **Manual mode.** Tap **Manual**. Move and turn the phone: does the view stay still? Do dragging,
+    **▲ ▼** and the pad's left and right turn and tilt the view?
+11. **Accuracy.** iPhone, Sensor mode: is "±N°" shown, and does it change when you wave the phone in a figure
+    of eight?
+12. **Away and back.** Switch to another app and back, and lock and unlock the phone. Does Sensor mode
+    resume?
+13. **Capture.** In Sensor mode, take a photo and save it. In the gallery, does its detail say "Heading
     measured by the phone", and does its view cone (with a ring) point the way you faced?
-14. **Without sensors.** Switch both modes off: do dragging and **▲ ▼** look around? iPhone, in a fresh tab:
-    refuse the permission. Is there a clear message, and do dragging and **▲ ▼** still work?
-15. **Camera in the page.** Tap the camera button: is the browser's camera prompt shown once, then the back
+14. **Refused.** iPhone, in a fresh tab: tap **Sensors** and refuse the permission. Is there a clear message,
+    is the switch back on Manual, and do dragging and **▲ ▼** work?
+15. **Remembered.** Leave walk mode and enter it again, and close and reopen the tab: Android should come back
+    in Sensor mode by itself; an iPhone in Manual mode until **Sensors** is tapped.
+16. **Minimap.** Walk through two rooms and up or down the stair: does the map show the right level, room
+    (highlighted), position and facing? Tap it: does it enlarge, switch between **⬆ Heading** and **N North**
+    (and remember it), and shrink on a tap? With **📍 Move**, tap a free spot: does the figure go there, and is
+    a wall refused?
+17. **Camera in the page.** Tap the camera button: is the browser's camera prompt shown once, then the back
     camera's picture, the right way up, also in landscape? Take a photo and save it: is it sharp, and does
     the gallery show it with its pose? Then try **📱 Camera app** and **🖼 Gallery** from the viewfinder.
-16. **Back from the camera app.** Turn Heading on, walk somewhere, open **📱 Camera app**, take a photo and
+18. **Back from the camera app.** In Sensor mode, walk somewhere, open **📱 Camera app**, take a photo and
     press OK. Does the sheet show the photo? If the browser reloads the page instead, does it come back
-    walking at the same spot, with Heading on (Android), and a message to take the photo again?
+    walking at the same spot, in Sensor mode (Android), with a message to take the photo again?
+
+## Minimap
+
+A small top-down map of the figure's level in the bottom right corner, above the camera button, in first
+person and in the overview. It is drawn as SVG from the plan (the same rooms, walls, doors, windows and stairs
+the 3D view is built from), so it costs no second 3D render and draws nothing while the figure stands still.
+
+- **What it shows:** the room outlines with their names, the room the figure is in highlighted, walls, doors
+  (brown), windows (blue), the stairs that start or end on this level, fences and gates on the ground level,
+  the figure as a dot with a cone for where it looks, and the open photo requests as dashed yellow targets (the
+  one being answered filled).
+- **Which level:** the figure's level; it changes half-way up the stair, together with the cutaway. Outdoors it
+  shows the level nearest to the ground.
+- **Tap it** to enlarge it to the whole level. There: **⬆ Heading** (the map turns so the figure always looks
+  up) or **N North** (true north up, from `building.northBearing`; the arrow in the corner always points
+  north), remembered per device; **📷** shows the cameras of the level's photos; **📍 Move** then a tap on the
+  map puts the figure there, only on a free spot of a floor (the same rules as walking; a wall or a void is
+  refused). A tap on the map or **✕** makes it small again.
+- **Placement:** above the camera button and the **▲ ▼** column, so it never covers the pad, the camera button,
+  the bar with the mode switch, or the compass rose, in portrait and landscape and within the safe areas. It
+  steps aside while the capture, calibration and request sheets are open; the request hint moves above it.
 
 ## What blocks the figure
 
@@ -181,12 +210,13 @@ is gone, and so was the walk (seen with Samsung Internet on a Galaxy S23). So:
   goes to the background. The shutter takes the camera's full-resolution still where the browser offers
   `ImageCapture` (Chrome, Samsung Internet), otherwise the video frame at the stream's full size;
 - while any camera is open the 3D view stops drawing, which leaves the phone more memory;
-- walk mode is kept for the tab in `sessionStorage` (`walkSession.ts`): the view, the figure, Heading and
-  Tilt, the note and tags being typed, and, while the camera app is open, the pose and sensors of the tap.
+- walk mode is kept for the tab in `sessionStorage` (`walkSession.ts`): the view, the figure, the camera
+  mode, the note and tags being typed, and, while the camera app is open, the pose and sensors of the tap.
   After a reload the page comes back walking there (also over `?walk=` in the address, which a reload keeps)
   and, if a photo was on its way, says that it was lost and asks to take it again. Leaving walk mode forgets
-  it. Heading and Tilt come back on by themselves where the browser asks no permission (Android); an iPhone
-  needs a tap on them again.
+  it. Sensor mode comes back by itself where the browser grants the sensors without a tap (Android); an
+  iPhone needs a tap on **Sensors** again. A walk kept before the camera modes existed reads its Heading or
+  Tilt as Sensor mode.
 
 If an upload fails, the sheet keeps the photo, says why (no connection or an expired sign-in included) and
 offers **Save a copy on the phone** before trying again.
@@ -207,7 +237,8 @@ typical phone camera (26 mm).
 | Walkable world, collision, start pose | `apps/web/src/walk/world.ts`                                          |
 | Figure, input mapping, pose maths     | `apps/web/src/walk/figure.ts`                                         |
 | Frame loop, keyboard, follow easing   | `apps/web/src/walk/useWalk.ts`                                        |
-| Sensor maths, compass and tilt modes  | `apps/web/src/walk/orientation.ts`, `useCompass.ts`, `calibration.ts` |
+| Sensor maths, camera modes            | `apps/web/src/walk/orientation.ts`, `useCompass.ts`, `calibration.ts` |
+| Minimap                               | `apps/web/src/walk/minimap.ts`, `Minimap.tsx`                         |
 | Controls, capture sheet               | `apps/web/src/walk/WalkHud.tsx`, `CaptureSheet.tsx`, `Joystick.tsx`   |
 | Camera inside the page                | `apps/web/src/walk/CameraView.tsx`                                    |
 | Walk kept across a reload             | `apps/web/src/walk/walkSession.ts`                                    |
@@ -220,8 +251,8 @@ reads the figure from a ref every frame.
 
 ```sh
 S=.claude/skills/my-home-environments/scripts
-$S/walk-smoke.sh staging                                   # phone-sized smoke test of the movement pad
-$S/compass-smoke.sh staging                                # Heading and Tilt with mocked sensor events
+$S/walk-smoke.sh staging                                   # the movement pad, the minimap and the stair
+$S/compass-smoke.sh staging                                # Sensors and Manual with mocked sensor events
 $S/camera-smoke.sh staging                                 # taking a photo with a fake camera, and a reload
 $S/mobile-smoke.sh staging                                 # the phone layout around it (docs/mobile.md)
 $S/screenshot.sh staging --viewport 390x844 --path '/?walk=first' --pad 0,-44,2000

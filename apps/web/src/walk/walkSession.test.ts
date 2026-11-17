@@ -7,7 +7,7 @@ import {
 } from './walkSession';
 
 const figure = { x: 1, y: -1.2, z: 2, levelId: 'souterrain', yaw: 0.5, pitch: -0.1 };
-const walk = { homeId: 'mock-home', view: 'first' as const, figure, heading: true, tilt: false };
+const walk = { homeId: 'mock-home', view: 'first' as const, figure, mode: 'sensors' as const };
 
 describe('walkSession', () => {
   afterEach(() => sessionStorage.clear());
@@ -59,5 +59,19 @@ describe('walkSession', () => {
     expect(loaded).toMatchObject(walk);
     expect(loaded).not.toHaveProperty('pending');
     expect(loaded).not.toHaveProperty('draft');
+  });
+
+  it('reads a walk saved before the camera modes: Heading or Tilt on is Sensor mode', () => {
+    const old = { homeId: 'mock-home', view: 'third', figure, savedAt: Date.now() };
+    for (const [heading, tilt, mode] of [
+      [true, false, 'sensors'],
+      [false, true, 'sensors'],
+      [false, false, 'manual'],
+    ] as const) {
+      sessionStorage.setItem(WALK_SESSION_KEY, JSON.stringify({ ...old, heading, tilt }));
+      expect(loadWalkSession('mock-home')).toMatchObject({ view: 'third', mode });
+    }
+    sessionStorage.setItem(WALK_SESSION_KEY, JSON.stringify({ ...old, mode: 'sideways' }));
+    expect(loadWalkSession('mock-home')?.mode).toBe('manual');
   });
 });

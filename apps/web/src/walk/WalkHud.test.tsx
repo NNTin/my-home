@@ -3,15 +3,23 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildHome } from '../builder/buildHome';
+import { createContext } from '../editor/operations';
+import { registry } from '../items/registry';
 import { mockHome, testRequest } from '../test/fixtures';
 import type { Figure } from './figure';
 import { useWalk } from './useWalk';
 import { WalkHud, type WalkView } from './WalkHud';
+import { minimapLevels } from './minimap';
 import { WALK_SESSION_KEY } from './walkSession';
 import { buildWalkWorld, EYE_HEIGHT } from './world';
 
 // Mock home, souterrain (floor at -1.2): the hallway is x -0.5…1.5, z -4…4.
 const world = buildWalkWorld(mockHome, buildHome(mockHome));
+const mapLevels = minimapLevels(
+  buildHome(mockHome),
+  createContext(mockHome, registry).plans,
+  'souterrain',
+);
 const start: Figure = { x: 0.5, z: 0, y: -1.2, levelId: 'souterrain', yaw: 0, pitch: 0 };
 
 const photo = (overrides: Partial<Photo> = {}): Photo => ({
@@ -59,6 +67,7 @@ function Harness({
   declination = 0,
   onCamera,
   restored,
+  sensors = true,
 }: {
   api?: Api;
   requests?: PhotoRequest[];
@@ -67,6 +76,7 @@ function Harness({
   declination?: number;
   onCamera?: (open: boolean) => void;
   restored?: Parameters<typeof WalkHud>[0]['restored'];
+  sensors?: boolean;
 }) {
   const walk = useWalk(world, start, true);
   const [view, setView] = useState<WalkView>('first');
@@ -92,6 +102,8 @@ function Harness({
       {...(onSaved && { onSaved })}
       {...(onCamera && { onCamera })}
       {...(restored && { restored })}
+      sensors={sensors}
+      map={{ levels: mapLevels, groundLevelId: 'souterrain', photos: [] }}
     />
   );
 }
@@ -246,11 +258,27 @@ describe('WalkHud', () => {
     await waitFor(() => expect(pitch()).toBeCloseTo(-0.5));
   });
 
-  it('offers the sensor modes only on devices that have orientation sensors', () => {
+  it('shows the minimap, which follows the figure and makes room for the sheets', async () => {
+    render(<Harness />);
+    const map = () => document.querySelector('.walk-map-svg .map-figure') as SVGGElement | null;
+    expect(screen.getByRole('button', { name: /^Map of / })).toBeVisible();
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
+    await waitFor(() => expect(Number(map()!.dataset.z)).toBeLessThan(-0.2));
+    fireEvent.keyUp(window, { key: 'ArrowUp' });
+    takePhoto();
+    expect(map()).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+    expect(map()).not.toBeNull();
+  });
+
+  it('offers the camera modes only on phones with orientation sensors', () => {
+    const { unmount } = render(<Harness sensors={false} />);
+    // Desktop: always Manual, no switch.
+    expect(screen.queryByRole('radiogroup', { name: 'Camera mode' })).not.toBeInTheDocument();
+    unmount();
     vi.stubGlobal('DeviceOrientationEvent', undefined);
     render(<Harness />);
-    expect(screen.queryByRole('button', { name: /Heading/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Tilt o/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: 'Camera mode' })).not.toBeInTheDocument();
     // Looking by hand is always there.
     expect(screen.getByRole('button', { name: 'Look up' })).toBeEnabled();
     vi.unstubAllGlobals();
@@ -266,99 +294,116 @@ describe('WalkHud', () => {
       vi.restoreAllMocks();
       localStorage.clear();
     });
+    const modeButton = (name: RegExp) => screen.getByRole('radio', { name });
+    const chooseSensors = () => fireEvent.click(modeButton(/Sensors/));
+    const wait = (ms: number) => act(() => new Promise((resolve) => setTimeout(resolve, ms)));
 
-    it('tilts the view with the phone, on its own, without a compass', async () => {
+    it('starts in Manual mode: no orientation listeners, the view is turned by hand', async () => {
+      const add = vi.spyOn(window, 'addEventListener');
       render(<Harness />);
-      const toggle = screen.getByRole('button', { name: /Tilt off/ });
-      fireEvent.click(toggle);
-      expect(screen.getByRole('button', { name: /Tilt on/ })).toHaveAttribute(
-        'aria-pressed',
-        'true',
+      expect(modeButton(/Manual/)).toHaveAttribute('aria-checked', 'true');
+      expect(modeButton(/Sensors/)).toHaveAttribute('aria-checked', 'false');
+      expect(hud().dataset.mode).toBe('manual');
+      expect(add.mock.calls.some(([type]) => String(type).startsWith('deviceorientation'))).toBe(
+        false,
       );
-      expect(screen.getByRole('button', { name: /Heading off/ })).toHaveAttribute(
-        'aria-pressed',
-        'false',
-      );
-
-      // A relative event is enough for the tilt. Upright (beta 90) is level; 60 looks down 30°.
-      tiltPhone(60);
-      await waitFor(() => expect(pitch()).toBeLessThan(rad(-27)));
-      expect(pitch()).toBeGreaterThanOrEqual(rad(-30));
-      tiltPhone(120);
-      await waitFor(() => expect(pitch()).toBeGreaterThan(rad(27)));
-      // The heading stays where it was, and stays in the owner's hands.
+      // Moving the phone does nothing.
+      tiltPhone(60, 90);
+      await wait(200);
       expect(at().yaw).toBe(0);
+      expect(pitch()).toBe(0);
+      // Drag, ▲ and the pad's left and right do.
+      fireEvent.click(screen.getByRole('button', { name: 'Look up' }));
+      await waitFor(() => expect(pitch()).toBeCloseTo(rad(10), 2));
       const view = screen.getByLabelText('Drag to look around');
       firePointer(view, 'pointerdown', 200, 300);
-      firePointer(view, 'pointermove', 300, 100);
-      firePointer(view, 'pointerup', 300, 100);
+      firePointer(view, 'pointermove', 300, 300);
+      firePointer(view, 'pointerup', 300, 300);
       await waitFor(() => expect(at().yaw).toBeCloseTo(-0.5));
-      // ...but the vertical part of the drag is ignored while the phone sets the tilt.
-      await act(() => new Promise((resolve) => setTimeout(resolve, 200)));
-      expect(pitch()).toBeGreaterThan(rad(27));
-      expect(pitch()).toBeLessThanOrEqual(rad(30));
-      expect(screen.getByRole('button', { name: 'Look up' })).toBeDisabled();
+      expect(screen.queryByRole('button', { name: 'Calibrate' })).not.toBeInTheDocument();
+    });
 
-      // Switched off, the view stays where it is and the hand takes over again.
-      fireEvent.click(screen.getByRole('button', { name: /Tilt on/ }));
-      tiltPhone(20);
-      await act(() => new Promise((resolve) => setTimeout(resolve, 200)));
-      expect(pitch()).toBeGreaterThan(rad(27));
+    it('turns and tilts the view with the phone in Sensor mode, blending in', async () => {
+      render(<Harness northBearing={20} declination={3} />);
+      chooseSensors();
+      expect(modeButton(/Sensors/)).toHaveAttribute('aria-checked', 'true');
+      expect(hud().dataset.mode).toBe('sensors');
+      tiltPhone(60, 67);
+      // 67 magnetic + 3 = 70 true; + 20 = 90 clockwise of -z: yaw -90°. Beta 60 looks down 30°.
+      await waitFor(() => expect(at().yaw).toBeLessThan(rad(-87)));
+      expect(at().yaw).toBeGreaterThanOrEqual(rad(-90));
+      await waitFor(() => expect(pitch()).toBeLessThan(rad(-27)));
+      expect(pitch()).toBeGreaterThanOrEqual(rad(-30));
+      expect(screen.getByRole('status', { name: 'Compass' })).toHaveTextContent('accuracy unknown');
+
+      // Back to Manual: the view stays where it is and the hand takes over.
+      fireEvent.click(modeButton(/Manual/));
+      tiltPhone(120, 200);
+      await wait(200);
+      expect(at().yaw).toBeLessThan(rad(-87));
+      expect(pitch()).toBeLessThan(rad(-27));
       expect(screen.getByRole('button', { name: 'Look up' })).toBeEnabled();
     });
 
-    it('turns the view with the compass and blends in instead of snapping', async () => {
-      render(<Harness northBearing={20} declination={3} />);
-      fireEvent.click(screen.getByRole('button', { name: /Heading off/ }));
-      tiltPhone(90, 67);
-      // 67 magnetic + 3 = 70 true; + 20 = 90 clockwise of -z: yaw -90°.
-      await waitFor(() => expect(at().yaw).toBeLessThan(rad(-87)));
-      expect(at().yaw).toBeGreaterThanOrEqual(rad(-90));
-      expect(screen.getByRole('status', { name: 'Compass' })).toHaveTextContent('accuracy unknown');
-      // The tilt was not switched on: the phone's tilt is ignored, the hand still tilts.
-      tiltPhone(50, 67);
-      await act(() => new Promise((resolve) => setTimeout(resolve, 200)));
-      expect(pitch()).toBe(0);
-      fireEvent.click(screen.getByRole('button', { name: 'Look up' }));
-      await waitFor(() => expect(pitch()).toBeCloseTo(rad(10), 2));
-    });
-
-    it('sidesteps with the pad while the compass turns the figure', async () => {
+    it('only walks in Sensor mode: drag and ▲▼ change nothing and are hidden, the pad sidesteps', async () => {
       render(<Harness />);
-      fireEvent.click(screen.getByRole('button', { name: /Heading off/ }));
-      tiltPhone(90, 0);
-      await waitFor(() =>
-        expect(screen.getByRole('status', { name: 'Compass' })).toBeInTheDocument(),
-      );
+      chooseSensors();
+      expect(screen.queryByRole('group', { name: 'Look up and down' })).not.toBeInTheDocument();
+      expect(screen.queryByText(/drag to look/)).not.toBeInTheDocument();
+      // Before the first reading the pad already sidesteps instead of turning.
       const pad = screen.getByRole('application', { name: 'Movement pad' });
       firePointer(pad, 'pointerdown', 44, 0);
       // Facing -z, right is +x.
       await waitFor(() => expect(at().x).toBeGreaterThan(0.6));
       firePointer(pad, 'pointerup', 44, 0);
-      expect(Math.abs(at().yaw)).toBeLessThan(0.03);
-    });
+      expect(at().yaw).toBe(0);
 
-    it('a sideways drag corrects the compass and shows the offset', async () => {
-      render(<Harness />);
-      fireEvent.click(screen.getByRole('button', { name: /Heading off/ }));
       tiltPhone(90, 90);
       await waitFor(() => expect(at().yaw).toBeLessThan(rad(-87)));
-      const view = screen.getByLabelText('Drag sideways to correct the compass');
+      await wait(300);
+      const before = { yaw: at().yaw, pitch: pitch() };
+      const view = screen.getByLabelText('Turn the phone to look around');
       firePointer(view, 'pointerdown', 200, 300);
-      // 35 px to the right at 0.005 rad/px: about 10° clockwise.
-      firePointer(view, 'pointermove', 235, 300);
-      firePointer(view, 'pointerup', 235, 300);
-      expect(await screen.findByText(/offset \+10°/)).toBeInTheDocument();
-      await waitFor(() => expect(at().yaw).toBeLessThan(rad(-97)));
-      // The next sensor event does not undo it.
-      tiltPhone(90, 90);
-      await act(() => new Promise((resolve) => setTimeout(resolve, 200)));
-      expect(at().yaw).toBeLessThan(rad(-97));
+      firePointer(view, 'pointermove', 300, 100);
+      firePointer(view, 'pointermove', 100, 500);
+      firePointer(view, 'pointerup', 100, 500);
+      // The keys do not turn either.
+      fireEvent.keyDown(window, { key: 'q' });
+      await wait(200);
+      fireEvent.keyUp(window, { key: 'q' });
+      expect(at().yaw).toBeCloseTo(before.yaw, 3);
+      expect(pitch()).toBeCloseTo(before.pitch, 3);
+      // A drag is no calibration any more.
+      expect(screen.getByRole('status', { name: 'Compass' })).not.toHaveTextContent('offset');
+      // Pushed up, the pad walks where the phone points: east.
+      firePointer(pad, 'pointerdown', 0, -44);
+      await waitFor(() => expect(at().x).toBeGreaterThan(1.0));
+      firePointer(pad, 'pointerup', 0, -44);
+      expect(Math.abs(at().yaw - before.yaw)).toBeLessThan(0.01);
+    });
+
+    it('moves between the modes with the arrow keys', () => {
+      render(<Harness />);
+      const group = screen.getByRole('radiogroup', { name: 'Camera mode' });
+      fireEvent.keyDown(group, { key: 'ArrowLeft' });
+      expect(modeButton(/Sensors/)).toHaveAttribute('aria-checked', 'true');
+      expect(modeButton(/Sensors/)).toHaveFocus();
+      fireEvent.keyDown(group, { key: 'ArrowRight' });
+      expect(modeButton(/Manual/)).toHaveAttribute('aria-checked', 'true');
+    });
+
+    it('remembers the mode on this device, and starts in it where no permission is asked', () => {
+      const { unmount } = render(<Harness />);
+      chooseSensors();
+      unmount();
+      render(<Harness />);
+      expect(modeButton(/Sensors/)).toHaveAttribute('aria-checked', 'true');
+      expect(screen.queryByRole('group', { name: 'Look up and down' })).not.toBeInTheDocument();
     });
 
     it('says that the view is held for the photo, not that the sensors are paused', async () => {
       render(<Harness />);
-      fireEvent.click(screen.getByRole('button', { name: /Heading off/ }));
+      chooseSensors();
       tiltPhone(90, 30);
       const chip = () => screen.getByRole('status', { name: 'Compass' });
       await waitFor(() => expect(chip()).toHaveTextContent('accuracy unknown'));
@@ -385,7 +430,7 @@ describe('WalkHud', () => {
 
     it('keeps the offset, Reset and Done at the head of the calibration sheet', async () => {
       render(<Harness />);
-      fireEvent.click(screen.getByRole('button', { name: /Heading off/ }));
+      chooseSensors();
       tiltPhone(90, 8);
       await waitFor(() =>
         expect(screen.getByRole('status', { name: 'Compass' })).toBeInTheDocument(),
@@ -396,6 +441,8 @@ describe('WalkHud', () => {
       expect(head).toHaveClass('walk-calibrate-head');
       expect(head).toHaveTextContent('Offset 0°');
       expect(within(head).getByRole('button', { name: 'Reset' })).toBeDisabled();
+      // Calibration is by a door or a window, never by dragging.
+      expect(sheet).not.toHaveTextContent(/drag/i);
       fireEvent.click(within(head).getByRole('button', { name: 'Done' }));
       expect(
         screen.queryByRole('region', { name: 'Calibrate the compass' }),
@@ -404,7 +451,7 @@ describe('WalkHud', () => {
 
     it('calibrates against a door, shows and resets the offset, and saves the declination', async () => {
       render(<Harness />);
-      fireEvent.click(screen.getByRole('button', { name: /Heading off/ }));
+      chooseSensors();
       // The phone points at the door (due north of the figure) but its compass says 8°.
       tiltPhone(90, 8);
       await waitFor(() =>
@@ -433,33 +480,33 @@ describe('WalkHud', () => {
       expect(sheet.getByText(/Could not save/)).toBeInTheDocument();
     });
 
-    it('says when a mode gets no data, and when permission is refused', async () => {
+    it('falls back to Manual with a message when permission is refused or no data arrives', async () => {
       const requestPermission = vi.fn().mockResolvedValue('denied');
       vi.stubGlobal('DeviceOrientationEvent', Object.assign(class {}, { requestPermission }));
       render(<Harness />);
-      fireEvent.click(screen.getByRole('button', { name: /Tilt off/ }));
-      expect(await screen.findByRole('alert')).toHaveTextContent(/needs permission/);
-      expect(screen.getByRole('button', { name: /Tilt off/ })).toBeInTheDocument();
+      chooseSensors();
+      expect(await screen.findByRole('alert')).toHaveTextContent(/did not allow.*Manual/);
+      expect(modeButton(/Manual/)).toHaveAttribute('aria-checked', 'true');
+      expect(screen.getByRole('button', { name: 'Look up' })).toBeEnabled();
 
-      // One granted permission covers both modes.
       requestPermission.mockResolvedValue('granted');
-      fireEvent.click(screen.getByRole('button', { name: /Tilt off/ }));
-      expect(await screen.findByRole('button', { name: /Tilt on/ })).toBeInTheDocument();
+      chooseSensors();
+      await waitFor(() => expect(modeButton(/Sensors/)).toHaveAttribute('aria-checked', 'true'));
       expect(screen.getByRole('alert')).toHaveTextContent('Waiting for the sensors…');
-      fireEvent.click(screen.getByRole('button', { name: /Heading off/ }));
-      expect(await screen.findByRole('button', { name: /Heading on/ })).toBeInTheDocument();
       expect(requestPermission).toHaveBeenCalledTimes(2);
+      // Nothing arrives: back to Manual, with the look controls.
       await waitFor(
-        () => expect(screen.getByRole('alert')).toHaveTextContent(/No compass or tilt data/),
+        () => expect(screen.getByRole('alert')).toHaveTextContent(/No motion sensor data/),
         { timeout: 4000 },
       );
+      expect(modeButton(/Manual/)).toHaveAttribute('aria-checked', 'true');
+      expect(screen.getByRole('button', { name: 'Look up' })).toBeEnabled();
     }, 10_000);
 
-    it('stores the sensor snapshot with a photo taken while the compass is on', async () => {
+    it('stores the sensor snapshot with a photo taken in Sensor mode', async () => {
       const api = fakeApi();
       render(<Harness api={api} northBearing={20} declination={3} />);
-      fireEvent.click(screen.getByRole('button', { name: /Heading off/ }));
-      fireEvent.click(screen.getByRole('button', { name: /Tilt off/ }));
+      chooseSensors();
       tiltPhone(75, 67);
       await waitFor(() => expect(at().yaw).toBeLessThan(rad(-87)));
       await waitFor(() => expect(pitch()).toBeLessThan(rad(-12)));
@@ -485,11 +532,23 @@ describe('WalkHud', () => {
       expect(meta.pose.pitch).toBeLessThan(rad(-12));
     });
 
+    it('stores source manual without tilt for a photo taken in Manual mode', async () => {
+      const api = fakeApi();
+      render(<Harness api={api} />);
+      tiltPhone(110, 40);
+      takePhoto();
+      fireEvent.click(screen.getByRole('button', { name: 'Save photo' }));
+      await screen.findByText('Photo saved');
+      const { sensors } = api.upload.mock.calls[0]![1];
+      expect(sensors).toMatchObject({ source: 'manual', yaw: 0, pitch: 0 });
+      expect(sensors).not.toHaveProperty('beta');
+      expect(sensors?.tilt ?? false).toBe(false);
+    });
+
     it('stores the view of the moment the shutter was tapped, whatever the phone does afterwards', async () => {
       const api = fakeApi();
       render(<Harness api={api} />);
-      fireEvent.click(screen.getByRole('button', { name: /Heading off/ }));
-      fireEvent.click(screen.getByRole('button', { name: /Tilt off/ }));
+      chooseSensors();
       // Aimed: facing east, tipped down 15°.
       tiltPhone(75, 90);
       await waitFor(() => expect(at().yaw).toBeLessThan(rad(-89)));
@@ -501,12 +560,12 @@ describe('WalkHud', () => {
       fireEvent.click(shutter);
       // The camera app is open; the owner lowers the phone and turns round.
       tiltPhone(20, 250);
-      await act(() => new Promise((resolve) => setTimeout(resolve, 250)));
+      await wait(250);
       fireEvent.change(shutter, { target: { files: [new File(['x'], 'photo.jpg')] } });
       // Back on the page, reading the sheet with the phone tipped towards them.
       tiltPhone(30, 310);
       tiltPhone(25, 300);
-      await act(() => new Promise((resolve) => setTimeout(resolve, 300)));
+      await wait(300);
       // The view has gone back to where it was aimed and stays there.
       expect(at().yaw).toBeCloseTo(aimed.yaw, 2);
       expect(pitch()).toBeCloseTo(aimed.pitch, 2);
@@ -532,21 +591,6 @@ describe('WalkHud', () => {
       tiltPhone(90, 0);
       await waitFor(() => expect(Math.abs(at().yaw)).toBeLessThan(rad(1)));
       await waitFor(() => expect(Math.abs(pitch())).toBeLessThan(rad(1)));
-    });
-
-    it('marks a photo as tilted by the phone but headed by hand when only the tilt is on', async () => {
-      const api = fakeApi();
-      render(<Harness api={api} />);
-      fireEvent.click(screen.getByRole('button', { name: /Tilt off/ }));
-      tiltPhone(110);
-      await waitFor(() => expect(pitch()).toBeGreaterThan(rad(17)));
-      takePhoto();
-      fireEvent.click(screen.getByRole('button', { name: 'Save photo' }));
-      await screen.findByText('Photo saved');
-      const { sensors, pose } = api.upload.mock.calls[0]![1];
-      expect(sensors).toMatchObject({ source: 'manual', tilt: true, beta: 110, absolute: false });
-      expect(sensors).not.toHaveProperty('magneticBearing');
-      expect(pose.pitch).toBeGreaterThan(rad(17));
     });
   });
 
@@ -785,7 +829,7 @@ describe('WalkHud', () => {
     });
 
     it('says that the photo was lost when the page was reloaded meanwhile', () => {
-      render(<Harness restored={{ heading: false, tilt: false, lostPhoto: true }} />);
+      render(<Harness restored={{ mode: 'manual', lostPhoto: true }} />);
       expect(screen.getByRole('alert')).toHaveTextContent(
         /reloaded the page while the camera app was open.*please take it again/,
       );
@@ -803,9 +847,7 @@ describe('WalkHud', () => {
       first.unmount();
 
       const api = fakeApi();
-      render(
-        <Harness api={api} restored={{ heading: false, tilt: false, lostPhoto: true, draft }} />,
-      );
+      render(<Harness api={api} restored={{ mode: 'manual', lostPhoto: true, draft }} />);
       takePhoto();
       expect(screen.getByLabelText('Note')).toHaveValue('Kitchen window');
       fireEvent.click(screen.getByRole('button', { name: 'Save photo' }));
@@ -818,11 +860,43 @@ describe('WalkHud', () => {
       expect(kept().draft).toBeUndefined();
     });
 
-    it('switches the sensor modes back on where no permission is asked (Android)', () => {
+    it('comes back in Sensor mode where no tap is needed (Android), else in Manual', async () => {
       vi.stubGlobal('DeviceOrientationEvent', class extends Event {});
-      render(<Harness restored={{ heading: true, tilt: true, lostPhoto: false }} />);
-      expect(screen.getByRole('button', { name: /Heading on/ })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Tilt on/ })).toBeInTheDocument();
+      const { unmount } = render(<Harness restored={{ mode: 'sensors', lostPhoto: false }} />);
+      expect(screen.getByRole('radio', { name: /Sensors/ })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      );
+      expect(JSON.parse(sessionStorage.getItem(WALK_SESSION_KEY)!)).toMatchObject({
+        mode: 'sensors',
+      });
+      unmount();
+      // Chrome on Android has a permission function too, and grants it without a tap.
+      vi.stubGlobal(
+        'DeviceOrientationEvent',
+        Object.assign(class extends Event {}, {
+          requestPermission: vi.fn().mockResolvedValue('granted'),
+        }),
+      );
+      const chrome = render(<Harness restored={{ mode: 'sensors', lostPhoto: false }} />);
+      await waitFor(() =>
+        expect(screen.getByRole('radio', { name: /Sensors/ })).toHaveAttribute(
+          'aria-checked',
+          'true',
+        ),
+      );
+      chrome.unmount();
+      // iOS refuses a request no tap started: Manual until the owner taps, and no complaint.
+      vi.stubGlobal(
+        'DeviceOrientationEvent',
+        Object.assign(class extends Event {}, {
+          requestPermission: vi.fn().mockRejectedValue(new Error('NotAllowedError')),
+        }),
+      );
+      render(<Harness restored={{ mode: 'sensors', lostPhoto: false }} />);
+      await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+      expect(screen.getByRole('radio', { name: /Manual/ })).toHaveAttribute('aria-checked', 'true');
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
       vi.unstubAllGlobals();
     });
 

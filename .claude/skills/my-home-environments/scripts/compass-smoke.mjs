@@ -1,9 +1,11 @@
 // Run by compass-smoke.sh; not meant to be called directly.
 //   node compass-smoke.mjs <out.png> <photo>   (SITE_BASE, SITE_TOKEN from with-site-token.sh)
-// Smoke test of the phone-sensor modes in walk mode, on a phone-sized screen, with MOCKED orientation
-// events: no real device is involved. Covers the Android path (absolute alpha), the iOS path
-// (webkitCompassHeading after a permission tap), tilt on its own, the crossing of north, landscape,
-// the compass rose, the calibration drag and the sensor snapshot of a captured photo.
+// Smoke test of the camera modes in walk mode, on a phone-sized screen, with MOCKED orientation
+// events: no real device is involved. Manual mode ignores the sensors; Sensor mode follows heading
+// and tilt and ignores every drag (only walking). Covers the Android path (absolute alpha), the iOS
+// path (webkitCompassHeading after a permission tap), the crossing of north, landscape, the compass
+// rose, the fallback to Manual without data, the mode kept over a reload and the sensor snapshot of
+// a captured photo.
 // Read-only: the upload of that photo is intercepted in the browser and answered here, so nothing
 // reaches the environment's photo store and there is nothing to remove afterwards.
 // The functions handed to page.evaluate() and addInitScript() run in the page, not in Node:
@@ -46,6 +48,14 @@ async function open(browser, initScript) {
     if (new URL(request.url()).host !== host) return route.continue();
     return route.continue({ headers: { ...request.headers(), ...auth } });
   });
+  // No camera in the page: the shutter falls back to the camera-app file input, which takes the
+  // synthetic photo (the camera in the page has its own smoke test, camera-smoke.sh).
+  await context.addInitScript(() => {
+    Object.defineProperty(window.navigator, 'mediaDevices', {
+      configurable: true,
+      value: undefined,
+    });
+  });
   await context.addInitScript(initScript);
   const page = await context.newPage();
   page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`));
@@ -67,6 +77,9 @@ async function open(browser, initScript) {
     return {
       heading: ((-deg(Number(data.yaw)) % 360) + 360) % 360,
       pitch: deg(Number(data.pitch)),
+      x: Number(data.x),
+      z: Number(data.z),
+      mode: data.mode,
     };
   };
   /** Polls until the view has settled where `done` wants it, or 15 s have passed. */
@@ -106,7 +119,15 @@ async function open(browser, initScript) {
       Object.defineProperty(screen.orientation, 'angle', { configurable: true, get: () => angle });
     }, angle);
   const button = (name) => page.getByRole('button', { name });
-  return { page, context, read, settle, send, face, screenAngle, button };
+  const mode = (name) => page.getByRole('radio', { name });
+  /** A mouse drag on the view from the middle of the screen by (dx, dy). */
+  const drag = async (dx, dy) => {
+    await page.mouse.move(195, 420);
+    await page.mouse.down();
+    await page.mouse.move(195 + dx, 420 + dy, { steps: 5 });
+    await page.mouse.up();
+  };
+  return { page, context, hud, read, settle, send, face, screenAngle, button, mode, drag };
 }
 
 async function android(browser, home) {
@@ -120,27 +141,53 @@ async function android(browser, home) {
   });
   const start = await s.read();
 
-  // Tilt on its own: relative events, the compass is off.
-  await s.button(/Tilt off/).click();
-  await s.send('deviceorientation', { alpha: 17, beta: 60, gamma: 0, absolute: false });
-  const down = await s.settle((v) => Math.abs(v.pitch + 30) < 3);
+  // Manual mode, the default: the sensors are not listened to at all.
   check(
-    'tilt alone: tipping the phone down 30° looks down',
+    'it starts in Manual mode, with one Sensors/Manual switch',
+    start.mode === 'manual' &&
+      (await s.mode(/Manual/).getAttribute('aria-checked')) === 'true' &&
+      (await s.button(/Heading|Tilt o/).count()) === 0,
+  );
+  for (const [bearing, beta] of [
+    [90, 60],
+    [200, 120],
+  ])
+    await s.face(bearing, beta);
+  await s.page.waitForTimeout(1500);
+  const ignored = await s.read();
+  check(
+    'Manual mode: mocked orientation events change nothing',
+    apart(ignored.heading, start.heading) < 0.3 && Math.abs(ignored.pitch - start.pitch) < 0.3,
+  );
+  await s.button('Look up').click();
+  const looked = await s.settle((v) => Math.abs(v.pitch - start.pitch - 10) < 1);
+  await s.drag(35, 0);
+  const turned = await s.settle((v) => apart(v.heading, start.heading + 10) < 3);
+  check(
+    'Manual mode: ▲ and a drag turn the view',
+    Math.abs(looked.pitch - start.pitch - 10) < 1 && apart(turned.heading, start.heading + 10) < 3,
+  );
+
+  // Sensor mode: heading and tilt from the phone.
+  await s.mode(/Sensors/).click();
+  await s.face(0, 60);
+  const down = await s.settle((v) => Math.abs(v.pitch + 30) < 3 && apart(v.heading, plan(0)) < 3);
+  check(
+    'Sensor mode: tipping the phone down 30° looks down',
     Math.abs(down.pitch + 30) < 3,
     `${down.pitch.toFixed(1)}°`,
   );
-  await s.send('deviceorientation', { alpha: 17, beta: 115, gamma: 0, absolute: false });
+  await s.face(0, 115);
   const up = await s.settle((v) => Math.abs(v.pitch - 25) < 3);
   check(
-    'tilt alone: tipping it up 25° looks up',
+    'Sensor mode: tipping it up 25° looks up',
     Math.abs(up.pitch - 25) < 3,
     `${up.pitch.toFixed(1)}°`,
   );
-  check('tilt alone: the heading is left alone', apart(up.heading, start.heading) < 0.5);
+  check('Sensor mode: the ▲▼ buttons are hidden', (await s.button('Look up').count()) === 0);
   await s.page.screenshot({ path: out.replace(/\.png$/, '-tilt-up.png'), timeout: 120_000 });
 
   // Heading from the compass.
-  await s.button(/Heading off/).click();
   const seen = [];
   for (const bearing of [0, 90, 180, 270]) {
     await s.face(bearing);
@@ -297,26 +344,54 @@ async function android(browser, home) {
   );
   await s.button('Done').click();
 
-  // With the sheet closed the modes listen afresh: the next event has the phone drive the view again.
+  // With the sheet closed the sensors listen afresh: the next event has the phone drive the view.
   await s.face(90, 75);
   await s.settle((v) => apart(v.heading, plan(90)) < 3);
   await s.page.waitForTimeout(1500);
-  // A sideways drag corrects the compass instead of being undone by the next event.
+  // Sensor mode is walking only: no drag turns or tilts the view, nor corrects the compass.
   const before = await s.read();
-  await s.page.mouse.move(195, 420);
-  await s.page.mouse.down();
-  await s.page.mouse.move(230, 420, { steps: 5 });
-  await s.page.mouse.up();
-  const dragged = await s.settle((v) => apart(v.heading, before.heading + 10) < 3);
-  await s.face(90, 75);
+  await s.drag(35, 0);
+  await s.drag(0, -120);
+  await s.drag(-80, 90);
   await s.page.waitForTimeout(1200);
-  const kept = await s.read();
+  const after = await s.read();
   check(
-    'a sideways drag turns the view by its offset and the next event keeps it',
-    apart(dragged.heading, before.heading + 10) < 3 && apart(kept.heading, dragged.heading) < 1,
+    'Sensor mode: mocked drags change neither yaw nor pitch',
+    apart(after.heading, before.heading) < 0.3 && Math.abs(after.pitch - before.pitch) < 0.3,
+    `${before.heading.toFixed(1)}° -> ${after.heading.toFixed(1)}°`,
   );
-  check('the offset is shown', /offset \+1\d/.test(await s.page.locator('.walk-bar').innerText()));
+  check('and no offset appears', !/offset/.test(await s.page.locator('.walk-bar').innerText()));
+  // The pad's left and right sidestep; nothing turns.
+  const pad = await s.page.getByRole('application', { name: 'Movement pad' }).boundingBox();
+  const cx = pad.x + pad.width / 2;
+  const cy = pad.y + pad.height / 2;
+  await s.page.mouse.move(cx, cy);
+  await s.page.mouse.down();
+  await s.page.mouse.move(cx + 44, cy, { steps: 3 });
+  const stepped = await s.settle((v) => Math.hypot(v.x - before.x, v.z - before.z) > 0.3);
+  await s.page.mouse.up();
+  check(
+    "Sensor mode: the pad's right sidesteps and does not turn",
+    Math.hypot(stepped.x - before.x, stepped.z - before.z) > 0.3 &&
+      apart(stepped.heading, before.heading) < 1,
+    `moved ${Math.hypot(stepped.x - before.x, stepped.z - before.z).toFixed(2)} m`,
+  );
   await s.page.screenshot({ path: out, timeout: 120_000 });
+
+  // The mode is kept over a reload, and comes back on by itself where no permission is asked.
+  await s.page.reload({ waitUntil: 'networkidle', timeout: 60_000 });
+  await s.hud.waitFor({ timeout: 60_000 });
+  check('after a reload Sensor mode is back on', (await s.read()).mode === 'sensors');
+  await s.mode(/Manual/).click();
+  await s.page.waitForTimeout(500);
+  const manual = await s.read();
+  await s.face(250, 40);
+  await s.page.waitForTimeout(1500);
+  const unmoved = await s.read();
+  check(
+    'back in Manual mode the phone no longer moves the view',
+    apart(unmoved.heading, manual.heading) < 0.3 && Math.abs(unmoved.pitch - manual.pitch) < 0.3,
+  );
   await s.context.close();
 }
 
@@ -337,15 +412,15 @@ async function ios(browser, home) {
     'no permission is requested before a tap',
     (await s.page.evaluate(() => window.__asked)) === 0,
   );
-  await s.button(/Tilt off/).click();
+  await s.mode(/Sensors/).click();
   await s.page.waitForTimeout(800);
   const notice = await s.page
-    .locator('.walk-notice')
+    .locator('.walk-bar .walk-notice')
     .innerText()
     .catch(() => '');
   check(
-    'a refusal is reported and the mode stays off',
-    /permission/.test(notice) && (await s.button(/Tilt off/).count()) === 1,
+    'a refusal is reported and the view stays in Manual mode',
+    /did not allow/.test(notice) && (await s.read()).mode === 'manual',
     notice,
   );
   await s.button('Look up').click();
@@ -360,12 +435,11 @@ async function ios(browser, home) {
   await s.page.evaluate(() => {
     window.__answer = 'granted';
   });
-  await s.button(/Tilt off/).click();
-  await s.button(/Heading off/).click();
+  await s.mode(/Sensors/).click();
   await s.page.waitForTimeout(800);
   check(
-    'one granted permission covers heading and tilt',
-    (await s.page.evaluate(() => window.__asked)) === 2,
+    'a granted permission switches Sensor mode on',
+    (await s.page.evaluate(() => window.__asked)) === 2 && (await s.read()).mode === 'sensors',
   );
   // On iOS alpha is not earth-referenced; the heading comes from webkitCompassHeading.
   const safari = (heading, beta = 90) =>
@@ -402,6 +476,20 @@ async function ios(browser, home) {
     `${landscape.heading.toFixed(1)}°`,
   );
   await s.page.screenshot({ path: out.replace(/\.png$/, '-ios.png'), timeout: 120_000 });
+
+  // No data at all: back to Manual with a message.
+  await s.mode(/Manual/).click();
+  await s.mode(/Sensors/).click();
+  const fallen = await s.settle((v) => v.mode === 'manual');
+  const silent = await s.page
+    .locator('.walk-bar .walk-notice')
+    .innerText()
+    .catch(() => '');
+  check(
+    'without sensor data it falls back to Manual and says so',
+    fallen.mode === 'manual' && /No motion sensor data/.test(silent),
+    silent,
+  );
   await s.context.close();
 }
 

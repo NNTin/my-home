@@ -15,38 +15,52 @@ import {
   type SensorReading,
 } from './orientation';
 
-/** How one of the two follow modes is doing. */
+/**
+ * Who sets the view's angle while walking. `sensors`: the phone's orientation drives heading and
+ * tilt and the owner only walks. `manual`: the sensors are not listened to at all, and the owner
+ * turns and tilts by hand.
+ */
+export type CameraMode = 'manual' | 'sensors';
+
+/** How the sensors are doing for one part of the view (heading or tilt). */
 export type FollowStatus =
-  /** Switched off: this part of the view is set by hand. */
+  /** Manual mode: this part of the view is set by hand. */
   | 'off'
-  /** Switched on, no usable sensor event yet. */
+  /** Sensor mode, no usable sensor event yet. */
   | 'waiting'
   /** The phone drives this part of the view. */
   | 'on'
-  /** Switched on, but the browser sends no usable data for it. */
-  | 'no-events'
-  /** Switched on, but the page is hidden or not focused; it resumes by itself. */
+  /** Sensor mode, but the page is hidden or not focused; it resumes by itself. */
   | 'paused';
+
+/** Why Sensor mode fell back to Manual. */
+export type Refusal =
+  /** The browser (iOS) asked and the owner said no. */
+  | 'denied'
+  /** The permission request failed. */
+  | 'unavailable'
+  /** The browser sent no usable compass or tilt data in time. */
+  | 'no-events';
 
 export interface CompassState {
   /** Whether this device reports its orientation at all. */
   supported: boolean;
-  /** "Turn with phone": the compass sets the heading. */
+  /** The camera mode in force; Manual until Sensor mode is allowed. */
+  mode: CameraMode;
+  /** The compass sets the heading. */
   heading: FollowStatus;
-  /** "Tilt with phone": the phone's tilt sets the pitch. Works without the compass. */
+  /** The phone's tilt sets the pitch. */
   tilt: FollowStatus;
   /** Following is held back from outside (a photo is being reviewed); not a fault. */
   held: boolean;
-  /** Why the last attempt to switch a mode on failed, if it did. */
-  refusal: 'denied' | 'unavailable' | undefined;
+  /** Why the last switch to Sensor mode fell back to Manual, if it did. */
+  refusal: Refusal | undefined;
   /** iOS: ± degrees, negative when unreliable. Undefined when the phone does not say. */
   accuracy: number | undefined;
   /** This device's calibration offset in degrees. */
   calibration: number;
-  toggleHeading(): void;
-  toggleTilt(): void;
-  /** Turns the view by hand while the heading follows: changes the calibration offset. */
-  adjustCalibration(degrees: number): void;
+  /** Switches the camera mode; Sensor mode asks for permission first where the browser wants that. */
+  setMode(mode: CameraMode): void;
   /**
    * Calibrates against the model: the phone is pointing where the figure would look at `yaw`.
    * False when there is no compass reading to calibrate with.
@@ -60,8 +74,33 @@ export interface CompassState {
 /** A mode counts as silent when no usable event arrives within this time. */
 export const NO_EVENTS_MS = 2000;
 export const CALIBRATION_KEY = 'my-home.compass.calibration';
+/** The camera mode chosen last on this device. */
+export const CAMERA_MODE_KEY = 'my-home.walk.cameraMode';
 
 type PermissionRequest = { requestPermission?: () => Promise<'granted' | 'denied'> };
+
+/** Whether switching the sensors on needs a tap that asks for permission (iOS). */
+export const needsPermission = () =>
+  typeof DeviceOrientationEvent !== 'undefined' &&
+  typeof (DeviceOrientationEvent as unknown as PermissionRequest).requestPermission === 'function';
+
+/** The camera mode chosen last on this device; Manual when none was. */
+export function storedCameraMode(): CameraMode {
+  try {
+    return localStorage.getItem(CAMERA_MODE_KEY) === 'sensors' ? 'sensors' : 'manual';
+  } catch {
+    return 'manual';
+  }
+}
+
+function storeCameraMode(mode: CameraMode) {
+  try {
+    if (mode === 'manual') localStorage.removeItem(CAMERA_MODE_KEY);
+    else localStorage.setItem(CAMERA_MODE_KEY, mode);
+  } catch {
+    // Private mode or a full store: the choice then lasts for this visit only.
+  }
+}
 
 /** `screen.orientation.angle`, or the older `window.orientation`; 0 when neither exists. */
 export function screenAngle(): number {
@@ -106,34 +145,33 @@ interface Options {
   /** The figure as it stands now, for the snapshot. */
   getFigure(): Figure;
   /**
-   * Stops following for as long as it is true, with the modes left switched on: while a photo is
-   * being reviewed, the view must stay where it was when the photo was taken.
+   * Stops following for as long as it is true, with Sensor mode left on: while a photo is being
+   * reviewed, the view must stay where it was when the photo was taken.
    */
   held?: boolean;
+  /**
+   * The mode to start in. Sensor mode starts at once where the browser asks no permission, and
+   * where it grants it without a tap (Chrome on Android); an iPhone wants a tap on the switch, so
+   * it starts in Manual mode, without a complaint.
+   */
+  initialMode?: CameraMode;
 }
 
-type Heard = 'waiting' | 'on' | 'silent';
+type Heard = 'waiting' | 'on';
 const statusOf = (wanted: boolean, paused: boolean, heard: Heard): FollowStatus =>
-  !wanted
-    ? 'off'
-    : paused
-      ? 'paused'
-      : heard === 'on'
-        ? 'on'
-        : heard === 'silent'
-          ? 'no-events'
-          : 'waiting';
+  !wanted ? 'off' : paused ? 'paused' : heard;
 
 /**
- * The phone's orientation sensors drive the figure's view, in two independent modes:
+ * The phone's orientation sensors drive the figure's view in Sensor mode:
  *
  * - **heading**: the compass turns the figure, so facing a wall in the real room faces it in the
  *   model. Needs a compass reading (an absolute event, or Safari's heading).
- * - **tilt**: tilting the phone up and down tilts the view. Needs only gravity, so it works from
- *   any orientation event and also where the compass is unreliable.
+ * - **tilt**: tilting the phone up and down tilts the view. Needs only gravity.
  *
  * Sensor events only set a target; the walk loop eases the figure towards it (see `useWalk`).
- * The calibration offset is kept per device in localStorage.
+ * In Manual mode nothing listens to the sensors. When Sensor mode is refused or no data arrives,
+ * it falls back to Manual and says why. The mode and the calibration offset are kept per device
+ * in localStorage.
  */
 export function useCompass({
   northBearing,
@@ -141,36 +179,56 @@ export function useCompass({
   setFollow,
   getFigure,
   held = false,
+  initialMode = 'manual',
 }: Options): CompassState {
   const supported = typeof DeviceOrientationEvent !== 'undefined';
-  const [wantHeading, setWantHeading] = useState(false);
-  const [wantTilt, setWantTilt] = useState(false);
-  const [refusal, setRefusal] = useState<'denied' | 'unavailable'>();
+  const [wanted, setWanted] = useState(
+    () => initialMode === 'sensors' && supported && !needsPermission(),
+  );
+  const [refusal, setRefusal] = useState<Refusal>();
   const [heardCompass, setHeardCompass] = useState<Heard>('waiting');
   const [heardTilt, setHeardTilt] = useState<Heard>('waiting');
   const [accuracy, setAccuracy] = useState<number>();
   const [calibration, setCalibrationState] = useState(storedCalibration);
   const [paused, setPaused] = useState(false);
-  const active = wantHeading || wantTilt;
 
   const last = useRef<Last>({});
-  // What is being followed right now (switched on, and not paused).
-  const live = useRef({ heading: false, tilt: false });
+  // Whether the sensors are being followed right now (Sensor mode, and not paused or held).
+  const live = useRef(false);
   const settings = useRef<CompassSettings>({ northBearing, declination, calibration });
+
+  // Sensor mode to come back to where the browser has a permission function: ask without a tap.
+  // Chrome answers at once; Safari refuses a request that no tap started, and Manual stays.
+  useEffect(() => {
+    if (initialMode !== 'sensors' || !supported || !needsPermission()) return;
+    let current = true;
+    const request = (DeviceOrientationEvent as unknown as PermissionRequest).requestPermission!;
+    Promise.resolve()
+      .then(() => request.call(DeviceOrientationEvent))
+      .then(
+        (result) => {
+          if (current && result === 'granted') setWanted(true);
+        },
+        () => {},
+      );
+    return () => {
+      current = false;
+    };
+    // Only for the mode the walk starts in.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /** Sends the latest readings to the walk loop with the current settings. */
   const apply = useCallback(() => {
     const { compass, tilt } = last.current;
     const yaw =
-      live.current.heading && compass
-        ? followTarget(compass.reading, settings.current).yaw
-        : undefined;
-    const pitch = live.current.tilt && tilt ? clampPitch(tilt.pitch) : undefined;
+      live.current && compass ? followTarget(compass.reading, settings.current).yaw : undefined;
+    const pitch = live.current && tilt ? clampPitch(tilt.pitch) : undefined;
     setFollow(yaw === undefined && pitch === undefined ? undefined : { yaw, pitch });
   }, [setFollow]);
   useEffect(() => {
     settings.current = { northBearing, declination, calibration };
-    if (live.current.heading) apply();
+    if (live.current) apply();
   }, [northBearing, declination, calibration, apply]);
 
   // After a hold the modes listen afresh, like after a pause.
@@ -186,7 +244,7 @@ export function useCompass({
   // Following pauses while the page is hidden or another window has the focus, and starts
   // listening afresh when it comes back.
   useEffect(() => {
-    if (!active) return;
+    if (!wanted) return;
     const update = () => {
       const away = document.visibilityState === 'hidden' || !document.hasFocus();
       // Readings from before a pause are too old to follow or to store with a photo.
@@ -203,20 +261,21 @@ export function useCompass({
       window.removeEventListener('blur', update);
       window.removeEventListener('focus', update);
     };
-  }, [active]);
+  }, [wanted]);
 
   useEffect(() => {
-    // While paused or held nothing listens; the cleanup of the last run has stopped the following.
-    if (!active || paused || held) return;
-    live.current = { heading: wantHeading, tilt: wantTilt };
-    // A reading from a mode that has been switched off is not kept.
-    if (!wantHeading) delete last.current.compass;
-    if (!wantTilt) delete last.current.tilt;
+    // In Manual mode, and while paused or held, nothing listens; the cleanup of the last run has
+    // stopped the following.
+    if (!wanted || paused || held) return;
+    live.current = true;
     apply();
     const heard = { compass: false, tilt: false };
+    // Nothing usable in time (a desktop browser, a phone without a compass): back to Manual.
     const silent = setTimeout(() => {
-      if (wantHeading && !heard.compass) setHeardCompass('silent');
-      if (wantTilt && !heard.tilt) setHeardTilt('silent');
+      if (heard.compass && heard.tilt) return;
+      storeCameraMode('manual');
+      setRefusal('no-events');
+      setWanted(false);
     }, NO_EVENTS_MS);
     const onOrientation = (event: Event) => {
       const e = event as DeviceOrientationEvent & {
@@ -233,23 +292,19 @@ export function useCompass({
       };
       // The screen orientation is read with every event, so landscape needs no extra step.
       const angle = screenAngle();
-      if (wantTilt) {
-        const tilt = tiltReading(sample, angle);
-        if (tilt) {
-          last.current.tilt = { sample, ...tilt, screenAngle: angle };
-          if (!heard.tilt) setHeardTilt('on');
-          heard.tilt = true;
-        }
+      const tilt = tiltReading(sample, angle);
+      if (tilt) {
+        last.current.tilt = { sample, ...tilt, screenAngle: angle };
+        if (!heard.tilt) setHeardTilt('on');
+        heard.tilt = true;
       }
-      if (wantHeading) {
-        // A relative event next to the absolute ones is not a compass reading: it is left alone.
-        const reading = sensorReading(sample, angle);
-        if (reading) {
-          last.current.compass = { sample, reading, screenAngle: angle };
-          if (!heard.compass) setHeardCompass('on');
-          heard.compass = true;
-          setAccuracy(reading.accuracy === undefined ? undefined : Math.round(reading.accuracy));
-        }
+      // A relative event next to the absolute ones is not a compass reading: it is left alone.
+      const reading = sensorReading(sample, angle);
+      if (reading) {
+        last.current.compass = { sample, reading, screenAngle: angle };
+        if (!heard.compass) setHeardCompass('on');
+        heard.compass = true;
+        setAccuracy(reading.accuracy === undefined ? undefined : Math.round(reading.accuracy));
       }
       apply();
     };
@@ -260,47 +315,38 @@ export function useCompass({
       clearTimeout(silent);
       window.removeEventListener('deviceorientationabsolute', onOrientation);
       window.removeEventListener('deviceorientation', onOrientation);
-      live.current = { heading: false, tilt: false };
+      live.current = false;
       setFollow(undefined);
     };
-  }, [active, paused, held, wantHeading, wantTilt, apply, setFollow]);
+  }, [wanted, paused, held, apply, setFollow]);
 
-  /** Switches a mode on (after asking for permission where the browser wants that) or off. */
-  const toggle = useCallback(
-    (
-      wanted: boolean,
-      set: (on: boolean) => void,
-      heardSet: (heard: Heard) => void,
-      other: boolean,
-    ) => {
-      if (wanted) {
-        set(false);
-        if (!other) setPaused(false);
+  const setMode = useCallback(
+    (mode: CameraMode) => {
+      if (mode === 'manual') {
+        storeCameraMode('manual');
+        setRefusal(undefined);
+        setWanted(false);
+        setPaused(false);
+        last.current = {};
         return;
       }
+      if (wanted || !supported) return;
       const start = () => {
+        storeCameraMode('sensors');
         setRefusal(undefined);
-        heardSet('waiting');
-        set(true);
+        setHeardCompass('waiting');
+        setHeardTilt('waiting');
+        setWanted(true);
       };
       const request = (DeviceOrientationEvent as unknown as PermissionRequest).requestPermission;
-      // Already listening for the other mode: the permission is there.
-      if (!request || other) return start();
-      // iOS asks the user, and only from a tap. One answer covers heading and tilt.
+      if (!request) return start();
+      // iOS asks the user, and only from a tap.
       request.call(DeviceOrientationEvent).then(
         (result) => (result === 'granted' ? start() : setRefusal('denied')),
         () => setRefusal('unavailable'),
       );
     },
-    [],
-  );
-  const toggleHeading = useCallback(
-    () => toggle(wantHeading, setWantHeading, setHeardCompass, wantTilt),
-    [toggle, wantHeading, wantTilt],
-  );
-  const toggleTilt = useCallback(
-    () => toggle(wantTilt, setWantTilt, setHeardTilt, wantHeading),
-    [toggle, wantHeading, wantTilt],
+    [wanted, supported],
   );
 
   const setCalibration = useCallback((value: number) => {
@@ -310,16 +356,9 @@ export function useCompass({
     settings.current = { ...settings.current, calibration: rounded };
     setCalibrationState(rounded);
   }, []);
-  const adjustCalibration = useCallback(
-    (degrees: number) => {
-      setCalibration(settings.current.calibration + degrees);
-      apply();
-    },
-    [apply, setCalibration],
-  );
   const calibrateTo = useCallback(
     (yaw: number) => {
-      const compass = live.current.heading ? last.current.compass : undefined;
+      const compass = live.current ? last.current.compass : undefined;
       if (!compass) return false;
       setCalibration(calibrationOffset(yaw, compass.reading.magneticBearing, settings.current));
       apply();
@@ -335,8 +374,8 @@ export function useCompass({
   const snapshot = useCallback((): PhotoSensors => {
     const figure = getFigure();
     const capturedAt = new Date().toISOString();
-    const compass = live.current.heading ? last.current.compass : undefined;
-    const tilt = live.current.tilt ? last.current.tilt : undefined;
+    const compass = live.current ? last.current.compass : undefined;
+    const tilt = live.current ? last.current.tilt : undefined;
     const used = compass ?? tilt;
     // `sensor` says the heading was measured. A photo with only the tilt from the phone keeps
     // the raw tilt values, but its heading was set by hand.
@@ -375,15 +414,14 @@ export function useCompass({
 
   return {
     supported,
-    heading: statusOf(wantHeading, paused || held, heardCompass),
-    tilt: statusOf(wantTilt, paused || held, heardTilt),
+    mode: wanted ? 'sensors' : 'manual',
+    heading: statusOf(wanted, paused || held, heardCompass),
+    tilt: statusOf(wanted, paused || held, heardTilt),
     held,
     refusal,
     accuracy,
     calibration,
-    toggleHeading,
-    toggleTilt,
-    adjustCalibration,
+    setMode,
     calibrateTo,
     resetCalibration,
     snapshot,
@@ -396,17 +434,17 @@ export function compassStatusText(
 ): string {
   // Held on purpose: nothing to report.
   if (state.held) return '';
-  if (state.refusal === 'denied') return 'The phone needs permission to read its motion sensors.';
-  if (state.refusal === 'unavailable') return 'The motion sensors are not available.';
+  if (state.refusal === 'denied') {
+    return 'The phone did not allow its motion sensors: Manual mode. Drag the view to look around.';
+  }
+  if (state.refusal === 'unavailable') {
+    return 'The motion sensors are not available: Manual mode. Drag the view to look around.';
+  }
+  if (state.refusal === 'no-events') {
+    return 'No motion sensor data from this device: back to Manual. Drag the view to look around.';
+  }
   if (state.heading === 'paused' || state.tilt === 'paused') {
     return 'Sensors paused while the page is in the background.';
-  }
-  const silent = [
-    state.heading === 'no-events' ? 'compass' : undefined,
-    state.tilt === 'no-events' ? 'tilt' : undefined,
-  ].filter(Boolean);
-  if (silent.length > 0) {
-    return `No ${silent.join(' or ')} data from this device. Drag the view to look around.`;
   }
   if (state.heading === 'waiting' || state.tilt === 'waiting') return 'Waiting for the sensors…';
   return '';

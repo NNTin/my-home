@@ -69,7 +69,8 @@ import type { Figure } from './walk/figure';
 import { useWalk } from './walk/useWalk';
 import { WalkHud, type DeclinationSource, type WalkView } from './walk/WalkHud';
 import { loadWalkSession } from './walk/walkSession';
-import { buildWalkWorld, placeAt, startPose, type FurnitureBlocker } from './walk/world';
+import { groundLevelId, minimapLevels } from './walk/minimap';
+import { buildWalkWorld, placeAt, standAt, startPose, type FurnitureBlocker } from './walk/world';
 
 const shownLevels = (scene: HomeScene, v: Visibility) =>
   scene.levels.filter((l) => l.index <= v.maxLevelIndex && !v.hiddenLevels.includes(l.id));
@@ -335,6 +336,34 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
           : [];
       })
     : [];
+
+  // The minimap's plans: built once per home, as the plan does not change while walking.
+  const ground = useMemo(
+    () => groundLevelId(scene, model.terrain.groundElevation.value),
+    [scene, model],
+  );
+  const mapLevels = useMemo(() => minimapLevels(scene, ctx.plans, ground), [scene, ctx, ground]);
+  const mapPhotos = useMemo(
+    () =>
+      walking
+        ? photos.photos.map((p) => ({
+            id: p.id,
+            x: p.pose.position.x,
+            z: p.pose.position.z,
+            yaw: p.pose.yaw,
+            levelId: p.levelId ?? undefined,
+          }))
+        : [],
+    [walking, photos.photos],
+  );
+  const placeFromMap = (point: [number, number], levelId: string) => {
+    const on = scene.levels.find((l) => l.id === levelId);
+    const spot = standAt(world, point, on?.elevation ?? 0);
+    if (!spot) return false;
+    const { yaw, pitch } = walk.figureRef.current;
+    walk.place({ ...spot, yaw, pitch });
+    return true;
+  };
 
   const level = currentLevel(scene, visibility);
   const plan = level && ctx.plans.get(level.id);
@@ -704,10 +733,16 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
               onChoose={setChosenRequest}
               onSaved={() => void photos.reload()}
               onCamera={setCameraOpen}
+              sensors={mobile}
+              map={{
+                levels: mapLevels,
+                groundLevelId: ground,
+                photos: mapPhotos,
+                onPlace: placeFromMap,
+              }}
               restored={
                 restored && {
-                  heading: restored.heading,
-                  tilt: restored.tilt,
+                  mode: restored.mode,
                   draft: restored.draft,
                   lostPhoto: restored.pending !== undefined,
                 }

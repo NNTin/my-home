@@ -44,6 +44,11 @@ export interface Walk {
    * instead of snapping.
    */
   setFollow(target: FollowTarget | undefined): void;
+  /**
+   * Sensor mode: the phone owns the view, so the pad's left and right sidestep and the turn keys
+   * do nothing, also before the first sensor reading arrives.
+   */
+  setSensorMode(on: boolean): void;
 }
 
 /**
@@ -92,6 +97,9 @@ export function useWalk(world: WalkWorld, start: Figure, active: boolean): Walk 
   const follow = useRef<FollowTarget | undefined>(undefined);
   // Whether the view is on its way to the follow target, per axis (see `easeAngle`).
   const easing = useRef({ yaw: false, pitch: false });
+  const sensorMode = useRef(false);
+  /** Whether the pad's left and right sidestep instead of turning. */
+  const sidesteps = () => sensorMode.current || follow.current?.yaw !== undefined;
   useEffect(() => {
     worldRef.current = world;
   }, [world]);
@@ -112,7 +120,7 @@ export function useWalk(world: WalkWorld, start: Figure, active: boolean): Walk 
       const target = follow.current;
       const keysInput = inputFromKeys(held);
       // While the phone turns the figure, the turn keys have nothing to do.
-      const turning = target?.yaw !== undefined;
+      const turning = target?.yaw !== undefined || sensorMode.current;
       const input = combineInputs(pad.current, turning ? { ...keysInput, turn: 0 } : keysInput);
       let next = advance(worldRef.current, figureRef.current, input, dt);
       if (target) {
@@ -169,10 +177,10 @@ export function useWalk(world: WalkWorld, start: Figure, active: boolean): Walk 
 
   const setPad = useCallback((x: number, y: number) => {
     padXY.current = [x, y];
-    pad.current = inputFromPad(x, y, follow.current?.yaw !== undefined);
+    pad.current = inputFromPad(x, y, sidesteps());
   }, []);
   const setFollow = useCallback((target: FollowTarget | undefined) => {
-    const changed = (follow.current?.yaw === undefined) !== (target?.yaw === undefined);
+    const before = sidesteps();
     // Switching a mode on blends all the way to where the phone points, however near that is.
     if (target?.yaw !== undefined && follow.current?.yaw === undefined) easing.current.yaw = true;
     if (target?.pitch !== undefined && follow.current?.pitch === undefined) {
@@ -180,7 +188,11 @@ export function useWalk(world: WalkWorld, start: Figure, active: boolean): Walk 
     }
     follow.current = target;
     // The pad's left and right mean something else while the phone turns the figure.
-    if (changed) pad.current = inputFromPad(...padXY.current, target?.yaw !== undefined);
+    if (sidesteps() !== before) pad.current = inputFromPad(...padXY.current, sidesteps());
+  }, []);
+  const setSensorMode = useCallback((on: boolean) => {
+    sensorMode.current = on;
+    pad.current = inputFromPad(...padXY.current, sidesteps());
   }, []);
   const lookBy = useCallback((dYaw: number, dPitch: number) => {
     figureRef.current = look(figureRef.current, dYaw, dPitch);
@@ -213,5 +225,6 @@ export function useWalk(world: WalkWorld, start: Figure, active: boolean): Walk 
     setYaw,
     place,
     setFollow,
+    setSensorMode,
   };
 }

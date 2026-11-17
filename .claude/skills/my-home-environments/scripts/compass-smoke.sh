@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # compass-smoke.sh <staging|production> [--out file.png]
 #
-# Smoke test of the phone-sensor modes of walk mode ("Heading" and "Tilt") on a phone-sized screen (390x844)
-# in headless Chromium, with MOCKED orientation events: the Android path (absolute alpha) and the iOS path
-# (permission tap, webkitCompassHeading). Checks that turning the mocked phone turns the figure, north is
-# crossed smoothly, jitter is ignored, landscape is compensated, tilt changes the pitch (also on its own),
-# the compass rose turns, a sideways drag corrects the compass, and a captured photo stores the sensor
-# snapshot. Exit 0 when every check passes.
+# Smoke test of the camera modes of walk mode (Sensors / Manual) on a phone-sized screen (390x844) in
+# headless Chromium, with MOCKED orientation events, on the Android path (absolute alpha) and the iOS path
+# (permission tap, webkitCompassHeading). Manual: orientation events change nothing, drag and ▲ do. Sensors:
+# the mocked phone turns and tilts the figure (north crossed smoothly, jitter ignored, landscape), drags
+# change nothing, ▲▼ are hidden, the pad sidesteps; refusal and silence fall back to Manual; the mode
+# survives a reload; a captured photo stores the sensor snapshot. Exit 0 when every check passes.
 # Read-only, like walk-smoke.sh: the photo it "takes" is synthetic and its upload is intercepted in the
 # browser, so nothing is stored, changed or deleted on the environment.
 # A real phone is still needed for what mocks cannot show: see the checklist in docs/walking.md.

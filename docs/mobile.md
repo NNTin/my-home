@@ -110,7 +110,9 @@ On a phone (the same condition as the phone layout) the 3D view:
 - renders **on demand**: a new frame only when something changed (the camera, the scene, the size of the view),
   not sixty times a second. Orbiting, dragging furniture and the panels ask for frames by themselves. While
   walking, the walk loop runs outside the canvas, so `WalkRig` watches the figure and asks for a frame whenever
-  it has moved, and once more while the figure still eases to a new height;
+  it has moved, and once more while the figure still eases to a new height (on a desktop, which draws every
+  frame anyway, that watcher does not run). The walk [minimap](walking.md#minimap) is SVG outside the
+  canvas and asks for no frames;
 - caps the **device pixel ratio** at 1.5 (2 on a desktop screen): a phone with a ratio of 3 would otherwise
   shade four times as many pixels for little visible gain;
 - uses a **1024 px shadow map** instead of 2048 px.

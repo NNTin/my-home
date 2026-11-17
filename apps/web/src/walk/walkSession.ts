@@ -1,5 +1,6 @@
 import type { PhotoSensors } from '@my-home/shared';
 import type { Figure } from './figure';
+import type { CameraMode } from './useCompass';
 
 /**
  * Walk mode, kept for this tab in sessionStorage so that it survives a reload.
@@ -14,9 +15,11 @@ export interface WalkSession {
   homeId: string;
   view: 'first' | 'third';
   figure: Figure;
-  /** "Heading" and "Tilt" were switched on. */
-  heading: boolean;
-  tilt: boolean;
+  /**
+   * The camera mode. Sessions saved before there was one have `heading` and `tilt` booleans
+   * instead; either of them on reads as Sensor mode.
+   */
+  mode: CameraMode;
   /**
    * Set when the phone's camera app was opened and its photo has not come back yet: the pose and
    * sensors of the tap. Still set after a reload means the photo was lost on the way.
@@ -52,9 +55,9 @@ const isFigure = (value: unknown): value is Figure => {
 
 /** The walk saved for `homeId`, if there is a recent and readable one. */
 export function loadWalkSession(homeId: string, now = Date.now()): WalkSession | undefined {
-  let value: Partial<WalkSession>;
+  let value: Partial<WalkSession> & { heading?: unknown; tilt?: unknown };
   try {
-    value = JSON.parse(storage()?.getItem(WALK_SESSION_KEY) ?? 'null') as Partial<WalkSession>;
+    value = JSON.parse(storage()?.getItem(WALK_SESSION_KEY) ?? 'null') as typeof value;
   } catch {
     return undefined;
   }
@@ -83,8 +86,12 @@ export function loadWalkSession(homeId: string, now = Date.now()): WalkSession |
     homeId,
     view: value.view,
     figure: value.figure,
-    heading: value.heading === true,
-    tilt: value.tilt === true,
+    mode:
+      value.mode === 'sensors' || value.mode === 'manual'
+        ? value.mode
+        : value.heading === true || value.tilt === true
+          ? 'sensors'
+          : 'manual',
     ...(pending && { pending }),
     ...(draft && { draft }),
     savedAt: value.savedAt,

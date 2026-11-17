@@ -1,14 +1,16 @@
 import type { PhotoRequest, PhotoSensors } from '@my-home/shared';
-import { useEffect, useRef, useState, type PointerEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import type { PhotosApi } from '../api';
 import { activeRequest, openRequests } from '../photos/requests';
 import { CameraView, hasInPageCamera } from './CameraView';
 import { CaptureSheet } from './CaptureSheet';
 import type { Figure } from './figure';
 import { Joystick } from './Joystick';
+import { Minimap, type MapSpot } from './Minimap';
+import type { MinimapLevel } from './minimap';
 import type { CalibrationTarget } from './calibration';
 import { accuracyLabel } from './orientation';
-import { compassStatusText, useCompass } from './useCompass';
+import { compassStatusText, storedCameraMode, useCompass, type CameraMode } from './useCompass';
 import { useFigure, type Walk } from './useWalk';
 import { saveWalkSession, type WalkSession } from './walkSession';
 import { yawTowards } from './world';
@@ -54,8 +56,22 @@ interface Props {
    * meanwhile and can stop drawing, which leaves the phone more memory for the camera.
    */
   onCamera?(open: boolean): void;
+  /** The minimap: the plan of every level, and what else it shows. */
+  map?: {
+    levels: ReadonlyMap<string, MinimapLevel>;
+    groundLevelId: string | undefined;
+    /** The cameras of the photos, shown on the map when the owner asks for them. */
+    photos: MapSpot[];
+    /** Sets the figure down where the enlarged map was tapped; false where it cannot stand. */
+    onPlace?(point: [number, number], levelId: string): boolean;
+  };
+  /**
+   * Offer the Sensors/Manual switch (a phone or tablet). Without it the view is always set by
+   * hand (desktop), and so it is on a device without orientation sensors.
+   */
+  sensors?: boolean;
   /** What a walk saved before the page was reloaded brings back (see `walkSession`). */
-  restored?: Pick<WalkSession, 'heading' | 'tilt' | 'draft'> & {
+  restored?: Pick<WalkSession, 'mode' | 'draft'> & {
     /** The phone's camera app was open when the page went: its photo never arrived. */
     lostPhoto: boolean;
   };
@@ -85,6 +101,8 @@ export function WalkHud({
   onChoose,
   onSaved,
   onCamera,
+  sensors = false,
+  map,
   restored,
 }: Props) {
   const figure = useFigure(walk);
@@ -112,7 +130,12 @@ export function WalkHud({
     getFigure: () => figureRef.current,
     // The view stays where it was at the tap; the sheet's arrows adjust it from there.
     held: capture !== undefined,
+    // The mode of the walk before a reload, else the one chosen last on this device.
+    initialMode: sensors ? (restored?.mode ?? storedCameraMode()) : 'manual',
   });
+  const sensorMode = compass.mode === 'sensors';
+  const { setSensorMode } = walk;
+  useEffect(() => setSensorMode(sensorMode), [sensorMode, setSensorMode]);
   const inPage = useState(hasInPageCamera)[0];
   /** The page's own camera is showing. */
   const [viewfinder, setViewfinder] = useState(false);
@@ -125,8 +148,6 @@ export function WalkHud({
   const kept = useRef<Pick<WalkSession, 'pending' | 'draft'>>({
     ...(restored?.draft && { draft: restored.draft }),
   });
-  const heading = compass.heading !== 'off';
-  const tilting = compass.tilt !== 'off';
   const keep = useRef(() => {});
   useEffect(() => {
     keep.current = () =>
@@ -134,12 +155,11 @@ export function WalkHud({
         homeId,
         view,
         figure: figureRef.current,
-        heading,
-        tilt: tilting,
+        mode: compass.mode,
         ...kept.current,
       });
     keep.current();
-  }, [homeId, view, heading, tilting, figureRef]);
+  }, [homeId, view, compass.mode, figureRef]);
   useEffect(() => {
     const onHide = () => {
       if (document.visibilityState === 'hidden') keep.current();
@@ -154,20 +174,6 @@ export function WalkHud({
       saveWalkSession(undefined);
     };
   }, []);
-  // The sensor modes come back where the browser needs no tap to allow them (Android); iOS asks
-  // again from the buttons.
-  const resumed = useRef(false);
-  useEffect(() => {
-    if (resumed.current || !restored || !compass.supported) return;
-    resumed.current = true;
-    const ask = (DeviceOrientationEvent as unknown as { requestPermission?: unknown })
-      .requestPermission;
-    if (typeof ask === 'function') return;
-    if (restored.heading) compass.toggleHeading();
-    if (restored.tilt) compass.toggleTilt();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const cameraOpen = viewfinder || away;
   useEffect(() => {
     onCamera?.(cameraOpen);
@@ -249,19 +255,28 @@ export function WalkHud({
   const [declinationText, setDeclinationText] = useState(String(declination));
   const [declinationSaved, setDeclinationSaved] = useState<'saving' | 'saved' | 'failed'>();
   const [declinationSource, setDeclinationSource] = useState<DeclinationSource>('geodata');
-  /** The compass turns the figure / the phone's tilt sets the pitch, right now. */
+  /** The compass turns the figure right now. */
   const following = compass.heading === 'on';
-  const tiltFollowing = compass.tilt === 'on';
   /**
-   * Turning the view by hand. While the compass turns the figure, a sideways turn is a
-   * correction of the compass (the calibration offset) instead of being undone by the next
-   * sensor event. While the phone's tilt sets the pitch, looking up or down by hand is off.
-   * Whatever the sensors do not drive stays in the owner's hands.
+   * Turning and tilting the view by hand: Manual mode only. In Sensor mode the phone owns the
+   * view, and a drag or a tap never changes it (calibration is in the Calibrate sheet).
    */
   const onLook = (dYaw: number, dPitch: number) => {
-    // A turn to the left (positive yaw) is a smaller bearing.
-    if (following) compass.adjustCalibration((-dYaw * 180) / Math.PI);
-    walk.lookBy(following ? 0 : dYaw, tiltFollowing ? 0 : dPitch);
+    if (!sensorMode) walk.lookBy(dYaw, dPitch);
+  };
+  const chooseMode = (mode: CameraMode) => {
+    if (mode !== compass.mode) compass.setMode(mode);
+    if (mode === 'manual') setCalibrating(false);
+  };
+  // A radio group moves with the arrow keys and has one tab stop.
+  const modeKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    if (step === undefined) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const mode: CameraMode = sensorMode ? 'manual' : 'sensors';
+    chooseMode(mode);
+    e.currentTarget.querySelector<HTMLButtonElement>(`[data-mode="${mode}"]`)?.focus();
   };
   const accuracy = accuracyLabel(compass.accuracy);
   const offset = `${compass.calibration > 0 ? '+' : ''}${compass.calibration}°`;
@@ -320,14 +335,16 @@ export function WalkHud({
       data-yaw={figure.yaw.toFixed(3)}
       data-pitch={figure.pitch.toFixed(3)}
       data-level={figure.levelId ?? ''}
+      data-mode={compass.mode}
     >
       {view === 'first' && (
         <div
           ref={lookLayer}
           className="walk-look"
-          aria-label={following ? 'Drag sideways to correct the compass' : 'Drag to look around'}
+          aria-label={sensorMode ? 'Turn the phone to look around' : 'Drag to look around'}
           onPointerDown={(e) => {
-            if (drag.current) return;
+            // Sensor mode: the layer only keeps touches away from the page and the scene.
+            if (drag.current || sensorMode) return;
             drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
             e.currentTarget.setPointerCapture?.(e.pointerId);
           }}
@@ -351,30 +368,38 @@ export function WalkHud({
         >
           {view === 'first' ? 'Overview' : 'First person'}
         </button>
-        {compass.supported && (
-          <>
-            <button
-              type="button"
-              aria-pressed={compass.heading !== 'off'}
-              title="Turn with the phone: its compass sets the heading"
-              onClick={compass.toggleHeading}
-            >
-              🧭 Heading {compass.heading !== 'off' ? 'on' : 'off'}
-            </button>
-            <button
-              type="button"
-              aria-pressed={compass.tilt !== 'off'}
-              title="Tilt with the phone: tilting it up and down tilts the view"
-              onClick={compass.toggleTilt}
-            >
-              ↕ Tilt {compass.tilt !== 'off' ? 'on' : 'off'}
-            </button>
-          </>
+        {sensors && compass.supported && (
+          <div
+            className="segmented walk-mode"
+            role="radiogroup"
+            aria-label="Camera mode"
+            onKeyDown={modeKey}
+          >
+            {(
+              [
+                ['sensors', '📱 Sensors', 'The phone turns and tilts the view; touch only walks'],
+                ['manual', '✋ Manual', 'Turn and tilt by hand; the motion sensors are off'],
+              ] as const
+            ).map(([mode, label, title]) => (
+              <button
+                key={mode}
+                type="button"
+                role="radio"
+                data-mode={mode}
+                aria-checked={compass.mode === mode}
+                tabIndex={compass.mode === mode ? 0 : -1}
+                title={title}
+                onClick={() => chooseMode(mode)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         )}
         <span className="walk-compass" role="status" aria-label="View tilt">
           {pitchDegrees > 0 ? '▲' : pitchDegrees < 0 ? '▼' : '◆'} {Math.abs(pitchDegrees)}°
         </span>
-        {compass.heading !== 'off' && (
+        {sensorMode && (
           <>
             <span
               className={accuracy.poor ? 'walk-compass poor' : 'walk-compass'}
@@ -410,9 +435,11 @@ export function WalkHud({
             {statusText}
           </p>
         )}
-        <span className="walk-keys">W A S D / arrows walk · Q E turn · drag to look</span>
+        {!sensorMode && (
+          <span className="walk-keys">W A S D / arrows walk · Q E turn · drag to look</span>
+        )}
       </div>
-      {compass.heading !== 'off' && calibrating && !file && (
+      {sensorMode && calibrating && !file && (
         <section className="walk-calibrate" aria-label="Calibrate the compass">
           {/* Always in reach, whatever the rest of the sheet scrolls to. */}
           <div className="walk-calibrate-head">
@@ -429,8 +456,7 @@ export function WalkHud({
             </button>
           </div>
           <p className="hint">
-            Point the phone at one of these and tap it, or drag the view sideways until it matches
-            what you see.
+            Point the phone at one of these and tap it: the view turns to match what you see.
           </p>
           <div className="capture-actions">
             {(calibrationTargets?.(figure) ?? []).slice(0, 6).map((target) => (
@@ -521,6 +547,32 @@ export function WalkHud({
           ))}
         </ul>
       )}
+      {map && !file && !listed && !calibrating && !viewfinder && (
+        <div className="walk-map-slot">
+          <Minimap
+            figure={figure}
+            levels={map.levels}
+            groundLevelId={map.groundLevelId}
+            northBearing={northBearing}
+            roomId={roomIdOf?.(figure)}
+            requests={open.flatMap((r): MapSpot[] =>
+              r.position
+                ? [
+                    {
+                      id: r.id,
+                      x: r.position.x,
+                      z: r.position.z,
+                      levelId: r.levelId ?? undefined,
+                      active: r.id === request?.id,
+                    },
+                  ]
+                : [],
+            )}
+            photos={map.photos}
+            onPlace={map.onPlace}
+          />
+        </div>
+      )}
       {request && !file && !listed && (
         <p className="walk-request" role="status" aria-label="Photo request here">
           📌 {request.reason}
@@ -558,7 +610,7 @@ export function WalkHud({
           where={where}
           api={api}
           onNudge={onNudge}
-          onLook={onLook}
+          onLook={walk.lookBy}
           getSensors={() => capture!.sensors}
           request={request}
           onSaved={() => {
@@ -577,24 +629,17 @@ export function WalkHud({
       ) : (
         <div className="walk-controls">
           <Joystick onChange={onPad} />
-          <div className="walk-tilt" role="group" aria-label="Look up and down">
-            <button
-              type="button"
-              aria-label="Look up"
-              disabled={tiltFollowing}
-              onClick={() => onLook(0, TILT_STEP)}
-            >
-              ▲
-            </button>
-            <button
-              type="button"
-              aria-label="Look down"
-              disabled={tiltFollowing}
-              onClick={() => onLook(0, -TILT_STEP)}
-            >
-              ▼
-            </button>
-          </div>
+          {/* Sensor mode: the phone tilts the view, so there is nothing to tilt by hand. */}
+          {!sensorMode && (
+            <div className="walk-tilt" role="group" aria-label="Look up and down">
+              <button type="button" aria-label="Look up" onClick={() => onLook(0, TILT_STEP)}>
+                ▲
+              </button>
+              <button type="button" aria-label="Look down" onClick={() => onLook(0, -TILT_STEP)}>
+                ▼
+              </button>
+            </div>
+          )}
           {inPage ? (
             <button
               type="button"
