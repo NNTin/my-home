@@ -1,6 +1,6 @@
 import type { HomeSummary } from '@my-home/shared';
 import type { HomeScene } from '../builder/buildHome';
-import { roofIndex, toggleId, type Visibility } from '../builder/visibility';
+import { roofIndex, showUpTo, toggleId, type Visibility } from '../builder/visibility';
 import { href, keptQuery, Link } from '../routing';
 
 interface Props {
@@ -88,7 +88,7 @@ export function ControlPanel({
             type="radio"
             name="cutaway"
             checked={visibility.maxLevelIndex >= roofIndex(scene)}
-            onChange={() => set({ maxLevelIndex: roofIndex(scene) })}
+            onChange={() => onChange(showUpTo(scene, visibility, roofIndex(scene)))}
           />{' '}
           Roof
         </label>
@@ -98,7 +98,7 @@ export function ControlPanel({
               type="radio"
               name="cutaway"
               checked={visibility.maxLevelIndex === l.index}
-              onChange={() => set({ maxLevelIndex: l.index })}
+              onChange={() => onChange(showUpTo(scene, visibility, l.index))}
             />{' '}
             {l.name}
           </label>

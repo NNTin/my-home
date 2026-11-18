@@ -8,10 +8,10 @@ description: >-
 
 # my-home environments
 
-| Environment | Base URL                         | Deployed from                                         | Data                                                                               |
-| ----------- | -------------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| staging     | `https://home-staging.nntin.xyz` | same-repo PR pushes, `v*` tags, dispatch; latest wins | homes synced from git (real + mock); placements, colours, notes and photos persist |
-| production  | `https://home.nntin.xyz`         | every push to `main`                                  | homes synced from git (`home.json`) on every deploy; change only when asked to     |
+| Environment | Base URL                         | Deployed from                                         | Data                                                                                          |
+| ----------- | -------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| staging     | `https://home-staging.nntin.xyz` | same-repo PR pushes, `v*` tags, dispatch; latest wins | home synced from git (`home.json`, "Our home"); placements, colours, notes and photos persist |
+| production  | `https://home.nntin.xyz`         | every push to `main`                                  | homes synced from git (`home.json`) on every deploy; change only when asked to                |
 
 Both are behind authentik SSO. Agents exchange the **nntin-bot** GitHub token (`GH_TOKEN`, `GITHUB_TOKEN` or
 `gh auth token`) at `POST <base>/agent-auth/token` for a per-host site token valid for 1 hour, sent as
@@ -33,7 +33,7 @@ The scripts below do all of this. Dependencies: `bash`, `curl`, `jq`, `gh`. Run 
 S=.claude/skills/my-home-environments/scripts
 
 $S/site-curl.sh staging /api/homes                       # GET, body on stdout
-$S/screenshot.sh staging --path '/?home=mock-home&focus=souterrain-kitchen-window&hints=off'   # frame a use
+$S/screenshot.sh staging --path '/?focus=souterrain-kitchen-window&hints=off'   # frame a use
 $S/env-status.sh all                                     # health, auth, deployed commit vs GitHub
 $S/screenshot.sh staging --out /tmp/staging.png          # render the 3D viewer in headless Chromium
 $S/screenshot.sh staging --click 'label:has-text("Souterrain")' --drag -300,0   # interact first
@@ -45,7 +45,7 @@ $S/visual-diff.sh compare /tmp/vd-main /tmp/vd-pr          # identical, or diffe
 $S/walk-smoke.sh staging                                 # phone-sized smoke test of walk mode
 $S/mobile-smoke.sh staging                               # phone layout: top bar, sheet, levels, furniture, walk
 $S/catalog-smoke.sh staging                              # /catalog and every piece page: 3D, cm, section, playground,
-                                                         # uses (a mock-home edit and its undo)
+                                                         # uses (the editor and history, Save and Place answered in the browser)
 $S/screenshot.sh staging --viewport 390x844 --touch --path '/catalog'   # the catalogue on a phone
 $S/compass-smoke.sh staging                              # Sensors / Manual camera modes, mocked sensor events
 $S/camera-smoke.sh staging                               # taking a photo with a fake camera, uploads checked
@@ -54,7 +54,7 @@ $S/raise-env-issue.sh --dry-run staging "health fails"   # what it would post; d
 $S/photos.sh staging list --room souterrain-kitchen      # the owner's photos with their poses
 $S/photo-requests.sh staging create --room souterrain-kitchen --reason "Which wall has the window?"
 $S/uses.sh staging whoami                                # the actor recorded for the agent token: agent
-$S/uses.sh staging list --home mock-home --status needs-attention   # where-used, with problems
+$S/uses.sh staging list --status needs-attention   # where-used, with problems
 ```
 
 - `site-curl.sh <env> <path> [curl args...]`: checks once that the GitHub token is nntin-bot's, caches the site
@@ -84,7 +84,7 @@ $S/uses.sh staging list --home mock-home --status needs-attention   # where-used
 - `visual-diff.sh <env> shoot --out DIR [--only VIEW]...`: pixel-exact visual regression of the 3D view,
   read-only. Shoots canvas-only screenshots of fixed views (desktop 1440x900: `default`, the cutaways
   `souterrain`, `ground-floor` and `first-floor`, `orbit-180` (`--drag 600,0`), `steep` (`--drag 0,250`, from above),
-  `mock-home`; phone 390x844: `phone`; all with `hints=off`) into `DIR/<view>.png` plus `DIR/manifest.json`
+  phone 390x844: `phone`; all with `hints=off`) into `DIR/<view>.png` plus `DIR/manifest.json`
   (deployed commit, view arguments, sha256). It reads the deployed commit before and after and fails if a
   deploy happened in between. `visual-diff.sh compare DIR_A DIR_B` prints a Markdown table per view:
   identical (same sha256) or the number of differing pixels and `DIR_B/diff-<view>.png` (differences red over
@@ -112,15 +112,13 @@ $S/uses.sh staging list --home mock-home --status needs-attention   # where-used
   40 % of the height upright and stays usable across. In the viewer, `/?focus=<a window of the home>` selects it
   (the chip shows its name and links its piece page) and an unknown id says "Not found in this home".
   The piece page's uses: where-used of `door.interior` in the first home (the count equals the catalogue's, every
-  use links to `?focus=`); **only where `mock-home` exists (staging; never on production, which syncs `home.json`
-  only, so it is skipped there and logged)**, on the desktop a **real, self-cleaning** edit of a `mock-home` casement window's frame
-  colour through `#use=` and the editor, its history row (actor agent), and one-click Undo, after which the colour
-  is back (should a step fail, it puts the overrides back by hand); on the phone that history read-only; and
-  **Place** on the bed's page (the mock home's, else the first home's) with its POST answered inside the browser (no placement is created), ending on
+  use links to `?focus=`); a casement window's editor opens through `#use=` (on the desktop its **Save** sends the
+  edit, which the browser answers with an error: nothing is stored) and its history opens read-only; and
+  **Place** on the bed's page with its POST answered inside the browser (no placement is created), ending on
   `/?home=<that home>&focus=…&panel=furniture`. Screenshots: `<out>` (desktop), `<out>-phone.png`, and
   `<out>-{window,window-section,door,bed,focus,uses,history,place}.png`,
-  `<out>-{bed,bed-across,focus,uses,history,place}-phone.png`. Every other write is refused inside the browser
-  ("nothing else was written"); the only real writes are that edit and its undo, on `mock-home`. `screenshot.sh --path '/catalog'`
+  `<out>-{bed,bed-across,focus,uses,history,place}-phone.png`. Every write is refused or answered inside the browser
+  ("nothing was written": no smoke writes on a deployed environment). `screenshot.sh --path '/catalog'`
   shoots the catalogue too: off `/` it waits for the page's heading instead of the canvas (the thumbnails
   render within the default `--wait`).
 - `compass-smoke.sh <env> [--out file.png]`: the camera modes of walk mode (Sensors / Manual) at 390x844 with
@@ -190,12 +188,12 @@ overrides are **not** reset by staging deploys.
 The viewer's furniture **is** the home's placement set (one per home, no named layouts; `docs/furniture.md`), and
 opening overrides render in the house: a change made here shows up in the viewer (when its tab becomes visible
 again). `/?home=<id>&focus=<useId>` frames and selects a use, e.g. to screenshot an override:
-`screenshot.sh staging --path '/?home=mock-home&focus=<useId>&hints=off'`.
+`screenshot.sh staging --path '/?focus=<useId>&hints=off'`.
 
 The **piece page** of a type (`/catalog/<kind>/<typeId>`, `docs/catalog.md`) lists every use in the environment
 with its overrides, history (with one-click Undo), photos, notes and photo requests, and edits each use's basic
 parameters. To point the owner at one use in an issue or PR, link its row:
-`https://home-staging.nntin.xyz/catalog/openings/window.casement?home=mock-home#use=souterrain-kitchen-window`
+`https://home-staging.nntin.xyz/catalog/openings/window.casement#use=souterrain-kitchen-window`
 (`#use=<useId>` opens and scrolls to it; `?home=` picks the home when ids repeat). The old layouts API
 (`/api/homes/<id>/layouts`) is deprecated and will be removed: don't use it.
 
@@ -218,14 +216,15 @@ Notes (free text, `docs/userdata.md` § Notes; ids with a `.` are types, others 
 
 - `uses.sh <env> notes <useId|typeId>`: oldest first. Type notes are environment-wide.
 - `uses.sh <env> note-add <useId|typeId> TEXT`, `note-edit <noteId> TEXT`, `note-delete <noteId>` (soft). Notes have
-  no history or undo. Agents may edit any note, but notes on the real home are the owner's: write test notes only
-  on `mock-home` and delete them again. `note-delete` deletes notes only, **never photos**.
+  no history or undo. Notes are the owner's: write one only when asked. `note-delete` deletes notes only, **never photos**.
 
 ### Test data
 
-Only on **`mock-home`**, and cleaned up in the same task: undo your changes to git uses (or `set --clear` them),
-and `remove` the placements you made (they leave the trash after 30 days). The browser smoke tests stay
-read-only, except `catalog-smoke.sh`'s mock-home edit, which it undoes itself; the CI docker job runs the same place → set → history → undo → remove round trip on a throwaway stack.
+There is no test home on a deployed environment: **never write test data there** (the mock home is gone). Every
+browser smoke is read-only: it refuses writes, or answers them inside the browser. `uses.sh` refuses its write
+commands without `--allow-write`, which is for a change the owner asked for in "Our home", never for a test. API
+write tests run in CI (the unit tests on PGlite or the CI Postgres, and the docker job's place → set → history →
+undo → remove round trip on a throwaway stack).
 
 ## Playwright
 
@@ -272,8 +271,8 @@ of creating a duplicate.
 - Never print, log, commit or paste the GitHub token or the site token, including in issues, PR comments and
   test output. Never send either to any host other than api.github.com and the environment itself.
 - Prefer staging for tests and experiments. Homes are reset on every deploy, so keep nothing there
-  you need later; photos, photo requests, placements, overrides and history are **not** reset, so clean up test
-  photos you uploaded and test uses you made (on `mock-home` only).
+  you need later; photos, photo requests, placements, overrides and history are **not** reset, so write only what
+  the task asks for: no test photos, uses or notes.
   Change production only when the task asks for it.
 - Never use the browser login flow on auth.nntin.xyz. The token exchange is the only supported way for agents.
 - Reuse the cached site token; exchanging per request hits the rate limit (30 per minute).

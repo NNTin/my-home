@@ -21,13 +21,16 @@
 #   note-delete <noteId>                deletes a note (soft); notes only, never photos
 #
 # --home ID (default: the first home; options may come before or after the command). --rotation-deg is rotationY in degrees (counter-clockwise from above).
-# Every write first reads the current version. Test data only on mock-home, cleaned up by undo or remove.
+# Reads (whoami, types, list, history, notes) are always fine. A write (place, set, move, rename, remove, restore, undo,
+# note-*) changes the owner's real data on a deployed environment, so it needs --allow-write: only for a change the
+# owner asked for, never for a test (there is no test home; API write tests run in CI against a throwaway database).
+# Every write first reads the current version.
 set -euo pipefail
 # shellcheck source=photos-lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/photos-lib.sh"
 
 usage() {
-  sed -n '2,25s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,28s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 
@@ -37,11 +40,12 @@ shift
 resolve_env "$env"
 require_tools curl jq
 
-home='' query='' at='' rotation='' name='' include='' type='' level=''
+allow_write='' home='' query='' at='' rotation='' name='' include='' type='' level=''
 args=() params=() clears=()
 add_query() { query+="${query:+&}$1=$(uri "$2")"; }
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --allow-write) allow_write=1 && shift ;;
     --home) home=${2:?} && shift 2 ;;
     --type) type=${2:?} && add_query typeId "$2" && shift 2 ;;
     --status) add_query status "${2:?}" && shift 2 ;;
@@ -57,7 +61,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 # The command is the first word that is not an option, so options may also come before it
-# (uses.sh staging --home mock-home notes <id>).
+# (uses.sh staging --home home notes <id>).
 [[ ${#args[@]} -gt 0 ]] || usage
 command=${args[0]}
 args=("${args[@]:1}")
@@ -98,6 +102,12 @@ subject_json() {
   if [[ $1 == *.* ]]; then kind='type'; fi
   jq -nc --arg kind "$kind" --arg id "$1" '{kind: $kind, id: $id}'
 }
+
+case "$command" in
+  place | set | move | rename | remove | restore | undo | note-add | note-edit | note-delete)
+    [[ -n $allow_write ]] || die "$command writes to the $env environment's real data: refused. Add --allow-write only for a change the owner asked for, never for a test"
+    ;;
+esac
 
 case "$command" in
   whoami | types | note-edit | note-delete) ;;

@@ -16,6 +16,7 @@ import { photoStore } from '../src/db/photos';
 import { homes } from '../src/db/schema';
 import { seed } from '../src/db/seed';
 import { clearMedia, createTestApp, testImage, uploadPayload } from './helpers';
+import { mockHomeFile } from './fixtures';
 
 // Mock home, level `souterrain`: the bedroom is x -5…-0.5, z 1…4; the kitchen x 1.5…5, z -4…0.5.
 const inBedroom = { x: -3, y: -1, z: 2.5 };
@@ -33,7 +34,7 @@ describe('photos API', () => {
     if (ctx) await ctx.database.db.delete(homes);
     else ctx = await createTestApp({ PHOTO_MAX_UPLOAD_BYTES: '200000' });
     await clearMedia(ctx);
-    await seed(ctx.database.db);
+    await seed(ctx.database.db, { file: mockHomeFile });
     image ??= await testImage();
   });
   afterAll(() => ctx.app.close());

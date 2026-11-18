@@ -1,6 +1,6 @@
 import { catalog } from '@my-home/shared';
 import type { Box, HomeScene, Vec3 } from '../builder/buildHome';
-import { roofIndex, type Visibility } from '../builder/visibility';
+import { roofIndex, showUpTo, type Visibility } from '../builder/visibility';
 import { href } from '../routing';
 
 /** A git use the viewer draws: a window or door (house or outbuilding), a roof window, a gate. */
@@ -140,9 +140,8 @@ export function focusVisibility(
   const level = scene.levels.find((l) => l.id === target.levelId);
   if (!level) return v;
   return {
-    ...v,
-    maxLevelIndex: target.kind === 'roof-window' ? roofIndex(scene) : level.index,
-    hiddenLevels: v.hiddenLevels.filter((id) => id !== level.id),
+    // Every level up to the target's is checked: the first view hides the upper ones.
+    ...showUpTo(scene, v, target.kind === 'roof-window' ? roofIndex(scene) : level.index),
     hiddenApartments: v.hiddenApartments.filter((id) => id !== target.apartmentId),
   };
 }

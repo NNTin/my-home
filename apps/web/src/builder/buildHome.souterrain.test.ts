@@ -19,7 +19,7 @@ import {
   type Box,
   type Vec2,
 } from './buildHome';
-import { defaultVisibility, roomLabels, visibleScene } from './visibility';
+import { wholeVisibility, roomLabels, visibleScene } from './visibility';
 
 const home = () => HomeModel.parse(structuredClone(realHomeJson));
 const dim = (value: number) => ({ value, source: 'mock' as const });
@@ -159,7 +159,7 @@ describe('the souterrain rooms', () => {
 
 describe('room names', () => {
   const scene = buildHome(home());
-  const base = defaultVisibility(scene);
+  const base = wholeVisibility(scene);
 
   it('are shown for the level being looked into, not under the roof', () => {
     expect(roomLabels(scene, base)).toEqual([]);
@@ -291,7 +291,7 @@ describe('stairs', () => {
   });
 
   it('are hidden with their level or apartment', () => {
-    const base = defaultVisibility(scene);
+    const base = wholeVisibility(scene);
     expect(visibleScene(scene, { ...base, maxLevelIndex: 0 }).stairs).toHaveLength(1);
     expect(visibleScene(scene, { ...base, hiddenLevels: ['souterrain'] }).stairs).toEqual([]);
     expect(visibleScene(scene, { ...base, hiddenApartments: ['apt-souterrain'] }).stairs).toEqual(
@@ -361,7 +361,7 @@ describe('fences', () => {
     expect(gate.id).toBe('gate-souterrain-patio-lane');
     expect(gate.panels[0]!.center[2]).toBeCloseTo(-6.65);
     expect(
-      visibleScene(scene, { ...defaultVisibility(scene), maxLevelIndex: 0 }).fences,
+      visibleScene(scene, { ...wholeVisibility(scene), maxLevelIndex: 0 }).fences,
     ).toHaveLength(7);
   });
 });

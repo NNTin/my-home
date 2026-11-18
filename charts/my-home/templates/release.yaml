@@ -36,9 +36,12 @@ spec:
           resources: {{ toYaml .Values.release.resources | nindent 12 }}
           env:
             {{- include "my-home.apiEnv" . | nindent 12 }}
-            {{- $defaultFiles := ternary (list "home.json" "mock-home.json") (list "home.json") .Values.database.resetOnDeploy }}
             - name: HOME_FILES
-              value: {{ join "," ((.Values.homes).files | default $defaultFiles) | quote }}
+              value: {{ join "," ((.Values.homes).files | default (list "home.json")) | quote }}
+            {{- with ((.Values.homes).purge | default (ternary (list "mock-home") (list) .Values.database.resetOnDeploy)) }}
+            - name: PURGE_HOMES
+              value: {{ join "," . | quote }}
+            {{- end }}
             {{- if .Values.database.resetOnDeploy }}
             - name: ALLOW_DATABASE_RESET
               value: "true"

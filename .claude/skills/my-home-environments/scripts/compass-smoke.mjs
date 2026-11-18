@@ -46,6 +46,8 @@ async function open(browser, initScript) {
   await context.route('**/*', (route) => {
     const request = route.request();
     if (new URL(request.url()).host !== host) return route.continue();
+    // Read-only: no write leaves the browser (nothing is stored on a deployed environment).
+    if (!['GET', 'HEAD'].includes(request.method())) return route.abort();
     return route.continue({ headers: { ...request.headers(), ...auth } });
   });
   // No camera in the page: the shutter falls back to the camera-app file input, which takes the

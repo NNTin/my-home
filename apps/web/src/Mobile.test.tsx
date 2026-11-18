@@ -86,7 +86,8 @@ describe('phone layout', () => {
     expect(topBar().getByRole('button', { name: 'Photos (0)' })).toBeInTheDocument();
     // The 3D view ends where the tab bar begins.
     expect(viewer().style.getPropertyValue('--stage-inset')).toBe('var(--sheet-collapsed)');
-    expect(levelsOf()).toEqual(new Set(['souterrain', 'ground-floor', 'first-floor']));
+    expect(levelsOf()).toEqual(new Set(['souterrain']));
+    expect(level('Souterrain')).toBeChecked();
   });
 
   it('opens one panel at a time and closes it with one tap', async () => {
@@ -116,8 +117,12 @@ describe('phone layout', () => {
 
   it('switches the cutaway level in the top bar', async () => {
     await open('portrait');
-    expect(level('Roof')).toBeChecked();
+    expect(level('Souterrain')).toBeChecked();
+    expect(level('Roof')).not.toBeChecked();
     expect(level('First floor (attic)')).toHaveTextContent('Attic');
+
+    fireEvent.click(level('Roof'));
+    expect(levelsOf()).toEqual(new Set(['souterrain', 'ground-floor', 'first-floor']));
 
     fireEvent.click(level('Souterrain'));
     expect(level('Souterrain')).toBeChecked();

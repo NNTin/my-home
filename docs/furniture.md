@@ -13,7 +13,7 @@ The named layouts of earlier versions are gone from the viewer
 ```json
 {
   "id": "souterrain-bed-1",
-  "homeId": "mock-home",
+  "homeId": "home",
   "typeId": "furniture.bed",
   "name": "Bedroom · Bed",
   "levelId": "souterrain",
@@ -91,7 +91,7 @@ Invalid or stale overrides are ignored by `effectiveParams`.
 
 ```sh
 S=.claude/skills/my-home-environments/scripts
-$S/screenshot.sh staging --path '/?home=mock-home&focus=souterrain-kitchen-window&hints=off'
+$S/screenshot.sh staging --path '/?focus=souterrain-kitchen-window&hints=off'
 ```
 
 ## Editing

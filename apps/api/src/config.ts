@@ -13,7 +13,7 @@ const EnvSchema = z.object({
   PGLITE_DIR: z.string().default('.data/pglite'),
   MIGRATE_ON_START: z.preprocess(emptyToUndefined, z.stringbool().default(true)),
   SEED_ON_START: z.preprocess(emptyToUndefined, z.stringbool().optional()),
-  /** Home file seeded on start and by `pnpm db:seed`; defaults to data/homes/home.json + mock-home.json. */
+  /** Home file seeded on start and by `pnpm db:seed`; defaults to data/homes/home.json. */
   SEED_FILE: z.preprocess(emptyToUndefined, z.string().optional()),
   /** Git commit of the release, reported by `GET /api/health/live`. */
   APP_COMMIT: z.preprocess(emptyToUndefined, z.string().optional()),
@@ -26,6 +26,11 @@ const EnvSchema = z.object({
    * Default: every data/homes/*.json, home.json first.
    */
   HOME_FILES: z.preprocess(emptyToUndefined, z.string().optional()),
+  /**
+   * Home ids `dist/release.js` removes after the sync, with their `userdata` (never photos):
+   * the clean-up of a home that left git, comma-separated. Never a synced home.
+   */
+  PURGE_HOMES: z.preprocess(emptyToUndefined, z.string().optional()),
   /** Largest accepted photo upload. Uploads are resized and re-encoded, so stored photos are smaller. */
   PHOTO_MAX_UPLOAD_BYTES: z.preprocess(
     emptyToUndefined,
@@ -63,6 +68,7 @@ export type Config = {
   allowDatabaseReset: boolean;
   resetPublic: boolean;
   homeFiles: string[] | undefined;
+  purgeHomes: string[];
   photoMaxUploadBytes: number;
   photoTrashRetentionDays: number;
   userdataTrashRetentionDays: number;
@@ -91,6 +97,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     homeFiles: e.HOME_FILES?.split(',')
       .map((file) => file.trim())
       .filter((file) => file !== ''),
+    purgeHomes: (e.PURGE_HOMES ?? '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter((id) => id !== ''),
     photoMaxUploadBytes: e.PHOTO_MAX_UPLOAD_BYTES,
     photoTrashRetentionDays: e.PHOTO_TRASH_RETENTION_DAYS,
     userdataTrashRetentionDays: e.USERDATA_TRASH_RETENTION_DAYS,

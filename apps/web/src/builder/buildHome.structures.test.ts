@@ -11,7 +11,7 @@ import {
   SURFACE_OFFSET,
   type Vec2,
 } from './buildHome';
-import { defaultVisibility, visibleScene } from './visibility';
+import { wholeVisibility, visibleScene } from './visibility';
 
 const home = () => HomeModel.parse(structuredClone(realHomeJson));
 const square: Vec2[] = [
@@ -140,8 +140,8 @@ describe('roof windows', () => {
 
   it('are hidden with the roof', () => {
     const scene = buildHome(home());
-    expect(visibleScene(scene, defaultVisibility(scene)).roofWindows).toHaveLength(1);
-    const attic = { ...defaultVisibility(scene), maxLevelIndex: 2 };
+    expect(visibleScene(scene, wholeVisibility(scene)).roofWindows).toHaveLength(1);
+    const attic = { ...wholeVisibility(scene), maxLevelIndex: 2 };
     expect(visibleScene(scene, attic).roofWindows).toEqual([]);
     expect(visibleScene(scene, attic).outbuildings).toHaveLength(4);
   });
