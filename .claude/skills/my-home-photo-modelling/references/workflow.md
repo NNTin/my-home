@@ -34,8 +34,9 @@
 - The overlay is good for gross errors (an opening missing, a wall in the wrong place, a door on the wrong side).
   It is not good for centimetres: the opacity is low-contrast, and the stored poses are hand-set (heading, pitch
   and the default `fovH` are often off by 10–20°; see [measuring.md](measuring.md#stored-poses)). If the overlay
-  is off everywhere by the same amount, suspect the pose, not the model. Agents cannot edit poses, so note it in
-  the report.
+  is off everywhere by the same amount, suspect the pose, not the model. Calibrate it with `measure.py`, store
+  the result with `pose.sh` (an agent edit with a reason, undoable) and shoot again; name the change in the
+  report.
 
 ## Photo requests
 

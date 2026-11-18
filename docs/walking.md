@@ -229,8 +229,9 @@ request"; saving with it ticked fulfils the request. See [Browsing photos](photo
 
 Before the upload the browser scales the photo to at most 2560 px and re-encodes it, which keeps uploads around
 1 MB and already drops the file's metadata; the api strips metadata again. A see-through PNG is put on white. If the browser cannot decode or encode the photo, the file itself is uploaded: its metadata then travels to the api (over HTTPS, behind the sign-on), which strips it before anything is stored. The photo's time is the file's own time, which the camera sets at the shot. The field of view comes from the
-35 mm focal length in the photo's EXIF data when present (the only value read from it), otherwise from a
-typical phone camera (26 mm).
+35 mm focal length in the photo's EXIF data when present (the only value read from it), otherwise from this
+phone's last photo taken here with a main-camera value (never a gallery pick) or a typical phone camera (26 mm), and from the picture's size as shown (upright or
+across; [photos.md § Field of view](photos.md#field-of-view)).
 
 ## Code
 

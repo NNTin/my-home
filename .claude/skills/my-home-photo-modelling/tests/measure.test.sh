@@ -33,6 +33,7 @@ truth='{"image": {"width": 1920, "height": 2560}, "camera": {"heading": 300, "pi
 jq -n --argjson t "$truth" '$t + {project: [
   ({x: 1, z: -7}, {x: 1, z: -9}, {x: 2, z: -7}, {x: 2, z: -9}) as $p | (0, 2.4) as $y | ($p + {y: $y, name: "n"}),
   ({x: 3, z: -9}, {x: 1, z: -9}, {x: 3, z: -8}, {x: 1, z: -8}) as $p | (0, 2.4) as $y | ($p + {y: $y, name: "w"}),
+  ({x: 1, z: -7}, {x: 2, z: -9}, {x: 3, z: -8}) as $p | (0, 2.4) as $y | ($p + {y: $y, name: "v"}),
   {name: "edge-bottom", x: 2, y: 0, z: -9}, {name: "edge-top", x: 2, y: 2.0, z: -9},
   {name: "floor", x: 2, y: 0, z: -8}, {name: "wall", x: 1, y: 1.2, z: -8.5}]}' >"$work/truth.json"
 measure "$work/truth.json" >"$work/projected.json"
@@ -72,6 +73,19 @@ out=$(measure "$work/vp.json")
 check "one VP + fovH recovers the heading" near "$(jq .camera.heading <<<"$out")" 300 0.05
 check "one VP + fovH recovers the pitch" near "$(jq .camera.pitch <<<"$out")" -10 0.05
 check "one VP: floor point" near "$(jq '.points[0].x' <<<"$out")" 2 0.005
+
+# One horizontal vanishing point plus the vertical one (door frames converging when the camera looks down).
+verticals=$(jq -c '[.projected[] | select(.name == "v") | .px] as $a | [[$a[0], $a[1]], [$a[2], $a[3]], [$a[4], $a[5]]]' "$work/projected.json")
+jq -n --argjson n "$(seg n)" --argjson v "$verticals" '{
+  image: {width: 1920, height: 2560}, height: 1.45, camera: {vp: {lines: $n, heading: 0}, vertical: {lines: $v}}}' >"$work/vertical.json"
+out=$(measure "$work/vertical.json")
+check "VP + vertical recover the focal length" near "$(jq .camera.f <<<"$out")" "$expected_f" 1
+check "VP + vertical recover the heading" near "$(jq .camera.heading <<<"$out")" 300 0.05
+check "VP + vertical recover the pitch" near "$(jq .camera.pitch <<<"$out")" -10 0.05
+check "VP + vertical: no roll" near "$(jq .camera.roll <<<"$out")" 0 0.05
+check "pose: yaw is minus the heading" near "$(jq .camera.pose.yaw <<<"$out")" 1.0472 0.001
+check "pose: pitch in radians" near "$(jq .camera.pose.pitch <<<"$out")" -0.1745 0.001
+check "pose: fovH" near "$(jq .camera.pose.fovH <<<"$out")" 1.30 0.001
 
 # Errors: parallel lines, planes behind the camera, missing height.
 jq -n '{image: {width: 100, height: 100}, height: 1, camera: {vp: {lines: [[[0, 0], [10, 0]], [[0, 5], [10, 5]]], heading: 0}, f: 50}}' >"$work/parallel.json"

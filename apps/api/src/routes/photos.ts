@@ -13,8 +13,11 @@ import {
   Photo,
   PhotoHomeParams,
   PhotoParams,
+  PhotoPoseChangeParams,
+  PhotoPoseHistoryResponse,
   PhotoRequest,
   TrashResponse,
+  UndoPhotoPoseResponse,
   UpdatePhotoBody,
 } from '@my-home/shared';
 import type { FastifyReply, FastifyRequest } from 'fastify';
@@ -174,8 +177,54 @@ export const photoRoutes =
         },
       },
       async (request, reply) =>
-        (await store.update(request.params.id, request.body)) ??
-        reply.code(404).send(notFound('Photo', request.params.id)),
+        (await store.update(
+          request.params.id,
+          request.body,
+          resolveActor(request.headers, config),
+        )) ?? reply.code(404).send(notFound('Photo', request.params.id)),
+    );
+
+    // Pose corrections (docs/photos.md § Correcting a pose): the history and its undo.
+    app.get(
+      '/photos/:id/pose-history',
+      {
+        schema: { params: PhotoParams, response: { 200: PhotoPoseHistoryResponse, 404: ApiError } },
+      },
+      async (request, reply) => {
+        const items = await store.poseHistory(request.params.id);
+        return items ? { items } : reply.code(404).send(notFound('Photo', request.params.id));
+      },
+    );
+
+    app.post(
+      '/photos/:id/pose-history/:changeId/undo',
+      {
+        schema: {
+          params: PhotoPoseChangeParams,
+          response: { 200: UndoPhotoPoseResponse, 404: ApiError, 409: ApiError },
+        },
+      },
+      async (request, reply) => {
+        const { id, changeId } = request.params;
+        const result = await store.undoPose(id, changeId, resolveActor(request.headers, config));
+        if (result.status === 'undone') return { change: result.change, photo: result.photo };
+        if (result.status === 'not-found') {
+          return reply
+            .code(404)
+            .send(error(404, 'Not Found', `Pose change "${changeId}" of photo "${id}" not found`));
+        }
+        return reply
+          .code(409)
+          .send(
+            error(
+              409,
+              'Conflict',
+              result.status === 'already-undone'
+                ? 'This change was undone already'
+                : 'The pose has changed since: undo the later change first',
+            ),
+          );
+      },
     );
 
     // Soft delete: the photo moves to the trash and can be restored until it is purged.

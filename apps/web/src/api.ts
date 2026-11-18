@@ -17,9 +17,11 @@ import {
   ListPhotoRequestsResponse,
   ListPhotosResponse,
   Photo,
+  PhotoPoseHistoryResponse,
   PhotoRequest,
   Placement,
   TrashResponse,
+  UndoPhotoPoseResponse,
   type CreateNoteBody,
   type CreatePhotoMeta,
   type PutOpeningOverrideBody,
@@ -258,6 +260,16 @@ export const photosApi = {
     }
   },
   update: (id: string, body: UpdatePhotoBody) => request('PATCH', photoUrl(id), Photo, { body }),
+  /** The photo's pose changes with their actor, newest first (docs/photos.md § Correcting a pose). */
+  poseHistory: (id: string, signal?: AbortSignal) =>
+    request('GET', `${photoUrl(id)}/pose-history`, PhotoPoseHistoryResponse, { signal }),
+  /** 409 when it was undone already or the pose changed since. */
+  undoPose: (id: string, changeId: string) =>
+    request(
+      'POST',
+      `${photoUrl(id)}/pose-history/${encodeURIComponent(changeId)}/undo`,
+      UndoPhotoPoseResponse,
+    ),
   remove: (id: string) => request('DELETE', photoUrl(id), Photo),
   restore: (id: string) => request('POST', `${photoUrl(id)}/restore`, Photo),
   purge: (id: string) => request('POST', `${photoUrl(id)}/purge`, undefined),

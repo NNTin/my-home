@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { jpegIsPortrait } from './prepareImage';
+import { jpegIsPortrait, type CameraHints } from './prepareImage';
 
 /** Whether this browser can show the camera inside the page (HTTPS and `getUserMedia`). */
 export function hasInPageCamera(): boolean {
@@ -62,6 +62,20 @@ export async function grabPhoto(video: HTMLVideoElement, track?: MediaStreamTrac
   return frameOf(video);
 }
 
+/**
+ * What the stream says about a shot, for its field of view: the picture's size as shown (the
+ * video's, which a full-resolution still has the same shape as) and the track's zoom.
+ */
+export function cameraHints(video: HTMLVideoElement, track?: MediaStreamTrack): CameraHints {
+  const settings = (track?.getSettings?.() ?? {}) as MediaTrackSettings & { zoom?: number };
+  return {
+    source: 'in-page',
+    width: video.videoWidth,
+    height: video.videoHeight,
+    ...(typeof settings.zoom === 'number' && settings.zoom > 0 && { zoom: settings.zoom }),
+  };
+}
+
 function cameraError(error: unknown): string {
   const name = (error as { name?: string } | null)?.name;
   if (name === 'NotAllowedError' || name === 'SecurityError') {
@@ -81,7 +95,7 @@ type State = 'starting' | 'live' | 'taking' | { error: string };
 interface Props {
   /** The shutter was pressed: the moment of the photo, before the picture is ready. */
   onShutter(): void;
-  onPhoto(photo: Blob): void;
+  onPhoto(photo: Blob, camera: CameraHints): void;
   onClose(): void;
   /**
    * Lets go of the camera while it is true, for the phone's camera app opened from here, and
@@ -140,7 +154,9 @@ export function CameraView({ onShutter, onPhoto, onClose, suspended = false, chi
     setState('taking');
     setMissed(undefined);
     try {
-      onPhoto(await grabPhoto(element, stream.current?.getVideoTracks()[0]));
+      const track = stream.current?.getVideoTracks()[0];
+      const photo = await grabPhoto(element, track);
+      onPhoto(photo, cameraHints(element, track));
     } catch (error) {
       setMissed(`The photo could not be taken (${(error as Error).message}). Try again.`);
       setState('live');

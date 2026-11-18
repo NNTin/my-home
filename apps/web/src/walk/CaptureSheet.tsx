@@ -2,7 +2,7 @@ import type { Photo, PhotoRequest, PhotoSensors } from '@my-home/shared';
 import { useEffect, useRef, useState } from 'react';
 import type { PhotosApi } from '../api';
 import { poseOf, type Figure } from './figure';
-import { prepareImage, takenAtOf, type PreparedImage } from './prepareImage';
+import { prepareImage, takenAtOf, type CameraHints, type PreparedImage } from './prepareImage';
 
 /** Suggested tags; the api stores any short lower-case label. */
 export const PHOTO_TAGS = ['wall', 'window', 'door', 'floor', 'ceiling', 'furniture', 'outside'];
@@ -20,6 +20,8 @@ type Phase =
 interface Props {
   /** The photo the camera just took. */
   file: Blob;
+  /** What the camera inside the page knew about it (size, zoom), for its field of view. */
+  camera?: CameraHints | undefined;
   homeId: string;
   /** Read at the moment of saving, so the figure can still be moved while the sheet is open. */
   getFigure(): Figure;
@@ -48,6 +50,7 @@ interface Props {
  */
 export function CaptureSheet({
   file,
+  camera,
   homeId,
   getFigure,
   where,
@@ -85,7 +88,7 @@ export function CaptureSheet({
   }, [file]);
   // Resizing starts right away, so it is usually done when Save is pressed.
   const prepared = useRef<Promise<PreparedImage> | undefined>(undefined);
-  prepared.current ??= prepareImage(file);
+  prepared.current ??= prepareImage(file, camera);
 
   const save = async () => {
     setPhase({ step: 'uploading', progress: 0 });

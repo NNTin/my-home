@@ -7,6 +7,8 @@ import { CaptureSheet } from './CaptureSheet';
 import type { Figure } from './figure';
 import { Joystick } from './Joystick';
 import { Minimap, type MapSpot } from './Minimap';
+import type { CameraHints } from './prepareImage';
+
 import type { MinimapLevel } from './minimap';
 import type { CalibrationTarget } from './calibration';
 import { accuracyLabel } from './orientation';
@@ -14,6 +16,9 @@ import { compassStatusText, storedCameraMode, useCompass, type CameraMode } from
 import { useFigure, type Walk } from './useWalk';
 import { saveWalkSession, type WalkSession } from './walkSession';
 import { yawTowards } from './world';
+
+/** A photo just taken with the phone's camera app: its focal length is this phone's. */
+const CAMERA_APP: CameraHints = { source: 'camera-app' };
 
 export type WalkView = 'first' | 'third';
 
@@ -120,7 +125,11 @@ export function WalkHud({
    * the tap and the save the owner reads the sheet and types, usually with the phone tipped
    * towards them: none of that may end up in the photo's pose.
    */
-  const [capture, setCapture] = useState<{ file: Blob; sensors: PhotoSensors }>();
+  const [capture, setCapture] = useState<{
+    file: Blob;
+    sensors: PhotoSensors;
+    camera?: CameraHints;
+  }>();
   const tap = useRef<{ figure: Figure; sensors: PhotoSensors } | undefined>(undefined);
   const file = capture?.file;
   const compass = useCompass({
@@ -216,11 +225,15 @@ export function WalkHud({
   const shutter = () => {
     tap.current = { figure: figureRef.current, sensors: compass.snapshot() };
   };
-  const took = (photo: Blob) => {
+  const took = (photo: Blob, camera?: CameraHints) => {
     const taken = tap.current;
     // Back to the pose of the tap, whatever the phone did in between.
     if (taken) walk.place(taken.figure);
-    setCapture({ file: photo, sensors: taken?.sensors ?? compass.snapshot() });
+    setCapture({
+      file: photo,
+      sensors: taken?.sensors ?? compass.snapshot(),
+      ...(camera && { camera }),
+    });
     tap.current = undefined;
     setViewfinder(false);
     setNotice(false);
@@ -244,8 +257,8 @@ export function WalkHud({
     setAway(true);
   };
   /** The picker closed, with a photo or without one (cancelled): the page is still here. */
-  const picked = (photo: Blob | undefined) => {
-    if (photo) took(photo);
+  const picked = (photo: Blob | undefined, camera?: CameraHints) => {
+    if (photo) took(photo, camera);
     tap.current = undefined;
     delete kept.current.pending;
     keep.current();
@@ -600,13 +613,20 @@ export function WalkHud({
           onClose={() => setViewfinder(false)}
           suspended={away}
         >
-          <FileInput camera label="Camera app" icon="📱" onOpen={leaving} onPick={picked} />
+          <FileInput
+            camera
+            label="Camera app"
+            icon="📱"
+            onOpen={leaving}
+            onPick={(photo) => picked(photo, CAMERA_APP)}
+          />
           <FileInput label="Gallery" icon="🖼" onOpen={leaving} onPick={picked} />
         </CameraView>
       )}
       {file ? (
         <CaptureSheet
           file={file}
+          camera={capture?.camera}
           homeId={homeId}
           getFigure={() => figureRef.current}
           where={where}
@@ -659,7 +679,7 @@ export function WalkHud({
               label="Take photo"
               icon="📷"
               onOpen={leaving}
-              onPick={picked}
+              onPick={(photo) => picked(photo, CAMERA_APP)}
             />
           )}
         </div>

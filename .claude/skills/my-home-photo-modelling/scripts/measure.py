@@ -12,6 +12,11 @@ SPEC (JSON):
   "camera": one of
      {"vps": [{"px": [u, v] | "lines": L, "heading": deg}, {...}]}   two orthogonal horizontal directions:
                                                                    focal length, heading, pitch and roll
+     {"vp": {"px" | "lines", "heading": deg}, "vertical": {"px" | "lines"}}
+                                                                   one horizontal direction plus the vertical
+                                                                   one (door frames, wall corners converging):
+                                                                   focal length, heading, pitch and roll, e.g.
+                                                                   down a corridor; needs a pitch of 5 deg or more
      {"vp": {"px" | "lines", "heading": deg}, "f": px | "fovH": rad} one direction plus a known focal length,
                                                                    zero roll (e.g. down a corridor)
      {"heading": deg, "pitch": deg, "fovH": rad}                   the stored pose as is (often wrong)
@@ -25,6 +30,9 @@ SPEC (JSON):
      PLANE: "floor" | {"y": height above the floor} | {"dx": m east of the camera} | {"dz": m south of it}
             | {"x": plan x} | {"z": plan z} (these two need "at")
   "project": [{"name": s, "x": X, "y": height, "z": Z}]             model points -> pixels (needs "at")
+
+OUTPUT "camera" has f, fovH, heading, pitch and roll, and "pose": {"yaw", "pitch", "fovH"} in radians in the
+photo pose convention (docs/photos.md), ready for set-pose.sh --from.
 """
 
 import json
@@ -81,6 +89,17 @@ class Camera:
 
     @classmethod
     def from_vps(cls, cx, cy, vp1, h1, vp2, h2, f=None):
+        return cls.from_directions(cx, cy, vp1, heading_vector(h1), vp2, lambda c2: heading_vector(h2), f)
+
+    @classmethod
+    def from_vertical(cls, cx, cy, vp, heading, vvp, f=None):
+        """A horizontal direction and the vertical: the vertical VP is below the centre when looking down."""
+        return cls.from_directions(
+            cx, cy, vp, heading_vector(heading), vvp, lambda c2: [0.0, 1.0 if c2[1] > 0 else -1.0, 0.0], f)
+
+    @classmethod
+    def from_directions(cls, cx, cy, vp1, w1, vp2, world2, f=None):
+        """Two orthogonal world directions w1 and world2(camera direction of vp2), seen at vp1 and vp2."""
         a = (vp1[0] - cx, vp1[1] - cy)
         b = (vp2[0] - cx, vp2[1] - cy)
         if f is None:
@@ -90,9 +109,9 @@ class Camera:
             f = math.sqrt(f2)
         c1 = norm([a[0], -a[1], -f])
         c2 = norm([b[0], -b[1], -f])
+        w2 = world2(c2)
         c2 = norm([c2[i] - dot(c1, c2) * c1[i] for i in range(3)])
         c3 = cross(c1, c2)
-        w1, w2 = heading_vector(h1), heading_vector(h2)
         w3 = cross(w1, w2)
         cam, world = [c1, c2, c3], [w1, w2, w3]
         rot = [[sum(world[k][i] * cam[k][j] for k in range(3)) for j in range(3)] for i in range(3)]
@@ -133,6 +152,7 @@ class Camera:
         fwd = norm(self.ray(self.cx, self.cy))
         right = [self.R[i][0] for i in range(3)]  # the camera's x axis in the world; roll > 0: right side up
         roll = math.degrees(math.asin(max(-1.0, min(1.0, right[1]))))
+        heading = math.atan2(fwd[0], -fwd[2])
         return {
             "f": round(self.f, 1),
             "fovHdeg": round(math.degrees(2 * math.atan(self.cx / self.f)), 2),
@@ -140,6 +160,11 @@ class Camera:
             "heading": round(math.degrees(math.atan2(fwd[0], -fwd[2])) % 360, 2),
             "pitch": round(math.degrees(math.asin(fwd[1])), 2),
             "roll": round(roll, 2),
+            "pose": {
+                "yaw": round(math.atan2(math.sin(-heading), math.cos(-heading)), 4),
+                "pitch": round(math.asin(fwd[1]), 4),
+                "fovH": round(2 * math.atan(self.cx / self.f), 4),
+            },
         }
 
 
@@ -175,6 +200,9 @@ def build_camera(spec):
     if "vps" in c:
         (a, b) = c["vps"]
         return Camera.from_vps(cx, cy, vp_pixel(a), a["heading"], vp_pixel(b), b["heading"], c.get("f"))
+    if "vp" in c and "vertical" in c:
+        f = c["f"] if "f" in c else (cx / math.tan(c["fovH"] / 2) if "fovH" in c else None)
+        return Camera.from_vertical(cx, cy, vp_pixel(c["vp"]), c["vp"]["heading"], vp_pixel(c["vertical"]), f)
     if "vp" in c:
         f = c["f"] if "f" in c else cx / math.tan(c["fovH"] / 2)
         return Camera.from_vp(cx, cy, vp_pixel(c["vp"]), c["vp"]["heading"], f)
@@ -195,7 +223,8 @@ def run(spec):
     cam = build_camera(spec)
     out = {"camera": cam.info()}
     if "vps" in spec["camera"] or "vp" in spec["camera"]:
-        vps = spec["camera"]["vps"] if "vps" in spec["camera"] else [spec["camera"]["vp"]]
+        c = spec["camera"]
+        vps = c["vps"] if "vps" in c else [c["vp"]] + ([c["vertical"]] if "vertical" in c else [])
         out["camera"]["vps"] = [[round(c, 1) for c in vp_pixel(v)] for v in vps]
     h = fit_height(cam, spec["fitHeight"]) if "fitHeight" in spec else spec.get("height")
     at = spec.get("at")

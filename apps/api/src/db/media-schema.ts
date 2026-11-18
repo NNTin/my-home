@@ -1,5 +1,7 @@
-import type { PhotoSensors } from '@my-home/shared';
+import type { PhotoPose, PhotoSensors } from '@my-home/shared';
+import { isNotNull } from 'drizzle-orm';
 import {
+  bigint,
   customType,
   doublePrecision,
   index,
@@ -9,6 +11,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
 /**
@@ -126,3 +129,28 @@ export const photoRequests = media.table(
   (t) => [index('photo_requests_home_idx').on(t.homeId, t.createdAt)],
 );
 export type PhotoRequestRow = typeof photoRequests.$inferSelect;
+
+/** Every change of a photo's pose, with its actor, so a correction can be told apart and undone. */
+export const photoPoseChanges = media.table(
+  'photo_pose_changes',
+  {
+    id: text('id').primaryKey(),
+    seq: bigint('seq', { mode: 'number' }).generatedAlwaysAsIdentity(),
+    photoId: text('photo_id')
+      .notNull()
+      .references(() => photos.id, { onDelete: 'cascade' }),
+    actor: text('actor').notNull(),
+    actorSource: text('actor_source').notNull(),
+    actorName: text('actor_name'),
+    at: timestamptz('at').notNull().defaultNow(),
+    before: jsonb('before').$type<PhotoPose>().notNull(),
+    after: jsonb('after').$type<PhotoPose>().notNull(),
+    reason: text('reason'),
+    undoesId: text('undoes_id'),
+  },
+  (t) => [
+    index('photo_pose_changes_photo_idx').on(t.photoId, t.seq.desc()),
+    uniqueIndex('photo_pose_changes_undoes_idx').on(t.undoesId).where(isNotNull(t.undoesId)),
+  ],
+);
+export type PhotoPoseChangeRow = typeof photoPoseChanges.$inferSelect;

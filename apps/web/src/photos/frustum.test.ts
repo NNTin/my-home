@@ -73,7 +73,10 @@ describe('field of view', () => {
 
   it('assumes a typical phone camera when the photo has no field of view', () => {
     const image = { contentType: 'image/webp', width: 1920, height: 2560, byteSize: 1 };
-    expect((fovHOf({ pose: pose(), image }) * 180) / Math.PI).toBeCloseTo(49.6, 0);
+    // 26 mm with the 36 mm side on the long edge: 55° across an upright 4:3 picture.
+    expect((fovHOf({ pose: pose(), image }) * 180) / Math.PI).toBeCloseTo(54.9, 0);
+    const across = { ...image, width: 2560, height: 1920 };
+    expect((fovHOf({ pose: pose(), image: across }) * 180) / Math.PI).toBeCloseTo(69.4, 0);
     expect(fovHOf({ pose: { ...pose(), fovH: 1 }, image })).toBe(1);
   });
 

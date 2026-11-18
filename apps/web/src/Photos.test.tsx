@@ -206,9 +206,9 @@ describe('photo gallery', () => {
       '/api/photos/kitchen/image',
     );
     expect(detail.getByText(/Souterrain/)).toBeInTheDocument();
-    // Yaw π/2 looks along -x: heading 270°. No field of view stored: a portrait phone photo.
+    // Yaw π/2 looks along -x: heading 270°. No field of view stored: an upright 4:3 phone photo.
     expect(detail.getByText(/x 3.00, z -2.00, eye height 0.40 m/)).toHaveTextContent(
-      'heading 270° · pitch -6° · view 50° (assumed)',
+      'heading 270° · pitch -6° · view 55° (assumed)',
     );
     expect(detail.getByText('Where is the radiator?')).toBeInTheDocument();
     expect(lastScene!.photoMarkers!.find((m) => m.selected)?.id).toBe('kitchen');
@@ -357,6 +357,82 @@ describe('photo gallery', () => {
       fireEvent.click(panel.getByRole('img', { name: /^Kitchen,/ }));
       expect(lastScene!.viewpoint).toBeUndefined();
       expect(document.querySelector('.photo-overlay')).toBeNull();
+    });
+  });
+
+  describe('correcting the pose', () => {
+    const deg = (d: number) => (d * Math.PI) / 180;
+
+    it('turns, tilts and widens the view live, then saves it into the history', async () => {
+      const { api, panel } = await openGallery();
+      fireEvent.click(panel.getByRole('img', { name: /^Hallway,/ }));
+      // Only while viewing from the photo's pose, where the model can be compared.
+      expect(panel.queryByRole('group', { name: 'Correct the pose' })).toBeNull();
+      fireEvent.click(panel.getByRole('button', { name: 'View from here' }));
+      fireEvent.click(panel.getByLabelText(/Lay the photo over/));
+      const editor = within(panel.getByRole('group', { name: 'Correct the pose' }));
+      expect(editor.getByRole('button', { name: 'Save pose' })).toBeDisabled();
+
+      // Heading 0 → 15° (clockwise: yaw −15°), pitch 0 → −2°, view 68.8° → 61°.
+      fireEvent.change(editor.getByLabelText('Heading in degrees'), { target: { value: '15' } });
+      fireEvent.click(editor.getByRole('button', { name: 'Pitch −1°' }));
+      fireEvent.click(editor.getByRole('button', { name: 'Pitch −1°' }));
+      fireEvent.change(editor.getByLabelText('Field of view in degrees'), {
+        target: { value: '61' },
+      });
+      const live = lastScene!.viewpoint!;
+      expect(live.pose.position).toEqual(hallway.pose.position);
+      expect(live.pose.yaw).toBeCloseTo(deg(-15));
+      expect(live.pose.pitch).toBeCloseTo(deg(-2));
+      expect(live.fovH).toBeCloseTo(deg(61));
+      // The overlay stays over the moving view; nothing is stored yet.
+      expect(document.querySelector('.photo-overlay')).not.toBeNull();
+      expect(api.photos.get('hallway')!.pose).toEqual(hallway.pose);
+
+      fireEvent.click(editor.getByRole('button', { name: 'Save pose' }));
+      await waitFor(() => expect(api.photos.get('hallway')!.pose.yaw).toBeCloseTo(deg(-15)));
+      const [patch] = api.calls('PATCH', /\/api\/photos\/hallway$/);
+      const body = JSON.parse(String(patch![1]!.body)) as Record<string, unknown>;
+      expect(Object.keys(body).sort()).toEqual(['pose', 'poseReason']);
+      expect(api.photos.get('hallway')!.pose.fovH).toBeCloseTo(deg(61));
+      // The sensor snapshot is never sent: it keeps what the phone measured.
+      expect(body).not.toHaveProperty('sensors');
+
+      const history = within(await panel.findByRole('list', { name: 'Pose history' }));
+      expect(
+        history.getByText(/you: 0° · pitch 0° · view 69° → 15° · pitch -2° · view 61°/),
+      ).toBeInTheDocument();
+      expect(editor.getByRole('button', { name: 'Save pose' })).toBeDisabled();
+    });
+
+    it('undoes a saved correction', async () => {
+      const { api, panel } = await openGallery();
+      fireEvent.click(panel.getByRole('img', { name: /^Hallway,/ }));
+      fireEvent.click(panel.getByRole('button', { name: 'View from here' }));
+      const editor = within(panel.getByRole('group', { name: 'Correct the pose' }));
+      fireEvent.click(editor.getByRole('button', { name: 'Heading +1°' }));
+      fireEvent.click(editor.getByRole('button', { name: 'Save pose' }));
+      const history = within(await panel.findByRole('list', { name: 'Pose history' }));
+      fireEvent.click(await history.findByRole('button', { name: 'Undo' }));
+      await waitFor(() => expect(api.photos.get('hallway')!.pose.yaw).toBeCloseTo(0));
+      await waitFor(() => expect(history.getAllByRole('listitem')).toHaveLength(2));
+      expect(history.getByText(/undid a change/)).toBeInTheDocument();
+    });
+
+    it('resets an unsaved change and leaves the view at the stored pose', async () => {
+      const { panel } = await openGallery();
+      fireEvent.click(panel.getByRole('img', { name: /^Hallway,/ }));
+      fireEvent.click(panel.getByRole('button', { name: 'View from here' }));
+      const editor = within(panel.getByRole('group', { name: 'Correct the pose' }));
+      fireEvent.click(editor.getByRole('button', { name: 'Heading +1°' }));
+      expect(lastScene!.viewpoint!.pose.yaw).toBeCloseTo(deg(-1));
+      fireEvent.click(editor.getByRole('button', { name: 'Reset' }));
+      expect(lastScene!.viewpoint).toEqual({ pose: hallway.pose, fovH: 1.2, aspect: 4 / 3 });
+      // Leaving the view drops a change that was not saved.
+      fireEvent.click(editor.getByRole('button', { name: 'Heading +1°' }));
+      fireEvent.click(panel.getByRole('button', { name: 'Leave this view' }));
+      fireEvent.click(panel.getByRole('button', { name: 'View from here' }));
+      expect(lastScene!.viewpoint).toEqual({ pose: hallway.pose, fovH: 1.2, aspect: 4 / 3 });
     });
   });
 

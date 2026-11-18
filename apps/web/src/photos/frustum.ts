@@ -13,7 +13,7 @@ export const aspectOf = (photo: Pick<Photo, 'image'>) => photo.image.width / pho
 /** The photo's horizontal field of view; a typical phone camera when it was not recorded. */
 export const fovHOf = (photo: Pick<Photo, 'pose' | 'image'>) =>
   photo.pose.fovH ??
-  horizontalFov(photo.image.height > photo.image.width, DEFAULT_FOCAL_LENGTH_35MM);
+  horizontalFov(photo.image.width, photo.image.height, DEFAULT_FOCAL_LENGTH_35MM);
 
 /** Vertical field of view for a horizontal one at an aspect ratio (width / height). */
 export const verticalFov = (fovH: number, aspect: number) =>

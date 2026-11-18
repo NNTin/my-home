@@ -78,11 +78,36 @@ describe('heading and pitch', () => {
     expect(poseOf(figure())).not.toHaveProperty('fovH');
   });
 
-  it('derives the horizontal field of view from the focal length', () => {
-    // 26 mm: about 69° in landscape and 50° in portrait.
-    expect((horizontalFov(false) * 180) / Math.PI).toBeCloseTo(69.4, 0);
-    expect((horizontalFov(true) * 180) / Math.PI).toBeCloseTo(49.6, 0);
-    expect(horizontalFov(false, 13)).toBeGreaterThan(horizontalFov(false, 26));
+  it('derives the horizontal field of view from the focal length and the picture size', () => {
+    // 26 mm on a 4:3 phone picture: about 69° across, 55° upright.
+    expect((horizontalFov(4000, 3000) * 180) / Math.PI).toBeCloseTo(69.4, 0);
+    expect((horizontalFov(3000, 4000) * 180) / Math.PI).toBeCloseTo(54.9, 0);
+    expect(horizontalFov(4000, 3000, 13)).toBeGreaterThan(horizontalFov(4000, 3000, 26));
+  });
+
+  it('puts the 36 mm side on the long edge, so a 4:3 portrait is wider than 3:2 film (#70)', () => {
+    // The owner's phone, 23 mm: calibrated from vanishing points at 1.318 across and
+    // 1.05 to 1.14 upright. The old code stored 0.962 upright (36 x 24 mm held upright).
+    expect(horizontalFov(2560, 1920, 23)).toBeCloseTo(1.3281, 4);
+    expect(horizontalFov(1920, 2560, 23)).toBeCloseTo(2 * Math.atan(13.5 / 23), 6);
+    expect(horizontalFov(1920, 2560, 23)).toBeCloseTo(1.0614, 3);
+    // 3:2 upright is the film frame itself, 16:9 upright the 4:3 sensor cut at the top and bottom.
+    expect(horizontalFov(2000, 3000, 23)).toBeCloseTo(2 * Math.atan(12 / 23), 6);
+    expect(horizontalFov(1080, 1920, 23)).toBeCloseTo(2 * Math.atan((18 * 9) / 16 / 23), 6);
+    expect(horizontalFov(1920, 1080, 23)).toBeCloseTo(horizontalFov(2560, 1920, 23), 6);
+  });
+
+  it('gives a 4:3 portrait about 1.06 rad for a camera calibrated at 1.318 across', () => {
+    const focal = 18 / Math.tan(1.318 / 2);
+    expect(horizontalFov(2560, 1920, focal)).toBeCloseTo(1.318, 6);
+    // 2 · atan(0.75 · tan(1.318 / 2)): the same camera held upright.
+    expect(horizontalFov(1920, 2560, focal)).toBeCloseTo(1.0525, 3);
+  });
+
+  it('narrows the field of view by the zoom', () => {
+    expect(Math.tan(horizontalFov(4000, 3000, 26, 2) / 2)).toBeCloseTo(
+      Math.tan(horizontalFov(4000, 3000, 26) / 2) / 2,
+    );
   });
 });
 

@@ -2,6 +2,8 @@ import {
   ApiError,
   ListPhotosResponse,
   Photo,
+  PhotoPoseHistoryResponse,
+  UndoPhotoPoseResponse,
   PhotoRequest,
   TrashResponse,
   type CreatePhotoMeta,
@@ -339,6 +341,128 @@ describe('photos API', () => {
       const photo = await upload();
       const res = await inject('PATCH', `/api/photos/${photo.id}`, { homeId: 'other' });
       expect(res.statusCode).toBe(400);
+    });
+  });
+
+  describe('pose corrections', () => {
+    const asAgent = (method: 'PATCH' | 'POST', url: string, payload?: object) =>
+      ctx.app.inject({
+        method,
+        url,
+        headers: { 'x-my-home-actor': 'agent' },
+        ...(payload && { payload }),
+      });
+    const history = async (id: string) => {
+      const res = await inject('GET', `/api/photos/${id}/pose-history`);
+      expect(res.statusCode, res.body).toBe(200);
+      return PhotoPoseHistoryResponse.parse(res.json()).items;
+    };
+    const sensors = { source: 'sensor' as const, yaw: 0.4, pitch: -0.1, trueBearing: 337 };
+
+    it('records each pose change with its actor and reason, and leaves the sensors alone', async () => {
+      const photo = await upload({ sensors });
+      expect(await history(photo.id)).toEqual([]);
+      const corrected = { ...photo.pose, yaw: 0.62, pitch: -0.2, fovH: 1.06 };
+      const res = await asAgent('PATCH', `/api/photos/${photo.id}`, {
+        pose: corrected,
+        poseReason: 'vanishing-point calibration',
+      });
+      expect(res.statusCode, res.body).toBe(200);
+      const updated = Photo.parse(res.json());
+      expect(updated.pose).toEqual(corrected);
+      expect(updated.sensors).toEqual(sensors);
+
+      const [change, ...rest] = await history(photo.id);
+      expect(rest).toEqual([]);
+      expect(change).toMatchObject({
+        photoId: photo.id,
+        actor: 'agent',
+        actorSource: 'declared',
+        actorName: null,
+        before: photo.pose,
+        after: corrected,
+        reason: 'vanishing-point calibration',
+        undoesId: null,
+        undoneById: null,
+        canUndo: true,
+      });
+      // The owner's change on top, without a reason.
+      await inject('PATCH', `/api/photos/${photo.id}`, { pose: { ...corrected, yaw: 0.7 } });
+      const [latest, first] = await history(photo.id);
+      expect(latest).toMatchObject({ actor: 'owner', reason: null, canUndo: true });
+      expect(first).toMatchObject({ id: change!.id, canUndo: false });
+    });
+
+    it('records nothing when the pose stays the same or is not sent', async () => {
+      const photo = await upload();
+      await inject('PATCH', `/api/photos/${photo.id}`, { pose: photo.pose, note: 'same pose' });
+      await inject('PATCH', `/api/photos/${photo.id}`, { tags: ['wall'] });
+      expect(await history(photo.id)).toEqual([]);
+    });
+
+    it('undoes a change as a new change, once, and only while nothing changed since', async () => {
+      const photo = await upload();
+      const a = { ...photo.pose, yaw: 1 };
+      const b = { ...photo.pose, yaw: 2, fovH: 1.06 };
+      await inject('PATCH', `/api/photos/${photo.id}`, { pose: a });
+      await asAgent('PATCH', `/api/photos/${photo.id}`, { pose: b });
+      const [second, first] = await history(photo.id);
+
+      // The first change is not the latest pose any more.
+      const blocked = await asAgent(
+        'POST',
+        `/api/photos/${photo.id}/pose-history/${first!.id}/undo`,
+      );
+      expect(blocked.statusCode).toBe(409);
+      expect(ApiError.parse(blocked.json()).message).toMatch(/changed since/);
+
+      const res = await asAgent('POST', `/api/photos/${photo.id}/pose-history/${second!.id}/undo`);
+      expect(res.statusCode, res.body).toBe(200);
+      const undone = UndoPhotoPoseResponse.parse(res.json());
+      expect(undone.photo.pose).toEqual(a);
+      expect(undone.change).toMatchObject({
+        undoesId: second!.id,
+        before: b,
+        after: a,
+        actor: 'agent',
+      });
+
+      const again = await asAgent(
+        'POST',
+        `/api/photos/${photo.id}/pose-history/${second!.id}/undo`,
+      );
+      expect(again.statusCode).toBe(409);
+      expect(ApiError.parse(again.json()).message).toMatch(/undone already/);
+
+      const [undo, secondNow, firstNow] = await history(photo.id);
+      expect(undo).toMatchObject({ id: undone.change.id, canUndo: true });
+      expect(secondNow).toMatchObject({ undoneById: undone.change.id, canUndo: false });
+      // Back at its pose, the first change can be undone now: to the pose of the upload.
+      expect(firstNow).toMatchObject({ canUndo: true });
+      const toStart = await inject(
+        'POST',
+        `/api/photos/${photo.id}/pose-history/${first!.id}/undo`,
+      );
+      expect(Photo.parse(toStart.json().photo).pose).toEqual(photo.pose);
+    });
+
+    it('answers 404 for an unknown photo or change', async () => {
+      const photo = await upload();
+      expect((await inject('GET', '/api/photos/nope/pose-history')).statusCode).toBe(404);
+      const unknown = '00000000-0000-4000-8000-000000000000';
+      const res = await inject('POST', `/api/photos/${photo.id}/pose-history/${unknown}/undo`);
+      expect(res.statusCode).toBe(404);
+      const bad = await inject('POST', `/api/photos/${photo.id}/pose-history/not-a-uuid/undo`);
+      expect(bad.statusCode).toBe(400);
+    });
+
+    it('keeps the history in the trash and drops it with the photo when purged', async () => {
+      const photo = await upload();
+      await inject('PATCH', `/api/photos/${photo.id}`, { pose: { ...photo.pose, yaw: 1 } });
+      await inject('DELETE', `/api/photos/${photo.id}`);
+      expect(await history(photo.id)).toHaveLength(1);
+      await inject('POST', `/api/photos/${photo.id}/purge`);
+      expect((await inject('GET', `/api/photos/${photo.id}/pose-history`)).statusCode).toBe(404);
     });
   });
 
