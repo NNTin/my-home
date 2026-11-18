@@ -145,6 +145,31 @@ function CountControl({ spec, value, onChange }: ControlProps<'count', number>) 
   );
 }
 
+/**
+ * The control of one basic parameter: a colour, a length in cm or a count. The playground and the
+ * per-use editor both use it.
+ */
+export function BasicControl({
+  spec,
+  value,
+  onChange,
+}: {
+  spec: ParamSpec;
+  value: string | number;
+  onChange(value: string | number): void;
+}) {
+  switch (spec.type) {
+    case 'color':
+      return <ColorControl spec={spec} value={String(value)} onChange={onChange} />;
+    case 'length':
+      return <LengthControl spec={spec} value={Number(value)} onChange={onChange} />;
+    case 'count':
+      return <CountControl spec={spec} value={Number(value)} onChange={onChange} />;
+    default:
+      return null;
+  }
+}
+
 /** A design value as text: lengths in cm, colours as their hex. */
 export function designText(spec: ParamSpec, value: string | number): string {
   if (spec.type === 'length' && typeof value === 'number') return formatCm(value);
@@ -180,40 +205,9 @@ export function Playground({
       <h2 id="playground-title">Playground</h2>
       <p className="piece-note">Try the basic parameters on the preview. Nothing here is saved.</p>
       {basic.length === 0 && <p>This type has no basic parameters.</p>}
-      {basic.map(([key, spec]) => {
-        const value = values[key]!;
-        switch (spec.type) {
-          case 'color':
-            return (
-              <ColorControl
-                key={key}
-                spec={spec}
-                value={String(value)}
-                onChange={(v) => set(key, v)}
-              />
-            );
-          case 'length':
-            return (
-              <LengthControl
-                key={key}
-                spec={spec}
-                value={Number(value)}
-                onChange={(v) => set(key, v)}
-              />
-            );
-          case 'count':
-            return (
-              <CountControl
-                key={key}
-                spec={spec}
-                value={Number(value)}
-                onChange={(v) => set(key, v)}
-              />
-            );
-          default:
-            return null;
-        }
-      })}
+      {basic.map(([key, spec]) => (
+        <BasicControl key={key} spec={spec} value={values[key]!} onChange={(v) => set(key, v)} />
+      ))}
       {issues.length > 0 && (
         <ul className="fit-issues" role="status" aria-label="Does not fit">
           {issues.map((issue) => (

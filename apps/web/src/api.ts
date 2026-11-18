@@ -3,8 +3,15 @@ import {
   CatalogUsageResponse,
   HomeModel,
   ListHomesResponse,
+  ListHistoryResponse,
+  ListNotesResponse,
   ListOpeningOverridesResponse,
   ListPlacementsResponse,
+  ListUsesResponse,
+  Note,
+  OpeningOverride,
+  UndoResponse,
+  WhoAmIResponse,
   EmptyTrashResponse,
   HomeSettings,
   ListPhotoRequestsResponse,
@@ -13,7 +20,10 @@ import {
   PhotoRequest,
   Placement,
   TrashResponse,
+  type CreateNoteBody,
   type CreatePhotoMeta,
+  type PutOpeningOverrideBody,
+  type Subject,
   type CreatePlacementBody,
   type PutHomeSettingsBody,
   type UpdatePhotoBody,
@@ -119,8 +129,61 @@ export const openingOverridesApi = {
     request('GET', `${homeUrl(homeId)}/opening-overrides`, ListOpeningOverridesResponse, {
       signal,
     }),
+  /** `version: 0` creates; 409 when stale, 422 (with `issues`) when it does not fit the hole. */
+  put: (homeId: string, useId: string, body: PutOpeningOverrideBody) =>
+    request(
+      'PUT',
+      `${homeUrl(homeId)}/opening-overrides/${encodeURIComponent(useId)}`,
+      OpeningOverride,
+      { body },
+    ),
 };
 export type OpeningOverridesApi = typeof openingOverridesApi;
+
+const oneUseUrl = (homeId: string, useId: string) =>
+  `${homeUrl(homeId)}/uses/${encodeURIComponent(useId)}`;
+
+/** Where-used, and the history of a use with its undo (docs/userdata.md). */
+export const usesApi = {
+  whoami: (signal?: AbortSignal) => request('GET', '/api/whoami', WhoAmIResponse, { signal }),
+  list: (homeId: string, typeId: string, signal?: AbortSignal) =>
+    request(
+      'GET',
+      `${homeUrl(homeId)}/uses?typeId=${encodeURIComponent(typeId)}`,
+      ListUsesResponse,
+      { signal },
+    ),
+  history: (homeId: string, useId: string, signal?: AbortSignal) =>
+    request('GET', `${oneUseUrl(homeId, useId)}/history`, ListHistoryResponse, { signal }),
+  /** 409 (body `UseConflict`) when a later change touched the same fields, or it was undone. */
+  undo: (homeId: string, useId: string, entryId: string) =>
+    request(
+      'POST',
+      `${oneUseUrl(homeId, useId)}/history/${encodeURIComponent(entryId)}/undo`,
+      UndoResponse,
+    ),
+};
+export type UsesApi = typeof usesApi;
+
+const subjectQuery = (subject: Subject) => encodeURIComponent(`${subject.kind}:${subject.id}`);
+
+/** Notes on a type (environment-wide) or on a use of a home; deleting is soft. */
+export const notesApi = {
+  list: (subject: Subject, homeId?: string, signal?: AbortSignal) =>
+    request(
+      'GET',
+      `/api/notes?subject=${subjectQuery(subject)}${
+        homeId === undefined ? '' : `&homeId=${encodeURIComponent(homeId)}`
+      }`,
+      ListNotesResponse,
+      { signal },
+    ),
+  create: (body: CreateNoteBody) => request('POST', '/api/notes', Note, { body }),
+  update: (id: string, body: string) =>
+    request('PATCH', `/api/notes/${encodeURIComponent(id)}`, Note, { body: { body } }),
+  remove: (id: string) => request('DELETE', `/api/notes/${encodeURIComponent(id)}`, undefined),
+};
+export type NotesApi = typeof notesApi;
 
 const photoUrl = (id: string) => `/api/photos/${encodeURIComponent(id)}`;
 

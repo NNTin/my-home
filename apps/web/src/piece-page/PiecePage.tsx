@@ -12,10 +12,17 @@ import { pieces } from '../catalog/registry';
 import { useLayoutMode } from '../overlay/useLayoutMode';
 import { href, keptQuery, Link, navigate, useDocumentTitle, useRestoredScroll } from '../routing';
 import { Inspector } from './Inspector';
+import { Notes } from './Notes';
+import { PhotoList } from './Photos';
+import { Place } from './Place';
 import { decodeOverrides, encodeOverrides } from './playground';
 import { DesignParams, Playground } from './Playground';
 import { floorOf, sectionLabels, sectionOf, wallStub } from './section';
 import { SectionView } from './SectionView';
+import { savableOverrides } from './UseEditor';
+import { Uses, type OpenUse } from './Uses';
+import { contextOfUse, hashedUseId, hashOfUse, photosOfType, rowId, type HomeData } from './uses';
+import { useWhereUsed, type WhereUsedState } from './useWhereUsed';
 import './piece.css';
 
 const KIND_NAMES = { openings: 'Windows & doors', furniture: 'Furniture' } as const;
@@ -51,12 +58,55 @@ function useSharedOverrides(type: CatalogType, overrides: ParamValues) {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const query = { ...keptQuery(), p: encodeOverrides(overrides) };
-      navigate(href({ page: 'piece', kind: type.kind, typeId: type.id }, query), {
-        replace: true,
-      });
+      // The `#use=` anchor stays.
+      const to = href({ page: 'piece', kind: type.kind, typeId: type.id }, query);
+      navigate(to + window.location.hash, { replace: true });
     }, ADDRESS_DELAY);
     return () => window.clearTimeout(timer);
   }, [type, overrides]);
+}
+
+/** The use a `#use=` anchor asks for; its home is found once the uses are loaded. */
+type RequestedUse = Omit<OpenUse, 'homeId'> & { homeId?: string };
+
+const requestedByHash = (): RequestedUse | undefined => {
+  const useId = hashedUseId(window.location.hash);
+  return useId === undefined ? undefined : { useId, panel: 'edit' };
+};
+
+/** The home of a requested use: the given one, else `?home=` if it has it, else the first. */
+function resolveOpen(
+  requested: RequestedUse | undefined,
+  state: WhereUsedState,
+): OpenUse | undefined {
+  if (!requested) return undefined;
+  if (requested.homeId !== undefined) return { ...requested, homeId: requested.homeId };
+  if (state.status !== 'ready') return undefined;
+  const having = state.homes.filter((h) => h.uses.some((u) => u.id === requested.useId));
+  const home = having.find((h) => h.home.id === keptQuery().home) ?? having[0];
+  return home && { ...requested, homeId: home.home.id };
+}
+
+/** Writes (or clears) the `#use=` anchor without a new history entry. */
+const writeHash = (useId: string | undefined) =>
+  navigate(`${window.location.pathname}${window.location.search}${useId ? hashOfUse(useId) : ''}`, {
+    replace: true,
+  });
+
+/** The type's photos (its own and its uses') and its notes, environment-wide. */
+function TypePhotosNotes({ type, homes }: { type: CatalogType; homes: HomeData[] | undefined }) {
+  return (
+    <section className="piece-section photos-notes" aria-labelledby="photos-notes-title">
+      <h2 id="photos-notes-title">Photos &amp; notes</h2>
+      <h3>Photos</h3>
+      {homes ? (
+        <PhotoList photos={photosOfType(type.id, homes)} label={`Photos of ${type.name}`} />
+      ) : (
+        <p>Loading the photos…</p>
+      )}
+      <Notes subject={{ kind: 'type', id: type.id }} />
+    </section>
+  );
 }
 
 /** Phones (a coarse pointer) get the capped pixel ratio of the viewer. */
@@ -64,7 +114,9 @@ const isTouch = () => window.matchMedia?.('(pointer: coarse)').matches ?? false;
 
 /**
  * `/catalog/<kind>/<typeId>`: one piece type in 3D (and, for openings, in section), its
- * dimensions in cm and a playground for its basic parameters. Read-only: nothing is saved.
+ * dimensions in cm and a playground for its basic parameters (nothing there is saved). Below:
+ * Place (furniture), where-used with each use's editor, history, photos and notes, and the type's
+ * own photos and notes. `#use=<useId>` opens a use.
  */
 export default function PiecePage({ typeId }: { typeId: TypeId }) {
   const type = catalog.get(typeId);
@@ -82,12 +134,57 @@ function Piece({ type, layout }: { type: CatalogType; layout: ReturnType<typeof 
   const resetRef = useRef<() => void>(undefined);
   useSharedOverrides(type, overrides);
   useRestoredScroll();
+  const { state, reload } = useWhereUsed(type);
+  const [requested, setRequested] = useState(requestedByHash);
+  /** The unsaved values of the open use's editor. */
+  const [draft, setDraft] = useState<ParamValues>();
+  const open = resolveOpen(requested, state);
+  const openUse = (next: OpenUse | undefined) => {
+    setRequested(next);
+    setDraft(undefined);
+    writeHash(next?.useId);
+  };
+
+  // A `#use=` anchor opens that use and scrolls to it: on the first load and when it changes.
+  const scrollTo = useRef(requested?.useId);
+  useEffect(() => {
+    const onHash = () => {
+      const next = requestedByHash();
+      if (next?.useId === undefined) return;
+      scrollTo.current = next.useId;
+      setRequested(next);
+      setDraft(undefined);
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+  useEffect(() => {
+    if (!open || scrollTo.current !== open.useId) return;
+    const row = document.getElementById(rowId(open.homeId, open.useId));
+    if (!row) return;
+    scrollTo.current = undefined;
+    row.scrollIntoView?.({ block: 'start' });
+  });
+
+  /** The open use, previewed with its real hole or size and the editor's values. */
+  const [openHome, openId] = [open?.homeId, open?.useId];
+  const shown = useMemo(() => {
+    if (openId === undefined || state.status !== 'ready') return undefined;
+    const data = state.homes.find((h) => h.home.id === openHome);
+    const use = data?.uses.find((u) => u.id === openId);
+    return data && use ? { data, use } : undefined;
+  }, [openHome, openId, state]);
 
   const opening = type.kind === 'openings';
   const stub = type.placement === 'wall' ? 'wall' : 'none';
   const scene = useMemo(() => {
-    const values = effectiveParams(type, overrides).values;
-    const ctx = previewContext(type, values);
+    const values = effectiveParams(
+      type,
+      shown ? (draft ?? savableOverrides(type, shown.use.overrides)) : overrides,
+    ).values;
+    const ctx = shown
+      ? contextOfUse(type, values, shown.data.model, shown.use.id)
+      : previewContext(type, values);
     const parts = piece.parts(values, ctx);
     const section = opening
       ? sectionOf(parts, ctx, { stub, own: piece.section?.(values, ctx) })
@@ -102,7 +199,7 @@ function Piece({ type, layout }: { type: CatalogType; layout: ReturnType<typeof 
       sectionLabels: opening ? sectionLabels(section, ctx, { stub }) : [],
       issues: opening ? openingFitIssues(type, values, ctx) : [],
     };
-  }, [type, piece, overrides, opening, stub]);
+  }, [type, piece, overrides, opening, stub, shown, draft]);
 
   // Wall openings stand on the floor under the sill, furniture and gates on the ground at 0.
   const ground = stub === 'wall' ? floorOf(scene.ctx) : type.placement === 'roof' ? undefined : 0;
@@ -137,6 +234,13 @@ function Piece({ type, layout }: { type: CatalogType; layout: ReturnType<typeof 
                   Section
                 </button>
               </div>
+            )}
+            {shown && (
+              <p className="piece-showing" role="status">
+                Showing <strong>{shown.use.name}</strong> ({shown.use.where})
+                {opening && shown.use.source === 'git' ? ' in its real opening' : ''}
+                {draft ? ', with unsaved changes' : ''}.
+              </p>
             )}
             <div className="piece-viewport">
               {view === 'section' ? (
@@ -191,6 +295,22 @@ function Piece({ type, layout }: { type: CatalogType; layout: ReturnType<typeof 
               onChange={setOverrides}
             />
             <DesignParams type={type} values={scene.values} />
+            {type.kind === 'furniture' && state.status === 'ready' && (
+              <Place type={type} homes={state.homes} params={overrides} defaultHomeId={home.home} />
+            )}
+            <Uses
+              type={type}
+              state={state}
+              reload={reload}
+              open={open}
+              onOpen={openUse}
+              draft={draft}
+              onDraft={setDraft}
+            />
+            <TypePhotosNotes
+              type={type}
+              homes={state.status === 'ready' ? state.homes : undefined}
+            />
           </div>
         </div>
       </main>
