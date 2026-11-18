@@ -16,6 +16,8 @@ export interface PieceContext {
   width: number;
   height: number;
   wallDepth: number;
+  /** Wall openings: the hole's bottom above the floor, where known (the piece page's preview). */
+  sill?: number;
 }
 
 export type PartRole = 'frame' | 'sash' | 'glass' | 'panel' | 'leaf' | 'post' | 'body' | 'detail';
@@ -51,6 +53,8 @@ export interface DimensionLine {
   /** Metres. */
   value: number;
   label: string;
+  /** What is measured ("Width", "Sill height"), for the piece page's list of dimensions. */
+  name?: string;
 }
 
 /** Furniture highlight: selected in the editor, or overlapping a wall or another item. */
@@ -59,12 +63,31 @@ export interface PartState {
   colliding: boolean;
 }
 
+/** What a section shows: the parts' roles, plus the wall around the hole and a sill. */
+export type SectionRole = PartRole | 'sill' | 'wall';
+
+/**
+ * One rectangle of a vertical cut through an opening's centre, perpendicular to the wall: `z` is
+ * the depth (the local z, across the wall) and `y` the height (local y), both [min, max] metres.
+ */
+export interface SectionShape {
+  role: SectionRole;
+  color: string;
+  z: [number, number];
+  y: [number, number];
+}
+
 export interface PieceModule {
   /** The shared catalogue type's id; equals the folder `<family>/<variant>` as `family.variant`. */
   id: TypeId;
   /** The solids of the piece for these (effective) values. Pure; never throws for valid values. */
   parts(values: ParamValues, ctx: PieceContext): Part[];
   dimensions(values: ParamValues, ctx: PieceContext): DimensionLine[];
+  /**
+   * Openings: the piece's own section (without the wall), instead of the generic cut of its parts
+   * (`sectionOf` in piece-page/section.ts).
+   */
+  section?(values: ParamValues, ctx: PieceContext): SectionShape[];
 }
 
 /** Identity helper that type-checks a module definition. */

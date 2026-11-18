@@ -1,5 +1,9 @@
-import { fittingCount, frameOf, frameParts, glassOf, holeDimensions } from '../../openings/frame';
-import { definePiece } from '../../types';
+import type { ParamValues } from '@my-home/shared';
+import { fittingCount, frameOf, frameParts, framedDimensions, glassOf } from '../../openings/frame';
+import { definePiece, type PieceContext } from '../../types';
+
+const leaves = (values: ParamValues, ctx: PieceContext) =>
+  fittingCount('door.french', 'leaves', values, ctx.width);
 
 /** A frame without a sill and a pane down to the floor; more leaves add mullions. */
 export default definePiece({
@@ -8,8 +12,9 @@ export default definePiece({
     frameParts(ctx, {
       ...frameOf(values),
       sill: false,
-      divisions: fittingCount('door.french', 'leaves', values, ctx.width),
+      divisions: leaves(values, ctx),
       fill: glassOf(values),
     }),
-  dimensions: (_values, ctx) => holeDimensions(ctx),
+  dimensions: (values, ctx) =>
+    framedDimensions(values, ctx, { count: leaves(values, ctx), each: 'Leaf' }),
 });

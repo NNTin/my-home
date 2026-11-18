@@ -44,7 +44,7 @@ $S/visual-diff.sh staging shoot --out /tmp/vd-main         # 8 fixed canvas view
 $S/visual-diff.sh compare /tmp/vd-main /tmp/vd-pr          # identical, or differing pixels + diff PNGs
 $S/walk-smoke.sh staging                                 # phone-sized smoke test of walk mode
 $S/mobile-smoke.sh staging                               # phone layout: top bar, sheet, levels, furniture, walk
-$S/catalog-smoke.sh staging                              # /catalog and piece pages: deep links, reload, back
+$S/catalog-smoke.sh staging                              # /catalog and every piece page: 3D, cm, section, playground
 $S/screenshot.sh staging --viewport 390x844 --touch --path '/catalog'   # the catalogue on a phone
 $S/compass-smoke.sh staging                              # Sensors / Manual camera modes, mocked sensor events
 $S/camera-smoke.sh staging                               # taking a photo with a fake camera, uploads checked
@@ -104,8 +104,11 @@ $S/uses.sh staging list --home mock-home --status needs-attention   # where-used
   opens its piece page, and the back button returns to `/catalog`, then to `/`. A deep link to
   `/catalog/furniture/furniture.bed` loads in a fresh browser and survives a reload. It also checks: no console
   or page errors, every control and link has a name, and on the phone one column, touch targets of at least
-  44 px, a sticky header, and no sideways scrolling upright or across (844x390). Screenshots: `<out>` (desktop) and
-  `<out>-phone.png`. Read-only: every write is refused inside the browser (the default layout the viewer creates for a home without
+  44 px, a sticky header, and no sideways scrolling upright or across (844x390). Every type's piece page draws in
+  3D with dimension labels in cm, openings have a section (frame and glass rectangles where glazed), the
+  playground changes the bed's colour and width live (and refuses 500 cm), and on the phone the inspector takes
+  40 % of the height upright and stays usable across. Screenshots: `<out>` (desktop), `<out>-phone.png`, and
+  `<out>-{window,window-section,door,bed}.png`, `<out>-bed{,-across}-phone.png`. Read-only: every write is refused inside the browser (the default layout the viewer creates for a home without
   one is answered there, never stored). `screenshot.sh --path '/catalog'`
   shoots the catalogue too: off `/` it waits for the page's heading instead of the canvas (the thumbnails
   render within the default `--wait`).

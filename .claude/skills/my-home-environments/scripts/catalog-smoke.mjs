@@ -2,7 +2,8 @@
 //   node catalog-smoke.mjs <out.png> [home-id]   (SITE_BASE, SITE_TOKEN from with-site-token.sh)
 // Smoke test of the catalogue pages on a desktop screen (1440x900) and a phone (390x844, touch):
 // the entry from the viewer, both kinds, search, thumbnails, use counts, deep links, reload and the
-// back button. Read-only: every write is refused inside the browser (the viewer's default layout,
+// back button; every type's piece page (3D, dimensions in cm, the section of openings) and the
+// playground. Read-only: every write is refused inside the browser (the viewer's default layout,
 // for a home without one, is answered there and never stored). Playwright is loaded from
 // MY_HOME_PLAYWRIGHT_DIR.
 /* global document, window, caches */
@@ -352,9 +353,186 @@ async function smoke(out, homeId) {
         deep.errors.slice(0, 5).map(redact).join(' | '),
       );
       await deep.context.close();
+
+      // 6. Every type's piece page: the 3D inspector, dimensions in cm, the section of openings,
+      // and the playground (which never writes: see "nothing was written").
+      const pages = await open();
+      const p = pages.page;
+      await p.goto(at('/catalog'), { waitUntil: 'networkidle', timeout: 60_000 });
+      onHost(p);
+      await p.locator('a[data-type-id]').first().waitFor({ timeout: 30_000 });
+      const types = await p
+        .locator('a[data-type-id]')
+        .evaluateAll((links) =>
+          links.map((a) => ({ id: a.dataset.typeId, href: new URL(a.href).pathname })),
+        );
+      const cm = /^\d+\.\d cm$/;
+      const shot = (name) =>
+        out.replace(/\.png$/, `-${name}${device.hasTouch ? '-phone' : ''}.png`);
+      for (const { id, href } of types) {
+        await p.goto(at(href), { waitUntil: 'networkidle', timeout: 60_000 });
+        await p.locator('h1').waitFor({ timeout: 30_000 });
+        const canvas = await p
+          .locator('.piece-viewport canvas')
+          .waitFor({ timeout: 30_000 })
+          .then(() => true)
+          .catch(() => false);
+        const labels = await p
+          .locator('.dimension-label')
+          .first()
+          .waitFor({ timeout: 15_000 })
+          .then(() => p.locator('.dimension-label').allTextContents())
+          .catch(() => []);
+        const listed = await p.locator('.piece-dimensions dd').allTextContents();
+        check(
+          `${label}: ${id} draws in 3D with dimensions in cm`,
+          canvas &&
+            labels.length > 0 &&
+            labels.every((t) => cm.test(t.trim())) &&
+            listed.length >= labels.length &&
+            listed.every((t) => cm.test(t.trim())),
+          `${canvas ? 'canvas' : 'no canvas'}; ${labels.join(', ')}`,
+        );
+        if (id.startsWith('window.') || id.startsWith('door.') || id.startsWith('gate.')) {
+          if (!device.hasTouch && id === 'window.casement')
+            await p.screenshot({ path: shot('window') });
+          await press(p.getByRole('button', { name: 'Section', exact: true }));
+          const svg = p.locator('svg.section');
+          await svg.waitFor({ timeout: 10_000 }).catch(() => {});
+          const roles = await svg
+            .locator('rect[data-role]')
+            .evaluateAll((rects) => rects.map((r) => r.dataset.role));
+          const glazed = /^(window\.(casement|tilt-turn)|door\.french)$/.test(id);
+          const wall = id.startsWith('window.') && id !== 'window.roof';
+          const ok = glazed
+            ? roles.includes('frame') && roles.includes('glass')
+            : id.startsWith('door.')
+              ? roles.includes('frame')
+              : roles.length > 0;
+          const sectionLabels = await p.locator('.section-labels dd').allTextContents();
+          check(
+            `${label}: ${id} has its section`,
+            ok &&
+              (!wall || roles.includes('wall')) &&
+              sectionLabels.every((t) => cm.test(t.trim())),
+            `${[...new Set(roles)].join(', ')}; ${sectionLabels.join(', ')}`,
+          );
+          if (!device.hasTouch && id === 'window.casement')
+            await p.screenshot({ path: shot('window-section') });
+          if (!device.hasTouch && id === 'door.french') {
+            await press(p.getByRole('button', { name: '3D', exact: true }));
+            await p
+              .locator('.dimension-label')
+              .first()
+              .waitFor({ timeout: 15_000 })
+              .catch(() => {});
+            await p.waitForTimeout(500);
+            await p.screenshot({ path: shot('door') });
+          }
+        }
+      }
+
+      // The playground: a colour and a size change the preview live, and nothing is sent.
+      await p.goto(at('/catalog/furniture/furniture.bed'), {
+        waitUntil: 'networkidle',
+        timeout: 60_000,
+      });
+      await p.locator('.piece-viewport canvas').waitFor({ timeout: 30_000 });
+      const hex = p.getByRole('textbox', { name: 'Colour, hex' });
+      await hex.fill('#336699');
+      await hex.blur();
+      const width = p.getByRole('textbox', { name: 'Width', exact: true });
+      await width.fill('180');
+      await width.blur();
+      await p.waitForTimeout(800);
+      const shown = await p.locator('.piece-dimensions dd').first().textContent();
+      const labelled = await p.locator('.dimension-label').allTextContents();
+      check(
+        `${label}: the playground changes the bed live`,
+        shown === '180.0 cm' &&
+          labelled.includes('180.0 cm') &&
+          (await hex.inputValue()) === '#336699',
+        `${shown}; ${labelled.join(', ')}`,
+      );
+      check(
+        `${label}: the playground state is in the address`,
+        new URL(p.url()).searchParams.has('p'),
+        p.url(),
+      );
+      await width.fill('500');
+      check(
+        `${label}: a size beyond the limit is not applied`,
+        (await p.getByRole('alert').textContent()) === 'At most 220.0 cm' &&
+          (await p.locator('.piece-dimensions dd').first().textContent()) === '180.0 cm',
+      );
+      await width.blur();
+      if (device.hasTouch) {
+        const wide = await p.evaluate(() => document.scrollingElement.scrollWidth);
+        check(
+          `${label}: the piece page does not scroll sideways`,
+          wide <= viewport.width,
+          `${wide} px`,
+        );
+        const small = await p
+          .locator(
+            '.piece-page button, .playground-field, .playground-color, .playground-slider, .piece-toggle, .page-back',
+          )
+          .evaluateAll(
+            (elements, min) =>
+              elements
+                .filter((e) => e.getClientRects().length > 0)
+                .map((e) => ({
+                  name: e.getAttribute('aria-label') ?? e.textContent,
+                  box: e.getBoundingClientRect(),
+                }))
+                .filter((e) => e.box.height < min)
+                .map((e) => `${e.name.trim()} ${Math.round(e.box.height)} px`),
+            TOUCH,
+          );
+        check(
+          `${label}: piece page controls are at least ${TOUCH} px`,
+          small.length === 0,
+          small.join(', '),
+        );
+        const stage = await p.locator('.piece-viewport').boundingBox();
+        check(
+          `${label}: the inspector takes about 40 % of the height upright`,
+          stage !== null && Math.abs(stage.height / viewport.height - 0.4) < 0.05,
+          stage ? `${Math.round(stage.height)} px` : 'not shown',
+        );
+        await p.evaluate(() => window.scrollTo(0, 0));
+        await p.waitForTimeout(300);
+        await p.screenshot({ path: shot('bed') });
+        await p.setViewportSize(across);
+        await p.waitForTimeout(800);
+        const acrossStage = await p.locator('.piece-viewport').boundingBox();
+        const acrossWide = await p.evaluate(() => document.scrollingElement.scrollWidth);
+        check(
+          `${label}: the inspector is usable across (${across.width}x${across.height})`,
+          acrossStage !== null &&
+            acrossStage.height >= 150 &&
+            acrossStage.width >= 300 &&
+            acrossWide <= across.width,
+          acrossStage
+            ? `${Math.round(acrossStage.width)}x${Math.round(acrossStage.height)}, ${acrossWide} px wide`
+            : 'not shown',
+        );
+        await p.screenshot({ path: shot('bed-across') });
+        await p.setViewportSize(viewport);
+      } else {
+        await p.screenshot({ path: shot('bed') });
+      }
+      check(
+        `${label}: no console or page errors on the piece pages`,
+        pages.errors.length === 0,
+        pages.errors.slice(0, 5).map(redact).join(' | '),
+      );
+      await pages.context.close();
     }
     check('nothing was written', blocked.length === 0, blocked.join(', '));
-    console.log(`screenshots ${out} ${out.replace(/\.png$/, '-phone.png')}`);
+    console.log(
+      `screenshots ${out} ${out.replace(/\.png$/, '-phone.png')} and ${out.replace(/\.png$/, '-*.png')}`,
+    );
   } finally {
     await browser.close();
   }

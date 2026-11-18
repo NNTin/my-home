@@ -1,8 +1,15 @@
+import { Blob as NodeBlob } from 'node:buffer';
 import { catalog, defaultParams } from '@my-home/shared';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { box } from '../catalog/parts';
 import { previewParts } from './preview';
-import { createThumbnailer, hashParts, memoryStore, thumbnailKey } from './thumbnails';
+import {
+  cacheStorageStore,
+  createThumbnailer,
+  hashParts,
+  memoryStore,
+  thumbnailKey,
+} from './thumbnails';
 
 vi.mock('./renderThumbnail', () => ({ renderThumbnail: vi.fn(), THUMBNAIL_SIZE: 256 }));
 
@@ -72,5 +79,42 @@ describe('createThumbnailer', () => {
     const thumbs = createThumbnailer({ store: memoryStore(), render, toUrl: () => 'blob:ok' });
     await expect(thumbs.get('a.x', parts)).rejects.toThrow('no WebGL');
     await expect(thumbs.get('b.x', other)).resolves.toBe('blob:ok');
+  });
+});
+
+describe('cacheStorageStore', () => {
+  /** Enough of the Cache Storage API: one cache, keyed by URL. */
+  function stubCaches() {
+    const entries = new Map<string, Response>();
+    const cache = {
+      match: (url: string) => Promise.resolve(entries.get(url)?.clone()),
+      put: (url: string, response: Response) => Promise.resolve(void entries.set(url, response)),
+      keys: () => Promise.resolve([...entries.keys()].map((url) => new Request(url))),
+      delete: (request: Request) => Promise.resolve(entries.delete(request.url)),
+    };
+    vi.stubGlobal('caches', { open: () => Promise.resolve(cache) });
+    return entries;
+  }
+  const names = (entries: Map<string, Response>) =>
+    [...entries.keys()].map((url) => decodeURIComponent(new URL(url).pathname));
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('keeps one thumbnail per type, and prunes the types no longer in the catalogue', async () => {
+    const entries = stubCaches();
+    const store = cacheStorageStore();
+    // jsdom's Blob is not one Node's Response takes.
+    const blob = new NodeBlob(['png'], { type: 'image/png' }) as unknown as Blob;
+    await store.put('thumb:furniture.bed:00000001', blob);
+    await store.put('thumb:furniture.bed:00000002', blob);
+    await store.put('thumb:furniture.throne:00000003', blob);
+    await store.put('thumb:window.casement:00000004', blob);
+    entries.set(new URL('/__thumbnails/stray', window.location.origin).href, new Response('x'));
+    expect(names(entries)).toHaveLength(4);
+    await store.prune!(new Set(catalog.types.map((t) => t.id)));
+    expect(names(entries)).toEqual([
+      '/__thumbnails/thumb:furniture.bed:00000002',
+      '/__thumbnails/thumb:window.casement:00000004',
+    ]);
+    expect((await store.get('thumb:furniture.bed:00000002'))?.size).toBe(3);
   });
 });

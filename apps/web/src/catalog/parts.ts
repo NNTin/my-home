@@ -50,11 +50,12 @@ export function colorParam(values: ParamValues, key: string): string {
   return value;
 }
 
-export const dimension = (from: Vec3, to: Vec3, value: number): DimensionLine => ({
+export const dimension = (from: Vec3, to: Vec3, value: number, name?: string): DimensionLine => ({
   from,
   to,
   value,
   label: formatCm(value),
+  ...(name && { name }),
 });
 
 /** Mixes a `#rrggbb` colour towards black (`amount` < 0) or white (`amount` > 0). */

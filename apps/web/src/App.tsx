@@ -7,7 +7,7 @@ import { saveWalkSession } from './walk/walkSession';
 
 // The catalogue pages are chunks of their own: the viewer's first load does not grow with them.
 const CatalogPage = lazy(() => import('./catalog-page/CatalogPage'));
-const PiecePage = lazy(() => import('./catalog-page/PiecePage'));
+const PiecePage = lazy(() => import('./piece-page/PiecePage'));
 
 type State =
   | { status: 'loading' }

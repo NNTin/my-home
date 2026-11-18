@@ -1,6 +1,6 @@
 import { colorParam, cylinder, shade } from '../../parts';
 import { definePiece } from '../../types';
-import { furnitureDimensions, sizeOf } from '../size';
+import { roundDimensions, sizeOf } from '../size';
 
 /** A round (or oval) top on a single leg and foot. */
 export default definePiece({
@@ -15,5 +15,5 @@ export default definePiece({
       cylinder([0, 0.015, 0], 0.5, 0.03, shade(color, -0.3), 'body'),
     ];
   },
-  dimensions: furnitureDimensions,
+  dimensions: roundDimensions,
 });
