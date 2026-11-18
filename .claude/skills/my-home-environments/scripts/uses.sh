@@ -90,7 +90,7 @@ placement() {
 # subject_json <useId|typeId>: the note subject; type ids have a dot, use ids never do.
 subject_json() {
   local kind=use
-  [[ $1 == *.* ]] && kind=type
+  if [[ $1 == *.* ]]; then kind='type'; fi
   jq -nc --arg kind "$kind" --arg id "$1" '{kind: $kind, id: $id}'
 }
 
