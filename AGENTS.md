@@ -40,6 +40,7 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
   `apps/api/userdata-migrations/`) are expand-only (add tables, columns, indexes; never drop, rename or tighten).
 - Agents never delete or purge photos or photo requests, and never commit photos. Unsure about a wall, room, opening
   or furniture? Look at the photos, then ask for one (`photo-requests.sh`) instead of guessing.
+- Refining the model from photos (measuring, view from here, German windows): the `my-home-photo-modelling` skill.
 
 ## House model
 
