@@ -34,9 +34,12 @@ python3 -I $P/measure.py spec.json                  # calibrate the camera, cast
    wrong place). The stored poses are hand-set and often off, so a bad overlay is not proof that the model is wrong.
 4. **Measure:** read pixels on the grid, calibrate with `measure.py`, and fix the scale with a known size. Then
    cross-check every value from a second photo or a second reference ([measuring.md](references/measuring.md)).
+   Anchor positions on fixed features, never on the pose's position (an answer is stored at the request's spot).
 5. **Ask** when a value stays above ±0.2 m, two photos disagree, or something is ambiguous (a door hidden
-   behind furniture, a window type): use `photo-requests.sh create` with a target pose, a reason that says exactly
-   what to show, and a subject ([workflow.md](references/workflow.md#photo-requests)).
+   behind furniture, a window type). Use `photo-requests.sh create` with a target pose, a reason that says exactly
+   what to show (a folding rule in the picture, the phone tilted up for ceilings), and a subject
+   ([workflow.md](references/workflow.md#photo-requests)). When the answers arrive, fetch them with
+   `-- --since <time>` and read their notes.
 6. **Record** every value as `estimated-from-photo` with an uncertainty and its source photo id, then map it to
    the right place ([workflow.md](references/workflow.md#where-results-go)).
 7. **Clean up:** `rm -rf` every temp dir (photos, grids, overlays). Never delete photos or requests in the store.

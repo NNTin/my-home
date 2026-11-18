@@ -64,6 +64,14 @@
   - an item that matters is only visible far away (more than 5 m) or edge-on.
 - Link every answering photo, and the extras the owner took unasked, to the uses they show, so the piece pages
   list them.
+- **After the answers come in:**
+  - `photo-requests.sh list --status all` shows which requests are fulfilled.
+  - `fetch.sh <env> -- --since <time>` gets everything taken since you asked, including extras that answer no
+    request (e.g. ceiling shots tilted upwards).
+  - Read every photo's `note`. The owner answers questions there ("there is a door to the boiler room…").
+  - The stored position of an answer is the request's spot, not necessarily where the owner stood
+    ([measuring.md](measuring.md#stored-poses)).
+  - Write the new values as an addendum to your report, saying which earlier values they replace.
 
 ## Where results go
 

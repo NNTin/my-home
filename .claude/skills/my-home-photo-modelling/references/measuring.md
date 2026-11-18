@@ -8,10 +8,18 @@ the camera, fix the scale, then cast pixels onto known planes.
 - The owner sets heading and pitch by hand (`sensors.source = manual`). Some photos still have the default
   pose (a round position, yaw exactly ±π/2, pitch 0).
 - `fovH` is an assumption, not a measurement:
-  - landscape in-app photos store 1.328 rad (76°);
+  - landscape in-app photos (2560×1920) store 1.328 rad (76°), and that is **right**: two-VP calibration gave
+    1.318;
   - older portrait photos (1920×2560) store 0.9618 rad (55°), but calibrating one gave **≈1.30 rad (74°)**.
-- In the #60 corridor photos the pitch was really −2° to −17° (stored −14°), and one heading was 20° off.
-- So calibrate from the image. Use the stored pose only as a start and for the rough position.
+    That is #70; until it is fixed, use fovH ≈ 1.30 (f ≈ 1270 px) for those.
+- In the #60 corridor photos the pitch was really −2° to −17° (stored −14°), and headings were 15–20° off.
+- **The position is not where the owner stood.** For an answered photo request, the stored position is the
+  request's target spot: the owner accepts it, then stands where the view works. One answer stored at x 8.7
+  showed a door that is at x ≈ 10.3–11.2.
+  - Never anchor a measurement on the pose position. Anchor it on fixed features in the photo: an outer wall's
+    inner face, an interior wall end, a known product against a wall.
+  - Then chain the other features from that anchor, using near distances only.
+- So calibrate from the image. Use the stored pose only as a rough start.
 
 ## Calibration
 
@@ -107,6 +115,39 @@ Ratio tests need no calibration. Use them first:
 Anchor the camera on **near** features or on the **fixed exterior** (an outer wall face from `home.json`), never
 on a far door. `"project"` with `"at"` draws model points into the photo, to compare without the app.
 
+## Heights without calibration
+
+- **Ratio on a vertical line:** with the camera roughly level (pitch within ±5°), two heights on the same wall
+  line at the same distance scale with their pixel distance from the floor line:
+  `height_X / height_ref = (v_floor − v_X) / (v_floor − v_ref)`.
+  - Door frame top (≈2.05) against the ceiling on the same wall line gave the corridor ceiling (0.92–0.96 →
+    2.15–2.25).
+  - Check it with a calibrated photo and the worktop as the reference: the kitchen gave 2.11–2.19.
+- **Tilted-up photos** (pitch +30…+45°, the owner's answer to "how low is the bulkhead") show ceiling steps,
+  boxes and downlights well. Scale them with a known width at the same depth: the corridor's clear width W spans
+  Δu pixels at a depth D = f·W/Δu along the optical axis.
+  - Two edges at the same height and depths D1, D2 are (D2 − D1)/cos(pitch) apart horizontally. That gave the
+    bulkhead box's length (≈1.35 m).
+  - A vertical face of Δv pixels at that depth is ≈ Δv·W/(Δu·cos e) high, with e its elevation angle. That gave
+    the box's drop below the ceiling (0.10–0.20).
+- Keep the ceiling as its own measurement. A misread ceiling line once gave 2.40 where the real suspended ceiling
+  was 2.15: always confirm it a second way (the frame ratio, the worktop-calibrated wall line).
+- Recessed downlights mean a suspended ceiling. Its height is the finished ceiling (an interior value), not the
+  level's structural height (slab and floor levels stay).
+
+## A folding rule in the photo
+
+When the owner lays a folding rule (Zollstock) or tape in the picture, it is the best scale there is:
+
+- A German folding rule has links of 0.20 m, numbered every cm. A tape is numbered every cm, with labels every
+  10 cm.
+- On the floor along a wall, it measures positions along that wall directly. Read the numbers next to each door
+  casing; no camera model is needed for features right next to it.
+- For features away from the rule, cast its two ends with `measure.py` (`"on": "floor"`). Adjust `"height"` until
+  the cast length equals the rule's length, then measure the rest in the same photo.
+- Ask for it explicitly: "lay a folding rule flat along the skirting by the south wall, starting at the corner,
+  with both casings of each door in the picture". Without that wording, owners rarely include one.
+
 ## Accuracy
 
 - Good (±0.05 m): lateral offsets, widths and heights within about 4 m of the camera.
@@ -126,6 +167,8 @@ on a far door. `"project"` with `"at"` draws model points into the photo, to com
 - A recessed niche where the model has a door may be a door hidden behind furniture, or a former doorway. Ask.
 - A leaf visible inside a room means the door opens into that room. Hinges show on the side a door opens
   towards. The handle is opposite the hinges.
-- Foreground objects hide whole units (a fridge hid an oven). Find a frontal photo of every run before listing
-  its units.
+- Foreground objects hide whole units: a fridge hid an oven, then the corner beyond it in every later view.
+  Find a frontal photo of every run before listing its units, and ask for the view from the other side.
+- Unit widths come out best from a **frontal** photo: take one known unit (an oven is 0.60) as the scale, then
+  snap the others to standard widths.
 - Ignore clutter: boxes, bottles, bags, shoes, magnets, items on counters.
