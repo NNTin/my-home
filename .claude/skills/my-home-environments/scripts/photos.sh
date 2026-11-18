@@ -53,6 +53,7 @@ while [[ $# -gt 0 ]]; do
     --subject | --no-subject)
       [[ ${2:-} =~ ^(type|use):.+$ ]] || die "$1 takes type:<typeId> or use:<useId>, not '${2:-}'"
       if [[ $1 == --no-subject ]]; then
+        [[ $command == annotate ]] || die "--no-subject is for annotate only (list filters with --subject)"
         unlinks+=("$2")
       elif [[ $command == annotate ]]; then
         subjects+=("$2")

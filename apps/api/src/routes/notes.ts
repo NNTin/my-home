@@ -8,6 +8,7 @@ import {
   UpdateNoteBody,
 } from '@my-home/shared';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
+import { z } from 'zod';
 import { resolveActor } from '../actor';
 import type { Config } from '../config';
 import type { Db } from '../db/client';
@@ -59,8 +60,12 @@ export const noteRoutes =
         store.update(request.params.id, request.body, resolveActor(request.headers, config)),
     );
 
-    app.delete('/notes/:id', { schema: { params: NoteParams } }, async (request, reply) => {
-      await store.remove(request.params.id, resolveActor(request.headers, config));
-      return reply.code(204).send();
-    });
+    app.delete(
+      '/notes/:id',
+      { schema: { params: NoteParams, response: { 204: z.null(), 404: ApiError } } },
+      async (request, reply) => {
+        await store.remove(request.params.id, resolveActor(request.headers, config));
+        return reply.code(204).send(null);
+      },
+    );
   };

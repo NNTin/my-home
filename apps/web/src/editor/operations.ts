@@ -136,7 +136,20 @@ function fitsAt(
 export function createItem(
   ctx: EditorContext,
   items: EditorItem[],
-  { id, typeId, levelId, roomId }: { id: string; typeId: string; levelId: string; roomId?: string },
+  {
+    id,
+    typeId,
+    levelId,
+    roomId,
+    params = {},
+  }: {
+    id: string;
+    typeId: string;
+    levelId: string;
+    roomId?: string;
+    /** Basic overrides: the free spot is found for the size they give. */
+    params?: EditorItem['params'];
+  },
 ): EditorItem {
   const plan = ctx.plans.get(levelId);
   const draft: EditorItem = {
@@ -145,7 +158,7 @@ export function createItem(
     levelId,
     position: { x: 0, z: 0 },
     rotationY: 0,
-    params: {},
+    params,
     name: '',
   };
   if (!plan) return draft;

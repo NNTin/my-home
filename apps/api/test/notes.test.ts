@@ -59,10 +59,13 @@ describe('notes', () => {
 
     const deleted = await inject('DELETE', `/api/notes/${first.id}`, undefined, agent);
     expect(deleted.statusCode).toBe(204);
+    expect(deleted.body).toBe('');
     expect((await list(query)).map((n) => n.id)).toEqual([second.id]);
     // A deleted note can be neither edited nor deleted again.
     expect((await inject('PATCH', `/api/notes/${first.id}`, { body: 'x' })).statusCode).toBe(404);
-    expect((await inject('DELETE', `/api/notes/${first.id}`)).statusCode).toBe(404);
+    const again = await inject('DELETE', `/api/notes/${first.id}`);
+    expect(again.statusCode).toBe(404);
+    expect(again.json()).toMatchObject({ statusCode: 404, error: 'Not Found' });
   });
 
   it('keeps type notes environment-wide and use notes per home', async () => {

@@ -369,3 +369,358 @@ svg.section rect {
   width: 1rem;
   height: 1rem;
 }
+
+/* #45: Place, where-used, the per-use editor, history, photos and notes. */
+
+.piece-page .button.primary {
+  background: #3d8bff;
+  border-color: #3d8bff;
+  color: #fff;
+}
+
+.piece-page a.button {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.piece-page .link-button {
+  border-color: transparent;
+  background: none;
+  color: #8ab4f8;
+  text-decoration: underline;
+}
+
+.piece-page .buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.piece-page .field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.piece-page .field input,
+.piece-page .field select,
+.piece-page textarea {
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0.375rem 0.5rem;
+  border: 1px solid rgb(255 255 255 / 0.3);
+  border-radius: 0.375rem;
+  background: rgb(255 255 255 / 0.08);
+  color: inherit;
+  font: inherit;
+  /* 16 px: iOS does not zoom the page when the field is focused. */
+  font-size: 1rem;
+  font-weight: normal;
+}
+
+.piece-page select option {
+  color: #111;
+}
+
+.piece-page textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.piece-page .error {
+  color: #ff8a80;
+}
+
+.piece-showing {
+  margin: 0 0 0.5rem;
+  color: #aab0b8;
+  font-size: 0.875rem;
+}
+
+.uses-count {
+  margin: 0 0 0.75rem;
+  color: #aab0b8;
+}
+
+.uses-attention {
+  margin-bottom: 1rem;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid #ffb74d;
+  background: rgb(255 193 7 / 0.08);
+}
+
+.uses-attention h3,
+.uses-home h3 {
+  display: inline;
+  margin: 0;
+  font-size: 1rem;
+}
+
+.uses-home {
+  margin-bottom: 1rem;
+}
+
+.uses-home > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.uses-level-name {
+  margin: 0.75rem 0 0.25rem;
+  color: #aab0b8;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.use-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.use-row {
+  padding: 0.5rem 0;
+  border-top: 1px solid rgb(255 255 255 / 0.12);
+  scroll-margin-top: 5rem;
+}
+
+.use-row.open {
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  background: rgb(255 255 255 / 0.05);
+}
+
+.use-name {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.use-where,
+.use-counts {
+  margin: 0.125rem 0;
+  color: #aab0b8;
+  font-size: 0.875rem;
+}
+
+.use-overrides {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  margin: 0.25rem 0;
+  font-size: 0.875rem;
+}
+
+.use-override {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.use-override .swatch {
+  width: 1rem;
+  height: 1rem;
+}
+
+.use-problems {
+  margin: 0.25rem 0;
+  padding-left: 1.25rem;
+  color: #ffe082;
+  font-size: 0.875rem;
+}
+
+.use-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.use-actions button[aria-pressed='true'] {
+  background: #3d8bff;
+  border-color: #3d8bff;
+  color: #fff;
+}
+
+.use-body {
+  margin-top: 0.75rem;
+}
+
+.use-body h4,
+.photos-notes h3,
+.photos-notes h4 {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.9375rem;
+}
+
+.use-param {
+  margin-bottom: 0.75rem;
+}
+
+.use-param-source {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.125rem 0 0;
+  color: #aab0b8;
+  font-size: 0.8125rem;
+}
+
+.use-param.overridden .use-param-source > span {
+  color: #8ab4f8;
+  font-weight: 600;
+}
+
+.use-conflict {
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  background: rgb(255 138 128 / 0.12);
+}
+
+.use-furniture {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgb(255 255 255 / 0.12);
+}
+
+.history-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+}
+
+.history-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: center;
+  padding: 0.375rem 0;
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+}
+
+.history-list li.undone .history-what {
+  color: #8a9099;
+}
+
+.history-list time {
+  color: #aab0b8;
+}
+
+.history-list .declared,
+.history-undone {
+  color: #8a9099;
+  font-size: 0.8125rem;
+}
+
+.history-undo {
+  margin-left: auto;
+}
+
+.photo-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.25rem 0 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.photo-strip li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.photo-strip .thumbnail {
+  padding: 0;
+  overflow: hidden;
+}
+
+.photo-strip .thumbnail img {
+  display: block;
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+}
+
+.photo-picker {
+  margin: 0.5rem 0;
+}
+
+.use-requests {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+  font-size: 0.875rem;
+}
+
+.use-requests a {
+  color: #8ab4f8;
+}
+
+.photo-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: max(1rem, env(safe-area-inset-top)) var(--page-right, 1rem)
+    max(1rem, env(safe-area-inset-bottom)) var(--page-left, 1rem);
+  background: rgb(10 12 16 / 0.92);
+  overflow: auto;
+}
+
+.photo-viewer img {
+  max-width: min(100%, 60rem);
+  max-height: 70vh;
+  object-fit: contain;
+}
+
+.note-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.note-item {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+}
+
+.note-body {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.note-add {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.use-trash {
+  margin-top: 0.5rem;
+}
+
+.use-trash > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: #aab0b8;
+}
+
+.place-form select {
+  width: 100%;
+}

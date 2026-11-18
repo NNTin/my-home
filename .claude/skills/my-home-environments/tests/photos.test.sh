@@ -78,6 +78,8 @@ reset
 check "list --subject filters by subject" \
   logged "staging /api/homes/home/photos?limit=500&offset=0&subject=use%3Asouterrain-kitchen-window"
 check "--subject must be type: or use:" fails "$scripts/photos.sh" staging list --subject window
+check "list refuses --no-subject instead of ignoring it" \
+  fails "$scripts/photos.sh" staging list --no-subject use:souterrain-kitchen-window
 "$scripts/photos.sh" staging annotate ccc --subject use:w2 --subject type:window.casement --no-subject use:w1 >/dev/null
 check "annotate links and unlinks subjects (the whole list is sent)" \
   logged 'staging /api/photos/ccc -X PATCH --json {"tags":["wall"],"subjects":[{"kind":"use","id":"w2"},{"kind":"type","id":"window.casement"}]}'
