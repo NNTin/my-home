@@ -94,7 +94,16 @@ export function openingOverrideStore(db: Db) {
           : await tx
               .insert(openingOverrides)
               .values({ homeId, useId, typeId: type.id, params })
+              // A concurrent first PUT may have created the row since the (empty) locking select.
+              .onConflictDoNothing()
               .returning();
+        if (!written) {
+          throw conflict(
+            `Version ${input.version} is stale: the override was just created; reload and retry`,
+            1,
+            ['version'],
+          );
+        }
         await recordHistory(tx, {
           homeId,
           useId,
@@ -104,7 +113,7 @@ export function openingOverrideStore(db: Db) {
           before: overrideState(current),
           after: overrideState(written),
         });
-        return written!;
+        return written;
       });
       return toOpeningOverride(row);
     },

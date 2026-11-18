@@ -53,6 +53,24 @@ describe('opening overrides', () => {
     );
   });
 
+  it('lets one of two concurrent first PUTs win; the other gets a 409, not a 500', async () => {
+    const [a, b] = await Promise.all([
+      put('souterrain-living-window', { version: 0, params: { sashes: 2 } }),
+      put('souterrain-living-window', { version: 0, params: { sashes: 3 } }),
+    ]);
+    expect([a.statusCode, b.statusCode].sort()).toEqual([200, 409]);
+    const lost = [a, b].find((r) => r.statusCode === 409)!;
+    expect(UseConflict.parse(lost.json())).toMatchObject({
+      currentVersion: 1,
+      conflicts: ['version'],
+    });
+    const history = await inject(
+      'GET',
+      '/api/homes/mock-home/uses/souterrain-living-window/history',
+    );
+    expect(history.json().items).toHaveLength(1);
+  });
+
   it('rejects unknown uses (404), design params (400) and sashes that do not fit (422)', async () => {
     expect((await put('nope', { version: 0, params: {} })).statusCode).toBe(404);
     expect(
