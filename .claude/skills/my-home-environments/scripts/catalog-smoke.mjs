@@ -3,7 +3,8 @@
 // Smoke test of the catalogue pages on a desktop screen (1440x900) and a phone (390x844, touch):
 // the entry from the viewer, both kinds, search, thumbnails, use counts, deep links, reload and the
 // back button; every type's piece page (3D, dimensions in cm, the section of openings) and the
-// playground; `/?focus=<an opening>` in the viewer. Read-only: every write is refused inside the
+// playground; `/?focus=<an opening>` in the viewer; the piece page's uses (where-used, a mock-home
+// edit and its undo, Place). Every other write is refused (or, for Place, answered) inside the
 // browser. Playwright is loaded from MY_HOME_PLAYWRIGHT_DIR.
 /* global document, window, caches */
 import { createRequire } from 'node:module';
@@ -49,10 +50,18 @@ async function smoke(out, homeId) {
     args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
   });
   const blocked = [];
+  /** The mock-home edit and its undo (real writes, undone by the smoke itself). */
+  const written = [];
+  /** Writes answered inside the browser. */
+  const faked = [];
   try {
     for (const { label, viewport, across, ...device } of SCREENS) {
-      /** A fresh browser context: no cookies, no cache, no history. */
-      const open = async () => {
+      /**
+       * A fresh browser context: no cookies, no cache, no history. Every write is refused, unless
+       * `allow(method, path)` lets it through (the self-cleaning mock-home edit and undo) or
+       * `fake(method, path, body)` answers it inside the browser (Place).
+       */
+      const open = async ({ allow, fake } = {}) => {
         const context = await browser.newContext({ viewport, ...device });
         await context.route('**/*', (route) => {
           const request = route.request();
@@ -60,6 +69,17 @@ async function smoke(out, homeId) {
           if (url.host !== host) return route.continue();
           const method = request.method();
           if (method !== 'GET' && method !== 'HEAD') {
+            const answer = fake?.(method, url.pathname, request.postData());
+            if (answer) {
+              faked.push(`${method} ${url.pathname}`);
+              return route.fulfill(answer);
+            }
+            if (allow?.(method, url.pathname)) {
+              written.push(`${method} ${url.pathname}`);
+              return route.continue({
+                headers: { ...request.headers(), authorization: `Bearer ${token}` },
+              });
+            }
             blocked.push(`${method} ${url.pathname}`);
             return route.abort();
           }
@@ -558,13 +578,296 @@ async function smoke(out, homeId) {
         pages.errors.slice(0, 5).map(redact).join(' | '),
       );
       await pages.context.close();
+
+      await usesStep({ label, device, open, press, base, homeId, shot });
     }
-    check('nothing was written', blocked.length === 0, blocked.join(', '));
+    check('nothing else was written', blocked.length === 0, blocked.join(', '));
+    check(
+      'the only real writes were the mock-home edit and its undo',
+      written.every((w) => w.includes('/api/homes/mock-home/')) && written.length <= 2,
+      written.join(', ') || 'none',
+    );
+    console.log(`answered in the browser: ${faked.join(', ') || 'nothing'}`);
     console.log(
       `screenshots ${out} ${out.replace(/\.png$/, '-phone.png')} and ${out.replace(/\.png$/, '-*.png')}`,
     );
   } finally {
     await browser.close();
+  }
+}
+
+const MOCK = 'mock-home';
+const WINDOW = 'window.casement';
+
+/** Waits for `fn` (in the page) to be true; false after `timeout` ms. */
+const until = (page, fn, arg, timeout = 30_000) =>
+  page.waitForFunction(fn, arg, { timeout }).then(
+    () => true,
+    () => false,
+  );
+
+/** A use of the mock home as the api has it now. */
+const mockUse = (page, id) =>
+  page.evaluate(
+    async ({ home, type, id }) => {
+      const res = await fetch(`/api/homes/${home}/uses?typeId=${type}`);
+      return (await res.json()).items.find((u) => u.id === id);
+    },
+    { home: MOCK, type: WINDOW, id },
+  );
+
+/**
+ * 7. The piece page's uses (#45). Where-used of `door.interior` in the first home (read-only), with
+ * the catalogue's count. On the desktop, a real edit of a mock-home window's frame colour through
+ * the editor, its history row (actor agent), and Undo, which puts the colour back: the smoke cleans
+ * up after itself (the history rows stay, on the mock home). On the phone, that history read-only.
+ * Place on the bed's page, with the POST answered inside the browser: no placement is created.
+ */
+async function usesStep({ label, device, open, press, base, homeId, shot }) {
+  const url = (p) => new URL(p, base).href;
+
+  // Where-used, read-only.
+  {
+    const { context, page, errors } = await open();
+    await page.goto(url('/'), { waitUntil: 'domcontentloaded', timeout: 60_000 });
+    const facts = await page.evaluate(async (id) => {
+      const homes = (await (await fetch('/api/homes')).json()).items;
+      const usage = (await (await fetch('/api/catalog/usage')).json()).counts;
+      return { home: id ?? homes[0]?.id, count: usage['door.interior'] };
+    }, homeId ?? null);
+    await page.goto(url(`/catalog/openings/door.interior?home=${encodeURIComponent(facts.home)}`), {
+      waitUntil: 'networkidle',
+      timeout: 60_000,
+    });
+    const count = page.locator('.uses-count');
+    await count.waitFor({ timeout: 30_000 }).catch(() => {});
+    check(
+      `${label}: where-used counts the uses as the catalogue does`,
+      (await count.count()) === 1 &&
+        (await count.textContent()) ===
+          `${facts.count} use${facts.count === 1 ? '' : 's'} in this environment`,
+      (await count.count()) ? await count.textContent() : 'not shown',
+    );
+    const rows = page.locator('.use-row');
+    const links = await page
+      .getByRole('link', { name: /in model$/ })
+      .evaluateAll((as) => as.map((a) => new URL(a.href).search));
+    check(
+      `${label}: every use links to the model (?focus=)`,
+      links.length > 0 &&
+        links.length <= (await rows.count()) &&
+        links.every((q) => q.includes('focus=')),
+      `${await rows.count()} rows, ${links.length} links`,
+    );
+    const section = page.getByRole('region', { name: 'Uses' });
+    await section.scrollIntoViewIfNeeded();
+    await section
+      .screenshot({ path: shot('uses'), timeout: 60_000 })
+      .catch((error) => console.log(`no uses screenshot: ${redact(error.message)}`));
+    check(
+      `${label}: no console or page errors on where-used`,
+      errors.length === 0,
+      errors.slice(0, 3).map(redact).join(' | '),
+    );
+    await context.close();
+  }
+
+  // The mock home's window: edit (desktop only), history, undo.
+  {
+    let target;
+    const allow = (method, path) =>
+      target !== undefined &&
+      ((method === 'PUT' && path === `/api/homes/${MOCK}/opening-overrides/${target}`) ||
+        (method === 'POST' &&
+          new RegExp(`^/api/homes/${MOCK}/uses/${target}/history/[0-9a-f-]+/undo$`).test(path)));
+    const { context, page, errors } = await open({ allow: device.hasTouch ? undefined : allow });
+    await page.goto(url('/'), { waitUntil: 'domcontentloaded', timeout: 60_000 });
+    const picked = await page.evaluate(
+      async ({ home, type }) => {
+        const res = await fetch(`/api/homes/${home}/uses?typeId=${type}`);
+        if (!res.ok) return undefined;
+        const items = (await res.json()).items.filter(
+          (u) => u.source === 'git' && u.status === 'ok',
+        );
+        return items.find((u) => u.id === 'souterrain-kitchen-window') ?? items[0];
+      },
+      { home: MOCK, type: WINDOW },
+    );
+    check(`${label}: the mock home has a ${WINDOW} to edit`, picked !== undefined);
+    if (picked) {
+      const before = picked.overrides;
+      const colour = picked.effective.frameColor === '#2a5d8f' ? '#8f2a5d' : '#2a5d8f';
+      await page.goto(url(`/catalog/openings/${WINDOW}?home=${MOCK}#use=${picked.id}`), {
+        waitUntil: 'networkidle',
+        timeout: 60_000,
+      });
+      const row = page.locator(`[id="use-${MOCK}-${picked.id}"]`);
+      const editor = page.getByRole('region', { name: `Edit ${picked.name}` });
+      check(
+        `${label}: #use= opens the use's editor`,
+        await editor.waitFor({ timeout: 30_000 }).then(
+          () => true,
+          () => false,
+        ),
+      );
+      const history = row.getByRole('region', { name: 'History' });
+      if (!device.hasTouch) {
+        target = picked.id;
+        try {
+          const hex = editor.getByRole('textbox', { name: 'Frame colour, hex' });
+          await hex.fill(colour);
+          await hex.blur();
+          await press(editor.getByRole('button', { name: 'Save', exact: true }));
+          check(
+            `${label}: the edit is saved and shown in the row`,
+            await row
+              .getByLabel('Overrides')
+              .filter({ hasText: colour })
+              .waitFor({ timeout: 30_000 })
+              .then(
+                () => true,
+                () => false,
+              ),
+          );
+          await press(row.getByRole('button', { name: `History of ${picked.name}` }));
+          const top = history.locator('li').first();
+          await top.waitFor({ timeout: 30_000 }).catch(() => {});
+          const text = (await top.count()) ? await top.textContent() : '';
+          check(
+            // With the agent token the api records an agent; without one (local runs) the owner.
+            `${label}: the history shows the change, by ${token ? 'the agent' : 'you'}`,
+            text.includes(`→ ${colour}`) && text.includes(token ? 'Agent' : 'You'),
+            text,
+          );
+          await press(top.getByRole('button', { name: /^Undo/ }));
+          const undone = history.locator('li.undone');
+          check(
+            `${label}: Undo is one click and strikes the change through`,
+            await undone
+              .first()
+              .waitFor({ timeout: 30_000 })
+              .then(
+                () => true,
+                () => false,
+              ),
+          );
+          const after = await mockUse(page, picked.id);
+          check(
+            `${label}: the colour is back after the undo`,
+            after?.effective.frameColor === picked.effective.frameColor &&
+              JSON.stringify(Object.entries(after.overrides).sort()) ===
+                JSON.stringify(Object.entries(before).sort()),
+            `${after?.effective.frameColor}, overrides ${JSON.stringify(after?.overrides)}`,
+          );
+        } finally {
+          // Cleans up by hand should a step have failed between the save and the undo.
+          const now = await mockUse(page, picked.id).catch(() => undefined);
+          if (
+            now &&
+            JSON.stringify(Object.entries(now.overrides).sort()) !==
+              JSON.stringify(Object.entries(before).sort())
+          ) {
+            const status = await page.evaluate(
+              async ({ home, id, version, params }) =>
+                (
+                  await fetch(`/api/homes/${home}/opening-overrides/${id}`, {
+                    method: 'PUT',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ version, params }),
+                  })
+                ).status,
+              { home: MOCK, id: picked.id, version: now.version, params: before },
+            );
+            check(`${label}: cleanup put the overrides back`, status === 200, String(status));
+          }
+          target = undefined;
+        }
+      } else {
+        await press(row.getByRole('button', { name: `History of ${picked.name}` }));
+        check(
+          `${label}: the history (read-only here) shows undone changes`,
+          await history
+            .locator('li')
+            .first()
+            .waitFor({ timeout: 30_000 })
+            .then(
+              () => true,
+              () => false,
+            ),
+        );
+      }
+      await row.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(300);
+      await row
+        .screenshot({ path: shot('history'), timeout: 60_000 })
+        .catch((error) => console.log(`no history screenshot: ${redact(error.message)}`));
+    }
+    check(
+      `${label}: no console or page errors while editing`,
+      errors.length === 0,
+      errors.slice(0, 3).map(redact).join(' | '),
+    );
+    await context.close();
+  }
+
+  // Place, with the POST answered in the browser.
+  {
+    const posts = [];
+    const fake = (method, path, body) => {
+      if (method !== 'POST' || !/^\/api\/homes\/[^/]+\/placements$/.test(path)) return undefined;
+      const sent = JSON.parse(body);
+      posts.push(sent);
+      const at = new Date().toISOString();
+      return {
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'catalog-smoke-place',
+          homeId: path.split('/')[3],
+          typeId: sent.typeId,
+          name: 'Catalog smoke · Bed',
+          levelId: sent.levelId,
+          roomId: null,
+          position: sent.position,
+          rotationY: sent.rotationY ?? 0,
+          params: sent.params ?? {},
+          version: 1,
+          createdAt: at,
+          updatedAt: at,
+          removedAt: null,
+          purgeAt: null,
+        }),
+      };
+    };
+    const { context, page } = await open({ fake });
+    const p = `/catalog/furniture/furniture.bed?home=${MOCK}&p=${Buffer.from(JSON.stringify({ width: 1.8 })).toString('base64url')}`;
+    await page.goto(url(p), { waitUntil: 'networkidle', timeout: 60_000 });
+    const placeButton = page.getByRole('button', { name: 'Place…' });
+    await placeButton.waitFor({ timeout: 30_000 }).catch(() => {});
+    if ((await placeButton.count()) === 1) {
+      await press(placeButton);
+      const form = page.getByRole('form', { name: 'Place' });
+      await form.waitFor({ timeout: 10_000 });
+      await form.scrollIntoViewIfNeeded();
+      await form.screenshot({ path: shot('place') }).catch(() => {});
+      await press(form.getByRole('button', { name: 'Place and open in the viewer' }));
+      const opened = await until(page, () => window.location.pathname === '/');
+      const search = new URL(page.url()).searchParams;
+      check(
+        `${label}: Place sends the playground values and opens the viewer on the new piece`,
+        opened &&
+          posts.length === 1 &&
+          posts[0].typeId === 'furniture.bed' &&
+          posts[0].params?.width === 1.8 &&
+          search.get('focus') === 'catalog-smoke-place' &&
+          search.get('panel') === 'furniture' &&
+          search.get('home') === MOCK,
+        `${JSON.stringify(posts[0] ?? {})} → ${page.url().replace(base, '')}`,
+      );
+    } else {
+      check(`${label}: the bed's page offers Place`, false);
+    }
+    await context.close();
   }
 }
 

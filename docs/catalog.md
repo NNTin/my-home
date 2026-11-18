@@ -12,7 +12,7 @@ reached with the browser's back and forward buttons.
 
 `<kind>` is a `CatalogKind` (`openings`, `furniture`) and `<typeId>` a known type of that kind
 (`packages/shared/src/catalog`); a type under the wrong kind is not found. The piece page is described
-[below](#the-piece-page); #45 adds the uses.
+[below](#the-piece-page), its uses [after it](#uses-on-the-piece-page).
 
 The document title follows the page: `my-home`, `Catalogue · my-home`, `<Type name> · my-home`.
 
@@ -48,7 +48,8 @@ All of these are real links (`<a href>`): a long press, open in a new tab and co
 ## The piece page
 
 `/catalog/<kind>/<typeId>` (`apps/web/src/piece-page/`, a lazy chunk with its own CSS) shows one type on its
-own. **Nothing on it is saved**: it sends no request but GETs, whatever is changed.
+own. The preview and the **playground save nothing**: they send no request but GETs, whatever is changed.
+What the page writes is in [its uses](#uses-on-the-piece-page), below the playground.
 
 - **Header**: **← Catalogue**, the name, the kind and family (and the furniture category); the description below.
 - **Layout**: on a desktop the preview on the left (about 60 %) and the panel on the right; on a phone held
@@ -79,6 +80,56 @@ own. **Nothing on it is saved**: it sends no request but GETs, whatever is chang
 - **`?p=`** holds the playground's overrides (base64url JSON, written a moment after the last change, replacing
   the history entry), so a playground state can be shared. It is used only if it is valid against
   `basicOverridesSchema(type)`; otherwise the defaults are shown.
+
+## Uses on the piece page
+
+Below the playground and the design parameters, the page acts on **this environment's** data (#45; APIs in
+[userdata.md](userdata.md) and [photos.md](photos.md)). Agents may use all of it; photos are never deleted here.
+
+- **Place** (furniture types): **Place…** opens a form, home → level → room (only levels with rooms; defaults:
+  the `?home=` home, its first level with rooms, that level's first room). It finds a free spot in the room with
+  the editor's `createItem` against the home's current placements, `POST`s the placement with the playground's
+  values as `params`, and opens `/?home=<id>&focus=<newId>&panel=furniture` to move and turn it in the viewer.
+  The server gives the id and the name.
+- **Uses** (`Uses.tsx`): `GET /api/homes/:homeId/uses?typeId=` for every home of `GET /api/homes`, plus each
+  home's model, photos, photo requests and (furniture) placements with the trash. "N uses in this environment"
+  equals the catalogue card (orphan overrides are not counted). Each home is a collapsible group, then a level
+  (in the model's order), rows sorted by room. A row shows the name, where ("Souterrain · Bedroom"), the
+  overrides ("frame colour #383e42", "2 sashes", "width 180.0 cm", with swatches) or "Type defaults", photo and
+  request counts, and **Show in model** (`/?home=<id>&focus=<useId>`), **Edit** and **History**.
+  - **Needs attention** comes first, and those uses are not listed again below: `Use.problems` (orphan overrides,
+    "type changed from …", ignored keys, a placement's missing level or room, fit problems). Nothing is deleted:
+    the actions are **Show history** (with its Undo) and, for placements, **Remove** (to the trash).
+  - Placements of the type in the trash are listed per home under **In the trash** with **Restore**.
+  - **`#use=<useId>`** (the viewer's piece links, photos, agents' links) opens that use's editor and scrolls to
+    it, on load and on `hashchange`; `?home=` picks the home when several have the id. Opening a row writes the
+    anchor (replacing the history entry), and the playground's `?p=` keeps it.
+- **Per-use editor** (`UseEditor.tsx`): the playground's controls (`BasicControl`), initialised with the use's
+  overrides, each marked **Overridden** (with **Reset to type default**, which removes the key) or **Type
+  default**. Keys the type ignores are dropped from the form. While a row is open, the preview and dimensions
+  show that use: an opening **in its real hole** (width, height, wall depth and sill from the model), furniture at
+  its size, with the unsaved values. **Save** sends `PUT …/opening-overrides/:useId` or `PATCH …/placements/:id`
+  with the use's `version` and the whole override object:
+  - 422: the fit issues are listed inline ("4 sashes need at least 100.0 cm, the opening is 90.0 cm"); openings
+    also show them before saving;
+  - 409: "Changed elsewhere", with **Reload (keeps your values)**, which shows what is saved now next to the
+    unsaved form; saving then replaces it.
+  - Furniture can also be renamed and removed (to the trash); restore it from **In the trash**.
+- **History** (`History.tsx`): `GET …/uses/:useId/history`, newest first: when (relative, the exact time in the
+  tooltip), who ("You" for the owner, "Agent", "System", and "(declared)" or "(default)" when the actor did not
+  come from the sign-on), and the `changes` texts. **Undo** when `canUndo`: one click, no confirmation (the undo is
+  recorded and can be undone). A 409 says "Changed again later: undo the later change first." Undone entries are
+  struck through, "undone by … at …".
+- **Photos and notes** (`Photos.tsx`, `Notes.tsx`):
+  - type level, in **Photos & notes**: the photos linked to `type:<id>` or to any of its uses; a tap opens the
+    photo (with **Open in the gallery**, no delete); the type's notes (environment-wide);
+  - use level, in the open row: the photos linked to the use (with **Unlink**), **Link a photo…** (the home's
+    photos, newest first, only the use's rooms unless unticked) → `PATCH /api/photos/:id { subjects }`; the open
+    photo requests about the use ("Requested by agent: …", **Open in walk mode** → `/?home=<id>&walk=first`, where
+    the request ghosts are); the use's notes (add, edit, delete).
+  - There is **no** delete control for photos or requests: deleting stays the owner's, in the gallery.
+
+The viewer picks up edits made here when it is opened again (it remounts) or when its tab becomes visible.
 
 ## Thumbnails
 
@@ -139,12 +190,14 @@ on `/` after the login instead, that is a setting of the sign-on (infrastructure
 ```sh
 S=.claude/skills/my-home-environments/scripts
 $S/catalog-smoke.sh staging                                    # desktop and phone: deep links, reload, back,
-                                                               # every piece page, sections, the playground
+                                                               # every piece page, sections, the playground,
+                                                               # uses: a mock-home edit + undo, Place (faked)
 $S/screenshot.sh staging --path '/catalog' --out /tmp/catalog.png
 $S/screenshot.sh staging --viewport 390x844 --touch --path '/catalog' --out /tmp/catalog-phone.png
 ```
 
 Tests: `apps/web/src/routing/routing.test.tsx`, `apps/web/src/catalog-page/Catalog.test.tsx`,
 `apps/web/src/catalog-page/thumbnails.test.ts`, `apps/web/src/piece-page/*.test.ts(x)` (playground, section,
-page), `apps/web/src/catalog/dimensions.test.ts`, `App.test.tsx` § pages and `Mobile.test.tsx`. The piece page's
+page, uses, editor, history, Place, notes and photos; the fake api in `test/fakeApi.ts` has uses, history with
+undo, notes and photo subjects), `apps/web/src/catalog/dimensions.test.ts`, `App.test.tsx` § pages and `Mobile.test.tsx`. The piece page's
 tests mock `Inspector` (no WebGL in jsdom); the section is SVG and is tested as it is.

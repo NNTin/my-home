@@ -44,7 +44,8 @@ $S/visual-diff.sh staging shoot --out /tmp/vd-main         # 8 fixed canvas view
 $S/visual-diff.sh compare /tmp/vd-main /tmp/vd-pr          # identical, or differing pixels + diff PNGs
 $S/walk-smoke.sh staging                                 # phone-sized smoke test of walk mode
 $S/mobile-smoke.sh staging                               # phone layout: top bar, sheet, levels, furniture, walk
-$S/catalog-smoke.sh staging                              # /catalog and every piece page: 3D, cm, section, playground
+$S/catalog-smoke.sh staging                              # /catalog and every piece page: 3D, cm, section, playground,
+                                                         # uses (a mock-home edit and its undo)
 $S/screenshot.sh staging --viewport 390x844 --touch --path '/catalog'   # the catalogue on a phone
 $S/compass-smoke.sh staging                              # Sensors / Manual camera modes, mocked sensor events
 $S/camera-smoke.sh staging                               # taking a photo with a fake camera, uploads checked
@@ -110,8 +111,15 @@ $S/uses.sh staging list --home mock-home --status needs-attention   # where-used
   playground changes the bed's colour and width live (and refuses 500 cm), and on the phone the inspector takes
   40 % of the height upright and stays usable across. In the viewer, `/?focus=<a window of the home>` selects it
   (the chip shows its name and links its piece page) and an unknown id says "Not found in this home".
-  Screenshots: `<out>` (desktop), `<out>-phone.png`, and `<out>-{window,window-section,door,bed,focus}.png`,
-  `<out>-{bed,bed-across,focus}-phone.png`. Read-only: every write is refused inside the browser. `screenshot.sh --path '/catalog'`
+  The piece page's uses: where-used of `door.interior` in the first home (the count equals the catalogue's, every
+  use links to `?focus=`); on the desktop a **real, self-cleaning** edit of a `mock-home` casement window's frame
+  colour through `#use=` and the editor, its history row (actor agent), and one-click Undo, after which the colour
+  is back (should a step fail, it puts the overrides back by hand); on the phone that history read-only; and
+  **Place** on the bed's page with its POST answered inside the browser (no placement is created), ending on
+  `/?home=mock-home&focus=…&panel=furniture`. Screenshots: `<out>` (desktop), `<out>-phone.png`, and
+  `<out>-{window,window-section,door,bed,focus,uses,history,place}.png`,
+  `<out>-{bed,bed-across,focus,uses,history,place}-phone.png`. Every other write is refused inside the browser
+  ("nothing else was written"); the only real writes are that edit and its undo, on `mock-home`. `screenshot.sh --path '/catalog'`
   shoots the catalogue too: off `/` it waits for the page's heading instead of the canvas (the thumbnails
   render within the default `--wait`).
 - `compass-smoke.sh <env> [--out file.png]`: the camera modes of walk mode (Sensors / Manual) at 390x844 with
@@ -179,7 +187,13 @@ overrides are **not** reset by staging deploys.
 The viewer's furniture **is** the home's placement set (one per home, no named layouts; `docs/furniture.md`), and
 opening overrides render in the house: a change made here shows up in the viewer (when its tab becomes visible
 again). `/?home=<id>&focus=<useId>` frames and selects a use, e.g. to screenshot an override:
-`screenshot.sh staging --path '/?home=mock-home&focus=<useId>&hints=off'`. The old layouts API
+`screenshot.sh staging --path '/?home=mock-home&focus=<useId>&hints=off'`.
+
+The **piece page** of a type (`/catalog/<kind>/<typeId>`, `docs/catalog.md`) lists every use in the environment
+with its overrides, history (with one-click Undo), photos, notes and photo requests, and edits each use's basic
+parameters. To point the owner at one use in an issue or PR, link its row:
+`https://home-staging.nntin.xyz/catalog/openings/window.casement?home=mock-home#use=souterrain-kitchen-window`
+(`#use=<useId>` opens and scrolls to it; `?home=` picks the home when ids repeat). The old layouts API
 (`/api/homes/<id>/layouts`) is deprecated and will be removed: don't use it.
 
 - `uses.sh <env> whoami`: the actor the api records for this token (`agent`, source `identity` on deployed hosts).
@@ -208,7 +222,7 @@ Notes (free text, `docs/userdata.md` § Notes; ids with a `.` are types, others 
 
 Only on **`mock-home`**, and cleaned up in the same task: undo your changes to git uses (or `set --clear` them),
 and `remove` the placements you made (they leave the trash after 30 days). The browser smoke tests stay
-read-only; the CI docker job runs the same place → set → history → undo → remove round trip on a throwaway stack.
+read-only, except `catalog-smoke.sh`'s mock-home edit, which it undoes itself; the CI docker job runs the same place → set → history → undo → remove round trip on a throwaway stack.
 
 ## Playwright
 
