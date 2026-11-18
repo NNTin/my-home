@@ -150,6 +150,8 @@ $S/uses.sh staging list --home mock-home --status needs-attention   # where-used
 The owner photographs the real home from a known pose in the model (`docs/photos.md`). Use the photos when
 refining the model, and **ask for a photo instead of guessing** when unsure about a wall, room, opening or
 furniture. `--home` defaults to the first home.
+To measure from photos (calibrating the camera, scale references, overlay screenshots at each pose), see
+[my-home-photo-modelling](../my-home-photo-modelling/SKILL.md).
 
 - `photos.sh <env> list [filters]`: metadata as JSON, newest first. Filters: `--room ID`, `--level ID`,
   `--near X,Z,RADIUS` (metres on the plan), `--tag TAG`, `--request ID`, `--since TIME`, `--until TIME`,
