@@ -5,8 +5,8 @@ import { createDatabase } from './db/client';
 import { seedHomes } from './db/seed';
 
 // pnpm db:seed [file] [--replace]. A relative file argument resolves against the directory pnpm
-// ran in; SEED_FILE, like in the server, against the api package. Without either, the real and
-// the mock home are seeded.
+// ran in; SEED_FILE, like in the server, against the api package. Without either, the home
+// (data/homes/home.json) is seeded.
 const { positionals, values } = parseArgs({
   allowPositionals: true,
   options: { replace: { type: 'boolean', default: false } },

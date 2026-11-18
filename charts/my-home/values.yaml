@@ -13,9 +13,11 @@ database:
   # Staging only: every deploy also drops `public` (homes, layouts) before migrating. `media` and `userdata` stay.
   resetOnDeploy: false
 homes:
-  # data/homes files the release job syncs on every deploy (docs/deployment.md). Empty: [home.json] on production,
-  # [home.json, mock-home.json] when database.resetOnDeploy (staging).
+  # data/homes files the release job syncs on every deploy (docs/deployment.md). Empty: [home.json].
   files: []
+  # Home ids the release job removes (stored home and its userdata, logged; photos are never deleted). Empty:
+  # [mock-home] when database.resetOnDeploy (the retired staging mock home), nothing on production.
+  purge: []
 release:
   activeDeadlineSeconds: 600
   resources:

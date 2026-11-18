@@ -5,11 +5,11 @@ import { ApiError, HomeModel, ListHomesResponse } from '@my-home/shared';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { homes } from '../src/db/schema';
 import { readHomeFile, seed, seedHomes } from '../src/db/seed';
-import { defaultHomeFile } from '../src/paths';
+import { mockHomeFile } from './fixtures';
 import { REPLACED_ON_DEPLOY } from '../src/routes/homes';
 import { clearUserdata, createTestApp } from './helpers';
 
-const mockHome = await readHomeFile(defaultHomeFile);
+const mockHome = await readHomeFile(mockHomeFile);
 const clone = (overrides: Partial<HomeModel> = {}): HomeModel => ({
   ...structuredClone(mockHome),
   ...overrides,
@@ -36,8 +36,14 @@ describe('homes API', () => {
 
   describe('seed', () => {
     it('loads the mock home once (idempotent)', async () => {
-      expect(await seed(ctx.database.db)).toEqual({ id: 'mock-home', status: 'inserted' });
-      expect(await seed(ctx.database.db)).toEqual({ id: 'mock-home', status: 'unchanged' });
+      expect(await seed(ctx.database.db, { file: mockHomeFile })).toEqual({
+        id: 'mock-home',
+        status: 'inserted',
+      });
+      expect(await seed(ctx.database.db, { file: mockHomeFile })).toEqual({
+        id: 'mock-home',
+        status: 'unchanged',
+      });
 
       const res = await inject('GET', '/api/homes');
       expect(res.statusCode).toBe(200);
@@ -48,7 +54,7 @@ describe('homes API', () => {
     });
 
     it('loads another file, and replaces only when asked', async () => {
-      await seed(ctx.database.db);
+      await seed(ctx.database.db, { file: mockHomeFile });
       const other = clone({ id: 'other-home', name: 'Other home' });
       const file = await writeTempHome(other);
       expect(await seed(ctx.database.db, { file })).toEqual({
@@ -66,13 +72,10 @@ describe('homes API', () => {
       expect((await inject('GET', '/api/homes/other-home')).json().name).toBe('Renamed');
     });
 
-    it('seeds the real home before the mock home by default, so it is listed first', async () => {
-      expect(await seedHomes(ctx.database.db)).toEqual([
-        { id: 'home', status: 'inserted' },
-        { id: 'mock-home', status: 'inserted' },
-      ]);
+    it('seeds only the home by default', async () => {
+      expect(await seedHomes(ctx.database.db)).toEqual([{ id: 'home', status: 'inserted' }]);
       const body = ListHomesResponse.parse((await inject('GET', '/api/homes')).json());
-      expect(body.items.map((h) => h.id)).toEqual(['home', 'mock-home']);
+      expect(body.items.map((h) => h.id)).toEqual(['home']);
     });
 
     it('rejects an invalid file with path-based messages', async () => {
@@ -105,14 +108,14 @@ describe('homes API', () => {
 
   describe('GET /api/homes/:id', () => {
     it('returns the stored model', async () => {
-      await seed(ctx.database.db);
+      await seed(ctx.database.db, { file: mockHomeFile });
       const res = await inject('GET', '/api/homes/mock-home');
       expect(res.statusCode).toBe(200);
       expect(res.json()).toEqual(mockHome);
     });
 
     it('returns the effective model: the declination overlay on top of the stored one', async () => {
-      await seed(ctx.database.db);
+      await seed(ctx.database.db, { file: mockHomeFile });
       const declination = { value: -1.5, source: 'measured' as const };
       const set = await inject('PUT', '/api/homes/mock-home/settings', {
         version: 0,
@@ -137,7 +140,7 @@ describe('homes API', () => {
     });
 
     it('answers PUT and import with the effective model too', async () => {
-      await seed(ctx.database.db);
+      await seed(ctx.database.db, { file: mockHomeFile });
       const declination = { value: 2, source: 'measured' as const };
       await inject('PUT', '/api/homes/mock-home/settings', {
         version: 0,
@@ -162,7 +165,7 @@ describe('homes API', () => {
 
   describe('PUT /api/homes/:id', () => {
     it('replaces the whole model', async () => {
-      await seed(ctx.database.db);
+      await seed(ctx.database.db, { file: mockHomeFile });
       const updated = clone({ name: 'Updated', outdoorAreas: [] });
       const res = await inject('PUT', '/api/homes/mock-home', updated);
       expect(res.statusCode).toBe(200);
@@ -180,7 +183,7 @@ describe('homes API', () => {
     });
 
     it('rejects a body whose id differs from the URL', async () => {
-      await seed(ctx.database.db);
+      await seed(ctx.database.db, { file: mockHomeFile });
       const res = await inject('PUT', '/api/homes/mock-home', clone({ id: 'other' }));
       expect(res.statusCode).toBe(400);
       expect(ApiError.parse(res.json()).issues).toEqual([
@@ -189,7 +192,7 @@ describe('homes API', () => {
     });
 
     it('returns 400 with path-based issues for an invalid model', async () => {
-      await seed(ctx.database.db);
+      await seed(ctx.database.db, { file: mockHomeFile });
       const bad = clone();
       bad.openings[2]!.width.value = 50;
       bad.rooms[0]!.levelId = 'attic';
@@ -224,7 +227,7 @@ describe('homes API', () => {
     });
 
     it('round-trips: export then import gives an identical model', async () => {
-      await seed(ctx.database.db);
+      await seed(ctx.database.db, { file: mockHomeFile });
       const exported = await inject('GET', '/api/homes/mock-home/export');
       expect(exported.statusCode).toBe(200);
       expect(exported.headers['content-type']).toMatch(/^application\/json/);

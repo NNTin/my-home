@@ -7,9 +7,10 @@ The api validates every write with it and the web app validates every response w
 - JSON Schema: [`packages/shared/schema/home-model.schema.json`](../packages/shared/schema/home-model.schema.json),
   generated with `pnpm schema:generate` and committed (a test fails when it is out of date).
 - Real home: [`data/homes/home.json`](../data/homes/home.json), see [The real home](#the-real-home).
-- Mock home: [`data/homes/mock-home.json`](../data/homes/mock-home.json), the test fixture. Both
-  files' `$schema` points at the JSON Schema, so editors such as VS Code validate and autocomplete
-  them.
+- Test fixture: [`packages/shared/test-fixtures/mock-home.json`](../packages/shared/test-fixtures/mock-home.json),
+  a small made-up home (id `mock-home`, no location) that unit and integration tests load into a throwaway
+  database. It is **not** under `data/homes`, so no environment ever syncs it. Both files' `$schema` points at
+  the JSON Schema, so editors such as VS Code validate and autocomplete them.
 
 ## Conventions
 
@@ -116,8 +117,8 @@ it came from). Nothing else in the model or renderer changes. The only bare numb
 Terrain patches are drawn as solid blocks from `bottomElevation` up to their elevation (or their
 slope, below). Leaving the
 building footprint out of every patch (a hole, or no patch there) keeps the ground out of
-below-ground rooms; a lower patch next to a higher one forms a retaining wall, which is how the mock
-home's sunken souterrain garden works.
+below-ground rooms; a lower patch next to a higher one forms a retaining wall, which is how a
+sunken souterrain garden works.
 
 ### Slopes
 
@@ -417,9 +418,9 @@ north end, south along the west side). The ground floor and the attic are not la
 one placeholder room covering its floor. Never add the house's address or location (coordinates, map
 links, tile IDs, place names) to the repo.
 
-## The mock home
+## The test fixture
 
-`data/homes/mock-home.json` (all values `source: "mock"`):
+`packages/shared/test-fixtures/mock-home.json` (all values `source: "mock"`):
 
 - **Souterrain** (floor at -1.2 m, 2.5 m clear): the user's apartment with hallway, living room,
   kitchen, bedroom and bathroom, interior walls with doors, an entrance door and a patio door to its
@@ -445,21 +446,22 @@ renders without renderer changes.
 
 ## Seeding, swapping and importing homes
 
-The api seeds `data/homes/home.json` and then `data/homes/mock-home.json` on start in development
-(`SEED_ON_START`); the viewer opens the oldest home, the real one. `SEED_FILE` seeds a single file
-instead. Seeding is idempotent: a home whose id already exists is left alone.
+The api seeds `data/homes/home.json` ("Our home", the only home) on start in development
+(`SEED_ON_START`); the viewer opens the oldest home. `SEED_FILE` seeds a single file instead. The code
+stays ready for more homes (`?home=<id>`, the home list), but the home selector is hidden while there is
+only one. Seeding is idempotent: a home whose id already exists is left alone.
 
-**Deployed environments sync their homes from git on every deploy** (`dist/release.js`): production
-`home.json`, staging `home.json` and `mock-home.json`, validated first and replaced in one transaction
+**Deployed environments sync their homes from git on every deploy** (`dist/release.js`): both
+environments `home.json`, validated first and replaced in one transaction
 ([deployment.md](deployment.md#homes-come-from-git)). Changing the house there is a pull request to
 `data/homes`. The magnetic declination entered in walk mode is not part of that: it is a home setting
 stored on top of the model (`GET/PUT /api/homes/:homeId/settings`, [userdata.md](userdata.md#home-settings)),
 and `GET /api/homes/:id` and the export return the model with it applied.
 
 ```sh
-pnpm db:seed                                   # the real and the mock home (or SEED_FILE)
+pnpm db:seed                                   # data/homes/home.json (or SEED_FILE)
 pnpm db:seed path/to/other-home.json           # another file; relative to where pnpm runs
-pnpm db:seed data/homes/mock-home.json --replace   # overwrite an existing home with the same id
+pnpm db:seed data/homes/home.json --replace       # overwrite an existing home with the same id
 SEED_FILE=../../data/homes/other.json pnpm dev # default for start-up and db:seed (relative to apps/api)
 ```
 
@@ -481,7 +483,7 @@ every home that is in git.
 ```sh
 curl -X POST localhost:3000/api/homes/import -H 'content-type: application/json' \
   --data @data/homes/other-home.json
-curl -OJ localhost:3000/api/homes/mock-home/export
+curl -OJ localhost:3000/api/homes/home/export
 ```
 
 Exporting and re-importing gives an identical model. Invalid documents get a 400:

@@ -5,6 +5,7 @@ import { importedParams, importedTypeId, importLayouts } from '../src/db/layout-
 import { runRelease, type ReleaseLog } from '../src/db/release';
 import { homes, layouts } from '../src/db/schema';
 import { imports } from '../src/db/userdata-schema';
+import { mockHomeFile } from './fixtures';
 import { clearUserdata, createTestApp, injector } from './helpers';
 
 const item = (overrides: Partial<LayoutItem> = {}): LayoutItem => ({
@@ -32,7 +33,8 @@ describe('the one-time layout import (release job)', () => {
       {
         resetPublic: false,
         allowDatabaseReset: false,
-        homeFiles: ['mock-home.json'],
+        homeFiles: [mockHomeFile],
+        purgeHomes: [],
         userdataTrashRetentionDays: 30,
       },
       log,

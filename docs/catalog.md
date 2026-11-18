@@ -193,7 +193,7 @@ on `/` after the login instead, that is a setting of the sign-on (infrastructure
 S=.claude/skills/my-home-environments/scripts
 $S/catalog-smoke.sh staging                                    # desktop and phone: deep links, reload, back,
                                                                # every piece page, sections, the playground,
-                                                               # uses: a mock-home edit + undo, Place (faked)
+                                                               # uses: editor, history, Place (all writes faked)
 $S/screenshot.sh staging --path '/catalog' --out /tmp/catalog.png
 $S/screenshot.sh staging --viewport 390x844 --touch --path '/catalog' --out /tmp/catalog-phone.png
 ```

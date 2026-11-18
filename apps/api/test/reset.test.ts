@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { resetDatabase } from '../src/db/reset';
 import { seed } from '../src/db/seed';
 import { createTestApp } from './helpers';
+import { mockHomeFile } from './fixtures';
 
 describe('resetDatabase', () => {
   let ctx: Awaited<ReturnType<typeof createTestApp>>;
@@ -13,7 +14,7 @@ describe('resetDatabase', () => {
 
   it('drops all data so the next migration starts from an empty database', async () => {
     const { db } = ctx.database;
-    await seed(db);
+    await seed(db, { file: mockHomeFile });
     const layout = await ctx.app.inject({
       method: 'POST',
       url: '/api/homes/mock-home/layouts',
@@ -29,7 +30,7 @@ describe('resetDatabase', () => {
     expect(tables.rows[0]?.count).toBe(0);
 
     await ctx.database.migrate();
-    expect((await seed(db)).status).toBe('inserted');
+    expect((await seed(db, { file: mockHomeFile })).status).toBe('inserted');
     const layouts = await ctx.app.inject({ method: 'GET', url: '/api/homes/mock-home/layouts' });
     expect(layouts.json().items).toHaveLength(0);
   });

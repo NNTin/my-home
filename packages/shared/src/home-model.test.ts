@@ -17,7 +17,7 @@ import { ListHomesQuery } from './homes';
 const readJson = (path: string): unknown =>
   JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8'));
 
-const mockHome = () => structuredClone(readJson('../../../data/homes/mock-home.json')) as HomeModel;
+const mockHome = () => structuredClone(readJson('../test-fixtures/mock-home.json')) as HomeModel;
 const realHome = () => structuredClone(readJson('../../../data/homes/home.json')) as HomeModel;
 
 const d = (value: number) => ({ value, source: 'mock' as const });

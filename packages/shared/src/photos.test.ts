@@ -14,7 +14,7 @@ import {
 
 const mockHome = HomeModel.parse(
   JSON.parse(
-    readFileSync(new URL('../../../data/homes/mock-home.json', import.meta.url), 'utf8'),
+    readFileSync(new URL('../test-fixtures/mock-home.json', import.meta.url), 'utf8'),
   ) as unknown,
 );
 
