@@ -47,8 +47,8 @@ describe('dimensions of every piece module', () => {
       'Width 120.0 cm',
       'Height 120.0 cm',
       'Sill height 90.0 cm',
-      'Frame width 6.0 cm',
-      'Sash width 108.0 cm',
+      'Frame width 6.5 cm',
+      'Sash width 107.0 cm',
     ]);
     expect(names('window.tilt-turn', { sashes: 3 })).toHaveLength(7);
   });

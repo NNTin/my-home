@@ -65,12 +65,22 @@ describe('Playground controls, generated from the specs', () => {
             group.getByRole('button', { name: `More ${spec.label.toLowerCase()}` }),
           ).toBeEnabled();
           controls += 2;
+        } else if (spec.type === 'fraction') {
+          expect(playground().getByRole('slider', { name: spec.label })).toHaveValue(
+            String(Math.round(spec.default * 100)),
+          );
+          controls += 1;
+        } else if (spec.type === 'choice') {
+          const select = playground().getByRole('combobox', { name: spec.label });
+          expect(select).toHaveValue(spec.default);
+          expect(within(select).getAllByRole('option')).toHaveLength(spec.options.length);
+          controls += 1;
         }
       }
       // Every input of the playground is one of those (plus "Reset to defaults").
-      expect(document.querySelectorAll('.playground input, .playground button')).toHaveLength(
-        controls + 1,
-      );
+      expect(
+        document.querySelectorAll('.playground input, .playground button, .playground select'),
+      ).toHaveLength(controls + 1);
       const designSpecs = specs.filter((s) => s.tier === 'design');
       for (const spec of designSpecs) expect(design().getByText(spec.label)).toBeInTheDocument();
       expect(
@@ -81,9 +91,28 @@ describe('Playground controls, generated from the specs', () => {
 
   it('shows design lengths in cm and colours as hex', () => {
     render(<Harness type={catalog.get('window.casement')!} />);
-    expect(design().getByText('Frame width').nextElementSibling).toHaveTextContent('6.0 cm');
+    expect(design().getByText('Frame width').nextElementSibling).toHaveTextContent('6.5 cm');
     expect(design().getByText('Glass colour').nextElementSibling).toHaveTextContent('#a8d4ff');
     expect(design().getByText('Glass opacity').nextElementSibling).toHaveTextContent('0.35');
+  });
+});
+
+describe('choices and fractions', () => {
+  it('picks a roller shutter box and closes it in 5 % steps', () => {
+    render(<Harness type={catalog.get('window.tilt-turn')!} />);
+    fireEvent.change(playground().getByRole('combobox', { name: 'Roller shutter' }), {
+      target: { value: 'outside' },
+    });
+    const closed = playground().getByRole('slider', { name: 'Shutter closed' });
+    expect(closed).toHaveAttribute('step', '5');
+    fireEvent.change(closed, { target: { value: '40' } });
+    expect(overrides()).toEqual({ shutter: 'outside', shutterClosed: 0.4 });
+    expect(closed).toHaveAttribute('aria-valuetext', '40 %');
+    // Back to the default drops the override.
+    fireEvent.change(playground().getByRole('combobox', { name: 'Roller shutter' }), {
+      target: { value: 'none' },
+    });
+    expect(overrides()).toEqual({ shutterClosed: 0.4 });
   });
 });
 

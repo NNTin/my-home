@@ -1,5 +1,12 @@
 import { z } from 'zod';
-import { CatalogKind, formatCm, ParamValues, TypeId, type CatalogType } from './catalog';
+import {
+  CatalogKind,
+  formatCm,
+  formatPercent,
+  ParamValues,
+  TypeId,
+  type CatalogType,
+} from './catalog';
 import { Bearing, Id } from './home-model';
 import { ApiError } from './homes';
 import { PlanPosition } from './layouts';
@@ -172,7 +179,7 @@ export const WhoAmIResponse = z.object({
 export type WhoAmIResponse = z.infer<typeof WhoAmIResponse>;
 
 const ParamSpecSummary = z.looseObject({
-  type: z.enum(['color', 'length', 'count', 'number']),
+  type: z.enum(['color', 'length', 'count', 'number', 'fraction', 'choice']),
   tier: z.enum(['basic', 'design']),
   label: z.string(),
   default: z.union([z.string(), z.number()]),
@@ -180,6 +187,7 @@ const ParamSpecSummary = z.looseObject({
   max: z.number().optional(),
   step: z.number().optional(),
   unit: z.string().optional(),
+  options: z.array(z.object({ value: z.string(), label: z.string() })).optional(),
 });
 
 /** A catalogue type as the api lists it: metadata and parameter specs (tier and limits). */
@@ -327,6 +335,9 @@ const DEG = 180 / Math.PI;
 const formatValue = (type: CatalogType | undefined, key: string, value: string | number) => {
   const spec = type?.params[key];
   if (spec?.type === 'length' && typeof value === 'number') return formatCm(value);
+  if (spec?.type === 'fraction' && typeof value === 'number') return formatPercent(value);
+  if (spec?.type === 'choice')
+    return spec.options.find((o) => o.value === value)?.label ?? String(value);
   if (typeof value === 'string') return value.toLowerCase();
   return String(value);
 };

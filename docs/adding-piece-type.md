@@ -45,6 +45,10 @@ export const lamp = defineType({
 - Openings name the home model's `Opening.type` values they may carry (`openingTypes`) and a
   `preview` hole for the piece page. A count with a minimum width per part (`sashes`, `leaves`)
   gets `each: { minWidth, one, other }`; `openingFitIssues` reports a count that does not fit.
+- Besides colours, lengths, counts and design numbers there are **fractions** (`fraction('Shutter
+closed', 0)`: 0 to 1 in 5 % steps, shown in %) and **choices** (`choice('Curtain', { none: 'None',
+both: 'Both sides' })`: one of a fixed list, the first the default). Both are basic; the playground
+  and the per-use editor give them a slider and a drop-down list.
 - Furniture also needs its id without the family in `LEGACY_FURNITURE_TYPE_IDS` (the old named
   layouts stored `lamp`; the one-time import maps it); that list is derived from `furniture` in `furniture.ts`.
 
@@ -77,8 +81,10 @@ export default definePiece({
   throw (clamp instead, as `fittingCount` does for sashes that do not fit). `values` are the
   effective values (defaults plus a use's overrides); read them with `numberParam`/`colorParam`.
 - **Local frame.** Openings: centred on the hole, width along x, height along y, the wall's depth
-  along z; `ctx` is the hole (`width`, `height`, `wallDepth`). Framed openings use
-  [`openings/frame.ts`](../apps/web/src/catalog/openings/frame.ts). Furniture: origin on the floor at
+  along z; `ctx` is the hole (`width`, `height`, `wallDepth`), the `sill` height and `outside` (which
+  way local z points to the outdoors: the builder derives it from the footprint; the catalogue and
+  piece pages show the room side, `-1`). Doors use [`openings/frame.ts`](../apps/web/src/catalog/openings/frame.ts),
+  the wall windows [`openings/window.ts`](../apps/web/src/catalog/openings/window.ts). Furniture: origin on the floor at
   the centre of the footprint, the front faces **+z** (a headboard or backrest sits at `-depth / 2`).
   The builder or the editor places the piece, so a module never sees world coordinates.
 - A `Part` is a `box` or a `cylinder` (`size` = `[diameter, height, diameter]`) with a colour, a
@@ -90,7 +96,7 @@ export default definePiece({
   with a `value` in metres, a `label` in cm with one decimal and a `name` ("Width", "Sill height"),
   built with `dimension(from, to, value, name)`. At most 8 lines (the piece page labels at most 8 in
   3D). Windows and doors use `framedDimensions` (hole, sill when `ctx.sill` is known, frame width,
-  each sash or leaf), furniture `furnitureDimensions` or `roundDimensions`.
+  each sash or leaf; the window board, outside sill and shutter box are measured in the section), furniture `furnitureDimensions` or `roundDimensions`.
 - Optional `section(values, ctx)` (openings): the piece's own section as `SectionShape`s (rectangles
   in depth × height, tagged by role), when the generic cut of its parts through the centre
   (`sectionOf` in [`piece-page/section.ts`](../apps/web/src/piece-page/section.ts)) is not right,

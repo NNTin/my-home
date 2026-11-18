@@ -58,8 +58,8 @@ describe('the piece page', () => {
       'Width120.0 cm',
       'Height120.0 cm',
       'Sill height90.0 cm',
-      'Frame width6.0 cm',
-      'Sash width108.0 cm',
+      'Frame width6.5 cm',
+      'Sash width107.0 cm',
     ]);
     expect(inspector!.lines.map((l) => l.label)).toEqual(
       expect.arrayContaining(['120.0 cm', '90.0 cm']),
@@ -95,9 +95,11 @@ describe('the piece page', () => {
       within(screen.getByRole('list', { name: 'Legend' }))
         .getAllByRole('listitem')
         .map((l) => l.textContent),
-    ).toEqual(['Wall', 'Frame', 'Glass']);
-    expect(screen.getByText('Glass depth').nextElementSibling).toHaveTextContent('2.0 cm');
-    expect(screen.getByText(/Simplified design/)).toBeInTheDocument();
+    ).toEqual(['Wall', 'Frame', 'Sash', 'Glass', 'Window board', 'Outside sill']);
+    expect(screen.getByText('Glass depth').nextElementSibling).toHaveTextContent('2.4 cm');
+    expect(
+      screen.getByText(/the outdoors on the left and the room on the right/),
+    ).toBeInTheDocument();
     // The section follows the playground.
     fireEvent.click(panel().getByRole('button', { name: 'More sashes' }));
     expect(svg.querySelectorAll('rect[data-role="frame"]')).toHaveLength(3);

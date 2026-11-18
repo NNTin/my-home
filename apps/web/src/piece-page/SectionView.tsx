@@ -8,8 +8,12 @@ const ROLE_NAMES: Partial<Record<SectionRole, string>> = {
   frame: 'Frame',
   sash: 'Sash',
   glass: 'Glass',
+  handle: 'Handle',
   panel: 'Panel',
-  sill: 'Sill',
+  board: 'Window board',
+  sill: 'Outside sill',
+  shutter: 'Roller shutter',
+  curtain: 'Curtain',
   leaf: 'Leaf',
   post: 'Post',
 };
@@ -144,8 +148,9 @@ export function SectionView({
           ))}
         </dl>
         <p className="section-note">
-          Simplified design: the section shows what the design draws today (frame and glass or
-          panel). Sill and sash profiles come with later design changes.
+          A vertical cut through the middle, the outdoors on the left and the room on the right:
+          frame and sash profiles with the glass (or a door's panel), the window board, the outside
+          sill, and a roller shutter or curtain where there is one.
         </p>
       </figcaption>
     </figure>

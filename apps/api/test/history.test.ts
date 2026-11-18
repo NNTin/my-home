@@ -58,6 +58,14 @@ describe('describeChanges', () => {
         { params: { sashes: 2 } },
       ),
     ).toEqual([{ field: 'params.frameColor', text: 'frame colour #383e42 → #f7f7f5 (default)' }]);
+    // A shutter's box is a choice (its label), how far it is closed a percentage.
+    expect(
+      describeChanges(
+        window,
+        { params: {} },
+        { params: { shutter: 'outside', shutterClosed: 0.4 } },
+      ).map((c) => c.text),
+    ).toEqual(['roller shutter None → Box outside', 'shutter closed 0 % → 40 %']);
     expect(describeChanges(bed, state, { ...state, removed: true })).toEqual([
       { field: 'removed', text: 'moved to the trash' },
     ]);

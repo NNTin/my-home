@@ -69,8 +69,30 @@ describe('catalog', () => {
       ]),
     );
     expect(basic).toEqual({
-      'window.casement': ['frameColor', 'sashes'],
-      'window.tilt-turn': ['frameColor', 'sashes'],
+      'window.casement': [
+        'frameColor',
+        'sashes',
+        'handleSide',
+        'boardColor',
+        'shutter',
+        'shutterClosed',
+        'shutterColor',
+        'curtain',
+        'curtainClosed',
+        'curtainColor',
+      ],
+      'window.tilt-turn': [
+        'frameColor',
+        'sashes',
+        'handleSide',
+        'boardColor',
+        'shutter',
+        'shutterClosed',
+        'shutterColor',
+        'curtain',
+        'curtainClosed',
+        'curtainColor',
+      ],
       'window.roof': ['glassColor'],
       'door.interior': ['frameColor'],
       'door.exterior': ['frameColor'],
@@ -113,6 +135,51 @@ describe('catalog', () => {
         },
       ]),
     ).toThrow(/#rrggbb/);
+    const withParam = (spec: object) =>
+      createCatalog([{ ...bed, params: { x: { tier: 'basic', label: 'X', ...spec } as never } }]);
+    expect(() => withParam({ type: 'fraction', default: 1.5, step: 0.05 })).toThrow(/from 0 to 1/);
+    expect(() => withParam({ type: 'fraction', default: 0, step: 0 })).toThrow(/step 0/);
+    const options = [
+      { value: 'a', label: 'A' },
+      { value: 'b', label: 'B' },
+    ];
+    expect(() => withParam({ type: 'choice', default: 'c', options })).toThrow(/not an option/);
+    expect(() =>
+      withParam({ type: 'choice', default: 'a', options: [options[0], options[0]] }),
+    ).toThrow(/duplicate option/);
+    expect(() => withParam({ type: 'choice', default: 'a', options: [options[0]] })).toThrow(
+      /at least two/,
+    );
+  });
+
+  it('gives the wall windows a shutter and a curtain, both off by default', () => {
+    for (const id of ['window.casement', 'window.tilt-turn']) {
+      const defaults = defaultParams(type(id));
+      expect(defaults).toMatchObject({
+        shutter: 'none',
+        shutterClosed: 0,
+        curtain: 'none',
+        curtainClosed: 0,
+        handleSide: 'right',
+      });
+      expect(type(id).params.shutter).toMatchObject({
+        type: 'choice',
+        options: [
+          { value: 'none', label: 'None' },
+          { value: 'outside', label: 'Box outside' },
+          { value: 'inside', label: 'Box inside' },
+        ],
+      });
+      expect(type(id).params.curtainClosed).toEqual({
+        type: 'fraction',
+        tier: 'basic',
+        label: 'Curtain closed',
+        default: 0,
+        step: 0.05,
+      });
+    }
+    // Both wall window types share every parameter, so a git change of type keeps overrides valid.
+    expect(type('window.casement').params).toEqual(type('window.tilt-turn').params);
   });
 });
 
@@ -148,6 +215,12 @@ describe('basic overrides', () => {
     expect(issues({ frameColor: 'white' })).toEqual(['frameColor']);
     expect(issues({ glassOpacity: 0.5 })).toEqual(['']);
     expect(issues({ colour: '#ffffff' })).toEqual(['']);
+    // Fractions from 0 to 1, choices among their options only.
+    expect(issues({ shutterClosed: 1.2 })).toEqual(['shutterClosed']);
+    expect(issues({ curtainClosed: -0.1 })).toEqual(['curtainClosed']);
+    expect(issues({ shutter: 'half' })).toEqual(['shutter']);
+    expect(issues({ curtain: 2 })).toEqual(['curtain']);
+    expect(issues({ shutter: 'outside', shutterClosed: 0.4, curtain: 'both' })).toEqual([]);
     const bed = basicOverridesSchema(type('furniture.bed'));
     expect(bed.safeParse({ width: 0.79 }).success).toBe(false);
     expect(bed.safeParse({ width: 2.2, length: 1.9 }).success).toBe(true);

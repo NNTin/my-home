@@ -16,11 +16,31 @@ export interface PieceContext {
   width: number;
   height: number;
   wallDepth: number;
-  /** Wall openings: the hole's bottom above the floor, where known (the piece page's preview). */
+  /** Wall openings: the hole's bottom above the floor, where known. */
   sill?: number;
+  /**
+   * Wall openings: which way local z points to the outdoors (1: +z, -1: -z). Windows put the
+   * window board and the curtain on the room side, the outside sill and a shutter box outside.
+   * The builder derives it from the building's footprint; the piece page shows the room side
+   * (-1, the outdoors away from its camera).
+   */
+  outside?: 1 | -1;
 }
 
-export type PartRole = 'frame' | 'sash' | 'glass' | 'panel' | 'leaf' | 'post' | 'body' | 'detail';
+export type PartRole =
+  | 'frame'
+  | 'sash'
+  | 'glass'
+  | 'panel'
+  | 'leaf'
+  | 'post'
+  | 'body'
+  | 'detail'
+  | 'handle'
+  | 'board'
+  | 'sill'
+  | 'shutter'
+  | 'curtain';
 
 /** Material settings beyond the colour; each is three.js' default when omitted. */
 export interface PartMaterial {
@@ -63,8 +83,8 @@ export interface PartState {
   colliding: boolean;
 }
 
-/** What a section shows: the parts' roles, plus the wall around the hole and a sill. */
-export type SectionRole = PartRole | 'sill' | 'wall';
+/** What a section shows: the parts' roles, plus the wall around the hole. */
+export type SectionRole = PartRole | 'wall';
 
 /**
  * One rectangle of a vertical cut through an opening's centre, perpendicular to the wall: `z` is

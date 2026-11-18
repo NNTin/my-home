@@ -1,6 +1,7 @@
 import {
   effectiveParams,
   formatCm,
+  formatPercent,
   modelUses,
   type CatalogType,
   type HomeModel,
@@ -11,7 +12,7 @@ import {
   type PhotoRequest,
   type Use,
 } from '@my-home/shared';
-import { previewContext } from '../catalog-page/preview';
+import { previewContext, ROOM_SIDE_TO_CAMERA } from '../catalog-page/preview';
 import type { PieceContext } from '../catalog/types';
 import { openRequests } from '../photos/requests';
 
@@ -137,6 +138,13 @@ export function overrideSummary(type: CatalogType, overrides: ParamValues): Over
             key,
             text: `${value} ${spec.each ? (value === 1 ? spec.each.one : spec.each.other) : label}`,
           };
+        case 'fraction':
+          return { key, text: `${label} ${formatPercent(Number(value))}` };
+        case 'choice':
+          return {
+            key,
+            text: `${label}: ${spec.options.find((o) => o.value === value)?.label ?? String(value)}`,
+          };
         default:
           return { key, text: `${label} ${value}` };
       }
@@ -164,6 +172,7 @@ export function contextOfUse(
       height: opening.height.value,
       wallDepth: wall?.thickness.value ?? preview.wallDepth,
       sill: opening.sill.value,
+      outside: ROOM_SIDE_TO_CAMERA,
     };
   }
   for (const b of model.outbuildings ?? []) {
@@ -174,6 +183,7 @@ export function contextOfUse(
         height: o.height.value,
         wallDepth: b.wallThickness.value,
         sill: o.sill.value,
+        outside: ROOM_SIDE_TO_CAMERA,
       };
     }
   }

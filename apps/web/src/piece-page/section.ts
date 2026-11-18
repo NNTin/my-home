@@ -124,9 +124,16 @@ export function sectionLabels(
   };
   if (stub === 'wall') add('Wall depth', ctx.wallDepth);
   add('Frame depth', depthOf(shapes, 'frame'));
+  add('Sash depth', depthOf(shapes, 'sash'));
   add('Glass depth', depthOf(shapes, 'glass'));
   add('Panel depth', depthOf(shapes, 'panel'));
+  add('Window board depth', depthOf(shapes, 'board'));
   add('Sill depth', depthOf(shapes, 'sill'));
+  const shutterBox = shapes.filter((s) => s.role === 'shutter' && s.y[0] >= ctx.height / 2 - EPS);
+  if (shutterBox.length > 0) {
+    add('Shutter box height', Math.max(...shutterBox.map((s) => s.y[1])) - ctx.height / 2);
+    add('Shutter box depth', depthOf(shutterBox, 'shutter'));
+  }
   if (stub === 'wall') {
     add('Sill height', ctx.sill);
     add('Opening height', ctx.height);

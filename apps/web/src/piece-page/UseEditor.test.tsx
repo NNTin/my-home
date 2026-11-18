@@ -56,7 +56,8 @@ describe('the per-use editor', () => {
     const rows = [...document.querySelectorAll('.use-editor .use-param-source')].map(
       (r) => r.textContent,
     );
-    expect(rows).toEqual(['Overridden Reset to type default', 'Type default']);
+    // Frame colour, then the other nine basic parameters (sashes, handle, board, shutter, curtain).
+    expect(rows).toEqual(['Overridden Reset to type default', ...Array(9).fill('Type default')]);
     // The kitchen window is 150 cm wide, with a 90 cm sill (the preview hole is 120 cm).
     expect(dimension('Width')).toBe('150.0 cm');
     expect(dimension('Sill height')).toBe('90.0 cm');
