@@ -57,7 +57,8 @@ try {
       await page.screenshot({ path: path.join(out, `${short}-model.png`), timeout: SHOT_TIMEOUT });
       await hidden.evaluate((node) => node.remove());
       await page.getByLabel('Lay the photo over the 3D view').check();
-      await page.locator('.overlay-settings input[type=range]').fill(opacity);
+      // By its label: the pose editor below it has range inputs too.
+      await page.locator('.overlay-settings').getByLabel('Opacity').fill(opacity);
       await page.addStyleTag({ content: HIDE_UI });
       await page.waitForTimeout(2000);
       await page.screenshot({
