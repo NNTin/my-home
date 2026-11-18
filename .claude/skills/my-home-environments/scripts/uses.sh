@@ -20,7 +20,7 @@
 #   note-edit <noteId> TEXT             replaces a note's text
 #   note-delete <noteId>                deletes a note (soft); notes only, never photos
 #
-# --home ID (default: the first home). --rotation-deg is rotationY in degrees (counter-clockwise from above).
+# --home ID (default: the first home; options may come before or after the command). --rotation-deg is rotationY in degrees (counter-clockwise from above).
 # Every write first reads the current version. Test data only on mock-home, cleaned up by undo or remove.
 set -euo pipefail
 # shellcheck source=photos-lib.sh
@@ -32,8 +32,8 @@ usage() {
 }
 
 [[ $# -ge 2 ]] || usage
-env=$1 command=$2
-shift 2
+env=$1
+shift
 resolve_env "$env"
 require_tools curl jq
 
@@ -56,6 +56,11 @@ while [[ $# -gt 0 ]]; do
     *) args+=("$1") && shift ;;
   esac
 done
+# The command is the first word that is not an option, so options may also come before it
+# (uses.sh staging --home mock-home notes <id>).
+[[ ${#args[@]} -gt 0 ]] || usage
+command=${args[0]}
+args=("${args[@]:1}")
 [[ -z $include || $include == removed ]] || die "--include takes only 'removed'"
 
 # uapi <path> [curl args...]: an api request that declares the agent (the SSO identity wins where present).

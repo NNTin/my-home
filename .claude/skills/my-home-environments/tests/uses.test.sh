@@ -122,6 +122,11 @@ check "note-edit patches the body" logged 'staging /api/notes/n1 -H X-My-Home-Ac
 "$u" staging note-delete n1 >/dev/null 2>&1
 check "note-delete deletes the note" logged 'staging /api/notes/n1 -H X-My-Home-Actor: agent -X DELETE'
 check "note-add needs a text" fails "$u" staging note-add window.casement
+reset
+"$u" staging --home mock-home note-add souterrain-kitchen-window 'Before the command' >/dev/null
+check "options may come before the command" \
+  logged 'staging /api/notes -H X-My-Home-Actor: agent -X POST --json {"subject":{"kind":"use","id":"souterrain-kitchen-window"},"body":"Before the command","homeId":"mock-home"}'
+check "a command is required" fails "$u" staging --home mock-home
 
 # The only DELETEs in uses.sh move a placement to the trash and soft-delete a note; nothing touches photos.
 check "uses.sh deletes nothing but placements and notes (soft)" \
