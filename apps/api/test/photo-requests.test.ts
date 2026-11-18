@@ -247,4 +247,103 @@ describe('photo requests API', () => {
     expect((await inject('GET', `/api/photo-requests/${request.id}`)).statusCode).toBe(404);
     expect((await inject('DELETE', '/api/photo-requests/nope')).statusCode).toBe(404);
   });
+
+  describe('subjects', () => {
+    const kitchenWindow = { kind: 'use', id: 'souterrain-kitchen-window' } as const;
+
+    it('stores the subject and resolves it on read', async () => {
+      const request = await create({ subject: kitchenWindow });
+      expect(request.subject).toEqual({
+        ...kitchenWindow,
+        name: expect.any(String),
+        status: 'current',
+      });
+      expect((await get(request.id)).subject).toEqual(request.subject);
+      expect((await create()).subject).toBeNull();
+      const typed = await create({ subject: { kind: 'type', id: 'window.casement' } });
+      expect(typed.subject).toMatchObject({ name: 'Casement window', status: 'current' });
+    });
+
+    it("a request with only a use subject is placed in the use's first room", async () => {
+      const request = await create({
+        levelId: undefined,
+        position: undefined,
+        yaw: undefined,
+        pitch: undefined,
+        subject: kitchenWindow,
+      });
+      expect(request).toMatchObject({
+        roomId: 'souterrain-kitchen',
+        roomName: 'Kitchen',
+        levelId: 'souterrain',
+        position: null,
+      });
+      const post = (payload: object) =>
+        inject('POST', '/api/homes/mock-home/photo-requests', { reason: 'x', ...payload });
+      // A type is no place, and an unknown use has no room.
+      expect((await post({ subject: { kind: 'type', id: 'window.casement' } })).statusCode).toBe(
+        400,
+      );
+      expect((await post({ subject: { kind: 'use', id: 'nope' } })).statusCode).toBe(400);
+      expect((await post({})).statusCode).toBe(400);
+    });
+
+    it('records the actor as the requester when none is given, and keeps a given one', async () => {
+      const declared = (actor: string) =>
+        ctx.app.inject({
+          method: 'POST',
+          url: '/api/homes/mock-home/photo-requests',
+          headers: { 'x-my-home-actor': actor },
+          payload: { roomId: 'souterrain-kitchen', reason: 'x' },
+        });
+      expect(PhotoRequest.parse((await declared('agent')).json()).requester).toBe('agent');
+      expect(PhotoRequest.parse((await declared('owner')).json()).requester).toBe('owner');
+      const sso = await ctx.app.inject({
+        method: 'POST',
+        url: '/api/homes/mock-home/photo-requests',
+        headers: { 'x-authentik-username': 'nntin-bot' },
+        payload: { roomId: 'souterrain-kitchen', reason: 'x' },
+      });
+      expect(PhotoRequest.parse(sso.json()).requester).toBe('agent');
+      expect((await create({ requester: 'owner' })).requester).toBe('owner');
+    });
+
+    it('a photo answering a request with a subject is linked to it', async () => {
+      const uploaded = await create({ subject: kitchenWindow });
+      const photo = await upload(uploaded.id);
+      expect(photo.subjects.map((s) => s.id)).toEqual([kitchenWindow.id]);
+
+      const fulfilled = await create({ subject: { kind: 'type', id: 'window.casement' } });
+      const other = await upload();
+      expect(other.subjects).toEqual([]);
+      const res = await inject('POST', `/api/photo-requests/${fulfilled.id}/fulfil`, {
+        photoId: other.id,
+      });
+      expect(res.statusCode, res.body).toBe(200);
+      const linked = Photo.parse((await inject('GET', `/api/photos/${other.id}`)).json());
+      expect(linked.subjects.map((s) => s.id)).toEqual(['window.casement']);
+
+      // Linking through PATCH does the same, and a request without a subject adds nothing.
+      const plain = await create();
+      const third = await upload();
+      await ctx.app.inject({
+        method: 'PATCH',
+        url: `/api/photos/${third.id}`,
+        payload: { requestId: plain.id },
+      });
+      expect(Photo.parse((await inject('GET', `/api/photos/${third.id}`)).json()).subjects).toEqual(
+        [],
+      );
+      await ctx.app.inject({
+        method: 'PATCH',
+        url: `/api/photos/${third.id}`,
+        payload: { requestId: uploaded.id },
+      });
+      expect(
+        Photo.parse((await inject('GET', `/api/photos/${third.id}`)).json()).subjects.map(
+          (s) => s.id,
+        ),
+      ).toEqual([kitchenWindow.id]);
+    });
+  });
 });

@@ -16,7 +16,8 @@ Everything is in the Postgres schema **`media`**, apart from the home model and 
 | `media.photos`            | metadata: home, level, pose, captured room, time, note, tags, request, sizes, sensor snapshot, `deleted_at` |
 | `media.photo_blobs`       | the image bytes (`bytea`), one row per photo, so metadata queries stay light                                |
 | `media.photo_thumbnails`  | the thumbnail bytes                                                                                         |
-| `media.photo_requests`    | requests for new photos: target, reason, requester, status, `deleted_at`                                    |
+| `media.photo_subjects`    | the types and uses a photo shows (`photo_id`, `subject_kind`, `subject_id`), § Subjects                     |
+| `media.photo_requests`    | requests for new photos: target, reason, requester, subject, status, `deleted_at`                           |
 | `media.schema_migrations` | the journal of this schema's own migrations                                                                 |
 
 Drizzle definitions: [`apps/api/src/db/media-schema.ts`](../apps/api/src/db/media-schema.ts). Request and response
@@ -37,6 +38,24 @@ silently drop such a constraint. A photo names its home, level, room and request
   - `levelInModel`: whether `levelId` still exists.
 - Nothing fails when a branch renames or removes a room, a level or the whole home: the photo is still listed at
   its pose with its captured room name. The `roomId` list filter matches the captured **or** the resolved room.
+
+### Subjects: links to types and uses
+
+A photo can be linked to catalogue **types** and **uses** (an opening of the home model, or a furniture placement),
+so a piece page can show "photos of this window" and agents can ask for "the bed-room east window". A subject is
+`{ kind: 'type' | 'use', id }` (`packages/shared/src/subjects.ts`), the same as for notes (`docs/userdata.md`).
+
+- `Photo.subjects` lists them, each resolved on read: `name` (the type's or use's current name) and `status`
+  (`current`, or `missing` when the catalogue, the home's model or its active placements no longer have the id; a
+  placement in the trash is `missing` but keeps its name). Like rooms, they are soft references in the side table
+  `media.photo_subjects`: nothing fails and no link is dropped when a branch loses the id.
+- Upload with `subjects` in `meta`, or `PATCH` them: the update **replaces the whole list** (at most 10, duplicates
+  dropped). They are sorted by when they were linked, then kind and id.
+- `GET …/photos?subject=use:<useId>` or `?subject=type:<typeId>` lists the photos linked to exactly that subject
+  (a type filter does not include the photos of its uses).
+- A request may have a `subject`. A photo answering it (upload with `requestId`, `PATCH` of `requestId`, or
+  `fulfil`) is linked to the request's subject as well.
+- Purging a photo deletes its links (`on delete cascade`); a photo in the trash keeps them.
 
 ### Pose conventions
 
@@ -150,7 +169,9 @@ $S/photos-copy.sh staging production --dry-run            # what would be copied
 $S/photos-copy.sh staging production --since 2026-11-01T00:00:00Z
 ```
 
-A copied photo keeps its id, pose, time, captured room, note and tags. Its image is re-encoded once more by the destination, like every upload. That is the price of never storing an uploaded file as it came: the copy is encoded at the same quality and is not scaled again (it is already within the size limit), so the loss of that one extra generation is small, but the bytes differ from the source. Photos already on the destination (also in
+A copied photo keeps its id, pose, time, captured room, note, tags, sensor snapshot and subjects (the
+destination resolves them against its own model). A photo with subjects cannot be copied to an environment
+running a build from before subjects, since that build refuses the unknown `meta` field. Its image is re-encoded once more by the destination, like every upload. That is the price of never storing an uploaded file as it came: the copy is encoded at the same quality and is not scaled again (it is already within the size limit), so the loss of that one extra generation is small, but the bytes differ from the source. Photos already on the destination (also in
 its trash) are skipped, so the copy can be repeated. It only adds photos and never changes the source.
 
 ### Size and backups
@@ -203,25 +224,25 @@ on the same level), or in the room a request names, is offered as its answer; sa
 
 All under `/api`; shapes in `packages/shared/src/photos.ts`.
 
-| Method and path                                      | Purpose                                                                         |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `POST /homes/:homeId/photos`                         | upload: multipart with a `meta` JSON part and an `image` file part              |
-| `GET /homes/:homeId/photos`                          | list, newest first; filters below; the trash is excluded                        |
-| `GET /photos/:id`                                    | metadata (also for a photo in the trash)                                        |
-| `GET /photos/:id/image`, `GET /photos/:id/thumbnail` | the WebP bytes                                                                  |
-| `PATCH /photos/:id`                                  | change pose, level, note, tags, time or request; a new pose re-derives the room |
-| `DELETE /photos/:id`, `POST /photos/:id/restore`     | to the trash and back                                                           |
-| `POST /photos/:id/purge`                             | delete for good; 409 unless the photo is in the trash                           |
-| `POST /homes/:homeId/photo-requests`                 | create a request                                                                |
-| `GET /homes/:homeId/photo-requests`                  | list, oldest first; `status=open` (default), `fulfilled`, `cancelled`, `all`    |
-| `GET /photo-requests/:id`                            | one request with the ids of its photos                                          |
-| `POST /photo-requests/:id/fulfil`                    | link a photo (`{ "photoId": … }`) and close the request                         |
-| `POST /photo-requests/:id/cancel`, `…/reopen`        | close without a photo, or open again                                            |
-| `DELETE /photo-requests/:id`, `…/restore`, `…/purge` | the trash, as for photos                                                        |
-| `GET /homes/:homeId/trash`                           | deleted photos and requests, with `retentionDays`                               |
-| `POST /homes/:homeId/trash/empty`                    | purge everything in this home's trash                                           |
+| Method and path                                      | Purpose                                                                                   |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `POST /homes/:homeId/photos`                         | upload: multipart with a `meta` JSON part and an `image` file part                        |
+| `GET /homes/:homeId/photos`                          | list, newest first; filters below; the trash is excluded                                  |
+| `GET /photos/:id`                                    | metadata (also for a photo in the trash)                                                  |
+| `GET /photos/:id/image`, `GET /photos/:id/thumbnail` | the WebP bytes                                                                            |
+| `PATCH /photos/:id`                                  | change pose, level, note, tags, time, request or subjects; a new pose re-derives the room |
+| `DELETE /photos/:id`, `POST /photos/:id/restore`     | to the trash and back                                                                     |
+| `POST /photos/:id/purge`                             | delete for good; 409 unless the photo is in the trash                                     |
+| `POST /homes/:homeId/photo-requests`                 | create a request                                                                          |
+| `GET /homes/:homeId/photo-requests`                  | list, oldest first; `status=open` (default), `fulfilled`, `cancelled`, `all`              |
+| `GET /photo-requests/:id`                            | one request with the ids of its photos                                                    |
+| `POST /photo-requests/:id/fulfil`                    | link a photo (`{ "photoId": … }`) and close the request                                   |
+| `POST /photo-requests/:id/cancel`, `…/reopen`        | close without a photo, or open again                                                      |
+| `DELETE /photo-requests/:id`, `…/restore`, `…/purge` | the trash, as for photos                                                                  |
+| `GET /homes/:homeId/trash`                           | deleted photos and requests, with `retentionDays`                                         |
+| `POST /homes/:homeId/trash/empty`                    | purge everything in this home's trash                                                     |
 
-List filters: `levelId`, `roomId`, `tag`, `requestId`, `near=x,z,radius` (metres on the plan), `since` and `until`
+List filters: `levelId`, `roomId`, `tag`, `requestId`, `subject=type:<id>|use:<id>`, `near=x,z,radius` (metres on the plan), `since` and `until`
 (by `takenAt`), `limit` (100, at most 500) and `offset`. The response has `items` and the `total` of all matches.
 
 ```sh
@@ -235,7 +256,13 @@ The home does not have to exist in this environment: it is a soft reference like
 ## Photo requests
 
 A request says where to stand (`position` on a level, a `roomId`, or both), which way to look (`yaw`, `pitch`), why
-(`reason`) and who asks (`requester`: `owner` or `agent`). Uploading a photo with the request's id as `requestId`, or setting `requestId` on an existing photo with `PATCH`, fulfils an open request of the same home; `fulfil` does the same and also checks the photo. Only photos of the request's own home count as its answers. Unlinking a photo does not reopen the request. A request may have several photos; photos
+(`reason`) and who asks (`requester`: `owner` or `agent`). `requester` may be left out: the server then records the
+request's actor (`docs/userdata.md` § Actor); a given one is kept, for older clients.
+
+A request may name a **`subject`** (a type or a use, resolved on read like a photo's subjects). With only a use
+subject and neither `roomId` nor `position`, the server puts the request in the use's first room (openings: the
+first room the opening touches; placements: their room) and on its level. A use with no room (a roof window, a
+gate) leaves both empty; an unknown use is a 400. A type alone is no place: give a room or a position with it. Uploading a photo with the request's id as `requestId`, or setting `requestId` on an existing photo with `PATCH`, fulfils an open request of the same home; `fulfil` does the same and also checks the photo. Only photos of the request's own home count as its answers. Unlinking a photo does not reopen the request. A request may have several photos; photos
 in the trash do not count.
 
 ## Agent workflow
@@ -251,6 +278,9 @@ $S/photos.sh staging download --near 4.5,-6,2 --dir /tmp/photos      # <id>.webp
 $S/photos.sh staging annotate <photo-id> --note "window is 1.2 m wide" --tag window
 $S/photo-requests.sh staging create --room souterrain-kitchen --at 11,-9 --heading-deg 0 \
   --reason "How far is the window from the east wall?"
+$S/photo-requests.sh staging create --subject use:souterrain-kitchen-window --reason "Is it a tilt-turn window?"
+$S/photos.sh staging list --subject use:souterrain-kitchen-window    # photos of that window
+$S/photos.sh staging annotate <photo-id> --subject use:souterrain-kitchen-window   # link (--no-subject unlinks)
 $S/photo-requests.sh staging list                                    # open requests
 $S/photo-requests.sh staging close <request-id> [--photo <photo-id>] # cancel, or fulfil with a photo
 ```
@@ -258,4 +288,4 @@ $S/photo-requests.sh staging close <request-id> [--photo <photo-id>] # cancel, o
 - Download photos to a temporary directory or the session's artifact directory, **never into the repository**.
 - Record what a photo showed in the model as a dimension's `source: "estimated-from-photo"` and a `note` naming
   the photo id.
-- Agents may create requests and add notes and tags. They never delete or purge.
+- Agents may create requests and add notes, tags and subjects. They never delete or purge.

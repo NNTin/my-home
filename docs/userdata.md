@@ -16,6 +16,7 @@ the shapes in `packages/shared/src/userdata.ts`, and the agents' script is `uses
 | Basic-parameter overrides of the openings (colour, sashes …) | database: `userdata.opening_overrides` | the owner and agents, per env. |
 | The history of every change, with its actor                  | database: `userdata.history`           | written with every change      |
 | Every furniture id ever issued                               | database: `userdata.issued_ids`        | written with every placement   |
+| Notes on types and uses (§ Notes)                            | database: `userdata.notes`             | the owner and agents, per env. |
 
 A use stores only the **basic** parameters it changes; the type's defaults fill in the rest
 (`effectiveParams`). Design parameters cannot be overridden per use. Staging and production have separate
@@ -25,7 +26,8 @@ stable id from git (an opening, roof window, outbuilding opening or gate); the i
 
 ## Tables
 
-All in the schema `userdata`, created by `apps/api/userdata-migrations/0000_create_userdata.sql`:
+All in the schema `userdata`, created by `apps/api/userdata-migrations/0000_create_userdata.sql` and
+`0001_create_notes.sql`:
 
 | Table               | Key                 | Holds                                                                                                   |
 | ------------------- | ------------------- | ------------------------------------------------------------------------------------------------------- |
@@ -33,6 +35,7 @@ All in the schema `userdata`, created by `apps/api/userdata-migrations/0000_crea
 | `opening_overrides` | `(home_id, use_id)` | the type the override was written for, `params`, `version`                                              |
 | `history`           | `id` (uuid), `seq`  | use, kind (`placement`/`opening`), action, actor, actor source and name, `before`, `after`, `undoes_id` |
 | `issued_ids`        | `(home_id, id)`     | every placement id handed out                                                                           |
+| `notes`             | `id` (uuid)         | `home_id` (null for type notes), subject kind and id, `body`, created/updated by and at, `deleted_at`   |
 | `schema_migrations` | `tag`               | the schema's migration journal                                                                          |
 
 There are no foreign keys into `public` (a `drop schema public cascade` would silently drop them) and no CHECK
@@ -145,7 +148,31 @@ Removing a placement moves it to the trash (`removed_at`); it can be restored or
 `USERDATA_TRASH_RETENTION_DAYS` (default 30) the hourly purge in `server.ts` deletes it **with its history**; its id
 stays in `issued_ids`. Opening overrides are never purged, and all other history is kept forever.
 
+## Notes
+
+Free-text notes on a **type** ("all souterrain windows were replaced in 2019") or on a **use** ("the bed-room window
+sticks"). Type notes are environment-wide (`homeId` null); use notes belong to one home. A subject is
+`{ kind: 'type' | 'use', id }` (`packages/shared/src/subjects.ts`), the same as photo subjects (`docs/photos.md`).
+
+| Method and path                                  | Body → response                                           |
+| ------------------------------------------------ | --------------------------------------------------------- |
+| `GET /api/notes?subject=type:<typeId>`           | → `{ items: Note[] }`, oldest first (environment-wide)    |
+| `GET /api/notes?subject=use:<useId>&homeId=<id>` | → `{ items: Note[] }`, oldest first; 400 without `homeId` |
+| `POST /api/notes`                                | `{ subject, homeId?, body }` → 201 `Note`                 |
+| `PATCH /api/notes/:id`                           | `{ body }` → 200 `Note`                                   |
+| `DELETE /api/notes/:id`                          | soft delete → 204                                         |
+
+- `body` is trimmed, 1 to 4000 characters.
+- `createdBy` and `updatedBy` are the actor (§ Actor); a delete also sets `updatedBy`.
+- POST checks the subject: a type must be in the catalogue (400), a type note has no `homeId` (400), a use note
+  needs one (400), and the use must be in that home's model or placements, trashed ones included (404). Listing
+  never checks it, so the notes of a use that left the model can still be read.
+- The owner and agents may edit and delete any note. Notes have **no history and no undo** (they are not part of
+  the per-use history): an edit keeps only `updatedBy` and `updatedAt`. Deleted notes keep their row and are never
+  listed, edited or deleted again (404); nothing purges them.
+
 ## Agents and test data
 
 Agents may edit uses on both environments, production only when asked (`uses.sh`, see the skill). Test data goes
-only to `mock-home` and is cleaned up in the same task, by undo or remove.
+only to `mock-home` and is cleaned up in the same task, by undo or remove (notes: `note-delete`). Notes on the
+real home are the owner's data.

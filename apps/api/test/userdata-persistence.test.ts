@@ -10,7 +10,14 @@ import { migrateUserdata, readUserdataMigrations } from '../src/db/userdata-migr
 import { userdataMigrationsFolder } from '../src/paths';
 import { clearUserdata, createTestApp, injector } from './helpers';
 
-const TABLES = ['history', 'issued_ids', 'opening_overrides', 'placements', 'schema_migrations'];
+const TABLES = [
+  'history',
+  'issued_ids',
+  'notes',
+  'opening_overrides',
+  'placements',
+  'schema_migrations',
+];
 
 describe('the userdata schema outlives resets and other branches', () => {
   let ctx: Awaited<ReturnType<typeof createTestApp>>;
@@ -44,6 +51,7 @@ describe('the userdata schema outlives resets and other branches', () => {
     uses: (await inject('GET', '/api/homes/mock-home/uses')).json(),
     history: await rows(sql`select * from userdata.history order by seq`),
     issued: await rows(sql`select home_id, id from userdata.issued_ids order by id`),
+    notes: await rows(sql`select * from userdata.notes order by created_at, id`),
     journal: await rows(sql`select tag, checksum from userdata.schema_migrations order by tag`),
   });
 
@@ -60,7 +68,20 @@ describe('the userdata schema outlives resets and other branches', () => {
       params: { frameColor: '#383e42' },
     });
 
+    for (const note of [
+      { subject: { kind: 'type', id: 'window.casement' }, body: 'Replaced in 2019' },
+      { subject: { kind: 'use', id: bed.id }, homeId: 'mock-home', body: 'Squeaks' },
+      { subject: { kind: 'use', id: bed.id }, homeId: 'mock-home', body: 'Deleted later' },
+    ]) {
+      expect((await inject('POST', '/api/notes', note)).statusCode).toBe(201);
+    }
+    const deleted = (
+      await inject('GET', `/api/notes?subject=use:${bed.id}&homeId=mock-home`)
+    ).json().items[1];
+    expect((await inject('DELETE', `/api/notes/${deleted.id}`)).statusCode).toBe(204);
+
     const before = await snapshot();
+    expect(before.notes).toHaveLength(3);
     expect(before.placements.items).toHaveLength(2);
     expect(before.history).toHaveLength(5);
 

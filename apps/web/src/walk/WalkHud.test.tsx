@@ -39,6 +39,7 @@ const photo = (overrides: Partial<Photo> = {}): Photo => ({
   image: { contentType: 'image/webp', width: 4, height: 3, byteSize: 10 },
   thumbnail: { contentType: 'image/webp', width: 4, height: 3, byteSize: 10 },
   sensors: null,
+  subjects: [],
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
   deletedAt: null,

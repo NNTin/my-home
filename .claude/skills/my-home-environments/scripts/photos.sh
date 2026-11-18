@@ -7,13 +7,15 @@
 #   get <photo-id>                      one photo's metadata
 #   download [--dir DIR] [--thumbnail] <photo-id>... | [filters]
 #                                       saves <id>.webp and <id>.json into DIR (default: a new temp dir)
-#   annotate <photo-id> [--note TEXT] [--tag TAG]...
-#                                       sets the note and/or adds tags
+#   annotate <photo-id> [--note TEXT] [--tag TAG]... [--subject S]... [--no-subject S]...
+#                                       sets the note, adds tags, links (--subject) or unlinks (--no-subject)
+#                                       a type or use: S is type:<typeId> or use:<useId>
 #   sensors <photo-id>                  the phone's sensor snapshot of a photo: whether its heading was
 #                                       measured by the compass or set by hand, accuracy, tilt, declination
 #
 # Filters: --home ID (default: the first home), --level ID, --room ID, --near X,Z,RADIUS (metres on the plan),
-#          --tag TAG, --request ID, --since TIME, --until TIME (ISO 8601, by the time the photo was taken)
+#          --tag TAG, --request ID, --since TIME, --until TIME (ISO 8601, by the time the photo was taken),
+#          --subject type:<typeId>|use:<useId> (photos linked to that type or use)
 #
 # There is no delete command on purpose: only the owner deletes photos, in the app.
 set -euo pipefail
@@ -21,7 +23,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/photos-lib.sh"
 
 usage() {
-  sed -n '2,19s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,21s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 
@@ -32,7 +34,7 @@ resolve_env "$env"
 require_tools curl jq
 
 home='' query='' dir='' kind=image note='' set_note=0
-ids=() tags=()
+ids=() tags=() subjects=() unlinks=()
 add_query() { query+="${query:+&}$1=$(uri "$2")"; }
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -46,6 +48,17 @@ while [[ $# -gt 0 ]]; do
     --tag)
       tags+=("${2:?}")
       [[ $command == annotate ]] || add_query tag "$2"
+      shift 2
+      ;;
+    --subject | --no-subject)
+      [[ ${2:-} =~ ^(type|use):.+$ ]] || die "$1 takes type:<typeId> or use:<useId>, not '${2:-}'"
+      if [[ $1 == --no-subject ]]; then
+        unlinks+=("$2")
+      elif [[ $command == annotate ]]; then
+        subjects+=("$2")
+      else
+        add_query subject "$2"
+      fi
       shift 2
       ;;
     --dir) dir=${2:?} && shift 2 ;;
@@ -89,10 +102,17 @@ case "$command" in
     ;;
   annotate)
     [[ ${#ids[@]} -eq 1 ]] || usage
-    [[ $set_note == 1 || ${#tags[@]} -gt 0 ]] || die "annotate needs --note and/or --tag"
+    [[ $set_note == 1 || ${#tags[@]} -gt 0 || ${#subjects[@]} -gt 0 || ${#unlinks[@]} -gt 0 ]] ||
+      die "annotate needs --note, --tag, --subject and/or --no-subject"
     current=$(api "$env" "/api/photos/${ids[0]}")
-    body=$(jq -c --arg note "$note" --argjson setNote "$set_note" '
-      {tags: (.tags + $ARGS.positional | unique)} + (if $setNote == 1 then {note: $note} else {} end)
+    as_subjects() { jq -nc '$ARGS.positional | map(capture("^(?<kind>[a-z]+):(?<id>.+)$"))' --args "$@"; }
+    body=$(jq -c --arg note "$note" --argjson setNote "$set_note" \
+      --argjson add "$(as_subjects "${subjects[@]}")" --argjson drop "$(as_subjects "${unlinks[@]}")" '
+      {tags: (.tags + $ARGS.positional | unique)}
+      + (if $setNote == 1 then {note: $note} else {} end)
+      + (if ($add | length) + ($drop | length) > 0 then
+          {subjects: ((.subjects // []) | map({kind, id}) | . + ($add - .) | . - $drop)}
+        else {} end)
     ' --args "${tags[@]}" <<<"$current")
     api "$env" "/api/photos/${ids[0]}" -X PATCH --json "$body" | jq .
     ;;

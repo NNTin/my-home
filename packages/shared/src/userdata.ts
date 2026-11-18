@@ -3,6 +3,7 @@ import { CatalogKind, formatCm, ParamValues, TypeId, type CatalogType } from './
 import { Id } from './home-model';
 import { ApiError } from './homes';
 import { PlanPosition } from './layouts';
+import { Subject, SubjectQuery } from './subjects';
 
 /**
  * What people change on a deployed environment, stored in the `userdata` schema (docs/userdata.md):
@@ -245,6 +246,48 @@ export const UseConflict = ApiError.extend({
   conflicts: z.array(z.string()),
 });
 export type UseConflict = z.infer<typeof UseConflict>;
+
+// Notes.
+
+export const MAX_NOTE_LENGTH = 4000;
+const NoteBody = z.string().trim().min(1).max(MAX_NOTE_LENGTH);
+
+/**
+ * A free-text note on a catalogue type (environment-wide: `homeId` null) or on a use of a home.
+ * Owner and agents may edit and delete any note; deleting is soft, and notes have no history.
+ */
+export const Note = z.object({
+  id: z.uuid(),
+  homeId: Id.nullable(),
+  subject: Subject,
+  body: NoteBody,
+  createdBy: Actor,
+  updatedBy: Actor,
+  createdAt: Timestamp,
+  updatedAt: Timestamp,
+});
+export type Note = z.infer<typeof Note>;
+
+export const NoteParams = z.object({ id: z.uuid() });
+
+/** `subject=type:<typeId>` (environment-wide) or `subject=use:<useId>&homeId=<id>`. */
+export const ListNotesQuery = z.object({ subject: SubjectQuery, homeId: Id.optional() });
+export type ListNotesQuery = z.input<typeof ListNotesQuery>;
+
+/** Oldest first. */
+export const ListNotesResponse = z.object({ items: z.array(Note) });
+export type ListNotesResponse = z.infer<typeof ListNotesResponse>;
+
+/** A use note needs its `homeId`; a type note must not have one. */
+export const CreateNoteBody = z.strictObject({
+  subject: Subject,
+  homeId: Id.nullish(),
+  body: NoteBody,
+});
+export type CreateNoteBody = z.input<typeof CreateNoteBody>;
+
+export const UpdateNoteBody = z.strictObject({ body: NoteBody });
+export type UpdateNoteBody = z.input<typeof UpdateNoteBody>;
 
 // Describing changes for people.
 

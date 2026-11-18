@@ -106,3 +106,22 @@ export const issuedIds = userdata.table(
   },
   (t) => [primaryKey({ columns: [t.homeId, t.id] })],
 );
+
+/** Free-text notes on a type (`homeId` null) or a use; `deletedAt` is a soft delete. */
+export const notes = userdata.table(
+  'notes',
+  {
+    id: text('id').primaryKey(),
+    homeId: text('home_id'),
+    subjectKind: text('subject_kind').notNull(),
+    subjectId: text('subject_id').notNull(),
+    body: text('body').notNull(),
+    createdBy: text('created_by').notNull(),
+    updatedBy: text('updated_by').notNull(),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+    updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+    deletedAt: timestamptz('deleted_at'),
+  },
+  (t) => [index('notes_subject_idx').on(t.subjectKind, t.subjectId).where(isNull(t.deletedAt))],
+);
+export type NoteRow = typeof notes.$inferSelect;
