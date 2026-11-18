@@ -54,7 +54,8 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - **New furniture and fixtures are catalogue types in git** (reviewed by PR, #26). Placements and basic params
   (colour, sizes) are DB data per environment, set via the app or the uses/placements API, never in
   `data/homes/*.json`.
-- **Refinement photos stay in the photo store**: reference them by photo id in issues and PRs.
+- **Refinement photos stay in the photo store**: reference them by photo id in issues and PRs; never upload them to GitHub
+  or commit them.
 
 ## Environments
 
