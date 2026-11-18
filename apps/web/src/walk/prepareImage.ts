@@ -4,14 +4,22 @@ import { DEFAULT_FOCAL_LENGTH_35MM, horizontalFov } from './figure';
 export const MAX_UPLOAD_EDGE = 2560;
 
 /**
- * What the camera inside the page knows about a shot (`CameraView`): the size of its picture as
- * shown and the track's zoom. Files from the camera app or the gallery come without.
+ * What is known about where a photo came from. The camera inside the page (`CameraView`) gives
+ * the size of its picture as shown and the track's zoom. `source` says whether the photo was just
+ * taken with this phone's camera (inside the page, or the camera app) rather than picked from the
+ * gallery, which may hold a telephoto shot or one from another device.
  */
 export interface CameraHints {
   width?: number;
   height?: number;
   zoom?: number;
+  source?: 'in-page' | 'camera-app';
 }
+
+/** A phone's main camera (35 mm equivalent); anything else is another lens. */
+export const MAIN_CAMERA_FOCAL_RANGE = { min: 20, max: 30 } as const;
+const isMainCamera = (focal: number) =>
+  focal >= MAIN_CAMERA_FOCAL_RANGE.min && focal <= MAIN_CAMERA_FOCAL_RANGE.max;
 
 export interface PreparedImage {
   /** What to upload: resized and re-encoded where the browser can, else the file itself. */
@@ -132,14 +140,16 @@ function readFocalLength(view: DataView, tiff: number, end: number): number | un
 const FOCAL_LENGTH_KEY = 'my-home.camera.focal-length-35mm';
 
 /**
- * The focal length of this phone's camera as its last photo with EXIF data said, else a typical
+ * The focal length of this phone's main camera as its last photo taken here said, else a typical
  * phone's. A video frame from the camera inside the page has no EXIF data of its own, and phones
- * differ (23 to 26 mm), which is 10 % of the field of view.
+ * differ (23 to 26 mm), which is 10 % of the field of view. Only a photo just taken with this
+ * phone (not a gallery pick) and a main-camera value (`MAIN_CAMERA_FOCAL_RANGE`) count, so a
+ * telephoto or ultra-wide shot never sets the view of later frames.
  */
 export function rememberedFocalLength(): number {
   try {
     const value = Number(localStorage.getItem(FOCAL_LENGTH_KEY));
-    return Number.isFinite(value) && value > 0 ? value : DEFAULT_FOCAL_LENGTH_35MM;
+    return Number.isFinite(value) && isMainCamera(value) ? value : DEFAULT_FOCAL_LENGTH_35MM;
   } catch {
     return DEFAULT_FOCAL_LENGTH_35MM;
   }
@@ -161,7 +171,8 @@ function rememberFocalLength(focal: number) {
  *
  * The field of view comes from the focal length and the picture's size as shown (after its EXIF
  * orientation). Without a focal length (a video frame of the camera inside the page) it is the
- * one this phone's last EXIF photo had (`rememberedFocalLength`), narrowed by the track's zoom.
+ * one this phone's last photo taken here had (`rememberedFocalLength`), narrowed by the track's
+ * zoom.
  *
  * Falls back to the file itself when the browser cannot decode or encode it. In that case the
  * file's metadata does travel to the api (over HTTPS, behind the site's sign-on), which strips it
@@ -177,7 +188,9 @@ export async function prepareImage(file: Blob, camera: CameraHints = {}): Promis
   } catch {
     focal = undefined;
   }
-  if (focal !== undefined) rememberFocalLength(focal);
+  if (focal !== undefined && camera.source !== undefined && isMainCamera(focal)) {
+    rememberFocalLength(focal);
+  }
   const fov = (width: number, height: number) =>
     focal === undefined
       ? horizontalFov(width, height, rememberedFocalLength(), camera.zoom ?? 1)

@@ -69,6 +69,7 @@ export async function grabPhoto(video: HTMLVideoElement, track?: MediaStreamTrac
 export function cameraHints(video: HTMLVideoElement, track?: MediaStreamTrack): CameraHints {
   const settings = (track?.getSettings?.() ?? {}) as MediaTrackSettings & { zoom?: number };
   return {
+    source: 'in-page',
     width: video.videoWidth,
     height: video.videoHeight,
     ...(typeof settings.zoom === 'number' && settings.zoom > 0 && { zoom: settings.zoom }),

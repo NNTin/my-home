@@ -78,14 +78,20 @@ describe('cameraHints', () => {
 
   it("passes the picture's size as shown, upright or across", () => {
     expect(cameraHints(video(1440, 1920), track({ width: 1920, height: 1440 }))).toEqual({
+      source: 'in-page',
       width: 1440,
       height: 1920,
     });
-    expect(cameraHints(video(1920, 1440))).toEqual({ width: 1920, height: 1440 });
+    expect(cameraHints(video(1920, 1440))).toEqual({
+      source: 'in-page',
+      width: 1920,
+      height: 1440,
+    });
   });
 
   it("passes the track's zoom where it has one", () => {
     expect(cameraHints(video(1440, 1920), track({ zoom: 2 }))).toEqual({
+      source: 'in-page',
       width: 1440,
       height: 1920,
       zoom: 2,

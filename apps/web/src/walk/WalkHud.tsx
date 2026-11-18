@@ -8,6 +8,7 @@ import type { Figure } from './figure';
 import { Joystick } from './Joystick';
 import { Minimap, type MapSpot } from './Minimap';
 import type { CameraHints } from './prepareImage';
+
 import type { MinimapLevel } from './minimap';
 import type { CalibrationTarget } from './calibration';
 import { accuracyLabel } from './orientation';
@@ -15,6 +16,9 @@ import { compassStatusText, storedCameraMode, useCompass, type CameraMode } from
 import { useFigure, type Walk } from './useWalk';
 import { saveWalkSession, type WalkSession } from './walkSession';
 import { yawTowards } from './world';
+
+/** A photo just taken with the phone's camera app: its focal length is this phone's. */
+const CAMERA_APP: CameraHints = { source: 'camera-app' };
 
 export type WalkView = 'first' | 'third';
 
@@ -253,8 +257,8 @@ export function WalkHud({
     setAway(true);
   };
   /** The picker closed, with a photo or without one (cancelled): the page is still here. */
-  const picked = (photo: Blob | undefined) => {
-    if (photo) took(photo);
+  const picked = (photo: Blob | undefined, camera?: CameraHints) => {
+    if (photo) took(photo, camera);
     tap.current = undefined;
     delete kept.current.pending;
     keep.current();
@@ -609,7 +613,13 @@ export function WalkHud({
           onClose={() => setViewfinder(false)}
           suspended={away}
         >
-          <FileInput camera label="Camera app" icon="📱" onOpen={leaving} onPick={picked} />
+          <FileInput
+            camera
+            label="Camera app"
+            icon="📱"
+            onOpen={leaving}
+            onPick={(photo) => picked(photo, CAMERA_APP)}
+          />
           <FileInput label="Gallery" icon="🖼" onOpen={leaving} onPick={picked} />
         </CameraView>
       )}
@@ -669,7 +679,7 @@ export function WalkHud({
               label="Take photo"
               icon="📷"
               onOpen={leaving}
-              onPick={picked}
+              onPick={(photo) => picked(photo, CAMERA_APP)}
             />
           )}
         </div>

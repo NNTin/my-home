@@ -144,16 +144,53 @@ describe('prepareImage', () => {
 
   it("remembers the phone's focal length from its last EXIF photo for later frames", async () => {
     expect(rememberedFocalLength()).toBe(26);
-    await prepareImage(new Blob([cameraJpeg({ width: 3000, height: 4000, focal: 23 })]));
+    await prepareImage(new Blob([cameraJpeg({ width: 3000, height: 4000, focal: 23 })]), {
+      source: 'camera-app',
+    });
     expect(rememberedFocalLength()).toBe(23);
     const frame = new Blob(['frame'], { type: 'image/jpeg' });
     expect((await prepareImage(frame, { width: 1440, height: 1920 })).fovH).toBeCloseTo(
       UPRIGHT_23MM,
       6,
     );
+    // An in-page full-resolution still counts too.
+    await prepareImage(new Blob([cameraJpeg({ width: 3000, height: 4000, focal: 24 })]), {
+      source: 'in-page',
+    });
+    expect(rememberedFocalLength()).toBe(24);
     // A photo's own EXIF focal length is used as it is: no zoom on top.
     const still = new Blob([cameraJpeg({ width: 3000, height: 4000, focal: 23 })]);
     expect((await prepareImage(still, { zoom: 2 })).fovH).toBeCloseTo(UPRIGHT_23MM, 6);
+  });
+});
+
+describe('the remembered focal length', () => {
+  beforeEach(() => localStorage.clear());
+  const still = (focal: number) => new Blob([cameraJpeg({ width: 3000, height: 4000, focal })]);
+  const frame = new Blob(['frame'], { type: 'image/jpeg' });
+
+  it('is never set by a gallery pick, which may be another lens or device', async () => {
+    await prepareImage(still(23), { source: 'camera-app' });
+    await prepareImage(still(77));
+    await prepareImage(still(24));
+    expect(rememberedFocalLength()).toBe(23);
+  });
+
+  it("is never set by a telephoto or ultra-wide shot, only by the main camera's", async () => {
+    await prepareImage(still(23), { source: 'camera-app' });
+    await prepareImage(still(77), { source: 'camera-app' });
+    await prepareImage(still(13), { source: 'in-page' });
+    expect(rememberedFocalLength()).toBe(23);
+    // So a later video frame keeps the main camera's view: about 61° upright, not 20°.
+    expect((await prepareImage(frame, { width: 1440, height: 1920 })).fovH).toBeCloseTo(
+      UPRIGHT_23MM,
+      6,
+    );
+  });
+
+  it('ignores a stored value outside the main-camera range', () => {
+    localStorage.setItem('my-home.camera.focal-length-35mm', '77');
+    expect(rememberedFocalLength()).toBe(26);
   });
 });
 

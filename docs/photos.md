@@ -116,8 +116,10 @@ picture is 4:3, so its short edge spans 27 mm, not the 24 mm of the 3:2 film fra
   size is the decoded picture's, or the JPEG header's (frame size turned by the EXIF orientation) when the
   browser cannot decode it.
 - **Camera inside the page:** a full-resolution still (`ImageCapture`) has EXIF data of its own. A video frame
-  has none: it uses the size of the stream's picture, the track's `zoom` setting, and the focal length of this
-  phone's last photo with EXIF data (kept in the browser), else a typical phone's 26 mm.
+  has none: it uses the size of the stream's picture, the track's `zoom` setting, and the focal length kept in
+  the browser from this phone's last photo taken here (inside the page or with the camera app, never a gallery
+  pick) when it is a main camera's (20 to 30 mm), else a typical phone's 26 mm. So a telephoto, ultra-wide or
+  another device's picture from the gallery never changes the view of later frames.
 - Photos without `fovH` are shown with that typical camera and their stored size.
 
 Checked against vanishing-point calibration (`measure.py`): the owner's phone (23 mm) gives 1.318 rad across
