@@ -3,9 +3,8 @@
 // Smoke test of the catalogue pages on a desktop screen (1440x900) and a phone (390x844, touch):
 // the entry from the viewer, both kinds, search, thumbnails, use counts, deep links, reload and the
 // back button; every type's piece page (3D, dimensions in cm, the section of openings) and the
-// playground. Read-only: every write is refused inside the browser (the viewer's default layout,
-// for a home without one, is answered there and never stored). Playwright is loaded from
-// MY_HOME_PLAYWRIGHT_DIR.
+// playground; `/?focus=<an opening>` in the viewer. Read-only: every write is refused inside the
+// browser. Playwright is loaded from MY_HOME_PLAYWRIGHT_DIR.
 /* global document, window, caches */
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -50,8 +49,6 @@ async function smoke(out, homeId) {
     args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
   });
   const blocked = [];
-  /** Layouts the viewer created in this run, answered in the browser. */
-  const fakeLayouts = new Map();
   try {
     for (const { label, viewport, across, ...device } of SCREENS) {
       /** A fresh browser context: no cookies, no cache, no history. */
@@ -62,34 +59,6 @@ async function smoke(out, homeId) {
           const url = new URL(request.url());
           if (url.host !== host) return route.continue();
           const method = request.method();
-          // A home without layouts gets a default one from the viewer: answered here, never stored.
-          const layouts = /^\/api\/homes\/([^/]+)\/layouts$/.exec(url.pathname);
-          if (method === 'POST' && layouts) {
-            const at = new Date().toISOString();
-            const layout = {
-              id: 'catalog-smoke-layout',
-              homeId: decodeURIComponent(layouts[1]),
-              name: request.postDataJSON()?.name ?? 'Layout',
-              schemaVersion: 1,
-              version: 1,
-              items: [],
-              createdAt: at,
-              updatedAt: at,
-            };
-            fakeLayouts.set(layout.id, layout);
-            return route.fulfill({
-              status: 201,
-              contentType: 'application/json',
-              body: JSON.stringify(layout),
-            });
-          }
-          const fake = /^\/api\/layouts\/([^/]+)$/.exec(url.pathname)?.[1];
-          if (method === 'GET' && fake && fakeLayouts.has(fake)) {
-            return route.fulfill({
-              contentType: 'application/json',
-              body: JSON.stringify(fakeLayouts.get(fake)),
-            });
-          }
           if (method !== 'GET' && method !== 'HEAD') {
             blocked.push(`${method} ${url.pathname}`);
             return route.abort();
@@ -112,6 +81,64 @@ async function smoke(out, homeId) {
         if (new URL(page.url()).host !== host)
           throw new Error('ended on another host (login redirect?)');
       };
+
+      // 0. `/?focus=<id>` frames an opening of the home and shows its chip.
+      {
+        const { context: focusContext, page: focused, errors: focusErrors } = await open();
+        await focused.goto(at('/'), { waitUntil: 'domcontentloaded', timeout: 60_000 });
+        onHost(focused);
+        const shown = await focused.evaluate(async (id) => {
+          const homes = (await (await fetch('/api/homes')).json()).items;
+          const home = id ?? homes[0]?.id;
+          const model = await (await fetch(`/api/homes/${encodeURIComponent(home)}`)).json();
+          const opening = model.openings.find((o) => o.type === 'window') ?? model.openings[0];
+          return { home, id: opening.id, name: opening.name, typeId: opening.typeId };
+        }, homeId ?? null);
+        const focusUrl = new URL('/', base);
+        focusUrl.searchParams.set('home', shown.home);
+        focusUrl.searchParams.set('focus', shown.id);
+        focusUrl.searchParams.set('hints', 'off');
+        await focused.goto(focusUrl.href, { waitUntil: 'networkidle', timeout: 60_000 });
+        await focused.waitForSelector('canvas', { timeout: 30_000 });
+        const chip = device.hasTouch
+          ? focused.locator('.piece-toolbar')
+          : focused.getByRole('region', { name: 'Furniture' }).getByLabel('Selected piece');
+        await chip.waitFor({ timeout: 30_000 }).catch(() => {});
+        check(
+          `${label}: ?focus= selects ${shown.id} and its chip shows its name`,
+          (await chip.count()) === 1 && (await chip.textContent()).includes(shown.name),
+        );
+        const link = chip.getByRole('link', { name: /Open piece page/ });
+        check(
+          `${label}: the chip links its piece page`,
+          (await link.count()) === 1 &&
+            (await link.getAttribute('href')).startsWith(`/catalog/openings/${shown.typeId}?`),
+        );
+        check(
+          `${label}: the focused opening is in view`,
+          await focused.evaluate(() => document.querySelector('canvas')?.width > 0),
+        );
+        await focused.waitForTimeout(1500); // the camera has moved and the frame is drawn
+        await focused.screenshot({
+          path: out.replace(/\.png$/, `-focus${device.hasTouch ? '-phone' : ''}.png`),
+        });
+        focusUrl.searchParams.set('focus', 'catalog-smoke-nope');
+        await focused.goto(focusUrl.href, { waitUntil: 'networkidle', timeout: 60_000 });
+        const alert = focused.getByRole('alert').filter({ hasText: 'Not found in this home' });
+        check(
+          `${label}: an unknown ?focus= says "Not found in this home"`,
+          await alert.waitFor({ timeout: 30_000 }).then(
+            () => true,
+            () => false,
+          ),
+        );
+        check(
+          `${label}: no console or page errors with ?focus=`,
+          focusErrors.length === 0,
+          focusErrors.slice(0, 3).map(redact).join(' | '),
+        );
+        await focusContext.close();
+      }
 
       // 1. From the viewer to the catalogue.
       const { context, page, errors } = await open();

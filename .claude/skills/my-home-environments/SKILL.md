@@ -33,7 +33,7 @@ The scripts below do all of this. Dependencies: `bash`, `curl`, `jq`, `gh`. Run 
 S=.claude/skills/my-home-environments/scripts
 
 $S/site-curl.sh staging /api/homes                       # GET, body on stdout
-$S/site-curl.sh staging /api/homes/mock-home/layouts -X POST --json '{"name":"test"}'
+$S/screenshot.sh staging --path '/?home=mock-home&focus=souterrain-kitchen-window&hints=off'   # frame a use
 $S/env-status.sh all                                     # health, auth, deployed commit vs GitHub
 $S/screenshot.sh staging --out /tmp/staging.png          # render the 3D viewer in headless Chromium
 $S/screenshot.sh staging --click 'label:has-text("Souterrain")' --drag -300,0   # interact first
@@ -96,8 +96,9 @@ $S/uses.sh staging list --home mock-home --status needs-attention   # where-used
   long-pressed, duplicated and deleted with real touch events, walk mode is entered and left, and held across
   the sheet is at the side. It also counts WebGL draw calls (nothing is drawn while nothing moves, a finger
   or "Reset view" draws again), checks the canvas' pixel ratio (at most 1.5), that every control has a name,
-  and that the web app manifest and its icons are served. It writes only to a **layout it creates itself and removes again**; every other write is refused inside
-  the browser.
+  and that the web app manifest and its icons are served, and that there is no layout manager. Read-only: every
+  placement write is **answered inside the browser** (as the api would, merged into the placement reads), every
+  other write is refused there.
 - `catalog-smoke.sh <env> [--out file.png] [--home ID]`: the catalogue pages (`docs/catalog.md`) at 1440x900 and
   at 390x844 with touch. The control-panel or top-bar entry opens `/catalog`; both kinds are shown, every card
   has its number of uses, thumbnails are rendered and kept in the Cache Storage, and search filters. A card
@@ -107,9 +108,10 @@ $S/uses.sh staging list --home mock-home --status needs-attention   # where-used
   44 px, a sticky header, and no sideways scrolling upright or across (844x390). Every type's piece page draws in
   3D with dimension labels in cm, openings have a section (frame and glass rectangles where glazed), the
   playground changes the bed's colour and width live (and refuses 500 cm), and on the phone the inspector takes
-  40 % of the height upright and stays usable across. Screenshots: `<out>` (desktop), `<out>-phone.png`, and
-  `<out>-{window,window-section,door,bed}.png`, `<out>-bed{,-across}-phone.png`. Read-only: every write is refused inside the browser (the default layout the viewer creates for a home without
-  one is answered there, never stored). `screenshot.sh --path '/catalog'`
+  40 % of the height upright and stays usable across. In the viewer, `/?focus=<a window of the home>` selects it
+  (the chip shows its name and links its piece page) and an unknown id says "Not found in this home".
+  Screenshots: `<out>` (desktop), `<out>-phone.png`, and `<out>-{window,window-section,door,bed,focus}.png`,
+  `<out>-{bed,bed-across,focus}-phone.png`. Read-only: every write is refused inside the browser. `screenshot.sh --path '/catalog'`
   shoots the catalogue too: off `/` it waits for the page's heading instead of the canvas (the thumbnails
   render within the default `--wait`).
 - `compass-smoke.sh <env> [--out file.png]`: the camera modes of walk mode (Sensors / Manual) at 390x844 with
@@ -173,6 +175,12 @@ A **use** is one piece in a home: an opening, roof window or gate from git (`dat
 some sizes, within the type's limits), and every change is recorded in the use's history with its actor and can
 be undone. Agents may edit them on **both** environments; **production only when asked**. Placements and
 overrides are **not** reset by staging deploys.
+
+The viewer's furniture **is** the home's placement set (one per home, no named layouts; `docs/furniture.md`), and
+opening overrides render in the house: a change made here shows up in the viewer (when its tab becomes visible
+again). `/?home=<id>&focus=<useId>` frames and selects a use, e.g. to screenshot an override:
+`screenshot.sh staging --path '/?home=mock-home&focus=<useId>&hints=off'`. The old layouts API
+(`/api/homes/<id>/layouts`) is deprecated and will be removed: don't use it.
 
 - `uses.sh <env> whoami`: the actor the api records for this token (`agent`, source `identity` on deployed hosts).
 - `uses.sh <env> types`: the catalogue types with their parameters (tier `basic` = changeable per use, limits).
@@ -246,7 +254,7 @@ of creating a duplicate.
 
 - Never print, log, commit or paste the GitHub token or the site token, including in issues, PR comments and
   test output. Never send either to any host other than api.github.com and the environment itself.
-- Prefer staging for tests and experiments. Homes and layouts are reset on every deploy, so keep nothing there
+- Prefer staging for tests and experiments. Homes are reset on every deploy, so keep nothing there
   you need later; photos, photo requests, placements, overrides and history are **not** reset, so clean up test
   photos you uploaded and test uses you made (on `mock-home` only).
   Change production only when the task asks for it.

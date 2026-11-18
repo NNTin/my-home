@@ -36,7 +36,7 @@ Four tabs, one panel at a time:
 | Tab       | Panel                                                                                                                                 |
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | View      | room names, and **Show / hide…**: levels, apartments and outdoor areas, folded away by default, each with **Show all** / **Hide all** |
-| Furniture | the [layout manager, catalog and edit tools](layouts.md)                                                                              |
+| Furniture | the [catalogue and edit tools](furniture.md)                                                                                          |
 | Photos    | the [gallery](photos.md#browsing-photos); the trash is behind **🗑 Trash** at its end                                                  |
 | Requests  | the photo requests                                                                                                                    |
 
@@ -136,8 +136,8 @@ standalone`, start and scope `/`, the theme colour, and the icons in `apps/web/p
   `crossorigin="use-credentials"`. When the session has expired, the installed app opens the sign-on page
   first, like the browser does, and then the viewer.
 - There is **no service worker**: nothing is cached for offline use, on purpose. Cached pages behind a
-  sign-on show stale content after a deploy or a sign-out, and layout drafts already survive a lost
-  connection ([layouts.md](layouts.md#saving-in-the-web-app)).
+  sign-on show stale content after a deploy or a sign-out, and furniture edits already survive a lost
+  connection ([furniture.md](furniture.md#saving-in-the-web-app)).
 - nginx serves the manifest as `application/manifest+json`, revalidated on every load; CI checks that the image
   serves it and every icon.
 
@@ -175,7 +175,7 @@ inside the middle 80 %).
 The size of a sheet being dragged stays in the DOM and never reaches React state: a re-render of the viewer per
 pointer move would rebuild the whole scene description.
 
-Tests: `apps/web/src/Mobile.test.tsx` (the layouts through the app, with `stubScreen()` from
+Tests: `apps/web/src/Mobile.test.tsx` (the furniture through the app, with `stubScreen()` from
 `src/test/screen.ts` standing in for `matchMedia`), `apps/web/src/overlay/Sheet.test.tsx` and
 `apps/web/src/overlay/Touch.test.tsx` (toolbar, long press, reset view, status chip, hints, keyboard).
 
@@ -189,6 +189,6 @@ $S/screenshot.sh staging --viewport 390x844 --touch --path '/?panel=furniture&sh
 $S/screenshot.sh staging --viewport 844x390 --touch --path '/?panel=view'
 ```
 
-`mobile-smoke.sh` places, drags, rotates, duplicates and deletes a furniture item with real touch events. It
-writes only to a layout it creates itself and removes again. Headless Chromium says nothing
+`mobile-smoke.sh` places, drags, rotates, duplicates and deletes a furniture item with real touch events. Every
+placement write is answered inside the browser (route interception), so it changes nothing on the environment. Headless Chromium says nothing
 about how smooth the view is on a real phone, or about notches and browser bars: those need the phone.

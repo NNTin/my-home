@@ -32,9 +32,9 @@ The Vite dev server proxies `/api` to the api (`API_URL`). On start-up the api a
 outside production, seeds the real home (`data/homes/home.json`) and the mock home
 (`data/homes/mock-home.json`). The page renders the home
 loaded from the api (orbit with the mouse) with a panel for the per-level cutaway and visibility
-toggles, and a **Furniture** panel to place, move and rotate furniture in named layouts that are
-saved to the api. See [docs/home-model.md](docs/home-model.md) for the model and how to load other
-homes, [docs/layouts.md](docs/layouts.md) for layouts and the editor,
+toggles, and a **Furniture** panel to place, move and rotate the home's furniture, saved piece by piece to the
+api. See [docs/home-model.md](docs/home-model.md) for the model and how to load other
+homes, [docs/furniture.md](docs/furniture.md) for the furniture and its editor,
 [docs/adding-piece-type.md](docs/adding-piece-type.md) to add a window, door or furniture type, and
 [docs/walking.md](docs/walking.md) for walking a figure through the home and taking photos with it,
 [docs/photos.md](docs/photos.md) for how those photos and photo requests are stored, and
@@ -84,7 +84,7 @@ apps/web/            Vite + React + R3F viewer
   src/builder/       pure home model -> render descriptors (no three.js)
   src/editor/        pure furniture logic: placement, snapping, collision, undo/redo
   src/catalog/       piece modules: how each window, door, gate and furniture type is drawn
-  src/layouts/       layout persistence: auto-save, localStorage drafts
+  src/placements/    furniture persistence (per-item sync, offline queue), overrides, ?focus=
   src/scene/         R3F components drawing the descriptors and the furniture
   src/overlay/       HTML overlay (view controls, furniture panel; the phone's top bar and sheet)
   src/walk/          the virtual figure: walkable world, collision, controls, photo capture

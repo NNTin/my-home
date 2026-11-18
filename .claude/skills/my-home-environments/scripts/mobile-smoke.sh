@@ -8,8 +8,8 @@
 # <out>-landscape.png). Also: nothing is drawn while nothing moves (WebGL draw calls are counted), the canvas'
 # pixel ratio is capped, every control has a name, and the web app manifest and its icons are served.
 # Exit 0 when every check passes.
-# It writes only to a layout it creates itself and removes again; every other write (photos, photo
-# requests, other layouts, the home) is refused inside the browser. Uses the Playwright set-up of
+# Read-only: every placement write is answered inside the browser (as the api would), every other write
+# (photos, photo requests, settings, the home) is refused there. Uses the Playwright set-up of
 # screenshot.sh. --home picks a home by id (default: the first one).
 set -euo pipefail
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)

@@ -25,13 +25,14 @@ The api validates every write with it and the web app validates every response w
 | Wall height | measured from the level's floor; exterior walls usually include the slab above         |
 | Ids         | letters, digits, `-` and `_`; unique across the whole document                         |
 
-Ids are unique across all collections so other documents ([furniture layouts](layouts.md)) can
-reference any home, level or room by id alone. Layouts are stored separately, so changing or
-re-seeding a home never deletes them; items whose level or room disappears are kept and flagged.
+Ids are unique across all collections (and differ from the home's own id) so other documents
+([furniture placements](furniture.md)) can reference any home, level or room by id alone. Placements are
+stored separately, so changing or re-seeding a home never deletes them; items whose level or room
+disappears are kept and flagged.
 
 ### Naming: ids are permanent keys
 
-Ids are what automations (smart-home rules, LLM tools) and layouts store, so treat them as a public
+Ids are what automations (smart-home rules, LLM tools) and placements store, so treat them as a public
 API:
 
 - **An id never changes and is never reused**, even when the thing is renamed, moved or removed.
