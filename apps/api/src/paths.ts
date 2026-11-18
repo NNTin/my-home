@@ -11,6 +11,9 @@ export const userdataMigrationsFolder = fileURLToPath(
   new URL('../userdata-migrations', import.meta.url),
 );
 
+/** `data/homes/` at the repository root (copied into the api image). */
+export const homesFolder = fileURLToPath(new URL('../../../data/homes', import.meta.url));
+
 const homeFile = (name: string) =>
   fileURLToPath(new URL(`../../../data/homes/${name}`, import.meta.url));
 

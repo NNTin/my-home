@@ -307,7 +307,8 @@ yaw          = -plan heading                      (radians, counter-clockwise, a
 
 Example: `northBearing` 20 and a declination of 3. A compass reading of 67° is 70° true, which is 90°
 clockwise from `-z`: the figure looks along `+x`. The owner enters the declination (from a declination chart)
-in the walking view's **Calibrate** sheet or in the home file, with the usual provenance. It is never derived
+in the walking view's **Calibrate** sheet (stored as a home setting on top of the file, which wins over the
+file's value) or in the home file, with the usual provenance. It is never derived
 from the home's location, which the model does not contain.
 
 ### Validation beyond the shape
@@ -442,9 +443,15 @@ renders without renderer changes.
 ## Seeding, swapping and importing homes
 
 The api seeds `data/homes/home.json` and then `data/homes/mock-home.json` on start in development
-(`SEED_ON_START`), and staging resets to both; the viewer opens the oldest home, the real one.
-`SEED_FILE` seeds a single file instead. Seeding is idempotent: a home whose id already exists is
-left alone. Production is not seeded.
+(`SEED_ON_START`); the viewer opens the oldest home, the real one. `SEED_FILE` seeds a single file
+instead. Seeding is idempotent: a home whose id already exists is left alone.
+
+**Deployed environments sync their homes from git on every deploy** (`dist/release.js`): production
+`home.json`, staging `home.json` and `mock-home.json`, validated first and replaced in one transaction
+([deployment.md](deployment.md#homes-come-from-git)). Changing the house there is a pull request to
+`data/homes`. The magnetic declination entered in walk mode is not part of that: it is a home setting
+stored on top of the model (`GET/PUT /api/homes/:homeId/settings`, [userdata.md](userdata.md#home-settings)),
+and `GET /api/homes/:id` and the export return the model with it applied.
 
 ```sh
 pnpm db:seed                                   # the real and the mock home (or SEED_FILE)
@@ -459,10 +466,14 @@ use HTTP instead:
 | Endpoint                    | Behaviour                                                          |
 | --------------------------- | ------------------------------------------------------------------ |
 | `GET /api/homes`            | summaries `{ id, name, schemaVersion, createdAt, updatedAt }`      |
-| `GET /api/homes/:id`        | the model                                                          |
+| `GET /api/homes/:id`        | the effective model: the stored one with the home settings applied |
 | `PUT /api/homes/:id`        | full replace; body `id` must match; 404 if the home does not exist |
 | `POST /api/homes/import`    | create (201) or replace (200) the home with the body's id          |
-| `GET /api/homes/:id/export` | the model as a pretty-printed attachment `<id>.json`               |
+| `GET /api/homes/:id/export` | the effective model as a pretty-printed attachment `<id>.json`     |
+
+On deployed environments `PUT` and `import` are for experiments only: they answer with the header
+`Warning: 299 - "Replaced from data/homes on the next deploy"`, because the next deploy's sync replaces
+every home that is in git.
 
 ```sh
 curl -X POST localhost:3000/api/homes/import -H 'content-type: application/json' \

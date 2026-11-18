@@ -41,9 +41,13 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 
 ## Environments
 
-- staging `https://home-staging.nntin.xyz`: reset to the real and the mock home on every deploy (same-repo PR
-  pushes, `v*` tags; latest wins), **except photos**, which are the owner's and stay. Use it for tests and experiments.
-- production `https://home.nntin.xyz`: real data, deployed from every push to `main`. Change it only when asked.
+- staging `https://home-staging.nntin.xyz`: homes synced from git (real + mock) on every deploy (same-repo PR
+  pushes, `v*` tags; latest wins); placements, colours, notes and photos (the owner's) persist. Use it for tests and
+  experiments.
+- production `https://home.nntin.xyz`: real data, deployed from every push to `main`; homes synced from git
+  (`home.json`) on every deploy. Change it only when asked.
+- **Changing the house = a PR to `data/homes`** (`PUT /api/homes` and import are replaced on the next deploy;
+  `docs/deployment.md` § Homes come from git).
 - Both are behind authentik SSO: exchange the nntin-bot GitHub token for a site token with the
   `my-home-environments` skill (`.claude/skills/`), instruction sheet in #9. `GET /api/health/live` is public.
 - Raise an issue in NNTin/my-home (or comment on the open one) only if the deployed commit hasn't caught up 1 hour

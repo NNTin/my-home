@@ -1,4 +1,4 @@
-import type { ParamValues, UseState } from '@my-home/shared';
+import type { Bearing, ParamValues, UseState } from '@my-home/shared';
 import {
   bigint,
   doublePrecision,
@@ -125,3 +125,12 @@ export const notes = userdata.table(
   (t) => [index('notes_subject_idx').on(t.subjectKind, t.subjectId).where(isNull(t.deletedAt))],
 );
 export type NoteRow = typeof notes.$inferSelect;
+
+/** Per-home settings on top of the git model (the magnetic declination); history `use_kind` home. */
+export const homeSettings = userdata.table('home_settings', {
+  homeId: text('home_id').primaryKey(),
+  magneticDeclination: jsonb('magnetic_declination').$type<Bearing | null>(),
+  version: integer('version').notNull().default(1),
+  updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+});
+export type HomeSettingsRow = typeof homeSettings.$inferSelect;

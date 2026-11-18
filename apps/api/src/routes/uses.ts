@@ -4,6 +4,7 @@ import {
   ListHistoryResponse,
   ListUsesQuery,
   ListUsesResponse,
+  UndoHomeSettingsResponse,
   UndoResponse,
   UseConflict,
   UseHomeParams,
@@ -11,6 +12,7 @@ import {
   WhoAmIResponse,
 } from '@my-home/shared';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
+import { z } from 'zod';
 import { resolveActor } from '../actor';
 import type { Config } from '../config';
 import type { Db } from '../db/client';
@@ -60,7 +62,11 @@ export const useRoutes =
       {
         schema: {
           params: HistoryEntryParams,
-          response: { 200: UndoResponse, 404: ApiError, 409: UseConflict },
+          response: {
+            200: z.union([UndoResponse, UndoHomeSettingsResponse]),
+            404: ApiError,
+            409: UseConflict,
+          },
         },
       },
       async (request) => {

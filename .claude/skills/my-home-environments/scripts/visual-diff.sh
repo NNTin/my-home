@@ -94,7 +94,7 @@ shoot() {
     echo "  $view"
   done
   after=$(deployed_commit)
-  [[ $before == "$after" ]] || die "staging changed from $before to $after during the shoot; shoot again"
+  [[ $before == "$after" ]] || die "$SITE_ENV changed from $before to $after during the shoot; shoot again"
   jq -n --arg env "$SITE_ENV" --arg commit "$before" --arg at "$(date -u +%FT%TZ)" --argjson views "$manifest" \
     '{env: $env, commit: $commit, shotAt: $at, views: $views}' >"$out/manifest.json"
   echo "manifest $out/manifest.json"

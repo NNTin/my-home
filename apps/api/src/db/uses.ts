@@ -6,6 +6,7 @@ import {
   modelUses,
   openingFitIssues,
   type HistoryEntry,
+  type HomeSettings,
   type ListUsesQuery,
   type ModelUse,
   type Use,
@@ -21,6 +22,7 @@ import {
   undoPlan,
   type HistoryActor,
 } from './history';
+import { homeSettingsStore, settingsState } from './home-settings';
 import { homeStore } from './homes';
 import { openingOverrideStore, overrideState } from './opening-overrides';
 import { conflict, notFound, placementState, placementStore } from './placements';
@@ -29,6 +31,7 @@ import {
   history,
   openingOverrides,
   placements,
+  type HomeSettingsRow,
   type OpeningOverrideRow,
   type PlacementRow,
 } from './userdata-schema';
@@ -163,6 +166,7 @@ export function useStore(db: Db, options: { retentionDays: number }) {
   const homeRows = homeStore(db);
   const placementRows = placementStore(db, options);
   const overrideRows = openingOverrideStore(db);
+  const settingsRows = homeSettingsStore(db);
 
   const model = async (homeId: string) => {
     const found = await homeRows.get(homeId);
@@ -205,6 +209,10 @@ export function useStore(db: Db, options: { retentionDays: number }) {
 
   /** What history needs about a use: its kind, type and current state. */
   const subject = async (homeId: string, m: HomeModel, useId: string) => {
+    // A home's own id stands for its settings (opening and placement ids never equal a home id).
+    if (useId === homeId) {
+      return { kind: 'home' as const, typeId: undefined, state: await settingsRows.state(homeId) };
+    }
     const [p] = await db
       .select()
       .from(placements)
@@ -235,7 +243,7 @@ export function useStore(db: Db, options: { retentionDays: number }) {
     const undoneBy = new Map(rows.filter((r) => r.undoesId).map((r) => [r.undoesId!, r.id]));
     return rows.map((row) =>
       toHistoryEntry(row, {
-        type: catalog.get(s.typeId),
+        type: s.typeId === undefined ? undefined : catalog.get(s.typeId),
         current: s.state,
         undoneById: undoneBy.get(row.id) ?? null,
         ...names(m),
@@ -262,7 +270,14 @@ export function useStore(db: Db, options: { retentionDays: number }) {
      * field changed again later, when there is nothing to undo, or when it was already undone
      * (also under a race: the unique index on `undoes_id`).
      */
-    async undo(homeId: string, useId: string, entryId: string, actor: HistoryActor) {
+    async undo(
+      homeId: string,
+      useId: string,
+      entryId: string,
+      actor: HistoryActor,
+    ): Promise<
+      { entry: HistoryEntry; use: Use } | { entry: HistoryEntry; settings: HomeSettings }
+    > {
       const m = await model(homeId);
       const [entry] = await db
         .select()
@@ -275,7 +290,9 @@ export function useStore(db: Db, options: { retentionDays: number }) {
           const locked =
             entry.useKind === 'placement'
               ? await placementRows.lockState(tx, homeId, useId)
-              : await overrideRows.lockState(tx, homeId, useId);
+              : entry.useKind === 'home'
+                ? await settingsRows.lockState(tx, homeId)
+                : await overrideRows.lockState(tx, homeId, useId);
           if (!locked) throw notFound('Use', useId);
           const version = locked.row.version;
           const [undone] = await tx
@@ -299,13 +316,21 @@ export function useStore(db: Db, options: { retentionDays: number }) {
               ? placementState(
                   await placementRows.applyState(tx, locked.row as PlacementRow, plan.target),
                 )
-              : overrideState(
-                  await overrideRows.applyState(tx, locked.row as OpeningOverrideRow, plan.target),
-                );
+              : entry.useKind === 'home'
+                ? settingsState(
+                    await settingsRows.applyState(tx, locked.row as HomeSettingsRow, plan.target),
+                  )
+                : overrideState(
+                    await overrideRows.applyState(
+                      tx,
+                      locked.row as OpeningOverrideRow,
+                      plan.target,
+                    ),
+                  );
           const row = await recordHistory(tx, {
             homeId,
             useId,
-            useKind: entry.useKind as 'placement' | 'opening',
+            useKind: entry.useKind as 'placement' | 'opening' | 'home',
             action: 'undo',
             actor,
             before: locked.state,
@@ -319,24 +344,30 @@ export function useStore(db: Db, options: { retentionDays: number }) {
           // A concurrent undo of the same entry won: report the version it left behind.
           const now = await subject(homeId, m, useId);
           const [row] =
-            now?.kind === 'placement'
-              ? await db
-                  .select({ version: placements.version })
-                  .from(placements)
-                  .where(and(eq(placements.homeId, homeId), eq(placements.id, useId)))
-              : await db
-                  .select({ version: openingOverrides.version })
-                  .from(openingOverrides)
-                  .where(
-                    and(eq(openingOverrides.homeId, homeId), eq(openingOverrides.useId, useId)),
-                  );
+            now?.kind === 'home'
+              ? [await settingsRows.find(homeId)]
+              : now?.kind === 'placement'
+                ? await db
+                    .select({ version: placements.version })
+                    .from(placements)
+                    .where(and(eq(placements.homeId, homeId), eq(placements.id, useId)))
+                : await db
+                    .select({ version: openingOverrides.version })
+                    .from(openingOverrides)
+                    .where(
+                      and(eq(openingOverrides.homeId, homeId), eq(openingOverrides.useId, useId)),
+                    );
           throw conflict('This change was already undone', row?.version ?? 0, ['already undone']);
         }
         throw err;
       }
       const all = await entries(homeId, m, useId);
+      const done = all.find((e) => e.id === undoId)!;
+      if (entry.useKind === 'home') {
+        return { entry: done, settings: await settingsRows.find(homeId) };
+      }
       const use = await useOf(homeId, m, useId);
-      return { entry: all.find((e) => e.id === undoId)!, use: use! };
+      return { entry: done, use: use! };
     },
 
     /** Per type: its git uses in every stored home plus the active placements. */

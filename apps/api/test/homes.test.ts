@@ -6,7 +6,8 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { homes } from '../src/db/schema';
 import { readHomeFile, seed, seedHomes } from '../src/db/seed';
 import { defaultHomeFile } from '../src/paths';
-import { createTestApp } from './helpers';
+import { REPLACED_ON_DEPLOY } from '../src/routes/homes';
+import { clearUserdata, createTestApp } from './helpers';
 
 const mockHome = await readHomeFile(defaultHomeFile);
 const clone = (overrides: Partial<HomeModel> = {}): HomeModel => ({
@@ -26,6 +27,7 @@ describe('homes API', () => {
   beforeEach(async () => {
     if (ctx) await ctx.database.db.delete(homes);
     else ctx = await createTestApp();
+    await clearUserdata(ctx);
   });
   afterAll(() => ctx.app.close());
 
@@ -109,6 +111,31 @@ describe('homes API', () => {
       expect(res.json()).toEqual(mockHome);
     });
 
+    it('returns the effective model: the declination overlay on top of the stored one', async () => {
+      await seed(ctx.database.db);
+      const declination = { value: -1.5, source: 'measured' as const };
+      const set = await inject('PUT', '/api/homes/mock-home/settings', {
+        version: 0,
+        magneticDeclination: declination,
+      });
+      expect(set.statusCode, set.body).toBe(200);
+      const effective = {
+        ...mockHome,
+        building: { ...mockHome.building, magneticDeclination: declination },
+      };
+      expect((await inject('GET', '/api/homes/mock-home')).json()).toEqual(effective);
+      expect(JSON.parse((await inject('GET', '/api/homes/mock-home/export')).body)).toEqual(
+        effective,
+      );
+
+      // Cleared: the stored model's own value again.
+      await inject('PUT', '/api/homes/mock-home/settings', {
+        version: 1,
+        magneticDeclination: null,
+      });
+      expect((await inject('GET', '/api/homes/mock-home')).json()).toEqual(mockHome);
+    });
+
     it('returns 404 for an unknown id', async () => {
       const res = await inject('GET', '/api/homes/nope');
       expect(res.statusCode).toBe(404);
@@ -122,6 +149,9 @@ describe('homes API', () => {
       const updated = clone({ name: 'Updated', outdoorAreas: [] });
       const res = await inject('PUT', '/api/homes/mock-home', updated);
       expect(res.statusCode).toBe(200);
+      // The next deploy's sync from data/homes replaces it.
+      expect(res.headers.warning).toBe(REPLACED_ON_DEPLOY);
+      expect(REPLACED_ON_DEPLOY).toBe('299 - "Replaced from data/homes on the next deploy"');
       expect((await inject('GET', '/api/homes/mock-home')).json()).toEqual(updated);
       const list = ListHomesResponse.parse((await inject('GET', '/api/homes')).json());
       expect(list.items[0]?.name).toBe('Updated');
@@ -167,6 +197,10 @@ describe('homes API', () => {
       expect(created.statusCode).toBe(201);
       const replaced = await inject('POST', '/api/homes/import', clone({ name: 'Again' }));
       expect(replaced.statusCode).toBe(200);
+      expect([created.headers.warning, replaced.headers.warning]).toEqual([
+        REPLACED_ON_DEPLOY,
+        REPLACED_ON_DEPLOY,
+      ]);
       expect(
         ListHomesResponse.parse((await inject('GET', '/api/homes')).json()).items,
       ).toHaveLength(1);

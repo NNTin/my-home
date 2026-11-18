@@ -1,10 +1,17 @@
-import type { Layout, LayoutItem, Photo, PhotoRequest } from '@my-home/shared';
+import type {
+  HomeModel,
+  HomeSettings,
+  Layout,
+  LayoutItem,
+  Photo,
+  PhotoRequest,
+} from '@my-home/shared';
 import { vi } from 'vitest';
 import { mockHome } from './fixtures';
 
 /**
- * In-memory stand-in for the api behind `fetch`, enough for the web app: homes (read-only),
- * layouts with versions and 409s, and photos and photo requests with their trash. Tests inspect and change `layouts` directly to simulate edits
+ * In-memory stand-in for the api behind `fetch`, enough for the web app: homes, their settings
+ * (applied to the home as the api does) with versions and 409s, layouts with versions and 409s, and photos and photo requests with their trash. Tests inspect and change `layouts` directly to simulate edits
  * from another tab.
  */
 
@@ -42,6 +49,7 @@ export function fakeApi({
   let clock = Date.parse('2026-01-01T00:00:00.000Z');
   const now = () => new Date((clock += 1000)).toISOString();
   const layouts = new Map<string, Layout>();
+  const settings = new Map<string, HomeSettings>();
   const add = (homeId: string, name: string, items: LayoutItem[], extra: Partial<Layout> = {}) => {
     const at = now();
     const layout: Layout = {
@@ -133,12 +141,50 @@ export function fakeApi({
       items.set(id, updated);
       return json(updated);
     }
+    if ((m = /^\/api\/homes\/([^/]+)\/settings$/.exec(url))) {
+      const homeId = decodeURIComponent(m[1]!);
+      const current = settings.get(homeId) ?? {
+        homeId,
+        magneticDeclination: null,
+        version: 0,
+        updatedAt: null,
+      };
+      if (method === 'GET') return json(current);
+      if (body.version !== current.version) {
+        return json(
+          {
+            statusCode: 409,
+            error: 'Conflict',
+            message: 'stale',
+            currentVersion: current.version,
+            conflicts: ['version'],
+          },
+          409,
+        );
+      }
+      const next = {
+        homeId,
+        magneticDeclination: body.magneticDeclination,
+        version: current.version + 1,
+        updatedAt: now(),
+      };
+      settings.set(homeId, next);
+      return json(next);
+    }
     if ((m = /^\/api\/homes\/([^/]+)$/.exec(url))) {
       const id = decodeURIComponent(m[1]!);
       // A saved home replaces the stored one, as `PUT /api/homes/:id` does.
       if (method === 'PUT') models[id] = body;
-      const model = models[id] ?? (id === 'mock-home' ? mockHome : undefined);
-      return model ? json(model) : notFound(`Home "${id}" not found`);
+      const model = (models[id] ?? (id === 'mock-home' ? mockHome : undefined)) as
+        HomeModel | undefined;
+      if (!model) return notFound(`Home "${id}" not found`);
+      // The effective model: the declination setting on top of the stored one.
+      const declination = settings.get(id)?.magneticDeclination;
+      return json(
+        declination
+          ? { ...model, building: { ...model.building, magneticDeclination: declination } }
+          : model,
+      );
     }
     if ((m = /^\/api\/layouts\/([^/]+)(\/duplicate)?$/.exec(url))) {
       const id = decodeURIComponent(m[1]!);

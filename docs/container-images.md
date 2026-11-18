@@ -35,27 +35,31 @@ Images are built and pushed by the `publish` job in `.github/workflows/ci.yml`, 
 
 api (environment variables, validated at start-up):
 
-| Variable                        | Default              | Notes                                                                                     |
-| ------------------------------- | -------------------- | ----------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                  | unset                | Postgres connection string; when unset PGlite is used                                     |
-| `PORT` / `HOST`                 | `3000` / `0.0.0.0`   |                                                                                           |
-| `LOG_LEVEL`                     | `info`               | pino level                                                                                |
-| `MIGRATE_ON_START`              | `true`               | apply Drizzle migrations before listening                                                 |
-| `APP_COMMIT`                    | unset                | release commit, reported by `GET /api/health/live`                                        |
-| `SEED_ON_START`                 | `false` in the image | insert sample data when the table is empty                                                |
-| `ALLOW_DATABASE_RESET`          | `false`              | lets `node dist/reset.js` drop homes and layouts, never photos or userdata (staging only) |
-| `PHOTO_MAX_UPLOAD_BYTES`        | `26214400`           | largest accepted photo upload (25 MB)                                                     |
-| `PHOTO_TRASH_RETENTION_DAYS`    | `30`                 | days a deleted photo stays in the trash before it is purged                               |
-| `USERDATA_TRASH_RETENTION_DAYS` | `30`                 | days a removed furniture placement stays in the trash (purged with its history)           |
-| `AGENT_USERNAMES`               | `nntin-bot`          | SSO usernames (comma-separated) recorded as `agent` (chart: `api.agentUsernames`)         |
+| Variable                        | Default              | Notes                                                                                       |
+| ------------------------------- | -------------------- | ------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                  | unset                | Postgres connection string; when unset PGlite is used                                       |
+| `PORT` / `HOST`                 | `3000` / `0.0.0.0`   |                                                                                             |
+| `LOG_LEVEL`                     | `info`               | pino level                                                                                  |
+| `MIGRATE_ON_START`              | `true`               | apply Drizzle migrations before listening                                                   |
+| `APP_COMMIT`                    | unset                | release commit, reported by `GET /api/health/live`                                          |
+| `SEED_ON_START`                 | `false` in the image | insert sample data when the table is empty                                                  |
+| `ALLOW_DATABASE_RESET`          | `false`              | lets `node dist/reset.js` drop homes and layouts, never photos or userdata (staging only)   |
+| `RESET_PUBLIC`                  | `false`              | `node dist/release.js` drops `public` first; needs `ALLOW_DATABASE_RESET` (staging only)    |
+| `HOME_FILES`                    | unset                | `data/homes` files `dist/release.js` syncs (comma-separated); unset: all, `home.json` first |
+| `PHOTO_MAX_UPLOAD_BYTES`        | `26214400`           | largest accepted photo upload (25 MB)                                                       |
+| `PHOTO_TRASH_RETENTION_DAYS`    | `30`                 | days a deleted photo stays in the trash before it is purged                                 |
+| `USERDATA_TRASH_RETENTION_DAYS` | `30`                 | days a removed furniture placement stays in the trash (purged with its history)             |
+| `AGENT_USERNAMES`               | `nntin-bot`          | SSO usernames (comma-separated) recorded as `agent` (chart: `api.agentUsernames`)           |
 
 `docker-compose.yml` sets `SEED_ON_START=true` so the demo stack shows data. That is for demo and
 smoke-test use only; leave it unset for real deployments.
 
-Migrations can also run as a separate step, for example as a Kubernetes init container or job:
+Migrations can also run as a separate step, for example as a Kubernetes init container or job. The chart's
+pre-deploy hook runs `node dist/release.js` instead, which also syncs `data/homes` ([deployment.md](deployment.md)):
 
 ```sh
 docker run --rm -e DATABASE_URL=... -e MIGRATE_ON_START=false ghcr.io/nntin/my-home-api:main node dist/migrate.js
+docker run --rm -e DATABASE_URL=... -e HOME_FILES=home.json ghcr.io/nntin/my-home-api:main node dist/release.js
 ```
 
 web: `API_UPSTREAM` (default `http://api:3000`) is the address nginx proxies `/api/` to.

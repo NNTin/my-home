@@ -17,6 +17,7 @@ the shapes in `packages/shared/src/userdata.ts`, and the agents' script is `uses
 | The history of every change, with its actor                  | database: `userdata.history`           | written with every change      |
 | Every furniture id ever issued                               | database: `userdata.issued_ids`        | written with every placement   |
 | Notes on types and uses (§ Notes)                            | database: `userdata.notes`             | the owner and agents, per env. |
+| Home settings: the magnetic declination (§ Home settings)    | database: `userdata.home_settings`     | the owner and agents, per env. |
 
 A use stores only the **basic** parameters it changes; the type's defaults fill in the rest
 (`effectiveParams`). Design parameters cannot be overridden per use. Staging and production have separate
@@ -26,28 +27,31 @@ stable id from git (an opening, roof window, outbuilding opening or gate); the i
 
 ## Tables
 
-All in the schema `userdata`, created by `apps/api/userdata-migrations/0000_create_userdata.sql` and
-`0001_create_notes.sql`:
+All in the schema `userdata`, created by `apps/api/userdata-migrations/0000_create_userdata.sql`,
+`0001_create_notes.sql` and `0002_home_settings.sql`:
 
-| Table               | Key                 | Holds                                                                                                   |
-| ------------------- | ------------------- | ------------------------------------------------------------------------------------------------------- |
-| `placements`        | `(home_id, id)`     | type, name, level, room, position (`x`, `z`), `rotation_y`, `params`, `version`, `removed_at`           |
-| `opening_overrides` | `(home_id, use_id)` | the type the override was written for, `params`, `version`                                              |
-| `history`           | `id` (uuid), `seq`  | use, kind (`placement`/`opening`), action, actor, actor source and name, `before`, `after`, `undoes_id` |
-| `issued_ids`        | `(home_id, id)`     | every placement id handed out                                                                           |
-| `notes`             | `id` (uuid)         | `home_id` (null for type notes), subject kind and id, `body`, created/updated by and at, `deleted_at`   |
-| `schema_migrations` | `tag`               | the schema's migration journal                                                                          |
+| Table               | Key                 | Holds                                                                                                          |
+| ------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `placements`        | `(home_id, id)`     | type, name, level, room, position (`x`, `z`), `rotation_y`, `params`, `version`, `removed_at`                  |
+| `opening_overrides` | `(home_id, use_id)` | the type the override was written for, `params`, `version`                                                     |
+| `history`           | `id` (uuid), `seq`  | use, kind (`placement`/`opening`/`home`), action, actor, actor source and name, `before`, `after`, `undoes_id` |
+| `issued_ids`        | `(home_id, id)`     | every placement id handed out                                                                                  |
+| `notes`             | `id` (uuid)         | `home_id` (null for type notes), subject kind and id, `body`, created/updated by and at, `deleted_at`          |
+| `home_settings`     | `home_id`           | `magnetic_declination` (a Bearing; null = git's value), `version`, `updated_at`                                |
+| `schema_migrations` | `tag`               | the schema's migration journal                                                                                 |
 
 There are no foreign keys into `public` (a `drop schema public cascade` would silently drop them) and no CHECK
 constraints: enum values (actions, actors) are validated by the api, so adding one needs no migration.
 
 ## Persistence
 
-**User data survives every deploy of every branch**, like photos. The staging reset
+**User data survives every deploy of every branch**, like photos. Every deploy runs the release job
+([`apps/api/src/db/release.ts`](../apps/api/src/db/release.ts), `dist/release.js`): on staging the reset
 ([`apps/api/src/db/reset.ts`](../apps/api/src/db/reset.ts)) drops only `public` and `drizzle`; then
-`database.migrate()` runs the `public`, `media` and `userdata` migrations, in that order, and the homes are seeded
-again. Production only migrates. `apps/api/test/userdata-persistence.test.ts` covers the reset, and the CI docker
-job runs the real `dist/reset.js` with a placement in place. Nothing deletes user data except the trash purge
+`database.migrate()` runs the `public`, `media` and `userdata` migrations, in that order, and the homes are synced
+from git (`docs/deployment.md` § Homes come from git). `apps/api/test/userdata-persistence.test.ts` and
+`release.test.ts` cover the reset and the sync, and the CI docker job runs the real `dist/release.js` with a
+placement and a declination in place. Nothing deletes user data except the trash purge
 below.
 
 ### Migrations: expand-only
@@ -141,6 +145,22 @@ removal restores it. An entry can be undone once: a unique index on `undoes_id` 
   type);
 - a placement's type, level or room is gone;
 - the effective values do not fit (sashes for the hole, a footprint for its room).
+
+## Home settings
+
+Per-home settings stored on top of the home model from git, which every deploy replaces: today only the
+**magnetic declination** that walk mode's compass calibration saves.
+
+- `GET /api/homes/:homeId/settings` → `{ homeId, magneticDeclination: Bearing | null, version, updatedAt }`
+  (`version: 0`, `null` when never set; 404 for an unknown home).
+- `PUT /api/homes/:homeId/settings` `{ version, magneticDeclination: Bearing | null }`: `version: 0` creates them,
+  a stale version is a 409 `UseConflict`, `null` goes back to git's value, and a PUT that changes nothing writes
+  nothing.
+- `GET /api/homes/:id` and its export return the **effective** model: `building.magneticDeclination` replaced by
+  the setting when one is set.
+- Each change is a history row with `use_kind = 'home'` and `use_id` = the home id, so
+  `GET …/uses/<homeId>/history` lists it ("magnetic declination from the home model → 2.5°") and the undo endpoint
+  undoes it; that undo answers `{ entry, settings }` instead of `{ entry, use }`.
 
 ## Trash and retention
 

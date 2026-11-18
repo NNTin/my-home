@@ -7,6 +7,7 @@ import { createContext } from '../editor/operations';
 import { furniture } from '../catalog/furniture';
 import { mockHome, testRequest } from '../test/fixtures';
 import type { Figure } from './figure';
+import { saveHomeDeclination } from './declination';
 import { useWalk } from './useWalk';
 import { WalkHud, type WalkView } from './WalkHud';
 import { minimapLevels } from './minimap';
@@ -69,6 +70,7 @@ function Harness({
   onCamera,
   restored,
   sensors = true,
+  declinationSaver = onDeclination,
 }: {
   api?: Api;
   requests?: PhotoRequest[];
@@ -78,6 +80,7 @@ function Harness({
   onCamera?: (open: boolean) => void;
   restored?: Parameters<typeof WalkHud>[0]['restored'];
   sensors?: boolean;
+  declinationSaver?: (degrees: number, source: 'geodata' | 'measured') => Promise<void>;
 }) {
   const walk = useWalk(world, start, true);
   const [view, setView] = useState<WalkView>('first');
@@ -91,7 +94,7 @@ function Harness({
       onExit={onExit}
       northBearing={northBearing}
       declination={declination}
-      onDeclination={onDeclination}
+      onDeclination={declinationSaver}
       calibrationTargets={() => [
         // A door due north of the figure and a window due east of it.
         { id: 'door-a', label: 'Door: hallway kitchen', x: 0.5, z: -3, distance: 3 },
@@ -213,6 +216,8 @@ describe('WalkHud', () => {
     fireEvent.keyDown(window, { key: 'ArrowUp' });
     await waitFor(() => expect(at().z).toBeLessThan(-0.1));
     fireEvent.keyUp(window, { key: 'ArrowUp' });
+    // A frame already scheduled may still step once after the key is released: let it land.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
 
     takePhoto();
     const note = screen.getByLabelText('Note');
@@ -479,6 +484,56 @@ describe('WalkHud', () => {
       fireEvent.change(input, { target: { value: '400' } });
       fireEvent.click(sheet.getByRole('button', { name: 'Save' }));
       expect(sheet.getByText(/Could not save/)).toBeInTheDocument();
+    });
+
+    it('saves the declination as the home setting, on top of the git model', async () => {
+      const settings = {
+        homeId: 'mock-home',
+        magneticDeclination: null,
+        version: 3,
+        updatedAt: null,
+      };
+      const api = {
+        get: vi.fn((_homeId: string) => Promise.resolve(settings)),
+        put: vi.fn((homeId: string, body: { version: number; magneticDeclination: unknown }) =>
+          Promise.resolve({
+            ...settings,
+            homeId,
+            version: body.version + 1,
+            magneticDeclination: body.magneticDeclination as { value: number; source: 'measured' },
+          }),
+        ),
+      };
+      const saved: number[] = [];
+      render(
+        <Harness
+          declinationSaver={async (degrees, source) => {
+            saved.push(await saveHomeDeclination(api, 'mock-home', degrees, source));
+          }}
+        />,
+      );
+      chooseSensors();
+      tiltPhone(90, 8);
+      await waitFor(() =>
+        expect(screen.getByRole('status', { name: 'Compass' })).toBeInTheDocument(),
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Calibrate' }));
+      const sheet = within(screen.getByRole('region', { name: 'Calibrate the compass' }));
+      fireEvent.change(sheet.getByLabelText('Where it is from'), { target: { value: 'measured' } });
+      fireEvent.change(sheet.getByLabelText(/Magnetic declination/), { target: { value: '2.5' } });
+      fireEvent.click(sheet.getByRole('button', { name: 'Save' }));
+      expect(await sheet.findByText('Declination saved for this home.')).toBeInTheDocument();
+      // The settings endpoint at the current version, never a replace of the whole home.
+      expect(api.get).toHaveBeenCalledWith('mock-home');
+      expect(api.put).toHaveBeenCalledWith('mock-home', {
+        version: 3,
+        magneticDeclination: {
+          value: 2.5,
+          source: 'measured',
+          note: 'Measured on site, entered in the app',
+        },
+      });
+      expect(saved).toEqual([2.5]);
     });
 
     it('falls back to Manual with a message when permission is refused or no data arrives', async () => {

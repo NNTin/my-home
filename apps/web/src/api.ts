@@ -5,6 +5,7 @@ import {
   LayoutConflict,
   ListHomesResponse,
   EmptyTrashResponse,
+  HomeSettings,
   ListLayoutsResponse,
   ListPhotoRequestsResponse,
   ListPhotosResponse,
@@ -13,6 +14,7 @@ import {
   TrashResponse,
   type CreateLayoutBody,
   type CreatePhotoMeta,
+  type PutHomeSettingsBody,
   type UpdateLayoutBody,
   type UpdatePhotoBody,
 } from '@my-home/shared';
@@ -79,9 +81,17 @@ export const fetchHomes = (signal?: AbortSignal): Promise<ListHomesResponse> =>
 export const fetchHome = (id: string, signal?: AbortSignal): Promise<HomeModel> =>
   request('GET', homeUrl(id), HomeModel, { signal });
 
-/** Replaces a stored home with `model` (same id) and returns what the api stored. */
-export const saveHome = (model: HomeModel): Promise<HomeModel> =>
-  request('PUT', homeUrl(model.id), HomeModel, { body: model });
+/**
+ * A home's settings, stored on top of its git model (which every deploy replaces): the magnetic
+ * declination. `put` throws an `ApiRequestError` with status 409 when `version` is stale.
+ */
+export const homeSettingsApi = {
+  get: (homeId: string, signal?: AbortSignal) =>
+    request('GET', `${homeUrl(homeId)}/settings`, HomeSettings, { signal }),
+  put: (homeId: string, body: PutHomeSettingsBody) =>
+    request('PUT', `${homeUrl(homeId)}/settings`, HomeSettings, { body }),
+};
+export type HomeSettingsApi = typeof homeSettingsApi;
 
 export const layoutsApi = {
   list: (homeId: string, signal?: AbortSignal) =>

@@ -126,9 +126,10 @@ is why the api's memory limit in the chart is 512Mi.
 
 **Photos survive every deploy of every branch.** Staging is reset on each deploy, but the reset
 ([`apps/api/src/db/reset.ts`](../apps/api/src/db/reset.ts)) drops only the `public` and `drizzle` schemas. Then
-`database.migrate()` applies the `public` migrations and the `media` migrations, and the homes are seeded again.
-Production only migrates. Tests cover the reset (`apps/api/test/media-persistence.test.ts`) and CI runs the real
-`dist/reset.js` against Postgres with a photo in place.
+`database.migrate()` applies the `public` migrations and the `media` migrations, and the homes are synced from git
+again (the release job, `dist/release.js`; production does the same without the reset). Tests cover the reset
+(`apps/api/test/media-persistence.test.ts`, `release.test.ts`) and CI runs the real `dist/release.js` against
+Postgres with a photo in place.
 
 Deploys, resets, migrations, seeding and tests never delete photos. Only the owner's
 [explicit actions](#deletion-and-the-trash) do.

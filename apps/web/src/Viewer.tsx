@@ -7,7 +7,7 @@ import {
   type PhotoRequest,
 } from '@my-home/shared';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { fetchHome, photosApi, saveHome } from './api';
+import { homeSettingsApi, photosApi } from './api';
 import {
   buildHome,
   type HomeScene,
@@ -67,6 +67,7 @@ import { Scene } from './scene/Scene';
 import { calibrationTargets } from './walk/calibration';
 import type { Figure } from './walk/figure';
 import { useWalk } from './walk/useWalk';
+import { saveHomeDeclination } from './walk/declination';
 import { WalkHud, type DeclinationSource, type WalkView } from './walk/WalkHud';
 import { loadWalkSession } from './walk/walkSession';
 import { groundLevelId, minimapLevels } from './walk/minimap';
@@ -242,20 +243,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   const walk = useWalk(world, start, walking);
   // Magnetic declination of the home: from the model, and editable while walking.
   const [declination, setDeclination] = useState(() => magneticDeclinationOf(model.building));
-  const saveDeclination = async (degrees: number, source: DeclinationSource) => {
-    // The home may have changed since this page loaded (an agent correcting walls, another tab),
-    // and saving replaces the whole home: change the declination on what is stored now.
-    const current = await fetchHome(model.id);
-    const note =
-      source === 'measured'
-        ? 'Measured on site, entered in the app'
-        : 'From a declination chart or model, entered in the app';
-    const saved = await saveHome({
-      ...current,
-      building: { ...current.building, magneticDeclination: { value: degrees, source, note } },
-    });
-    setDeclination(magneticDeclinationOf(saved.building));
-  };
+  const saveDeclination = async (degrees: number, source: DeclinationSource) =>
+    setDeclination(await saveHomeDeclination(homeSettingsApi, model.id, degrees, source));
   const targetsFor = (figure: Figure) => {
     const figurePlan = figure.levelId === undefined ? undefined : ctx.plans.get(figure.levelId);
     const room = figurePlan && roomAt(figurePlan, [figure.x, figure.z]);

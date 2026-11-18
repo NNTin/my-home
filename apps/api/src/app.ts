@@ -39,7 +39,7 @@ export async function buildApp(config: Config, database: Database, logger: Logge
   await app.register(
     async (api) => {
       await api.register(healthRoutes(database, config));
-      await api.register(homeRoutes(database.db));
+      await api.register(homeRoutes(database.db, config));
       await api.register(layoutRoutes(database.db));
       await api.register(photoRoutes(database.db, config));
       await api.register(catalogRoutes(database.db, config));

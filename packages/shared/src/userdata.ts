@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { CatalogKind, formatCm, ParamValues, TypeId, type CatalogType } from './catalog';
-import { Id } from './home-model';
+import { Bearing, Id } from './home-model';
 import { ApiError } from './homes';
 import { PlanPosition } from './layouts';
 import { Subject, SubjectQuery } from './subjects';
@@ -26,7 +26,10 @@ export type Actor = z.infer<typeof Actor>;
 export const ActorSource = z.enum(['identity', 'declared', 'default']);
 export type ActorSource = z.infer<typeof ActorSource>;
 
-/** A use's state as history stores it before and after a change (openings: `params` only). */
+/**
+ * A use's state as history stores it before and after a change (openings: `params` only; a
+ * home's settings: `params: {}` and `magneticDeclination`).
+ */
 export const UseState = z.object({
   name: z.string().optional(),
   params: ParamValues,
@@ -35,6 +38,8 @@ export const UseState = z.object({
   position: PlanPosition.optional(),
   rotationY: z.number().optional(),
   removed: z.boolean().optional(),
+  /** Home settings only: the declination overlay, `null` = the home model's value. */
+  magneticDeclination: Bearing.nullable().optional(),
 });
 export type UseState = z.infer<typeof UseState>;
 
@@ -100,7 +105,8 @@ export const Use = z.object({
 });
 export type Use = z.infer<typeof Use>;
 
-export const UseKind = z.enum(['placement', 'opening']);
+/** `home`: a home's settings (`useId` = the home id), see `HomeSettings`. */
+export const UseKind = z.enum(['placement', 'opening', 'home']);
 export type UseKind = z.infer<typeof UseKind>;
 
 export const HistoryAction = z.enum(['create', 'update', 'remove', 'restore', 'undo', 'import']);
@@ -130,9 +136,30 @@ export const HistoryEntry = z.object({
 });
 export type HistoryEntry = z.infer<typeof HistoryEntry>;
 
+/**
+ * Per-home settings stored in the database on top of the home model from git, so the sync on
+ * every deploy keeps them. `magneticDeclination: null` uses the model's value.
+ */
+export const HomeSettings = z.object({
+  homeId: Id,
+  magneticDeclination: Bearing.nullable(),
+  /** 0 = never set. */
+  version: z.number().int().nonnegative(),
+  updatedAt: Timestamp.nullable(),
+});
+export type HomeSettings = z.infer<typeof HomeSettings>;
+
+/** `version: 0` creates the settings; `magneticDeclination: null` goes back to the model's value. */
+export const PutHomeSettingsBody = z.strictObject({
+  version: z.number().int().nonnegative(),
+  magneticDeclination: Bearing.nullable(),
+});
+export type PutHomeSettingsBody = z.infer<typeof PutHomeSettingsBody>;
+
 // Requests and responses.
 
 export const UseHomeParams = z.object({ homeId: Id });
+export const HomeSettingsParams = UseHomeParams;
 export const PlacementParams = z.object({ homeId: Id, id: Id });
 export const UseParams = z.object({ homeId: Id, useId: Id });
 export const HistoryEntryParams = z.object({ homeId: Id, useId: Id, entryId: z.uuid() });
@@ -239,6 +266,10 @@ export type ListHistoryResponse = z.infer<typeof ListHistoryResponse>;
 
 export const UndoResponse = z.object({ entry: HistoryEntry, use: Use });
 export type UndoResponse = z.infer<typeof UndoResponse>;
+
+/** Undoing a change of a home's settings (`useId` = the home id) answers with the settings. */
+export const UndoHomeSettingsResponse = z.object({ entry: HistoryEntry, settings: HomeSettings });
+export type UndoHomeSettingsResponse = z.infer<typeof UndoHomeSettingsResponse>;
 
 /** 409: the version is stale, or an undo conflicts with later changes (or was already done). */
 export const UseConflict = ApiError.extend({
@@ -369,6 +400,16 @@ export function describeChanges(
       v === undefined ? 'unset' : formatValue(type, key, v);
     const reset = a === undefined && to !== undefined ? ' (default)' : '';
     changes.push({ field: `params.${key}`, text: `${label} ${show(from)} → ${show(to)}${reset}` });
+  }
+  if (after.magneticDeclination !== undefined) {
+    const [b, a] = [before.magneticDeclination ?? null, after.magneticDeclination];
+    const show = (v: Bearing | null) => (v === null ? 'from the home model' : `${v.value}°`);
+    if (b?.value !== a?.value || b?.source !== a?.source) {
+      changes.push({
+        field: 'magneticDeclination',
+        text: `magnetic declination ${show(b)} → ${show(a)}`,
+      });
+    }
   }
   if (before.removed !== after.removed && after.removed !== undefined) {
     changes.push({ field: 'removed', text: after.removed ? 'moved to the trash' : 'restored' });
