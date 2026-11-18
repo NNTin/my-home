@@ -33,6 +33,8 @@ export interface FakeApiOptions {
   layouts?: Partial<Layout>[];
   photos?: Photo[];
   requests?: PhotoRequest[];
+  /** `GET /api/catalog/usage`; `'error'` answers 500. */
+  usage?: Record<string, number> | 'error';
 }
 
 export function fakeApi({
@@ -41,6 +43,7 @@ export function fakeApi({
   layouts: initial = [],
   photos: initialPhotos = [],
   requests: initialRequests = [],
+  usage = {},
 }: FakeApiOptions = {}) {
   const photos = new Map(initialPhotos.map((p) => [p.id, p]));
   const requests = new Map(initialRequests.map((r) => [r.id, r]));
@@ -74,6 +77,11 @@ export function fakeApi({
     let m: RegExpExecArray | null;
 
     if (url === '/api/homes') return json({ items: homes });
+    if (url === '/api/catalog/usage') {
+      if (usage === 'error')
+        return json({ statusCode: 500, error: 'Internal Server Error', message: 'down' }, 500);
+      return json({ counts: usage });
+    }
     if ((m = /^\/api\/homes\/([^/]+)\/layouts(\/import)?$/.exec(url))) {
       const homeId = decodeURIComponent(m[1]!);
       if (method === 'GET') {

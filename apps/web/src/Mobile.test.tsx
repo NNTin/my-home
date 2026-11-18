@@ -9,6 +9,10 @@ import { stubScreen } from './test/screen';
 
 // jsdom has no WebGL, so the R3F canvas is replaced with a stub that exposes what it would draw.
 let lastScene: SceneProps | undefined;
+vi.mock('./catalog-page/renderThumbnail', () => ({
+  renderThumbnail: () => Promise.reject(new Error('no WebGL in jsdom')),
+  THUMBNAIL_SIZE: 256,
+}));
 vi.mock('./scene/Scene', () => ({
   Scene: (props: SceneProps) => {
     lastScene = props;
@@ -161,6 +165,21 @@ describe('phone layout', () => {
     const apartments = panel.getByRole('group', { name: 'Apartments' });
     fireEvent.click(within(apartments).getByLabelText('Ground-floor apartment'));
     expect(levelsOf().has('ground-floor')).toBe(false);
+  });
+
+  it('opens the catalogue from the top bar, keeping the home', async () => {
+    window.history.replaceState(null, '', '/?home=mock-home&sheet=half');
+    await open('portrait');
+    const catalogue = topBar().getByRole('link', { name: 'Catalogue' });
+    expect(catalogue).toHaveAttribute('href', '/catalog?home=mock-home');
+    expect(catalogue).toHaveAttribute('title', 'Catalogue');
+    fireEvent.click(catalogue);
+    expect(await screen.findByRole('heading', { name: 'Catalogue' })).toBeInTheDocument();
+    expect(screen.queryByRole('toolbar')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Catalogue' }).closest('.catalog-page')).toHaveClass(
+      'mobile',
+      'portrait',
+    );
   });
 
   it('opens the photos from the top bar and the requests from their tab', async () => {

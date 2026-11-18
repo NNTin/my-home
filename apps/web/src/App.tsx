@@ -1,7 +1,13 @@
 import type { HomeModel, HomeSummary } from '@my-home/shared';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { fetchHome, fetchHomes } from './api';
+import { href, keptQuery, Link, useDocumentTitle, useRoute } from './routing';
 import { Viewer } from './Viewer';
+import { saveWalkSession } from './walk/walkSession';
+
+// The catalogue pages are chunks of their own: the viewer's first load does not grow with them.
+const CatalogPage = lazy(() => import('./catalog-page/CatalogPage'));
+const PiecePage = lazy(() => import('./catalog-page/PiecePage'));
 
 type State =
   | { status: 'loading' }
@@ -14,7 +20,9 @@ const errorMessage = (err: unknown) => (err instanceof Error ? err.message : Str
 /** `?home=<id>` picks a home; otherwise the first one the API lists. */
 const homeFromUrl = () => new URLSearchParams(window.location.search).get('home');
 
-export function App() {
+/** The 3D viewer on `/`, as it has always been. */
+function HomeViewer() {
+  useDocumentTitle();
   const [state, setState] = useState<State>({ status: 'loading' });
   const [homeId, setHomeId] = useState<string | null>(homeFromUrl);
 
@@ -60,5 +68,54 @@ export function App() {
         </section>
       )}
     </main>
+  );
+}
+
+function NotFound() {
+  useDocumentTitle('Not found');
+  return (
+    <div className="page not-found">
+      <main>
+        <h1>Page not found</h1>
+        <p>There is nothing at this address.</p>
+        <p>
+          <Link to={href({ page: 'viewer' }, keptQuery())}>← Home</Link>
+        </p>
+      </main>
+    </div>
+  );
+}
+
+function PageLoading() {
+  return (
+    <div className="page" role="status">
+      Loading…
+    </div>
+  );
+}
+
+/**
+ * The app's pages by address: `/` the viewer, `/catalog` the catalogue, `/catalog/<kind>/<typeId>`
+ * a piece (docs/catalog.md). Leaving `/` unmounts the viewer: coming back starts a fresh view.
+ */
+export function App() {
+  const route = useRoute();
+
+  // A walk is kept for a reload of the viewer (the camera app), not for a visit elsewhere.
+  useEffect(() => {
+    if (route.page !== 'viewer') saveWalkSession(undefined);
+  }, [route.page]);
+
+  if (route.page === 'viewer') return <HomeViewer />;
+  return (
+    <Suspense fallback={<PageLoading />}>
+      {route.page === 'catalog' ? (
+        <CatalogPage />
+      ) : route.page === 'piece' ? (
+        <PiecePage key={route.typeId} typeId={route.typeId} />
+      ) : (
+        <NotFound />
+      )}
+    </Suspense>
   );
 }

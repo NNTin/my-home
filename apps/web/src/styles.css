@@ -1154,7 +1154,8 @@ body {
 }
 
 .topbar button,
-.topbar select {
+.topbar select,
+.topbar-link {
   box-sizing: border-box;
   min-height: 2.75rem;
   border: 1px solid rgb(255 255 255 / 0.3);
@@ -1176,7 +1177,21 @@ body {
   color: #1d2129;
 }
 
-.topbar-row button {
+.topbar-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  text-decoration: none;
+}
+/* Three labelled actions and the home do not fit next to each other on a phone held upright. */
+@media (max-width: 440px) {
+  .topbar-label {
+    display: none;
+  }
+}
+.topbar-row button,
+.topbar-link {
   flex: none;
   padding: 0 0.75rem;
   white-space: nowrap;
@@ -1195,6 +1210,7 @@ body {
 
 .topbar button:focus-visible,
 .topbar select:focus-visible,
+.topbar-link:focus-visible,
 .sheet-bar button:focus-visible {
   outline: 2px solid #a8d4ff;
   outline-offset: -2px;
@@ -1875,4 +1891,52 @@ body {
     animation-duration: 0.01s;
     animation-delay: 2.5s;
   }
+}
+
+/*
+ * Pages other than the viewer (the catalogue, not found): a document that scrolls, with a header
+ * that stays at the top and the safe-area insets of docs/mobile.md.
+ */
+.page {
+  box-sizing: border-box;
+  min-height: 100%;
+  padding: 0 max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom))
+    max(1rem, env(safe-area-inset-left));
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.page a {
+  color: #8ab4f8;
+}
+
+.page h1 {
+  margin: 0;
+  font-size: 1.375rem;
+}
+
+.page-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin: 0 -1rem;
+  padding: max(0.75rem, env(safe-area-inset-top)) 1rem 0.75rem;
+  background: #1d2129;
+  border-bottom: 1px solid rgb(255 255 255 / 0.12);
+}
+
+.page-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  text-decoration: none;
+}
+
+.page-main {
+  max-width: 72rem;
+  margin: 0 auto;
 }

@@ -2,6 +2,7 @@ import type { HomeSummary } from '@my-home/shared';
 import type { KeyboardEvent } from 'react';
 import type { HomeScene } from '../builder/buildHome';
 import { roofIndex, type Visibility } from '../builder/visibility';
+import { href, keptQuery, Link } from '../routing';
 
 interface Props {
   homes: HomeSummary[];
@@ -29,8 +30,8 @@ export function shortLevelName(name: string): string {
 }
 
 /**
- * The phone's top bar: the home, walking, the photos and the cutaway level as a segmented
- * control, so the most used actions need no panel.
+ * The phone's top bar: the home, walking, the photos, the catalogue and the cutaway level as a
+ * segmented control, so the most used actions need no panel.
  */
 export function TopBar({
   homes,
@@ -69,7 +70,7 @@ export function TopBar({
   };
 
   return (
-    <div className="topbar" role="toolbar" aria-label="Home, walking, photos and level">
+    <div className="topbar" role="toolbar" aria-label="Home, walking, photos, catalogue and level">
       <div className="topbar-row">
         {homes.length > 1 ? (
           <select
@@ -99,6 +100,16 @@ export function TopBar({
           <span aria-hidden="true">📷</span> Photos ({photoCount})
           {openRequests > 0 && <span className="badge">{openRequests}</span>}
         </button>
+        {/* A narrow screen shows only the icon; the name stays "Catalogue". */}
+        <Link
+          className="topbar-link"
+          to={href({ page: 'catalog' }, keptQuery())}
+          aria-label="Catalogue"
+          title="Catalogue"
+        >
+          <span aria-hidden="true">📚</span>
+          <span className="topbar-label"> Catalogue</span>
+        </Link>
       </div>
       <div
         className="segmented"
