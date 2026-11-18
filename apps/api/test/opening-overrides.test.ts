@@ -2,7 +2,7 @@ import { HomeModel, ListUsesResponse, OpeningOverride, UseConflict } from '@my-h
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { homeStore } from '../src/db/homes';
 import { readHomeFile, seedHomes } from '../src/db/seed';
-import { defaultHomeFile } from '../src/paths';
+import { mockHomeFile, testSeedFiles } from './fixtures';
 import { clearUserdata, createTestApp, injector } from './helpers';
 
 const base = '/api/homes/mock-home/opening-overrides';
@@ -16,7 +16,7 @@ describe('opening overrides', () => {
   });
   beforeEach(async () => {
     await clearUserdata(ctx);
-    await seedHomes(ctx.database.db, { replace: true });
+    await seedHomes(ctx.database.db, { files: testSeedFiles, replace: true });
   });
   afterAll(() => ctx.app.close());
 
@@ -105,7 +105,7 @@ describe('opening overrides', () => {
     await put('souterrain-patio-door', { version: 0, params: { frameColor: '#ffffff' } });
     await put('souterrain-kitchen-window', { version: 0, params: { sashes: 2 } });
     // A later git change: the kitchen window becomes a French door, which has no sashes.
-    const model = await readHomeFile(defaultHomeFile);
+    const model = await readHomeFile(mockHomeFile);
     const changed = HomeModel.parse({
       ...model,
       openings: model.openings.map((o) =>

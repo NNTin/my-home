@@ -8,7 +8,7 @@ import {
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { readHomeFile, seedHomes } from '../src/db/seed';
 import { openingOverrides, placements } from '../src/db/userdata-schema';
-import { defaultHomeFile, defaultSeedFiles } from '../src/paths';
+import { mockHomeFile, testSeedFiles } from './fixtures';
 import { clearUserdata, createTestApp, injector } from './helpers';
 
 describe('where-used and the catalogue', () => {
@@ -20,7 +20,7 @@ describe('where-used and the catalogue', () => {
   });
   beforeEach(async () => {
     await clearUserdata(ctx);
-    await seedHomes(ctx.database.db, { replace: true });
+    await seedHomes(ctx.database.db, { files: testSeedFiles, replace: true });
   });
   afterAll(() => ctx.app.close());
 
@@ -39,7 +39,7 @@ describe('where-used and the catalogue', () => {
     );
 
   it('lists git uses with overrides, placements and orphans', async () => {
-    const model = await readHomeFile(defaultHomeFile);
+    const model = await readHomeFile(mockHomeFile);
     const git = modelUses(model);
     await inject('PUT', '/api/homes/mock-home/opening-overrides/souterrain-bedroom-window', {
       version: 0,
@@ -119,7 +119,7 @@ describe('where-used and the catalogue', () => {
       (await inject('GET', '/api/catalog/usage')).json(),
     );
     const expected: Record<string, number> = {};
-    for (const file of defaultSeedFiles) {
+    for (const file of testSeedFiles) {
       for (const u of modelUses(await readHomeFile(file)))
         expected[u.typeId] = (expected[u.typeId] ?? 0) + 1;
     }

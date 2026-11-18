@@ -17,7 +17,7 @@ import { ListHomesQuery } from './homes';
 const readJson = (path: string): unknown =>
   JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8'));
 
-const mockHome = () => structuredClone(readJson('../../../data/homes/mock-home.json')) as HomeModel;
+const mockHome = () => structuredClone(readJson('../test-fixtures/mock-home.json')) as HomeModel;
 const realHome = () => structuredClone(readJson('../../../data/homes/home.json')) as HomeModel;
 
 const d = (value: number) => ({ value, source: 'mock' as const });
@@ -224,9 +224,14 @@ describe('the real home', () => {
       expect(sill).toBeGreaterThan(lawn);
       expect(sill - lawn).toBeLessThan(0.3);
     }
-    const south = opening('window-souterrain-living-room-south');
-    expect(south.head).toBeLessThan(patch('terrain-south').elevation.value);
-    expect(south.sill).toBeGreaterThan(patch('terrain-light-well').elevation.value);
+    for (const id of [
+      'window-souterrain-living-room-south',
+      'window-souterrain-living-room-south-east',
+    ]) {
+      const south = opening(id);
+      expect(south.head).toBeLessThan(patch('terrain-south').elevation.value);
+      expect(south.sill).toBeGreaterThan(patch('terrain-light-well').elevation.value);
+    }
   });
 
   it('has a garage, a divider wall down to the patio and two gardens on their own levels', () => {
@@ -859,7 +864,7 @@ describe('piece types and names', () => {
 
   it('lists the roof window, outbuilding openings and gate of the real home', () => {
     const uses = modelUses(HomeModel.parse(realHome()));
-    expect(uses).toHaveLength(31);
+    expect(uses).toHaveLength(32);
     expect(uses.slice(-5).map((u) => [u.id, u.placement, u.typeId, u.levelId])).toEqual([
       ['garage-door', 'outbuilding', 'door.garage', null],
       ['passage-arch', 'outbuilding', 'door.exterior', null],

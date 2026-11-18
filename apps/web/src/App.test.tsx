@@ -44,7 +44,7 @@ describe('App', () => {
     window.history.replaceState(null, '', '/');
   });
 
-  it('loads the first home from the API and renders all of it', async () => {
+  it('loads the first home from the API and starts in the souterrain, upper levels unchecked', async () => {
     const fetchMock = stubApi();
     render(<App />);
 
@@ -52,8 +52,14 @@ describe('App', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/homes', expect.anything());
     expect(fetchMock).toHaveBeenCalledWith('/api/homes/mock-home', expect.anything());
     expect(screen.getByText('Mock home')).toBeInTheDocument();
-    expect(levelsOf()).toEqual(new Set(['souterrain', 'ground-floor', 'first-floor']));
-    expect(lastScene?.scene.roofPlanes).toHaveLength(2);
+    expect(levelsOf()).toEqual(new Set(['souterrain']));
+    expect(lastScene?.scene.roofPlanes).toEqual([]);
+    const cutaway = within(screen.getByRole('group', { name: 'Show up to level' }));
+    expect(cutaway.getByLabelText('Souterrain')).toBeChecked();
+    const levels = within(screen.getByRole('group', { name: 'Levels' }));
+    expect(levels.getByLabelText('Souterrain')).toBeChecked();
+    expect(levels.getByLabelText('Ground floor')).not.toBeChecked();
+    expect(levels.getByLabelText('First floor (attic)')).not.toBeChecked();
     expect(lastScene?.northBearing).toBe(0);
     expect(lastScene?.markers.map((m) => m.label)).toEqual(['N', 'E', 'S', 'W']);
     expect(lastScene?.scene.outdoorAreas.map((a) => a.name)).toEqual([
@@ -79,7 +85,9 @@ describe('App', () => {
     stubApi();
     render(<App />);
     const cutaway = within(await screen.findByRole('group', { name: 'Show up to level' }));
-    expect(cutaway.getByLabelText('Roof')).toBeChecked();
+    fireEvent.click(cutaway.getByLabelText('Roof'));
+    expect(lastScene?.scene.roofPlanes).toHaveLength(2);
+    expect(levelsOf()).toEqual(new Set(['souterrain', 'ground-floor', 'first-floor']));
 
     fireEvent.click(cutaway.getByLabelText('First floor (attic)'));
     expect(lastScene?.scene.roofPlanes).toEqual([]);

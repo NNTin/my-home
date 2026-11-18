@@ -60,6 +60,8 @@ async function openGallery(options: Parameters<typeof fakeApi>[0] = {}) {
     ...options,
   });
   render(<App />);
+  // The first view looks into the souterrain: these tests need the whole building in view.
+  fireEvent.click(await screen.findByRole('radio', { name: 'Roof' }));
   fireEvent.click(await screen.findByRole('button', { name: /Photos \(4\)/ }));
   const panel = within(await screen.findByRole('region', { name: 'Photos' }));
   return { api, panel };

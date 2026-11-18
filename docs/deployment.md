@@ -3,10 +3,10 @@
 my-home runs on the home Kubernetes cluster (RKE2 on the NUC, Flux GitOps in
 [NNTin/lair.nntin.xyz](https://github.com/NNTin/lair.nntin.xyz)). Every green build is deployed automatically:
 
-| Environment | URL                            | Deployed from                                             | Database                                                                                                                                            |
-| ----------- | ------------------------------ | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| production  | https://home.nntin.xyz         | every push to `main`                                      | persistent, backed up daily; homes synced from git (`home.json`) on every deploy                                                                    |
-| staging     | https://home-staging.nntin.xyz | same-repo pull request pushes, `v*` tags, manual dispatch | `public` reset and homes synced from git (`home.json`, `mock-home.json`) on every deploy; photos, placements, overrides, notes and settings persist |
+| Environment | URL                            | Deployed from                                             | Database                                                                                                                                                  |
+| ----------- | ------------------------------ | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| production  | https://home.nntin.xyz         | every push to `main`                                      | persistent, backed up daily; homes synced from git (`home.json`) on every deploy                                                                          |
+| staging     | https://home-staging.nntin.xyz | same-repo pull request pushes, `v*` tags, manual dispatch | `public` reset and `home.json` synced from git on every deploy, the retired `mock-home` purged; photos, placements, overrides, notes and settings persist |
 
 Staging is one shared environment: the latest deploy replaces whatever ran there before. Both hosts are behind
 Authentik single sign-on (`auth.nntin.xyz`); only `GET /api/health/live` is public, so CI can see which commit runs.
@@ -60,14 +60,16 @@ commit as `commit` in `/api/health/live`.
 request to `data/homes`**; edits through `PUT /api/homes/:id` or `POST /api/homes/import` are replaced on the next
 deploy (the api says so in a `Warning` header).
 
-- **What is synced:** the chart value `homes.files` (`HOME_FILES`). By default production syncs only `home.json`
-  and staging (`database.resetOnDeploy`) `home.json` and `mock-home.json`; an explicit `homes.files` overrides it.
+- **What is synced:** the chart value `homes.files` (`HOME_FILES`). By default both environments sync only `home.json`; an explicit `homes.files` overrides it.
   Without `HOME_FILES`, `dist/release.js` syncs every `data/homes/*.json`, `home.json` first.
 - **How:** all files are validated first, then every home is inserted or replaced in **one transaction**
   (`created_at` is kept; a home equal to the stored one is left `unchanged`). The log reads
   `release: home "home" replaced, 0 uses need attention`.
 - **Homes not in git** (an agent's import on staging) are left alone, with a warning in the log. Nothing is ever
-  deleted.
+  deleted, except a home named in `PURGE_HOMES` (the chart value `homes.purge`; staging defaults to `mock-home`, the
+  retired test home; production to nothing): its stored home and its `userdata` rows (placements, overrides, notes,
+  history, settings, imports) go in one transaction, with the row counts in the log, and it refuses a home that is
+  in the synced files. Photos and photo requests are never deleted: the log only lists them.
 - **What survives:** everything in `userdata` and `media`: furniture placements, opening overrides (colours,
   sizes), notes, photos and photo requests, and the home settings (`userdata.home_settings`: the magnetic
   declination entered in walk mode, an overlay on git's value with history and undo, [userdata.md](userdata.md)).

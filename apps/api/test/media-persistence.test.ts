@@ -9,6 +9,7 @@ import { resetDatabase } from '../src/db/reset';
 import { seedHomes } from '../src/db/seed';
 import { mediaMigrationsFolder } from '../src/paths';
 import { clearMedia, createTestApp, testImage, uploadPayload } from './helpers';
+import { testSeedFiles } from './fixtures';
 
 describe('the media schema outlives resets and other branches', () => {
   let ctx: Awaited<ReturnType<typeof createTestApp>>;
@@ -17,7 +18,7 @@ describe('the media schema outlives resets and other branches', () => {
   });
   beforeEach(async () => {
     await clearMedia(ctx);
-    await seedHomes(ctx.database.db);
+    await seedHomes(ctx.database.db, { files: testSeedFiles });
   });
   afterAll(() => ctx.app.close());
 
@@ -129,7 +130,7 @@ describe('the media schema outlives resets and other branches', () => {
       expect(tables).toEqual([{ schema: 'media', count: 7 }]);
 
       await ctx.database.migrate();
-      await seedHomes(ctx.database.db);
+      await seedHomes(ctx.database.db, { files: testSeedFiles });
       expect(await snapshot()).toEqual(before);
     }
     expect(Photo.parse((await inject('GET', `/api/photos/${kept.id}`)).json())).toEqual(kept);
@@ -178,7 +179,7 @@ describe('the media schema outlives resets and other branches', () => {
       // The older branch deploys next: reset, then its own (smaller) migration set.
       await resetDatabase(ctx.database.db);
       await ctx.database.migrate();
-      await seedHomes(ctx.database.db);
+      await seedHomes(ctx.database.db, { files: testSeedFiles });
       expect(await migrateMedia(ctx.database.db)).toEqual([]);
       // The journal entry it does not know and the newer column and table are left alone.
       expect(await journal()).toEqual([...current, newer.tag]);

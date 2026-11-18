@@ -3,7 +3,7 @@ import { createDatabase } from './db/client';
 import { resetDatabase } from './db/reset';
 import { seedHomes } from './db/seed';
 
-// Staging deploys: empty the database, migrate, seed the real and the mock home. Refuses to run unless
+// Staging deploys: empty the database, migrate, seed the home. Refuses to run unless
 // ALLOW_DATABASE_RESET=true, so it can never wipe a database by accident.
 const config = loadConfig();
 if (!config.allowDatabaseReset) {

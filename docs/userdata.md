@@ -194,6 +194,6 @@ sticks"). Type notes are environment-wide (`homeId` null); use notes belong to o
 
 ## Agents and test data
 
-Agents may edit uses on both environments, production only when asked (`uses.sh`, see the skill). Test data goes
-only to `mock-home` and is cleaned up in the same task, by undo or remove (notes: `note-delete`). Notes on the
-real home are the owner's data.
+Agents write to a deployed environment only for a change the owner asked for (`uses.sh --allow-write`, see the
+skill). There is no test home there and no smoke writes (they intercept writes in the browser); API write tests
+run on a throwaway database in CI. Notes are the owner's data.

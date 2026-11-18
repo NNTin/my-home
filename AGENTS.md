@@ -7,7 +7,7 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - `apps/web`: Vite + React + `@react-three/fiber`/`drei` viewer; dev server proxies `/api`
 - `apps/api`: Fastify + Drizzle (Postgres); schema in `src/db/schema.ts`, migrations in `drizzle/`
 - `packages/shared`: zod schemas and types shared by web and api (ships TS source)
-- `data/homes/`: home model documents (`home.json` the real house, `mock-home.json` the test fixture); model docs in
+- `data/homes/`: home model documents (`home.json` is the only home, "Our home"); the test fixture is `packages/shared/test-fixtures/`; model docs in
   `docs/home-model.md`
 - `apps/web/src/catalog/<family>/<variant>/`: one piece module per catalogue type (windows, doors, gates,
   furniture), auto-registered (`docs/adding-piece-type.md`); the furniture (one placement set per home) and its editor in `docs/furniture.md`;
@@ -60,7 +60,7 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 
 ## Environments
 
-- staging `https://home-staging.nntin.xyz`: homes synced from git (real + mock) on every deploy (same-repo PR
+- staging `https://home-staging.nntin.xyz`: `home.json` (the only home) synced from git on every deploy (same-repo PR
   pushes, `v*` tags; latest wins); placements, colours, notes and photos (the owner's) persist. Use it for tests and
   experiments.
 - production `https://home.nntin.xyz`: real data, deployed from every push to `main`; homes synced from git

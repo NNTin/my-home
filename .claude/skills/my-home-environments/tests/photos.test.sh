@@ -18,7 +18,7 @@ photo() { jq -nc --arg id "$1" --arg note "$2" '{id: $id, levelId: "souterrain",
   subjects: (if $id == "ccc" then [{kind: "use", id: "w1", name: "Window", status: "current"}] else [] end),
   capturedRoomId: "souterrain-kitchen", capturedRoomName: "Kitchen", room: null, deletedAt: null}'; }
 case "$env $path" in
-  *" /api/homes") echo '{"items":[{"id":"home"},{"id":"mock-home"}]}' ;;
+  *" /api/homes") echo '{"items":[{"id":"home"},{"id":"home"}]}' ;;
   "staging /api/homes/home/photos?"*) jq -nc --argjson a "$(photo aaa first)" --argjson b "$(photo bbb second)" \
     --argjson c "$(photo ccc third)" '{items: [$c, $b, $a], total: 3}' ;;
   "production /api/homes/home/photos?"*) jq -nc --argjson a "$(photo aaa first)" '{items: [$a], total: 1}' ;;
@@ -104,8 +104,8 @@ reset
 check "create posts an agent request" logged 'staging /api/homes/home/photo-requests -X POST --json {"reason":"Which wall has the window?","requester":"agent","roomId":"souterrain-kitchen","position":{"x":4.5,"z":-6},"yaw":-1.5707963267948966}'
 check "create needs a target" fails "$scripts/photo-requests.sh" staging create --reason x
 check "a type subject is no target" fails "$scripts/photo-requests.sh" staging create --reason x --subject type:window.casement
-"$scripts/photo-requests.sh" staging create --home mock-home --subject use:souterrain-kitchen-window --reason test >/dev/null
-check "create with only a use subject" logged 'staging /api/homes/mock-home/photo-requests -X POST --json {"reason":"test","requester":"agent","subject":{"kind":"use","id":"souterrain-kitchen-window"}}'
+"$scripts/photo-requests.sh" staging create --home home --subject use:souterrain-kitchen-window --reason test >/dev/null
+check "create with only a use subject" logged 'staging /api/homes/home/photo-requests -X POST --json {"reason":"test","requester":"agent","subject":{"kind":"use","id":"souterrain-kitchen-window"}}'
 "$scripts/photo-requests.sh" staging list --status all >/dev/null
 check "list passes the status" logged "staging /api/homes/home/photo-requests?status=all"
 "$scripts/photo-requests.sh" staging close r1 >/dev/null

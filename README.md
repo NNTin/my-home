@@ -29,8 +29,7 @@ pnpm dev
 
 `pnpm dev` starts the api on <http://localhost:3000> and the web app on <http://localhost:5173>.
 The Vite dev server proxies `/api` to the api (`API_URL`). On start-up the api applies migrations and,
-outside production, seeds the real home (`data/homes/home.json`) and the mock home
-(`data/homes/mock-home.json`). The page renders the home
+outside production, seeds the home (`data/homes/home.json`). The page renders the home
 loaded from the api (orbit with the mouse) with a panel for the per-level cutaway and visibility
 toggles, and a **Furniture** panel to place, move and rotate the home's furniture, saved piece by piece to the
 api. See [docs/home-model.md](docs/home-model.md) for the model and how to load other
@@ -54,7 +53,7 @@ Workflow for schema changes:
 1. Edit `apps/api/src/db/schema.ts`.
 2. `pnpm db:generate --name <change>` writes a SQL migration to `apps/api/drizzle/`; commit it.
 3. `pnpm db:migrate` applies it (the server also migrates on start unless `MIGRATE_ON_START=false`).
-4. `pnpm db:seed [file] [--replace]` loads a home file (default: the real and the mock home); existing ids are
+4. `pnpm db:seed [file] [--replace]` loads a home file (default: `data/homes/home.json`); existing ids are
    kept unless `--replace` is given.
 
 Photos are different: they live in the `media` schema with hand-written, expand-only migrations in
@@ -99,7 +98,7 @@ apps/api/            Fastify server
   test/              Vitest + fastify.inject tests
 packages/shared/     zod schemas and types used by web and api
   schema/            generated JSON Schema for home files
-data/homes/          home model documents (real home, mock home)
+data/homes/          home model documents (`home.json`, the house)
 docs/                project docs
 docker-compose.yml   postgres + api + web
 ```

@@ -5,7 +5,7 @@
 # Pixel-exact visual regression of the 3D view, read-only. `shoot` takes canvas-only screenshots
 # (screenshot.sh --canvas) of a fixed set of views and writes DIR/<view>.png plus DIR/manifest.json (deployed
 # commit, view arguments). `--only` shoots just the named views. Desktop 1440x900: default, the cutaway to each
-# level, the default view orbited 180 degrees, a steep view and the mock home; phone 390x844: default.
+# level, the default view orbited 180 degrees, a steep view; phone 390x844: default.
 # The deployed commit is read before and after: a deploy in between fails the shoot (exit 1), shoot again.
 # `compare` reports per view whether the PNGs are identical (sha256) or how many pixels differ, and writes
 # DIR_B/diff-<view>.png for those (differing pixels red over a faded copy of A). The diff runs in headless
@@ -29,7 +29,6 @@ ground-floor
 first-floor
 orbit-180
 steep
-mock-home
 phone
 EOF
 }
@@ -44,7 +43,6 @@ view_args() {
     first-floor) ARGS=("${base[@]}" --click 'label:has-text("First floor")') ;;
     orbit-180) ARGS=("${base[@]}" --drag '600,0') ;;
     steep) ARGS=("${base[@]}" --drag '0,250') ;;
-    mock-home) ARGS=(--viewport 1440x900 --path '/?home=mock-home&hints=off') ;;
     phone) ARGS=(--viewport 390x844 --touch --path '/?hints=off') ;;
     *) die "unknown view '$1' (views: $(views | tr '\n' ' '))" ;;
   esac
