@@ -11,14 +11,15 @@ Photos and their metadata live only in the database. They never go into the repo
 
 Everything is in the Postgres schema **`media`**, apart from the home model and the layouts in `public`:
 
-| Table                     | Content                                                                                                     |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `media.photos`            | metadata: home, level, pose, captured room, time, note, tags, request, sizes, sensor snapshot, `deleted_at` |
-| `media.photo_blobs`       | the image bytes (`bytea`), one row per photo, so metadata queries stay light                                |
-| `media.photo_thumbnails`  | the thumbnail bytes                                                                                         |
-| `media.photo_subjects`    | the types and uses a photo shows (`photo_id`, `subject_kind`, `subject_id`), § Subjects                     |
-| `media.photo_requests`    | requests for new photos: target, reason, requester, subject, status, `deleted_at`                           |
-| `media.schema_migrations` | the journal of this schema's own migrations                                                                 |
+| Table                      | Content                                                                                                     |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `media.photos`             | metadata: home, level, pose, captured room, time, note, tags, request, sizes, sensor snapshot, `deleted_at` |
+| `media.photo_blobs`        | the image bytes (`bytea`), one row per photo, so metadata queries stay light                                |
+| `media.photo_thumbnails`   | the thumbnail bytes                                                                                         |
+| `media.photo_subjects`     | the types and uses a photo shows (`photo_id`, `subject_kind`, `subject_id`), § Subjects                     |
+| `media.photo_pose_changes` | every change of a photo's pose: actor, before, after, reason, undo link (§ Correcting a pose)               |
+| `media.photo_requests`     | requests for new photos: target, reason, requester, subject, status, `deleted_at`                           |
+| `media.schema_migrations`  | the journal of this schema's own migrations                                                                 |
 
 Drizzle definitions: [`apps/api/src/db/media-schema.ts`](../apps/api/src/db/media-schema.ts). Request and response
 shapes: [`packages/shared/src/photos.ts`](../packages/shared/src/photos.ts).
@@ -66,7 +67,7 @@ The home model's frame ([home-model.md](home-model.md#conventions)), metres and 
 | `position` | `x` plan east, `y` up (the eye point, in model heights), `z` plan south             |
 | `yaw`      | about `+y`, counter-clockwise seen from above; 0 looks along `-z`, `π/2` along `-x` |
 | `pitch`    | positive looks up, negative down; `-π/2` to `π/2`                                   |
-| `fovH`     | horizontal field of view of the camera, if known                                    |
+| `fovH`     | horizontal field of view of the picture, if known ([below](#field-of-view))         |
 
 `yaw` is the same convention as a layout item's `rotationY` and a three.js camera's `rotation.y`.
 `poseDirection()` in the shared package gives the view direction. A compass heading `h` (degrees clockwise from
@@ -95,6 +96,51 @@ The snapshot is **orientation only**: it holds no position, and the app never us
 is written once. Correcting a photo's pose afterwards changes `pose` and leaves the snapshot as it was, so
 what was measured and what was corrected can be told apart. Unknown fields are dropped on upload, and a
 stored snapshot a build cannot read counts as none.
+
+### Field of view
+
+`fovH` is the angle across the picture **as shown** (after its EXIF orientation), so an upright photo has the
+narrower one. The app derives it at capture (`horizontalFov` in `apps/web/src/walk/figure.ts`) from the camera's
+35 mm equivalent focal length `f` and the picture's width `w` and height `h`:
+
+```
+fovH = 2 · atan(18 mm · across / f),  across = 1 for a landscape picture, w / h for a portrait one
+```
+
+The equivalent focal length puts the 36 mm side of the film frame on the picture's **long** edge. A phone's
+picture is 4:3, so its short edge spans 27 mm, not the 24 mm of the 3:2 film frame. Until #70 the app used
+24 mm, and every upright photo stored a view about 10 % too narrow (0.962 instead of 1.061 rad at 23 mm). A
+16:9 picture is the 4:3 sensor with the top and bottom cut off, so the same formula holds.
+
+- **Camera app and gallery:** `f` is the EXIF `FocalLengthIn35mmFilm` (the only value read from the file); the
+  size is the decoded picture's, or the JPEG header's (frame size turned by the EXIF orientation) when the
+  browser cannot decode it.
+- **Camera inside the page:** a full-resolution still (`ImageCapture`) has EXIF data of its own. A video frame
+  has none: it uses the size of the stream's picture, the track's `zoom` setting, and the focal length of this
+  phone's last photo with EXIF data (kept in the browser), else a typical phone's 26 mm.
+- Photos without `fovH` are shown with that typical camera and their stored size.
+
+Checked against vanishing-point calibration (`measure.py`): the owner's phone (23 mm) gives 1.318 rad across
+(stored 1.328) and 1.05 to 1.14 upright (now 1.061).
+
+### Correcting a pose
+
+Hand-set headings and pitches are often 10 to 20° off, and the position of an answered request is the request's
+spot. A **correction** changes `pose` with `PATCH /photos/:id` and leaves the sensor snapshot as it was. Every
+`PATCH` that changes the pose is recorded in `media.photo_pose_changes`: the actor (`docs/userdata.md`
+§ Actor: the owner, or an agent by its token), the pose before and after, and an optional `poseReason` ("vanishing-point
+calibration"). `GET /photos/:id/pose-history` lists the changes, newest first, with `canUndo` (not undone yet,
+and the photo still has this change's pose). `POST /photos/:id/pose-history/:changeId/undo` puts the pose back
+as it was before the change, as a new change that records the undo; it is a 409 when the change was undone
+already or the pose has changed since (undo the later change first). Purging a photo deletes its history.
+
+- **In the app:** while viewing from a photo's pose, the detail view has **Correct the pose**: heading, pitch
+  and field of view, each with a slider, ±1° steps and a number field. Every change moves the 3D camera (and the
+  photo laid over it) at once; **Save pose** stores it, **Reset** goes back to the stored pose. The history
+  below lists who changed what, with **Undo**.
+- **Agents:** `pose.sh` in the [photo-modelling skill](../.claude/skills/my-home-photo-modelling/SKILL.md)
+  sets yaw, pitch and fovH from a `measure.py` calibration (or by hand) with a required reason, lists the
+  history and undoes a change. It never touches the sensor snapshot and never deletes.
 
 The gallery's detail view says where each heading came from ("Heading measured by the phone: true bearing
 84° · ±12° · declination +3° · calibration −7°", "set by hand", or "no sensor data"), and in the 3D view a
@@ -203,7 +249,9 @@ two tabs of the sheet, and the trash is behind **🗑 Trash** at the end of eith
 - **Photos**: thumbnails, newest first, with filters for level (or outside), room, tag, request and date. A
   click opens the detail view: the photo, where and when it was taken, the pose (position, heading in degrees
   clockwise from plan north, pitch, field of view), the note and tags (both editable) and the request it
-  answers. A photo whose room is gone shows its captured room name with "room not in this model".
+  answers. A photo whose room is gone shows its captured room name with "room not in this model". While viewing
+  from its pose, **Correct the pose** adjusts heading, pitch and field of view against the model
+  ([Correcting a pose](#correcting-a-pose)).
 - **Camera markers**: while the gallery is open, every listed photo on a visible level (the cutaway decides;
   outdoor photos always show) is drawn in 3D as a camera with its view cone. Clicking a marker opens the photo.
   The markers follow the gallery's filters. They also show in the walking overview.
@@ -232,6 +280,8 @@ All under `/api`; shapes in `packages/shared/src/photos.ts`.
 | `GET /photos/:id`                                    | metadata (also for a photo in the trash)                                                  |
 | `GET /photos/:id/image`, `GET /photos/:id/thumbnail` | the WebP bytes                                                                            |
 | `PATCH /photos/:id`                                  | change pose, level, note, tags, time, request or subjects; a new pose re-derives the room |
+| `GET /photos/:id/pose-history`                       | the pose changes with actor and reason, newest first ([above](#correcting-a-pose))        |
+| `POST /photos/:id/pose-history/:changeId/undo`       | put the pose back as before that change; 409 if undone already or changed since           |
 | `DELETE /photos/:id`, `POST /photos/:id/restore`     | to the trash and back                                                                     |
 | `POST /photos/:id/purge`                             | delete for good; 409 unless the photo is in the trash                                     |
 | `POST /homes/:homeId/photo-requests`                 | create a request                                                                          |
@@ -289,4 +339,5 @@ $S/photo-requests.sh staging close <request-id> [--photo <photo-id>] # cancel, o
 - Download photos to a temporary directory or the session's artifact directory, **never into the repository**.
 - Record what a photo showed in the model as a dimension's `source: "estimated-from-photo"` and a `note` naming
   the photo id.
-- Agents may create requests and add notes, tags and subjects. They never delete or purge.
+- Agents may create requests, add notes, tags and subjects, and correct poses (`pose.sh`, recorded as agent
+  edits). They never delete or purge.

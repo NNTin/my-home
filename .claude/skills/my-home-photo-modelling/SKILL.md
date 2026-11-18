@@ -23,6 +23,8 @@ $P/fetch.sh staging -- --near 11,-8,3 --level souterrain   # every photo near a 
 $P/grid.sh <id>.webp crop.png --crop 600x400+900+1200 --zoom 200   # zoom into a detail, labels stay original px
 $P/overlay-shots.sh staging <photo-id>...           # "view from here": <id8>-model.png and <id8>-overlay.png
 python3 -I $P/measure.py spec.json                  # calibrate the camera, cast pixels onto floor/wall planes
+$P/pose.sh staging set <photo-id> --from out.json --reason "measure.py: corridor VP + verticals"   # correct a pose
+$P/pose.sh staging history <photo-id>               # who changed the pose, when; undo <photo-id> <change-id>
 ```
 
 ## Workflow
@@ -32,6 +34,8 @@ python3 -I $P/measure.py spec.json                  # calibrate the camera, cast
 2. **Look:** `fetch.sh` (WebP → JPEG; the image reader cannot open WebP) into a temp dir **outside the repo**.
 3. **Compare:** run `overlay-shots.sh` for each photo and list every mismatch (a missing opening, a wall in the
    wrong place). The stored poses are hand-set and often off, so a bad overlay is not proof that the model is wrong.
+   When a calibration shows the pose is off, correct it with `pose.sh` (yaw, pitch, fovH; recorded as an agent
+   edit with your reason, undoable, the sensor snapshot untouched) and shoot the overlay again.
 4. **Measure:** read pixels on the grid, calibrate with `measure.py`, and fix the scale with a known size. Then
    cross-check every value from a second photo or a second reference ([measuring.md](references/measuring.md)).
    Anchor positions on fixed features, never on the pose's position (an answer is stored at the request's spot).

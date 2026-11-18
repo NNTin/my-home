@@ -7,6 +7,7 @@ import { CaptureSheet } from './CaptureSheet';
 import type { Figure } from './figure';
 import { Joystick } from './Joystick';
 import { Minimap, type MapSpot } from './Minimap';
+import type { CameraHints } from './prepareImage';
 import type { MinimapLevel } from './minimap';
 import type { CalibrationTarget } from './calibration';
 import { accuracyLabel } from './orientation';
@@ -120,7 +121,11 @@ export function WalkHud({
    * the tap and the save the owner reads the sheet and types, usually with the phone tipped
    * towards them: none of that may end up in the photo's pose.
    */
-  const [capture, setCapture] = useState<{ file: Blob; sensors: PhotoSensors }>();
+  const [capture, setCapture] = useState<{
+    file: Blob;
+    sensors: PhotoSensors;
+    camera?: CameraHints;
+  }>();
   const tap = useRef<{ figure: Figure; sensors: PhotoSensors } | undefined>(undefined);
   const file = capture?.file;
   const compass = useCompass({
@@ -216,11 +221,15 @@ export function WalkHud({
   const shutter = () => {
     tap.current = { figure: figureRef.current, sensors: compass.snapshot() };
   };
-  const took = (photo: Blob) => {
+  const took = (photo: Blob, camera?: CameraHints) => {
     const taken = tap.current;
     // Back to the pose of the tap, whatever the phone did in between.
     if (taken) walk.place(taken.figure);
-    setCapture({ file: photo, sensors: taken?.sensors ?? compass.snapshot() });
+    setCapture({
+      file: photo,
+      sensors: taken?.sensors ?? compass.snapshot(),
+      ...(camera && { camera }),
+    });
     tap.current = undefined;
     setViewfinder(false);
     setNotice(false);
@@ -607,6 +616,7 @@ export function WalkHud({
       {file ? (
         <CaptureSheet
           file={file}
+          camera={capture?.camera}
           homeId={homeId}
           getFigure={() => figureRef.current}
           where={where}

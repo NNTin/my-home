@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { grabPhoto } from './CameraView';
+import { cameraHints, grabPhoto } from './CameraView';
 import { jpegHeader } from '../test/jpeg';
 
 describe('grabPhoto', () => {
@@ -63,5 +63,33 @@ describe('grabPhoto', () => {
   it('fails while the video has no picture yet', async () => {
     const empty = document.createElement('video');
     await expect(grabPhoto(empty)).rejects.toThrow(/no picture yet/);
+  });
+});
+
+describe('cameraHints', () => {
+  const video = (width: number, height: number) => {
+    const element = document.createElement('video');
+    Object.defineProperty(element, 'videoWidth', { value: width });
+    Object.defineProperty(element, 'videoHeight', { value: height });
+    return element;
+  };
+  const track = (settings: Record<string, unknown>) =>
+    ({ getSettings: () => settings }) as unknown as MediaStreamTrack;
+
+  it("passes the picture's size as shown, upright or across", () => {
+    expect(cameraHints(video(1440, 1920), track({ width: 1920, height: 1440 }))).toEqual({
+      width: 1440,
+      height: 1920,
+    });
+    expect(cameraHints(video(1920, 1440))).toEqual({ width: 1920, height: 1440 });
+  });
+
+  it("passes the track's zoom where it has one", () => {
+    expect(cameraHints(video(1440, 1920), track({ zoom: 2 }))).toEqual({
+      width: 1440,
+      height: 1920,
+      zoom: 2,
+    });
+    expect(cameraHints(video(1440, 1920), track({ zoom: 0 }))).not.toHaveProperty('zoom');
   });
 });

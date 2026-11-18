@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   Photo,
+  PhotoPoseChange,
   PhotoRequest,
   PhotoSensors,
   Polygon,
@@ -10,6 +11,7 @@ import {
   type CreatePhotoRequestBody,
   type ListPhotosQuery,
   type ModelRooms,
+  type PhotoPose,
   type PhotoRequestStatus,
   type Subject,
   type SubjectRef,
@@ -23,10 +25,12 @@ import type { ProcessedImage } from '../photos/image';
 import type { Db } from './client';
 import {
   photoBlobs,
+  photoPoseChanges,
   photoRequests,
   photos,
   photoSubjects,
   photoThumbnails,
+  type PhotoPoseChangeRow,
   type PhotoRequestRow,
   type PhotoRow,
 } from './media-schema';
@@ -61,9 +65,71 @@ const storedSensors = (value: unknown): PhotoSensors | null => {
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+/** Who a change is recorded for when the caller does not say (seeding, tests). */
+const DEFAULT_ACTOR = { actor: 'owner', source: 'default', username: null } as const;
 const iso = (date: Date | null) => (date ? date.toISOString() : null);
 
 export type PurgeResult = 'purged' | 'not-in-trash' | 'not-found';
+export type UndoPoseResult =
+  | { status: 'undone'; change: PhotoPoseChange; photo: Photo }
+  | { status: 'not-found' | 'already-undone' | 'changed-since' };
+
+/** A photo row's pose, as the api returns it. */
+const poseOfRow = (row: PhotoRow): PhotoPose => ({
+  position: { x: row.x, y: row.y, z: row.z },
+  yaw: row.yaw,
+  pitch: row.pitch,
+  ...(row.fovH !== null && { fovH: row.fovH }),
+});
+
+/** As stored: a pose without `fovH` has none (the column is set to null). */
+const storedPose = (pose: PhotoPose): PhotoPose => ({
+  position: { x: pose.position.x, y: pose.position.y, z: pose.position.z },
+  yaw: pose.yaw,
+  pitch: pose.pitch,
+  ...(pose.fovH !== undefined && { fovH: pose.fovH }),
+});
+
+/** Equal up to rounding (jsonb keeps numbers as decimals). */
+export function samePose(a: PhotoPose, b: PhotoPose): boolean {
+  const close = (x: number, y: number) => Math.abs(x - y) <= 1e-9 * Math.max(1, Math.abs(x));
+  return (
+    close(a.position.x, b.position.x) &&
+    close(a.position.y, b.position.y) &&
+    close(a.position.z, b.position.z) &&
+    close(a.yaw, b.yaw) &&
+    close(a.pitch, b.pitch) &&
+    (a.fovH === undefined ? b.fovH === undefined : b.fovH !== undefined && close(a.fovH, b.fovH))
+  );
+}
+
+const toPoseChange = (
+  row: PhotoPoseChangeRow,
+  undoneById: string | null,
+  current: PhotoPose,
+): PhotoPoseChange =>
+  PhotoPoseChange.parse({
+    id: row.id,
+    photoId: row.photoId,
+    actor: row.actor,
+    actorSource: row.actorSource,
+    actorName: row.actorName,
+    at: row.at.toISOString(),
+    before: row.before,
+    after: row.after,
+    reason: row.reason,
+    undoesId: row.undoesId,
+    undoneById,
+    canUndo: undoneById === null && samePose(current, row.after),
+  });
+
+/** A unique-index violation (Postgres 23505), from node-postgres or PGlite, wrapped or not. */
+const isUniqueViolation = (error: unknown): boolean => {
+  for (let e = error as { code?: string; cause?: unknown } | undefined; e; e = e.cause as never) {
+    if (e.code === '23505') return true;
+  }
+  return false;
+};
 export type FulfilResult =
   { status: 'fulfilled'; request: PhotoRequest } | { status: 'not-found' | 'photo-not-found' };
 
@@ -407,9 +473,30 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
       return row;
     },
 
-    async update(id: string, body: UpdateBody): Promise<Photo | undefined> {
+    /**
+     * Partial update. A changed pose is recorded in the photo's pose history with `actor`
+     * (`undoesId` when it undoes an earlier change); the sensor snapshot is left as it is.
+     */
+    async update(
+      id: string,
+      body: UpdateBody,
+      actor: Pick<ResolvedActor, 'actor' | 'source' | 'username'> = DEFAULT_ACTOR,
+      undoesId: string | null = null,
+    ): Promise<Photo | undefined> {
+      return (await this.updateWithChange(id, body, actor, undoesId))?.photo;
+    },
+
+    async updateWithChange(
+      id: string,
+      body: UpdateBody,
+      actor: Pick<ResolvedActor, 'actor' | 'source' | 'username'> = DEFAULT_ACTOR,
+      undoesId: string | null = null,
+    ): Promise<{ photo: Photo; change: PhotoPoseChangeRow | undefined } | undefined> {
       const [current] = await db.select().from(photos).where(eq(photos.id, id));
       if (!current) return undefined;
+      const before = poseOfRow(current);
+      const after = body.pose && storedPose(body.pose);
+      const poseChanged = after !== undefined && (undoesId !== null || !samePose(before, after));
       const model = await modelRooms(current.homeId);
       const levelId = body.levelId === undefined ? current.levelId : body.levelId;
       const position = body.pose?.position ?? current;
@@ -451,9 +538,76 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
           await linkRequestSubject(tx, id, body.requestId, updated.homeId);
           await fulfilOpenRequest(tx, body.requestId, updated.homeId);
         }
-        return updated;
+        let change: PhotoPoseChangeRow | undefined;
+        if (updated && poseChanged) {
+          [change] = await tx
+            .insert(photoPoseChanges)
+            .values({
+              id: randomUUID(),
+              photoId: id,
+              actor: actor.actor,
+              actorSource: actor.source,
+              actorName: actor.username,
+              before,
+              after,
+              reason: body.poseReason ?? null,
+              undoesId,
+            })
+            .returning();
+        }
+        return updated && { updated, change };
       });
-      return one(row, model);
+      const photo = row && (await one(row.updated, model));
+      return photo && { photo, change: row.change };
+    },
+
+    /** The photo's pose changes, newest first; undefined when there is no such photo. */
+    async poseHistory(id: string): Promise<PhotoPoseChange[] | undefined> {
+      const [current] = await db.select().from(photos).where(eq(photos.id, id));
+      if (!current) return undefined;
+      const rows = await db
+        .select()
+        .from(photoPoseChanges)
+        .where(eq(photoPoseChanges.photoId, id))
+        .orderBy(desc(photoPoseChanges.seq));
+      const undoneBy = new Map(rows.filter((r) => r.undoesId).map((r) => [r.undoesId!, r.id]));
+      const pose = poseOfRow(current);
+      return rows.map((r) => toPoseChange(r, undoneBy.get(r.id) ?? null, pose));
+    },
+
+    /**
+     * Puts the pose back to what it was before `changeId`, as a new change that undoes it.
+     * Refused when it was undone already or the pose has changed since.
+     */
+    async undoPose(
+      id: string,
+      changeId: string,
+      actor: Pick<ResolvedActor, 'actor' | 'source' | 'username'>,
+    ): Promise<UndoPoseResult> {
+      const [target] = await db
+        .select()
+        .from(photoPoseChanges)
+        .where(and(eq(photoPoseChanges.id, changeId), eq(photoPoseChanges.photoId, id)));
+      const [current] = await db.select().from(photos).where(eq(photos.id, id));
+      if (!target || !current) return { status: 'not-found' };
+      const [undone] = await db
+        .select({ id: photoPoseChanges.id })
+        .from(photoPoseChanges)
+        .where(eq(photoPoseChanges.undoesId, changeId));
+      if (undone) return { status: 'already-undone' };
+      if (!samePose(poseOfRow(current), target.after)) return { status: 'changed-since' };
+      try {
+        const result = await this.updateWithChange(id, { pose: target.before }, actor, changeId);
+        if (!result?.change) return { status: 'not-found' };
+        return {
+          status: 'undone',
+          photo: result.photo,
+          change: toPoseChange(result.change, null, result.photo.pose),
+        };
+      } catch (error) {
+        if (isUniqueViolation(error)) return { status: 'already-undone' };
+        throw error;
+      }
     },
 
     /** Moves a photo to the trash (idempotent: the first deletion time is kept). */

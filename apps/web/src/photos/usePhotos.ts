@@ -13,6 +13,8 @@ export interface PhotosState {
 export interface Photos extends PhotosState {
   reload(): Promise<void>;
   update(id: string, body: UpdatePhotoBody): Promise<void>;
+  /** Undoes one change of a photo's pose (its history is `api.poseHistory`). */
+  undoPose(id: string, changeId: string): Promise<void>;
   /** Moves a photo to the trash. */
   remove(id: string): Promise<void>;
   restore(id: string): Promise<void>;
@@ -68,6 +70,7 @@ export function usePhotos(homeId: string, api: PhotosApi = photosApi): Photos {
       ...state,
       reload,
       update: (id, body) => run(() => api.update(id, body))(),
+      undoPose: (id, changeId) => run(() => api.undoPose(id, changeId))(),
       remove: (id) => run(() => api.remove(id))(),
       restore: (id) => run(() => api.restore(id))(),
       purge: (id) => run(() => api.purge(id))(),

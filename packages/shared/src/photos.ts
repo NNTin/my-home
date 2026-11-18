@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { Id, insideOutline, type Polygon } from './home-model';
 import { Subject, SubjectQuery, SubjectRef, Subjects } from './subjects';
+import { Actor, ActorSource } from './userdata';
 
 /**
  * Photos taken inside the model's context, and requests for new ones. Both live in the `media`
@@ -188,9 +189,43 @@ export const UpdatePhotoBody = z
     sensors: PhotoSensors.nullable(),
     /** Replaces the whole list. */
     subjects: Subjects,
+    /** Why the pose changed, kept in its history (e.g. "vanishing-point calibration"). */
+    poseReason: z.string().trim().min(1).max(500),
   })
   .partial();
 export type UpdatePhotoBody = z.input<typeof UpdatePhotoBody>;
+
+/**
+ * One change of a photo's pose (docs/photos.md § Correcting a pose): who made it, the pose
+ * before and after, and why. Every `PATCH` that changes the pose records one, and so does an
+ * undo. The sensor snapshot is never part of it: it keeps what the phone measured.
+ */
+export const PhotoPoseChange = z.object({
+  id: z.uuid(),
+  photoId: Id,
+  actor: Actor,
+  actorSource: ActorSource,
+  /** The SSO username when known. */
+  actorName: z.string().nullable(),
+  at: Timestamp,
+  before: PhotoPose,
+  after: PhotoPose,
+  reason: z.string().nullable(),
+  /** The change this one undoes, and the change that undid this one. */
+  undoesId: z.uuid().nullable(),
+  undoneById: z.uuid().nullable(),
+  /** Not undone yet, and the photo still has this change's pose. */
+  canUndo: z.boolean(),
+});
+export type PhotoPoseChange = z.infer<typeof PhotoPoseChange>;
+
+export const PhotoPoseHistoryResponse = z.object({ items: z.array(PhotoPoseChange) });
+export type PhotoPoseHistoryResponse = z.infer<typeof PhotoPoseHistoryResponse>;
+
+export const PhotoPoseChangeParams = z.object({ id: Id, changeId: z.uuid() });
+
+export const UndoPhotoPoseResponse = z.object({ change: PhotoPoseChange, photo: Photo });
+export type UndoPhotoPoseResponse = z.infer<typeof UndoPhotoPoseResponse>;
 
 export const PhotoHomeParams = z.object({ homeId: Id });
 export const PhotoParams = z.object({ id: Id });

@@ -7,11 +7,18 @@ the camera, fix the scale, then cast pixels onto known planes.
 
 - The owner sets heading and pitch by hand (`sensors.source = manual`). Some photos still have the default
   pose (a round position, yaw exactly ±π/2, pitch 0).
-- `fovH` is an assumption, not a measurement:
-  - landscape in-app photos (2560×1920) store 1.328 rad (76°), and that is **right**: two-VP calibration gave
-    1.318;
-  - older portrait photos (1920×2560) store 0.9618 rad (55°), but calibrating one gave **≈1.30 rad (74°)**.
-    That is #70; until it is fixed, use fovH ≈ 1.30 (f ≈ 1270 px) for those.
+- `fovH` comes from the phone's EXIF focal length (23 mm here) and the picture's shape (docs/photos.md § Field
+  of view):
+  - landscape photos (2560×1920) store 1.328 rad (76°, f ≈ 1665 px), and that is **right**: two-VP calibration
+    gave 1.318;
+  - portrait photos (1920×2560) should be **1.061 rad (61°, f ≈ 1630 px)**: a two-VP calibration of the
+    L-kitchen photo 17409fa3 (worktop, drawer and plinth lines, read in zoomed crops) gave 1.048 with no roll,
+    and two corridor photos (the corridor's VP plus the converging door frames) gave 1.07 and 1.14. Until #70 the
+    app stored 0.962 (55°) for them; the four on staging were corrected with `pose.sh`. An earlier note here said
+    ≈1.30 for portrait: that was wrong. The same kitchen photo read without zooming gives 1.31 with a 4° roll,
+    so read the lines in crops and distrust a fit with a large roll.
+  - Physically, one camera has one f in pixels: a portrait photo's f is its landscape twin's, so its fovH is
+    `2·atan(0.75·tan(fovH_landscape / 2))`. Use that to check a calibration.
 - In the #60 corridor photos the pitch was really −2° to −17° (stored −14°), and headings were 15–20° off.
 - **The position is not where the owner stood.** For an answered photo request, the stored position is the
   request's target spot: the owner accepts it, then stands where the view works. One answer stored at x 8.7
@@ -71,10 +78,20 @@ Write pixel coordinates in **original image pixels** (the grid labels).
    −10.04°, h 1.455, and put the corner at dx −3.02, dz −2.01 (true: −3, −2).
    The underlying formula is `f² = −(VP1 − c)·(VP2 − c)`, with c the image centre. If the vanishing points are
    nearly at infinity (a wall seen head-on), the focal length is unreliable: use one VP plus a known f instead.
-2. **One direction** (looking down a corridor): `{"vp": {"lines": …, "heading": 90}, "f": 1270}` or `"fovH"`.
+2. **One direction plus the verticals** (looking down a corridor with the phone tilted):
+   `{"vp": {"lines": …, "heading": 90}, "vertical": {"lines": …}}`. Vertical edges (door frames, wall corners)
+   converge when the camera pitches; with a horizontal VP that gives f, heading, pitch and roll. It needs a pitch
+   of 5° or more (else the vertical VP is too far away), and the frame lines as long as possible: read both ends
+   in zoomed crops. Check f against the stored fovH of the same format.
+3. **One direction** (looking down a corridor): `{"vp": {"lines": …, "heading": 90}, "f": 1630}` or `"fovH"`.
    Take f from a calibrated photo of the same format; zero roll is assumed.
-3. **Pose as stored:** `{"heading": …, "pitch": …, "fovH": …}`. Only to project model points (`"project"`) for a
+4. **Pose as stored:** `{"heading": …, "pitch": …, "fovH": …}`. Only to project model points (`"project"`) for a
    rough comparison.
+
+Every calibration prints `camera.pose` (yaw, pitch, fovH in radians, the photo pose convention). Store it with
+`pose.sh <env> set <photo-id> --from <measure output> --reason "…"` so the overlay and later measurements start
+from it; the position is not changed (anchor positions on fixed features, below). A fovH alone (for example
+recomputed for a format) is `pose.sh <env> set <id> --fovh 1.0614 --reason "…"`.
 
 ## Scale
 

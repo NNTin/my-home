@@ -126,7 +126,7 @@ describe('the media schema outlives resets and other branches', () => {
       const tables = await rows<{ schema: string; count: number }>(sql`
         select table_schema as schema, count(*)::int as count from information_schema.tables
         where table_schema in ('public', 'drizzle', 'media') group by table_schema`);
-      expect(tables).toEqual([{ schema: 'media', count: 6 }]);
+      expect(tables).toEqual([{ schema: 'media', count: 7 }]);
 
       await ctx.database.migrate();
       await seedHomes(ctx.database.db);

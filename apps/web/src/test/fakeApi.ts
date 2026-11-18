@@ -13,6 +13,7 @@ import {
   type HomeSettings,
   type OpeningOverride,
   type Photo,
+  type PhotoPoseChange,
   type PhotoRequest,
   type Placement,
 } from '@my-home/shared';
@@ -74,6 +75,8 @@ export function fakeApi({
   let serial = 0;
   const uuid = () => `00000000-0000-4000-8000-${String(++serial).padStart(12, '0')}`;
   const photos = new Map(initialPhotos.map((p) => [p.id, p]));
+  /** Pose changes of the photos, oldest first, as the api records them on PATCH. */
+  const poseChanges: PhotoPoseChange[] = [];
   const requests = new Map(initialRequests.map((r) => [r.id, r]));
   const RETENTION_MS = 30 * 86_400_000;
   let clock = Date.parse('2026-01-01T00:00:00.000Z');
@@ -559,6 +562,40 @@ export function fakeApi({
       for (const r of deleted.requests) requests.delete(r.id);
       return json({ purgedPhotos: deleted.photos.length, purgedRequests: deleted.requests.length });
     }
+    if ((m = /^\/api\/photos\/([^/]+)\/pose-history(?:\/([^/]+)\/undo)?$/.exec(url))) {
+      const photo = photos.get(decodeURIComponent(m[1]!));
+      if (!photo) return notFound('photo not found');
+      const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+      const view = (c: PhotoPoseChange): PhotoPoseChange => {
+        const undoneBy = poseChanges.find((u) => u.undoesId === c.id)?.id ?? null;
+        const current = photos.get(c.photoId)!.pose;
+        return { ...c, undoneById: undoneBy, canUndo: !undoneBy && same(current, c.after) };
+      };
+      if (!m[2]) {
+        const items = poseChanges.filter((c) => c.photoId === photo.id).reverse();
+        return json({ items: items.map(view) });
+      }
+      const target = poseChanges.find((c) => c.id === decodeURIComponent(m![2]!));
+      if (!target) return notFound('change not found');
+      if (!view(target).canUndo) {
+        return json({ statusCode: 409, error: 'Conflict', message: 'cannot undo' }, 409);
+      }
+      const at = now();
+      const updated = { ...photo, pose: target.before, updatedAt: at };
+      photos.set(photo.id, updated);
+      const change = {
+        ...target,
+        id: uuid(),
+        at,
+        actor,
+        before: target.after,
+        after: target.before,
+        reason: null,
+        undoesId: target.id,
+      };
+      poseChanges.push(change);
+      return json({ change: view(change), photo: updated });
+    }
     if ((m = /^\/api\/(photos|photo-requests)\/([^/]+)(?:\/(\w+))?$/.exec(url))) {
       const items: Map<string, Photo | PhotoRequest> = m[1] === 'photos' ? photos : requests;
       const id = decodeURIComponent(m[2]!);
@@ -590,8 +627,25 @@ export function fakeApi({
           })),
         };
       }
-      const updated = { ...item, ...patch[action], updatedAt: at } as Photo | PhotoRequest;
+      const { poseReason, ...changes } = (patch[action] ?? {}) as { poseReason?: string };
+      const updated = { ...item, ...changes, updatedAt: at } as Photo | PhotoRequest;
       items.set(id, updated);
+      if (action === 'PATCH' && m[1] === 'photos' && body?.pose) {
+        poseChanges.push({
+          id: uuid(),
+          photoId: id,
+          actor,
+          actorSource: 'default',
+          actorName: null,
+          at,
+          before: (item as Photo).pose,
+          after: (updated as Photo).pose,
+          reason: poseReason ?? null,
+          undoesId: null,
+          undoneById: null,
+          canUndo: true,
+        });
+      }
       return json(updated);
     }
     if ((m = /^\/api\/homes\/([^/]+)\/settings$/.exec(url))) {
@@ -650,6 +704,7 @@ export function fakeApi({
     history: historyRows,
     notes,
     photos,
+    poseChanges,
     requests,
     /** Who the following writes are recorded as. */
     setActor(next: 'owner' | 'agent') {

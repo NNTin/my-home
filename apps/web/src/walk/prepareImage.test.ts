@@ -1,7 +1,14 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { horizontalFov } from './figure';
-import { jpegHeader } from '../test/jpeg';
-import { focalLength35mm, jpegIsPortrait, prepareImage, takenAtOf } from './prepareImage';
+import { cameraJpeg, jpegHeader } from '../test/jpeg';
+import {
+  focalLength35mm,
+  jpegIsPortrait,
+  jpegSize,
+  prepareImage,
+  rememberedFocalLength,
+  takenAtOf,
+} from './prepareImage';
 
 /** A minimal JPEG with an EXIF block that records only FocalLengthIn35mmFilm. */
 function jpegWithFocalLength(focal: number, littleEndian: boolean): ArrayBuffer {
@@ -64,22 +71,94 @@ describe('jpegIsPortrait', () => {
   });
 });
 
+describe('jpegSize', () => {
+  it('reads the picture size as shown, turned by the EXIF orientation', () => {
+    expect(jpegSize(jpegHeader(4000, 3000))).toEqual({ width: 4000, height: 3000 });
+    expect(jpegSize(jpegHeader(4000, 3000, 6))).toEqual({ width: 3000, height: 4000 });
+    expect(jpegSize(cameraJpeg({ width: 4000, height: 3000, orientation: 8, focal: 23 }))).toEqual({
+      width: 3000,
+      height: 4000,
+    });
+    expect(jpegSize(new TextEncoder().encode('not a jpeg').buffer)).toBeUndefined();
+  });
+});
+
+// The 35 mm side goes on the long edge (`horizontalFov`): the owner's phone at 23 mm.
+const UPRIGHT_23MM = 2 * Math.atan(13.5 / 23);
+const ACROSS_23MM = 2 * Math.atan(18 / 23);
+
 describe('prepareImage', () => {
+  beforeEach(() => localStorage.clear());
+
   // jsdom cannot decode images, which is the fallback path of an unsupported browser.
   it('falls back to the file itself and still derives the field of view', async () => {
     const file = new Blob([jpegWithFocalLength(13, true)], { type: 'image/jpeg' });
     const prepared = await prepareImage(file);
     expect(prepared.blob).toBe(file);
-    expect(prepared.fovH).toBeCloseTo(horizontalFov(true, 13));
+    // No frame size in that header: a phone held upright.
+    expect(prepared.fovH).toBeCloseTo(horizontalFov(3, 4, 13));
   });
 
   it('assumes a typical phone camera when the focal length is unknown', async () => {
     const prepared = await prepareImage(new Blob(['not an image']));
-    expect(prepared.fovH).toBeCloseTo(horizontalFov(true));
+    expect(prepared.fovH).toBeCloseTo(horizontalFov(3000, 4000));
+  });
+
+  it('takes the orientation of a camera-app or gallery file from its header (portrait)', async () => {
+    // Stored across with orientation 6, as phones save upright photos.
+    const file = new File(
+      [cameraJpeg({ width: 4000, height: 3000, orientation: 6, focal: 23 })],
+      'a.jpg',
+    );
+    expect((await prepareImage(file)).fovH).toBeCloseTo(UPRIGHT_23MM, 6);
+    const upright = new File([cameraJpeg({ width: 3000, height: 4000, focal: 23 })], 'b.jpg');
+    expect((await prepareImage(upright)).fovH).toBeCloseTo(UPRIGHT_23MM, 6);
+  });
+
+  it('takes the orientation of a camera-app or gallery file from its header (landscape)', async () => {
+    const file = new File(
+      [cameraJpeg({ width: 4000, height: 3000, orientation: 1, focal: 23 })],
+      'c.jpg',
+    );
+    expect((await prepareImage(file)).fovH).toBeCloseTo(ACROSS_23MM, 6);
+    // Turned twice by 90° (orientation 8 of an upright picture): across again.
+    const turned = new File(
+      [cameraJpeg({ width: 3000, height: 4000, orientation: 8, focal: 23 })],
+      'd.jpg',
+    );
+    expect((await prepareImage(turned)).fovH).toBeCloseTo(ACROSS_23MM, 6);
+  });
+
+  it("uses the in-page camera's size and zoom for a video frame, which has no EXIF", async () => {
+    const frame = new Blob(['frame'], { type: 'image/jpeg' });
+    expect((await prepareImage(frame, { width: 1440, height: 1920 })).fovH).toBeCloseTo(
+      horizontalFov(1440, 1920, 26),
+    );
+    expect((await prepareImage(frame, { width: 1920, height: 1440 })).fovH).toBeCloseTo(
+      horizontalFov(1920, 1440, 26),
+    );
+    expect((await prepareImage(frame, { width: 1440, height: 1920, zoom: 2 })).fovH).toBeCloseTo(
+      horizontalFov(1440, 1920, 26, 2),
+    );
+  });
+
+  it("remembers the phone's focal length from its last EXIF photo for later frames", async () => {
+    expect(rememberedFocalLength()).toBe(26);
+    await prepareImage(new Blob([cameraJpeg({ width: 3000, height: 4000, focal: 23 })]));
+    expect(rememberedFocalLength()).toBe(23);
+    const frame = new Blob(['frame'], { type: 'image/jpeg' });
+    expect((await prepareImage(frame, { width: 1440, height: 1920 })).fovH).toBeCloseTo(
+      UPRIGHT_23MM,
+      6,
+    );
+    // A photo's own EXIF focal length is used as it is: no zoom on top.
+    const still = new Blob([cameraJpeg({ width: 3000, height: 4000, focal: 23 })]);
+    expect((await prepareImage(still, { zoom: 2 })).fovH).toBeCloseTo(UPRIGHT_23MM, 6);
   });
 });
 
 describe('prepareImage in a browser that can decode', () => {
+  beforeEach(() => localStorage.clear());
   afterEach(() => vi.unstubAllGlobals());
 
   it('scales to the upload limit and puts transparent pixels on white before encoding JPEG', async () => {
@@ -116,8 +195,33 @@ describe('prepareImage in a browser that can decode', () => {
       'encode image/jpeg 0.9',
     ]);
     // Landscape: the wide field of view.
-    expect(prepared.fovH).toBeCloseTo(horizontalFov(false));
+    expect(prepared.fovH).toBeCloseTo(horizontalFov(4000, 3000));
     expect(close).toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
+  it('measures the decoded picture, turned upright, in both orientations', async () => {
+    const context = { fillStyle: '', fillRect: vi.fn(), drawImage: vi.fn() };
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: () => context,
+      toBlob: (done: (blob: Blob) => void) => done(new Blob(['jpeg'])),
+    };
+    vi.spyOn(document, 'createElement').mockReturnValue(canvas as unknown as HTMLCanvasElement);
+    // The header says across with orientation 6; the browser decodes it upright.
+    const file = new Blob([cameraJpeg({ width: 4000, height: 3000, orientation: 6, focal: 23 })]);
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi.fn().mockResolvedValue({ width: 3000, height: 4000, close: vi.fn() }),
+    );
+    expect((await prepareImage(file)).fovH).toBeCloseTo(UPRIGHT_23MM, 6);
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi.fn().mockResolvedValue({ width: 4000, height: 3000, close: vi.fn() }),
+    );
+    const across = new Blob([cameraJpeg({ width: 4000, height: 3000, focal: 23 })]);
+    expect((await prepareImage(across)).fovH).toBeCloseTo(ACROSS_23MM, 6);
     vi.restoreAllMocks();
   });
 });

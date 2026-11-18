@@ -5,6 +5,7 @@ import {
   northBearingOf,
   type HomeModel,
   type HomeSummary,
+  type PhotoPose,
   type PhotoRequest,
 } from '@my-home/shared';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
@@ -300,7 +301,10 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
 
   // "View from here": the 3D camera sits at the selected photo's pose.
   const photo = photos.photos.find((p) => p.id === photoId);
-  const viewed = !walking && viewingPhoto ? photo : undefined;
+  const viewedPhoto = !walking && viewingPhoto ? photo : undefined;
+  // A pose being corrected in the gallery moves the camera (and so the overlay) before it is saved.
+  const [draftPose, setDraftPose] = useState<PhotoPose>();
+  const viewed = viewedPhoto && (draftPose ? { ...viewedPhoto, pose: draftPose } : viewedPhoto);
   // Keyed by what the camera needs, not by the photo object: a reload of the lists hands out new
   // objects for the same photo, and that must not restart the view.
   const viewKey =
@@ -313,9 +317,9 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   const visibility = useMemo(() => {
     if (walkView) return walkVisibility(scene, chosenVisibility, walkView, figureLevel?.id);
     // Looking from inside the building, like the figure in first person.
-    if (viewed) return walkVisibility(scene, chosenVisibility, 'first', undefined);
+    if (viewedPhoto) return walkVisibility(scene, chosenVisibility, 'first', undefined);
     return chosenVisibility;
-  }, [scene, chosenVisibility, walkView, figureLevel?.id, viewed]);
+  }, [scene, chosenVisibility, walkView, figureLevel?.id, viewedPhoto]);
   const shown = useMemo(() => visibleScene(scene, visibility), [scene, visibility]);
   const labels = useMemo(() => roomLabels(scene, visibility), [scene, visibility]);
 
@@ -690,6 +694,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
       onViewFromHere={setViewingPhoto}
       overlay={overlay}
       onOverlay={setOverlay}
+      onDraftPose={setDraftPose}
       onClose={closePhotos}
       compact={mobile}
     />

@@ -1,4 +1,4 @@
-import type { Photo, PhotoRequest } from '@my-home/shared';
+import type { Photo, PhotoPose, PhotoRequest } from '@my-home/shared';
 import { useState } from 'react';
 import { photosApi } from '../api';
 import { PHOTO_TAGS } from '../walk/CaptureSheet';
@@ -11,6 +11,7 @@ import {
   type PhotoFilters,
 } from './filters';
 import { fovHOf, headingDegrees } from './frustum';
+import { PoseEditor } from './PoseEditor';
 import { openRequests } from './requests';
 import type { Photos } from './usePhotos';
 
@@ -35,6 +36,8 @@ interface Props {
   onViewFromHere(on: boolean): void;
   overlay: OverlaySettings;
   onOverlay(overlay: OverlaySettings): void;
+  /** A pose being corrected and not saved yet, for the 3D view; undefined for the stored one. */
+  onDraftPose?(pose: PhotoPose | undefined): void;
   onClose(): void;
   /**
    * Inside the phone's sheet, whose own tabs switch between the photos and the requests: no
@@ -119,11 +122,13 @@ function Detail({
   onViewFromHere,
   overlay,
   onOverlay,
+  onDraftPose,
   onClose,
 }: {
   photo: Photo;
   request: PhotoRequest | undefined;
   levelName(id: string | null): string | undefined;
+  onDraftPose(pose: PhotoPose | undefined): void;
 } & Pick<Props, 'photos' | 'viewing' | 'onViewFromHere' | 'overlay' | 'onOverlay'> & {
     onClose(): void;
   }) {
@@ -262,11 +267,14 @@ function Detail({
               />
             </label>
           )}
+          <PoseEditor photo={photo} photos={photos} onDraft={onDraftPose} />
         </div>
       )}
     </div>
   );
 }
+
+const ignore = () => undefined;
 
 /**
  * The photo gallery: thumbnails with filters and a detail view, the photo requests, and the
@@ -285,6 +293,7 @@ export function PhotosPanel({
   onViewFromHere,
   overlay,
   onOverlay,
+  onDraftPose = ignore,
   onClose,
   compact = false,
 }: Props) {
@@ -431,6 +440,7 @@ export function PhotosPanel({
               onViewFromHere={onViewFromHere}
               overlay={overlay}
               onOverlay={onOverlay}
+              onDraftPose={onDraftPose}
               onClose={() => {
                 onViewFromHere(false);
                 onSelect(undefined);
