@@ -1,18 +1,21 @@
-import type {
-  HomeModel,
-  HomeSettings,
-  Layout,
-  LayoutItem,
-  Photo,
-  PhotoRequest,
+import {
+  catalog,
+  roomAt,
+  type HomeModel,
+  type HomeSettings,
+  type OpeningOverride,
+  type Photo,
+  type PhotoRequest,
+  type Placement,
 } from '@my-home/shared';
 import { vi } from 'vitest';
 import { mockHome } from './fixtures';
 
 /**
  * In-memory stand-in for the api behind `fetch`, enough for the web app: homes, their settings
- * (applied to the home as the api does) with versions and 409s, layouts with versions and 409s, and photos and photo requests with their trash. Tests inspect and change `layouts` directly to simulate edits
- * from another tab.
+ * (applied to the home as the api does) with versions and 409s, placements with versions, 409s
+ * and the trash, opening overrides, and photos and photo requests with their trash. Tests inspect
+ * `placements` and change them with `touch` to simulate edits by an agent or another tab.
  */
 
 const json = (body: unknown, status = 200) =>
@@ -30,7 +33,8 @@ export const homeSummary = (id: string, name: string) => ({
 export interface FakeApiOptions {
   homes?: ReturnType<typeof homeSummary>[];
   models?: Record<string, unknown>;
-  layouts?: Partial<Layout>[];
+  placements?: Placement[];
+  overrides?: OpeningOverride[];
   photos?: Photo[];
   requests?: PhotoRequest[];
   /** `GET /api/catalog/usage`; `'error'` answers 500. */
@@ -40,7 +44,8 @@ export interface FakeApiOptions {
 export function fakeApi({
   homes = [homeSummary('mock-home', 'Mock home')],
   models = {},
-  layouts: initial = [],
+  placements: initialPlacements = [],
+  overrides = [],
   photos: initialPhotos = [],
   requests: initialRequests = [],
   usage = {},
@@ -48,28 +53,52 @@ export function fakeApi({
   const photos = new Map(initialPhotos.map((p) => [p.id, p]));
   const requests = new Map(initialRequests.map((r) => [r.id, r]));
   const RETENTION_MS = 30 * 86_400_000;
-  let n = 0;
   let clock = Date.parse('2026-01-01T00:00:00.000Z');
   const now = () => new Date((clock += 1000)).toISOString();
-  const layouts = new Map<string, Layout>();
+  const placements = new Map(initialPlacements.map((p) => [p.id, p]));
   const settings = new Map<string, HomeSettings>();
-  const add = (homeId: string, name: string, items: LayoutItem[], extra: Partial<Layout> = {}) => {
+  const conflict = (currentVersion: number) =>
+    json(
+      {
+        statusCode: 409,
+        error: 'Conflict',
+        message: 'stale',
+        currentVersion,
+        conflicts: ['version'],
+      },
+      409,
+    );
+  const modelOf = (id: string) =>
+    (models[id] ?? (id === 'mock-home' ? mockHome : undefined)) as HomeModel | undefined;
+  /** As the api: `<level>-<variant>-<n>`, named "<Room> · <Type>". */
+  const createPlacement = (homeId: string, body: Record<string, unknown>): Placement => {
+    const type = catalog.get(body.typeId as string)!;
+    const levelId = body.levelId as string;
+    const position = body.position as { x: number; z: number };
+    const model = modelOf(homeId)!;
+    const room = roomAt(model, levelId, position);
+    const roomName = room && model.rooms.find((r) => r.id === room.id)?.name;
+    const variant = type.id.split('.')[1]!;
+    let k = 1;
+    while (placements.has(`${levelId}-${variant}-${k}`)) k++;
     const at = now();
-    const layout: Layout = {
-      id: `layout-${++n}`,
+    return {
+      id: `${levelId}-${variant}-${k}`,
       homeId,
-      name,
-      schemaVersion: 1,
+      typeId: type.id,
+      name: (body.name as string | undefined) ?? `${roomName ?? levelId} · ${type.name}`,
+      levelId,
+      roomId: room?.id ?? null,
+      position,
+      rotationY: (body.rotationY as number | undefined) ?? 0,
+      params: (body.params as Placement['params'] | undefined) ?? {},
       version: 1,
-      items,
       createdAt: at,
       updatedAt: at,
-      ...extra,
+      removedAt: null,
+      purgeAt: null,
     };
-    layouts.set(layout.id, layout);
-    return layout;
   };
-  for (const l of initial) add(l.homeId ?? 'mock-home', l.name ?? 'Layout', l.items ?? [], l);
 
   const handle = async (url: string, init: RequestInit = {}) => {
     const method = init.method ?? 'GET';
@@ -82,15 +111,56 @@ export function fakeApi({
         return json({ statusCode: 500, error: 'Internal Server Error', message: 'down' }, 500);
       return json({ counts: usage });
     }
-    if ((m = /^\/api\/homes\/([^/]+)\/layouts(\/import)?$/.exec(url))) {
+    if ((m = /^\/api\/homes\/([^/]+)\/opening-overrides$/.exec(url))) {
       const homeId = decodeURIComponent(m[1]!);
-      if (method === 'GET') {
-        const items = [...layouts.values()]
-          .filter((l) => l.homeId === homeId)
-          .map(({ items, ...l }) => ({ ...l, itemCount: items.length }));
-        return json({ items });
+      return json({ items: overrides.filter((o) => o.homeId === homeId) });
+    }
+    if (
+      (m = /^\/api\/homes\/([^/]+)\/placements(?:\/([^/?]+)(\/restore)?)?(?:\?(.*))?$/.exec(url))
+    ) {
+      const homeId = decodeURIComponent(m[1]!);
+      const query = new URLSearchParams(m[4]);
+      if (!m[2]) {
+        if (method === 'GET') {
+          const all = [...placements.values()].filter((p) => p.homeId === homeId);
+          return json({
+            items: query.get('include') === 'removed' ? all : all.filter((p) => !p.removedAt),
+          });
+        }
+        const created = createPlacement(homeId, body);
+        placements.set(created.id, created);
+        return json(created, 201);
       }
-      return json(add(homeId, body.name, body.items ?? []), 201);
+      const id = decodeURIComponent(m[2]);
+      const current = placements.get(id);
+      if (!current || current.homeId !== homeId) return notFound(`Placement "${id}" not found`);
+      const at = now();
+      let next: Placement;
+      if (m[3]) {
+        if (!current.removedAt) return conflict(current.version);
+        next = { ...current, removedAt: null, purgeAt: null };
+      } else if (method === 'DELETE') {
+        if (current.removedAt || Number(query.get('version')) !== current.version) {
+          return conflict(current.version);
+        }
+        next = {
+          ...current,
+          removedAt: at,
+          purgeAt: new Date(Date.parse(at) + RETENTION_MS).toISOString(),
+        };
+      } else {
+        if (current.removedAt || body.version !== current.version) return conflict(current.version);
+        const patch = { ...(body as Record<string, unknown>) };
+        delete patch.version;
+        next = { ...current, ...(patch as Partial<Placement>) };
+        if (patch.position) {
+          const model = modelOf(homeId)!;
+          next.roomId = roomAt(model, next.levelId, next.position)?.id ?? null;
+        }
+      }
+      next = { ...next, version: current.version + 1, updatedAt: at };
+      placements.set(id, next);
+      return json(next);
     }
     if (
       (m = /^\/api\/homes\/([^/]+)\/(photos|photo-requests|trash|trash\/empty)(\?.*)?$/.exec(url))
@@ -183,8 +253,7 @@ export function fakeApi({
       const id = decodeURIComponent(m[1]!);
       // A saved home replaces the stored one, as `PUT /api/homes/:id` does.
       if (method === 'PUT') models[id] = body;
-      const model = (models[id] ?? (id === 'mock-home' ? mockHome : undefined)) as
-        HomeModel | undefined;
+      const model = modelOf(id);
       if (!model) return notFound(`Home "${id}" not found`);
       // The effective model: the declination setting on top of the stored one.
       const declination = settings.get(id)?.magneticDeclination;
@@ -194,38 +263,6 @@ export function fakeApi({
           : model,
       );
     }
-    if ((m = /^\/api\/layouts\/([^/]+)(\/duplicate)?$/.exec(url))) {
-      const id = decodeURIComponent(m[1]!);
-      const layout = layouts.get(id);
-      if (!layout) return notFound(`Layout "${id}" not found`);
-      if (m[2])
-        return json(add(layout.homeId, body?.name ?? `${layout.name} (copy)`, layout.items), 201);
-      if (method === 'GET') return json(layout);
-      if (method === 'DELETE') {
-        layouts.delete(id);
-        return new Response(null, { status: 204 });
-      }
-      if (body.version !== layout.version) {
-        return json(
-          {
-            statusCode: 409,
-            error: 'Conflict',
-            message: 'stale',
-            currentVersion: layout.version,
-          },
-          409,
-        );
-      }
-      const updated = {
-        ...layout,
-        name: body.name,
-        items: body.items,
-        version: layout.version + 1,
-        updatedAt: now(),
-      };
-      layouts.set(id, updated);
-      return json(updated);
-    }
     return notFound(`No route for ${method} ${url}`);
   };
 
@@ -233,13 +270,13 @@ export function fakeApi({
   vi.stubGlobal('fetch', fetchMock);
   return {
     fetch: fetchMock,
-    layouts,
+    placements,
     photos,
     requests,
-    /** Simulates an edit from another tab or device. */
-    touch(id: string, patch: Partial<Layout> = {}) {
-      const layout = layouts.get(id)!;
-      layouts.set(id, { ...layout, ...patch, version: layout.version + 1, updatedAt: now() });
+    /** Simulates an edit by an agent or another tab. */
+    touch(id: string, patch: Partial<Placement> = {}) {
+      const p = placements.get(id)!;
+      placements.set(id, { ...p, ...patch, version: p.version + 1, updatedAt: now() });
     },
     calls: (method: string, pattern: RegExp) =>
       fetchMock.mock.calls.filter(

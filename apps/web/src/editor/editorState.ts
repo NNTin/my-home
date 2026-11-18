@@ -1,38 +1,45 @@
-import type { LayoutItem } from '@my-home/shared';
-import { diff, emptyHistory, record, redo, undo, type History } from './history';
+import type { EditorItem } from './item';
+import { diff, emptyHistory, record, redo, remapId, undo, type History } from './history';
 
 /**
- * Editor state as a pure reducer: the items of the open layout, the undo/redo history and the
+ * Editor state as a pure reducer: the home's furniture items, the undo/redo history and the
  * selection. Callers compute new item lists with the operations in `operations.ts`; the reducer
  * records them as undoable commands. Drags update items live and become one command on release.
  */
 export interface EditorState {
-  items: LayoutItem[];
+  items: EditorItem[];
   history: History;
   selectedId?: string;
-  drag?: { id: string; before: LayoutItem };
+  drag?: { id: string; before: EditorItem };
   /** Bumped on every change to `items`, so autosave can tell edits from loads. */
   revision: number;
 }
 
 export type EditorAction =
-  | { type: 'load'; items: LayoutItem[] }
+  | { type: 'load'; items: EditorItem[] }
+  /** Items reloaded from the server while nothing was pending: no undo entry, selection kept. */
+  | { type: 'refresh'; items: EditorItem[] }
+  /**
+   * The server's copy of one item, not an edit: a created item's stable id and name (`from` is its
+   * temporary id), or an item reloaded after a conflict (`item` undefined: it is gone).
+   */
+  | { type: 'synced'; from: string; item: EditorItem | undefined }
   | { type: 'select'; id?: string }
-  | { type: 'edit'; label: string; items: LayoutItem[]; selectedId?: string | null }
+  | { type: 'edit'; label: string; items: EditorItem[]; selectedId?: string | null }
   | { type: 'dragStart'; id: string }
-  | { type: 'dragMove'; item: LayoutItem }
+  | { type: 'dragMove'; item: EditorItem }
   | { type: 'dragEnd' }
   | { type: 'dragCancel' }
   | { type: 'undo' }
   | { type: 'redo' };
 
-export const initialEditorState = (items: LayoutItem[] = []): EditorState => ({
+export const initialEditorState = (items: EditorItem[] = []): EditorState => ({
   items,
   history: emptyHistory,
   revision: 0,
 });
 
-const keepSelection = (items: LayoutItem[], id: string | undefined) =>
+const keepSelection = (items: EditorItem[], id: string | undefined) =>
   id !== undefined && items.some((i) => i.id === id) ? id : undefined;
 
 const withSelection = (state: EditorState, selectedId: string | undefined): EditorState => {
@@ -52,6 +59,34 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
   switch (action.type) {
     case 'load':
       return { items: action.items, history: emptyHistory, revision: 0 };
+
+    case 'refresh':
+      return withSelection(
+        { ...withoutDrag(state), items: action.items, history: emptyHistory, revision: 0 },
+        keepSelection(action.items, state.selectedId),
+      );
+
+    case 'synced': {
+      const { from, item } = action;
+      const at = state.items.findIndex((i) => i.id === from);
+      const items =
+        at < 0
+          ? state.items
+          : item
+            ? state.items.map((i, k) => (k === at ? item : i))
+            : state.items.filter((_, k) => k !== at);
+      const to = item?.id ?? from;
+      let next: EditorState = { ...state, items };
+      if (item && from !== to) {
+        next.history = remapId(state.history, from, to, item.name);
+        if (state.drag?.id === from)
+          next.drag = { id: to, before: { ...state.drag.before, id: to } };
+        if (state.selectedId === from) next = withSelection(next, to);
+      } else if (item && item.name) {
+        next.history = remapId(state.history, from, from, item.name);
+      }
+      return withSelection(next, keepSelection(items, next.selectedId));
+    }
 
     case 'select':
       return withSelection(state, keepSelection(state.items, action.id));

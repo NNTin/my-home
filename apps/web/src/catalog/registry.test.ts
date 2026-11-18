@@ -109,17 +109,25 @@ describe('gate piece', () => {
 });
 
 describe('furniture types', () => {
-  it('lists every furniture type under its legacy id, by category then name', () => {
+  it('lists every furniture type by category then name; legacy ids resolve too', () => {
     expect(furniture.categories.map((c) => c.name)).toEqual([
       'Bed room',
       'Dining',
       'Living room',
       'Work room',
     ]);
-    const ids = furniture.categories.flatMap((c) => c.types.map((t) => t.id));
-    expect(ids).toEqual(['bed', 'wardrobe', 'chair', 'table', 'sofa', 'desk']);
-    for (const id of ids) expect(LEGACY_FURNITURE_TYPE_IDS[id]).toBe(`furniture.${id}`);
-    expect(furniture.get('bed')?.snapping).toBe('back');
+    const types = furniture.categories.flatMap((c) => c.types);
+    expect(types.map((t) => t.legacyId)).toEqual([
+      'bed',
+      'wardrobe',
+      'chair',
+      'table',
+      'sofa',
+      'desk',
+    ]);
+    for (const t of types) expect(LEGACY_FURNITURE_TYPE_IDS[t.legacyId]).toBe(t.id);
+    expect(furniture.get('furniture.bed')?.snapping).toBe('back');
+    expect(furniture.get('bed')).toBe(furniture.get('furniture.bed'));
   });
 
   it('sizes an item from its props and derives the footprint from that size', () => {
@@ -141,5 +149,12 @@ describe('furniture types', () => {
     expect(table.footprint).toHaveLength(16);
     expect(Math.max(...table.footprint.map(([x]) => x))).toBeCloseTo(0.7);
     expect(furniture.resolve('lamp')).toBeUndefined();
+  });
+
+  it('caches resolve() per type and props', () => {
+    const a = furniture.resolve('furniture.bed', { width: 1.8 });
+    expect(furniture.resolve('furniture.bed', { width: 1.8 })).toBe(a);
+    expect(furniture.resolve('furniture.bed', { width: 1.7 })).not.toBe(a);
+    expect(furniture.resolve('furniture.bed')).not.toBe(a);
   });
 });

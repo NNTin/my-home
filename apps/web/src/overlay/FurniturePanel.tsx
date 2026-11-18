@@ -1,13 +1,23 @@
-import { useRef } from 'react';
 import type { EditorSettings } from '../editor/operations';
 import type { FurnitureCategory } from '../catalog/furniture';
-import type { LayoutsController } from '../layouts/useLayouts';
-import type { SaveStatus } from '../layouts/saver';
+import type { SyncState, SyncStatus } from '../placements/sync';
+import { Link } from '../routing';
 
 export interface SelectedInfo {
   name: string;
+  /** The type's name, e.g. "Bed". */
+  typeName: string;
   where: string;
   problems: string[];
+  /** Its piece page, on this use. */
+  href: string;
+}
+
+/** A selected window, door, roof window or gate. */
+export interface PieceInfo {
+  name: string;
+  typeName: string;
+  href: string;
 }
 
 export interface FlaggedItem {
@@ -19,7 +29,10 @@ export interface FlaggedItem {
 }
 
 interface Props {
-  layouts: LayoutsController;
+  /** The placements are loading, or failed to load. */
+  loading: boolean;
+  error: string | undefined;
+  sync: SyncState;
   levelName: string;
   rooms: { id: string; name: string }[];
   roomId: string | undefined;
@@ -27,6 +40,7 @@ interface Props {
   categories: FurnitureCategory[];
   onPlace(typeId: string): void;
   selected: SelectedInfo | undefined;
+  piece: PieceInfo | undefined;
   canUndo: boolean;
   canRedo: boolean;
   onUndo(): void;
@@ -41,125 +55,54 @@ interface Props {
   onRelocate(id: string): void;
 }
 
-const statusText: Record<SaveStatus, string> = {
+const statusText: Record<SyncStatus, string> = {
   saved: 'All changes saved',
   pending: 'Unsaved changes…',
   saving: 'Saving…',
   offline: 'Offline: changes kept in this browser, retrying',
-  rejected: 'Not saved: the server rejected the changes (kept in this browser)',
+  rejected: 'Not saved: the server refused a change; the item is back as it was',
   conflict: 'Changed elsewhere',
 };
+
+/** "Open piece page" for the selected piece: its type's page, on this use. */
+export function PieceLink({ href, name }: { href: string; name: string }) {
+  return (
+    <Link className="button piece-link" to={href} aria-label={`Open piece page: ${name}`}>
+      Open piece page
+    </Link>
+  );
+}
 
 const degrees = (rad: number) => Math.round((rad * 180) / Math.PI);
 const rotationSteps = [90, 45, 15, 0];
 
 export function FurniturePanel(props: Props) {
-  const { layouts, settings, selected } = props;
-  const { saveState, actions } = layouts;
-  const fileInput = useRef<HTMLInputElement>(null);
+  const { sync, settings, selected, piece } = props;
   const set = (patch: Partial<EditorSettings>) => props.onSettings({ ...settings, ...patch });
 
   return (
     <section className="overlay panel panel-right" aria-label="Furniture">
       <h1>Furniture</h1>
-
-      <fieldset>
-        <legend>Layout</legend>
-        <label className="field">
-          Layout{' '}
-          <select
-            value={layouts.activeId ?? ''}
-            onChange={(e) => void actions.open(e.target.value)}
-            disabled={layouts.loading}
-          >
-            {layouts.layouts.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          Name{' '}
-          <input
-            type="text"
-            value={layouts.name}
-            maxLength={200}
-            onChange={(e) => actions.rename(e.target.value)}
-            disabled={!layouts.activeId}
-          />
-        </label>
-        <div className="buttons">
-          <button type="button" onClick={() => void actions.create()}>
-            New
-          </button>
-          <button
-            type="button"
-            onClick={() => void actions.duplicate()}
-            disabled={!layouts.activeId}
-          >
-            Duplicate
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (window.confirm(`Delete layout "${layouts.name}"?`)) void actions.remove();
-            }}
-            disabled={!layouts.activeId}
-          >
-            Delete
-          </button>
-        </div>
-        <div className="buttons">
-          {actions.exportUrl && (
-            <a className="button" href={actions.exportUrl} download>
-              Export
-            </a>
-          )}
-          <button type="button" onClick={() => fileInput.current?.click()}>
-            Import…
-          </button>
-          <input
-            ref={fileInput}
-            type="file"
-            accept="application/json,.json"
-            aria-label="Import layout file"
-            hidden
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              e.target.value = '';
-              if (file) void actions.importFile(file);
-            }}
-          />
-        </div>
-        <p className={`save-status ${saveState.status}`} role="status">
-          {statusText[saveState.status]}
+      <p className={`save-status ${sync.status}`} role="status">
+        {props.loading ? 'Loading furniture…' : statusText[sync.status]}
+      </p>
+      {(sync.status === 'rejected' || sync.status === 'offline') && sync.error && (
+        <p className="error">{sync.error}</p>
+      )}
+      {sync.restored && sync.status !== 'saved' && (
+        <p className="note">Restored unsaved changes from this browser.</p>
+      )}
+      {sync.status === 'conflict' && (
+        <p className="conflict" role="alert">
+          Changed elsewhere (by an agent or another tab), reloaded:{' '}
+          {sync.changedElsewhere?.join(', ')}
         </p>
-        {saveState.status === 'rejected' && saveState.error && (
-          <p className="error">{saveState.error}</p>
-        )}
-        {saveState.restored && saveState.status !== 'saved' && (
-          <p className="note">Restored unsaved changes from this browser.</p>
-        )}
-        {saveState.status === 'conflict' && (
-          <div className="conflict" role="alert">
-            <p>This layout was changed elsewhere. Your edits are kept in this browser.</p>
-            <div className="buttons">
-              <button type="button" onClick={() => void actions.reload()}>
-                Reload server copy
-              </button>
-              <button type="button" onClick={() => void actions.overwrite()}>
-                Overwrite with mine
-              </button>
-            </div>
-          </div>
-        )}
-        {layouts.error && (
-          <p className="error" role="alert">
-            {layouts.error}
-          </p>
-        )}
-      </fieldset>
+      )}
+      {props.error && (
+        <p className="error" role="alert">
+          {props.error}
+        </p>
+      )}
 
       <fieldset>
         <legend>Add to {props.levelName}</legend>
@@ -185,7 +128,7 @@ export function FurniturePanel(props: Props) {
                 className="catalog-item"
                 title={t.description}
                 onClick={() => props.onPlace(t.id)}
-                disabled={!layouts.activeId}
+                disabled={props.loading || props.error !== undefined}
               >
                 <span aria-hidden="true">{t.icon}</span> {t.name}
               </button>
@@ -212,7 +155,7 @@ export function FurniturePanel(props: Props) {
         {selected ? (
           <div className="selection" aria-label="Selected item">
             <p>
-              <strong>{selected.name}</strong> {selected.where}
+              <strong>{selected.name}</strong> ({selected.typeName}) {selected.where}
             </p>
             {selected.problems.map((p) => (
               <p key={p} className="error">
@@ -232,10 +175,23 @@ export function FurniturePanel(props: Props) {
               <button type="button" onClick={props.onDelete} title="Delete">
                 Delete
               </button>
+              <PieceLink href={selected.href} name={selected.name} />
+            </div>
+          </div>
+        ) : piece ? (
+          <div className="selection piece-chip" aria-label="Selected piece">
+            <p>
+              <strong>{piece.name}</strong> ({piece.typeName})
+            </p>
+            <div className="buttons">
+              <PieceLink href={piece.href} name={piece.name} />
             </div>
           </div>
         ) : (
-          <p className="note">Click an item to select it; drag to move, drag the ring to rotate.</p>
+          <p className="note">
+            Click an item to select it; drag to move, drag the ring to rotate. Click a window, door
+            or gate to open its piece page.
+          </p>
         )}
         <label className="toggle">
           <input

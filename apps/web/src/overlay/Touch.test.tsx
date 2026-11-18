@@ -5,7 +5,7 @@ import { toolbarInView, toolbarPosition } from '../scene/FurnitureLayer';
 import { markerScale, markerTapRadius } from '../scene/PhotoMarkers';
 import type { SceneProps } from '../scene/Scene';
 import { fakeApi } from '../test/fakeApi';
-import { layoutItem, testPhoto } from '../test/fixtures';
+import { testPhoto, testPlacement } from '../test/fixtures';
 import { stubScreen } from '../test/screen';
 import { FurnitureToolbar } from './FurnitureToolbar';
 import { HINTS_SEEN_KEY } from './Hints';
@@ -36,13 +36,11 @@ async function open(
   return { turn, api };
 }
 
-const bed = layoutItem({ id: 'bed-1' });
+const bed = testPlacement({ id: 'bed-1', name: 'Bed' });
 
-/** Opens the app with one bed in the layout and waits until the scene shows it. */
+/** Opens the app with one bed placed and waits until the scene shows it. */
 async function openWithBed(mode: Parameters<typeof stubScreen>[0]) {
-  const result = await open(mode, {
-    layouts: [{ homeId: 'mock-home', name: 'One bed', items: [bed] }],
-  });
+  const result = await open(mode, { placements: [bed] });
   await vi.waitFor(() => expect(furniture()).toHaveLength(1));
   return result;
 }
@@ -129,8 +127,14 @@ describe('furniture by touch', () => {
 describe('FurnitureToolbar', () => {
   it('names the item and offers its tools as labelled buttons', () => {
     const on = { onRotate: vi.fn(), onDuplicate: vi.fn(), onDelete: vi.fn(), onMore: vi.fn() };
-    render(<FurnitureToolbar name="Round table" {...on} />);
+    render(
+      <FurnitureToolbar name="Round table" href="/catalog/furniture/furniture.table" {...on} />,
+    );
     const bar = within(screen.getByRole('toolbar', { name: 'Round table: edit' }));
+    expect(bar.getByRole('link', { name: 'Open piece page' })).toHaveAttribute(
+      'href',
+      '/catalog/furniture/furniture.table',
+    );
     fireEvent.click(bar.getByRole('button', { name: 'Rotate left' }));
     fireEvent.click(bar.getByRole('button', { name: 'Rotate right' }));
     expect(on.onRotate.mock.calls).toEqual([[1], [-1]]);

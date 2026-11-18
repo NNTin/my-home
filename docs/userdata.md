@@ -28,17 +28,18 @@ stable id from git (an opening, roof window, outbuilding opening or gate); the i
 ## Tables
 
 All in the schema `userdata`, created by `apps/api/userdata-migrations/0000_create_userdata.sql`,
-`0001_create_notes.sql` and `0002_home_settings.sql`:
+`0001_create_notes.sql`, `0002_home_settings.sql` and `0003_imports.sql`:
 
-| Table               | Key                 | Holds                                                                                                          |
-| ------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `placements`        | `(home_id, id)`     | type, name, level, room, position (`x`, `z`), `rotation_y`, `params`, `version`, `removed_at`                  |
-| `opening_overrides` | `(home_id, use_id)` | the type the override was written for, `params`, `version`                                                     |
-| `history`           | `id` (uuid), `seq`  | use, kind (`placement`/`opening`/`home`), action, actor, actor source and name, `before`, `after`, `undoes_id` |
-| `issued_ids`        | `(home_id, id)`     | every placement id handed out                                                                                  |
-| `notes`             | `id` (uuid)         | `home_id` (null for type notes), subject kind and id, `body`, created/updated by and at, `deleted_at`          |
-| `home_settings`     | `home_id`           | `magnetic_declination` (a Bearing; null = git's value), `version`, `updated_at`                                |
-| `schema_migrations` | `tag`               | the schema's migration journal                                                                                 |
+| Table               | Key                 | Holds                                                                                                                               |
+| ------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `placements`        | `(home_id, id)`     | type, name, level, room, position (`x`, `z`), `rotation_y`, `params`, `version`, `removed_at`                                       |
+| `opening_overrides` | `(home_id, use_id)` | the type the override was written for, `params`, `version`                                                                          |
+| `history`           | `id` (uuid), `seq`  | use, kind (`placement`/`opening`/`home`), action, actor, actor source and name, `before`, `after`, `undoes_id`                      |
+| `issued_ids`        | `(home_id, id)`     | every placement id handed out                                                                                                       |
+| `notes`             | `id` (uuid)         | `home_id` (null for type notes), subject kind and id, `body`, created/updated by and at, `deleted_at`                               |
+| `home_settings`     | `home_id`           | `magnetic_declination` (a Bearing; null = git's value), `version`, `updated_at`                                                     |
+| `imports`           | `(home_id, source)` | one-time imports done (`layouts`: the named layouts → placements, [furniture.md](furniture.md#the-one-time-import)), `at`, `detail` |
+| `schema_migrations` | `tag`               | the schema's migration journal                                                                                                      |
 
 There are no foreign keys into `public` (a `drop schema public cascade` would silently drop them) and no CHECK
 constraints: enum values (actions, actors) are validated by the api, so adding one needs no migration.

@@ -71,10 +71,27 @@ function footprintPoints(type: CatalogType, values: ParamValues): [number, numbe
   ];
 }
 
+/** Whether (x, z) is inside the polygon and more than `TOLERANCE` from its edges. */
+function strictlyInside(x: number, z: number, polygon: [number, number][]): boolean {
+  let inside = false;
+  let distance = Infinity;
+  polygon.forEach(([ax, az], i) => {
+    const [bx, bz] = polygon[(i + 1) % polygon.length]!;
+    if (az > z !== bz > z && x < ax + ((z - az) / (bz - az)) * (bx - ax)) inside = !inside;
+    const [dx, dz] = [bx - ax, bz - az];
+    const length2 = dx * dx + dz * dz;
+    const t = length2 ? Math.min(1, Math.max(0, ((x - ax) * dx + (z - az) * dz) / length2)) : 0;
+    distance = Math.min(distance, Math.hypot(x - ax - t * dx, z - az - t * dz));
+  });
+  return inside && distance > TOLERANCE;
+}
+
 /**
  * Why a piece of furniture at a position does not fit its room (empty when it fits, or without a
  * room). The rotation is three.js `rotation.y`: a local point (x, z) lands at
- * `(x cos r + z sin r, -x sin r + z cos r)`, as in the web editor.
+ * `(x cos r + z sin r, -x sin r + z cos r)`, as in the web editor. It does not fit when a corner
+ * of its footprint is outside the room, or, in a concave room, when a corner of the room pokes
+ * into the footprint.
  */
 export function furnitureFitIssues(
   type: CatalogType,
@@ -84,13 +101,16 @@ export function furnitureFitIssues(
 ): string[] {
   if (!room) return [];
   const [c, s] = [Math.cos(at.rotationY), Math.sin(at.rotationY)];
-  const outside = footprintPoints(type, values).filter(([x, z]) => {
-    const [px, pz] = [at.x + x * c + z * s, at.z - x * s + z * c];
-    return (
-      !insideOutline(px, pz, room.outline) && distanceToOutline(px, pz, room.outline) > TOLERANCE
-    );
-  });
-  if (outside.length === 0) return [];
+  const footprint = footprintPoints(type, values).map(([x, z]): [number, number] => [
+    at.x + x * c + z * s,
+    at.z - x * s + z * c,
+  ]);
+  const outside = footprint.some(
+    ([px, pz]) =>
+      !insideOutline(px, pz, room.outline) && distanceToOutline(px, pz, room.outline) > TOLERANCE,
+  );
+  const poking = room.outline.some((p) => strictlyInside(p.x.value, p.z.value, footprint));
+  if (!outside && !poking) return [];
   const { width, depth } = furnitureSize(values);
   return [
     `The ${type.name.toLowerCase()} (${formatCm(width)} × ${formatCm(depth)}) reaches outside the room`,

@@ -1,15 +1,37 @@
-import { HomeModel, type LayoutItem, type Photo, type PhotoRequest } from '@my-home/shared';
+import { HomeModel, type Photo, type PhotoRequest, type Placement } from '@my-home/shared';
 import mockHomeJson from '../../../../data/homes/mock-home.json';
+import type { EditorItem } from '../editor/item';
 
 export const mockHome = HomeModel.parse(mockHomeJson);
 
-export const layoutItem = (overrides: Partial<LayoutItem> = {}): LayoutItem => ({
+/** A bed in the mock home's bedroom, as the editor holds it. */
+export const editorItem = (overrides: Partial<EditorItem> = {}): EditorItem => ({
   id: 'item-1',
-  typeId: 'bed',
+  typeId: 'furniture.bed',
+  name: 'Bedroom · Bed',
   levelId: 'souterrain',
   position: { x: -3, z: 2.5 },
   rotationY: 0,
-  props: {},
+  params: {},
+  ...overrides,
+});
+
+/** A stored placement: the bed in the mock home's bedroom. */
+export const testPlacement = (overrides: Partial<Placement> = {}): Placement => ({
+  id: 'souterrain-bed-1',
+  homeId: 'mock-home',
+  typeId: 'furniture.bed',
+  name: 'Bedroom · Bed',
+  levelId: 'souterrain',
+  roomId: 'souterrain-bedroom',
+  position: { x: -3, z: 2.5 },
+  rotationY: 0,
+  params: {},
+  version: 1,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+  removedAt: null,
+  purgeAt: null,
   ...overrides,
 });
 

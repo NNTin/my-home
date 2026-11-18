@@ -286,6 +286,26 @@ describe('furnitureFitIssues', () => {
     ).toHaveLength(1);
   });
 
+  it('catches a corner of a concave room that pokes into the footprint', () => {
+    // A square room with a thin wall spike from its south side up to (2, 2).
+    const spiked = {
+      outline: outline([
+        [0, 0],
+        [4, 0],
+        [4, 4],
+        [2.1, 4],
+        [2, 2],
+        [1.9, 4],
+        [0, 4],
+      ]),
+    };
+    // Every corner of the bed (x 1.2–2.8, z 1.5–3.5) is in the room; the spike's tip is in the bed.
+    expect(furnitureFitIssues(bed, values, { x: 2, z: 2.5, rotationY: 0 }, spiked)).toHaveLength(1);
+    expect(furnitureFitIssues(bed, values, { x: 1, z: 1.2, rotationY: 0 }, spiked)).toEqual([]);
+    // Flush with the tip is fine.
+    expect(furnitureFitIssues(bed, values, { x: 2, z: 1, rotationY: 0 }, spiked)).toEqual([]);
+  });
+
   it('samples a round table as an ellipse', () => {
     const table = type('furniture.table');
     const corner = {

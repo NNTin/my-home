@@ -45,8 +45,8 @@ export const lamp = defineType({
 - Openings name the home model's `Opening.type` values they may carry (`openingTypes`) and a
   `preview` hole for the piece page. A count with a minimum width per part (`sashes`, `leaves`)
   gets `each: { minWidth, one, other }`; `openingFitIssues` reports a count that does not fit.
-- Furniture also needs its id without the family in `LEGACY_FURNITURE_TYPE_IDS` (layouts store
-  `lamp`, as their ids allow no dots); that list is derived from `furniture` in `furniture.ts`.
+- Furniture also needs its id without the family in `LEGACY_FURNITURE_TYPE_IDS` (the old named
+  layouts stored `lamp`; the one-time import maps it); that list is derived from `furniture` in `furniture.ts`.
 
 ## 2. Draw it
 
@@ -119,6 +119,6 @@ golden lists every furniture type, so a new furniture type adds its lines).
 
 ## Removing or renaming a type
 
-Never rename a type id once a home or a layout uses it. Layouts keep items whose type is unknown:
+Never rename a type id once a home or a placement uses it. Placements whose type is unknown are kept:
 they are drawn as grey boxes and listed under **Needs attention**, never deleted. An opening's
 `typeId` must be a known type, or the home model fails validation.

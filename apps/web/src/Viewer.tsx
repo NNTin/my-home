@@ -1,9 +1,10 @@
 import {
+  catalog,
+  effectiveParams,
   magneticDeclinationOf,
   northBearingOf,
   type HomeModel,
   type HomeSummary,
-  type LayoutItem,
   type PhotoRequest,
 } from '@my-home/shared';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
@@ -25,6 +26,7 @@ import {
   type Visibility,
 } from './builder/visibility';
 import { canRedo, canUndo } from './editor/editorState';
+import type { EditorItem } from './editor/item';
 import {
   collisions,
   createContext,
@@ -45,10 +47,14 @@ import {
 import { roomAt } from './editor/placement';
 import { shortcutFor } from './editor/shortcuts';
 import { rotationFromDrag } from './editor/snapping';
-import { useLayouts } from './layouts/useLayouts';
 import { ControlPanel } from './overlay/ControlPanel';
-import { FurniturePanel, type FlaggedItem, type SelectedInfo } from './overlay/FurniturePanel';
-import type { FurnitureToolbarProps } from './overlay/FurnitureToolbar';
+import {
+  FurniturePanel,
+  type FlaggedItem,
+  type PieceInfo,
+  type SelectedInfo,
+} from './overlay/FurniturePanel';
+import { PieceToolbar, type FurnitureToolbarProps } from './overlay/FurnitureToolbar';
 import { Hints } from './overlay/Hints';
 import { Sheet, sheetSize, type SheetSnap, type SheetTab } from './overlay/Sheet';
 import { StageTools } from './overlay/StageTools';
@@ -57,6 +63,15 @@ import { useKeyboardViewport } from './overlay/useKeyboardViewport';
 import { useLayoutMode } from './overlay/useLayoutMode';
 import { ViewPanel } from './overlay/ViewPanel';
 import { filterPhotos, NO_FILTERS } from './photos/filters';
+import {
+  focusVisibility,
+  frameFor,
+  piecePageHref,
+  scenePieces,
+  type FrameRequest,
+} from './placements/focus';
+import { useOpeningOverrides } from './placements/useOpeningOverrides';
+import { usePlacements, useVisibleAgain } from './placements/usePlacements';
 import { aspectOf, fovHOf, frustumCorners } from './photos/frustum';
 import { PhotosPanel, type OverlaySettings, type PhotosTab } from './photos/PhotosPanel';
 import { openRequests } from './photos/requests';
@@ -103,6 +118,23 @@ export function walkVisibility(
   return level ? { ...whole, maxLevelIndex: level.index } : whole;
 }
 
+/** `?focus=<useId>`: the window, door, gate or piece of furniture to frame and select. */
+function initialFocus(): string | undefined {
+  return new URLSearchParams(window.location.search).get('focus') ?? undefined;
+}
+
+const catalogTypeName = (typeId: string) => catalog.get(typeId)?.name ?? typeId;
+
+/** The keys of an item's parameters that its type ignores (unknown, invalid or design-only). */
+const ignoredParams = (item: EditorItem) => {
+  const type = catalog.get(item.typeId);
+  return type ? effectiveParams(type, item.params).ignored : [];
+};
+
+/** How long a focused or clicked window, door or gate glows. */
+const HIGHLIGHT_MS = 2000;
+const TOAST_MS = 4000;
+
 /** `?walk=first` or `?walk=third` (or just `?walk`) opens the viewer already walking. */
 function initialWalk(): WalkView | undefined {
   const value = new URLSearchParams(window.location.search).get('walk');
@@ -130,7 +162,8 @@ function initialPanel(): { panel: PanelId | undefined; snap: SheetSnap } {
 /** How far in front of its camera a photo's view cone is drawn, in metres. */
 const VIEW_CONE_LENGTH = 1.2;
 
-const newId = () => crypto.randomUUID();
+/** Temporary ids of new items, until the server assigns the stable one. */
+const newId = () => `new-${crypto.randomUUID()}`;
 
 interface Props {
   model: HomeModel;
@@ -140,7 +173,10 @@ interface Props {
 
 /** Renders one home and its furniture; mount with `key={model.id}` so switching homes resets. */
 export function Viewer({ model, homes, onSelectHome }: Props) {
-  const scene = useMemo(() => buildHome(model), [model]);
+  // Edits by agents or other tabs show up when the tab is visible again.
+  const visibleAgain = useVisibleAgain();
+  const overrides = useOpeningOverrides(model.id, visibleAgain);
+  const scene = useMemo(() => buildHome(model, overrides), [model, overrides]);
   const [chosenVisibility, setVisibility] = useState(() => defaultVisibility(scene));
   // A walk this tab was on before the page was reloaded comes back. It is newer than the address,
   // which a reload keeps: `?walk=first` must not put the figure back at the start.
@@ -207,15 +243,14 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     [model, northBearing],
   );
 
-  const layouts = useLayouts(model.id);
-  const { editor, actions } = layouts;
-  const { dispatch } = actions;
+  const placements = usePlacements(model.id, visibleAgain);
+  const { editor, dispatch } = placements;
   const [settings, setSettings] = useState<EditorSettings>(defaultSettings);
   const ctx = useMemo(() => createContext(model, furnitureTypes, settings), [model, settings]);
 
   const { items } = editor;
 
-  // The figure: blocked by walls, fences and the furniture of the active layout.
+  // The figure: blocked by walls, fences and the furniture.
   const world = useMemo(() => {
     const blockers = items.flatMap((item): FurnitureBlocker[] => {
       return ctx.plans.has(item.levelId)
@@ -383,10 +418,70 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     });
   }, [ctx, items, found, scene, visibility, editor.selectedId]);
 
-  const nameOf = (item: LayoutItem) =>
+  const typeNameOf = (item: EditorItem) =>
     furnitureTypes.get(item.typeId)?.name ?? `Unknown type "${item.typeId}"`;
+  /** The item's own name ("Bedroom · Bed"); a new one is named by the server once saved. */
+  const nameOf = (item: EditorItem) => item.name || typeNameOf(item);
 
-  const edit = (label: string, next: LayoutItem[], selectedId?: string | null) =>
+  // Windows, doors, roof windows and gates: picked with a tap or click, framed by `?focus=`.
+  const pieces = useMemo(() => scenePieces(scene), [scene]);
+  const [selectedPieceId, setSelectedPieceId] = useState<string>();
+  const selectedPiece = selectedPieceId === undefined ? undefined : pieces.get(selectedPieceId);
+  const [highlight, setHighlight] = useState<string>();
+  useEffect(() => {
+    if (highlight === undefined) return;
+    const timer = window.setTimeout(() => setHighlight(undefined), HIGHLIGHT_MS);
+    return () => window.clearTimeout(timer);
+  }, [highlight]);
+  const [toast, setToast] = useState<string>();
+  useEffect(() => {
+    if (toast === undefined) return;
+    const timer = window.setTimeout(() => setToast(undefined), TOAST_MS);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+  const selectPiece = (id: string | undefined) => {
+    setSelectedPieceId(id);
+    if (id !== undefined) {
+      setHighlight(id);
+      dispatch({ type: 'select' });
+    }
+  };
+  const [frame, setFrame] = useState<FrameRequest & { key: number }>();
+
+  // `?focus=<useId>` once the home (and for furniture, the placements) are there. Walking wins.
+  // Applied while rendering, as soon as what it waits for has arrived.
+  const [focusId, setFocusId] = useState(() => (walkView ? undefined : initialFocus()));
+  if (focusId !== undefined) {
+    const piece = pieces.get(focusId);
+    const item = piece ? undefined : editor.items.find((i) => i.id === focusId);
+    if (piece || item || !placements.loading) {
+      setFocusId(undefined);
+      const key = (frame?.key ?? 0) + 1;
+      const level = item && scene.levels.find((l) => l.id === item.levelId);
+      if (piece) {
+        setVisibility((v) => focusVisibility(scene, v, piece));
+        selectPiece(piece.id);
+        setFrame({ ...frameFor(scene, piece), key });
+      } else if (item && level) {
+        const size = typeOf(ctx, item)?.size ?? UNKNOWN_SIZE;
+        const apartmentId = ctx.plans
+          .get(item.levelId)
+          ?.rooms.find((r) => r.id === item.roomId)?.apartmentId;
+        setVisibility((v) =>
+          focusVisibility(scene, v, { levelId: level.id, ...(apartmentId && { apartmentId }) }),
+        );
+        setSelectedPieceId(undefined);
+        dispatch({ type: 'select', id: item.id });
+        const center: Vec3 = [item.position.x, level.elevation + size.height / 2, item.position.z];
+        const radius = Math.hypot(size.width, size.depth, size.height) / 2;
+        setFrame({ ...frameFor(scene, { center, radius, exterior: false }), key });
+      } else {
+        setToast('Not found in this home');
+      }
+    }
+  }
+
+  const edit = (label: string, next: EditorItem[], selectedId?: string | null) =>
     dispatch({ type: 'edit', label, items: next, ...(selectedId !== undefined && { selectedId }) });
 
   const commands = {
@@ -434,8 +529,14 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   };
 
   const handlers: FurnitureHandlers = {
-    onSelect: (id) => dispatch({ type: 'select', ...(id !== undefined && { id }) }),
-    onMoveStart: (id) => dispatch({ type: 'dragStart', id }),
+    onSelect: (id) => {
+      setSelectedPieceId(undefined);
+      dispatch({ type: 'select', ...(id !== undefined && { id }) });
+    },
+    onMoveStart: (id) => {
+      setSelectedPieceId(undefined);
+      dispatch({ type: 'dragStart', id });
+    },
     onRotateStart: (id) => dispatch({ type: 'dragStart', id }),
     onMove(id, target) {
       const current = items.find((i) => i.id === id);
@@ -484,8 +585,10 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     if (action === 'undo' || action === 'redo' || action === 'duplicate') e.preventDefault();
     if (action === 'undo') dispatch({ type: 'undo' });
     else if (action === 'redo') dispatch({ type: 'redo' });
-    else if (action === 'deselect') dispatch({ type: 'select' });
-    else if (action === 'rotate') commands.rotate(1);
+    else if (action === 'deselect') {
+      setSelectedPieceId(undefined);
+      dispatch({ type: 'select' });
+    } else if (action === 'rotate') commands.rotate(1);
     else if (action === 'rotate-back') commands.rotate(-1);
     else if (action === 'duplicate') commands.duplicate();
     else if (action === 'delete') {
@@ -500,6 +603,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
 
   const selected: SelectedInfo | undefined = selectedItem && {
     name: nameOf(selectedItem),
+    typeName: typeNameOf(selectedItem),
+    href: piecePageHref(selectedItem.typeId, model.id, selectedItem.id),
     where: (() => {
       const p = ctx.plans.get(selectedItem.levelId);
       const room = p?.rooms.find((r) => r.id === selectedItem.roomId);
@@ -521,19 +626,29 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     ],
   };
 
+  const pieceInfo: PieceInfo | undefined = selectedPiece && {
+    name: selectedPiece.name,
+    typeName: catalogTypeName(selectedPiece.typeId),
+    href: piecePageHref(selectedPiece.typeId, model.id, selectedPiece.id),
+  };
+
+  // Needs attention, as where-used (`/uses`) says: an unknown type, a level or room gone, or
+  // parameters that are ignored.
   const flagged: FlaggedItem[] = items.flatMap((item) => {
     const issues = issuesOf(ctx, item);
-    if (!hasIssues(issues)) return [];
+    const ignored = ignoredParams(item);
+    if (!hasIssues(issues) && ignored.length === 0) return [];
     return [
       {
         id: item.id,
         label: nameOf(item),
         problems: [
-          ...(issues.unknownType ? ['unknown furniture type'] : []),
-          ...(issues.missingLevel ? [`level "${item.levelId}" no longer exists`] : []),
+          ...(issues.unknownType ? [`type "${item.typeId}" is not in the catalogue`] : []),
+          ...(issues.missingLevel ? [`level "${item.levelId}" is not in the home model`] : []),
           ...(issues.missingRoom && !issues.missingLevel
-            ? [`room "${item.roomId}" no longer exists`]
+            ? [`room "${item.roomId}" is not in the home model`]
             : []),
+          ...(ignored.length > 0 ? [`ignored: ${ignored.join(', ')}`] : []),
         ],
         canRelocate: issues.missingLevel,
       },
@@ -581,7 +696,10 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   );
   const furniturePanel = (
     <FurniturePanel
-      layouts={layouts}
+      loading={placements.loading}
+      error={placements.error}
+      sync={placements.syncState}
+      piece={pieceInfo}
       levelName={level?.name ?? ''}
       rooms={plan?.rooms ?? []}
       roomId={roomId}
@@ -614,6 +732,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     mobile && !walking && selectedItem
       ? {
           name: nameOf(selectedItem),
+          href: piecePageHref(selectedItem.typeId, model.id, selectedItem.id),
           onRotate: commands.rotate,
           onDuplicate: commands.duplicate,
           onDelete: commands.remove,
@@ -672,7 +791,22 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
             requestGhosts={requestGhosts}
             viewpoint={viewpoint}
             paused={walking && cameraOpen}
+            pieces={walking ? undefined : { onSelectPiece: selectPiece, highlightId: highlight }}
+            frame={frame}
           />
+          {toast && (
+            <p className="toast" role="alert">
+              {toast}
+            </p>
+          )}
+          {mobile && !walking && pieceInfo && (
+            <PieceToolbar
+              name={pieceInfo.name}
+              typeName={pieceInfo.typeName}
+              href={pieceInfo.href}
+              onClose={() => setSelectedPieceId(undefined)}
+            />
+          )}
           {viewed && overlay.on && (
             <img
               className="photo-overlay"
@@ -685,8 +819,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
             <>
               <StageTools
                 status={{
-                  loading: layouts.loading,
-                  save: layouts.saveState.status,
+                  loading: placements.loading,
+                  save: placements.syncState.status,
                   edited: editor.revision > 0,
                   photosError: photos.error,
                 }}

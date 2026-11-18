@@ -1,7 +1,11 @@
+import { Link } from '../routing';
+
 /** What the floating toolbar of the selected furniture item does. */
 export interface FurnitureToolbarProps {
-  /** The item's name, e.g. "Bed". */
+  /** The item's name, e.g. "Bedroom · Bed". */
   name: string;
+  /** Its piece page, on this use. */
+  href: string;
   onRotate(steps: number): void;
   onDuplicate(): void;
   onDelete(): void;
@@ -15,6 +19,7 @@ export interface FurnitureToolbarProps {
  */
 export function FurnitureToolbar({
   name,
+  href,
   onRotate,
   onDuplicate,
   onDelete,
@@ -45,6 +50,9 @@ export function FurnitureToolbar({
       <button type="button" aria-label="Delete" title="Delete" onClick={onDelete}>
         🗑
       </button>
+      <Link className="button" to={href} aria-label="Open piece page" title="Piece page">
+        ⓘ
+      </Link>
       <button
         type="button"
         aria-label="More: open the furniture panel"
@@ -52,6 +60,36 @@ export function FurnitureToolbar({
         onClick={onMore}
       >
         ⋯
+      </button>
+    </div>
+  );
+}
+
+/**
+ * The selected window, door, roof window or gate on a phone: its name, type and a link to its
+ * piece page, floating over the foot of the 3D view.
+ */
+export function PieceToolbar({
+  name,
+  typeName,
+  href,
+  onClose,
+}: {
+  name: string;
+  typeName: string;
+  href: string;
+  onClose(): void;
+}) {
+  return (
+    <div className="item-toolbar piece-toolbar" role="toolbar" aria-label={`${name}: piece`}>
+      <span className="item-toolbar-name">
+        {name} <span className="piece-type">· {typeName}</span>
+      </span>
+      <Link className="button" to={href} aria-label={`Open piece page: ${name}`}>
+        Open piece page
+      </Link>
+      <button type="button" aria-label="Close" title="Close" onClick={onClose}>
+        ✕
       </button>
     </div>
   );

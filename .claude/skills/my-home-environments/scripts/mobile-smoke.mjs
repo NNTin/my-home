@@ -1,7 +1,8 @@
 // Run by mobile-smoke.sh; not meant to be called directly.
 //   node mobile-smoke.mjs <out.png> [home-id]   (SITE_BASE, SITE_TOKEN from with-site-token.sh)
 // Smoke test of the phone layout on a touch screen: the top bar, the sheet with its panels, the level
-// switcher, furniture in a layout of its own, walk mode, and the side sheet with the phone held across.
+// switcher, furniture (every placement write answered inside the browser), walk mode, and the side
+// sheet with the phone held across. Read-only: nothing is written to the environment.
 // Playwright is loaded from MY_HOME_PLAYWRIGHT_DIR.
 /* global document, window, WebGL2RenderingContext */
 import { createRequire } from 'node:module';
@@ -41,10 +42,16 @@ async function smoke(out, homeId) {
   const browser = await chromium.launch({
     args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
   });
-  /** The layout this run created: the only thing it may change, and it removes it again. */
-  let ownLayout;
   let page;
   const blocked = [];
+  /**
+   * The furniture this run placed, answered inside the browser: the environment never sees a
+   * placement write. Reads of the placements get these merged in, as if they were stored.
+   */
+  const fake = new Map();
+  let answered = 0;
+  const now = () => new Date().toISOString();
+  const active = () => [...fake.values()].filter((p) => p.removedAt === null);
   const target = homeId ? `/?home=${encodeURIComponent(homeId)}` : '/';
   try {
     // A phone held upright, with a touch screen.
@@ -71,24 +78,70 @@ async function smoke(out, homeId) {
         };
       }
     });
-    await context.route('**/*', (route) => {
+    await context.route('**/*', async (route) => {
       const request = route.request();
       const url = new URL(request.url());
       if (url.host !== host) return route.continue();
-      // Reads are free. Writes: creating a layout, and saving or removing the layout this run
-      // created. Anything else (photos, requests, other layouts, the home) is refused here.
       const method = request.method();
-      const write = method !== 'GET' && method !== 'HEAD';
-      const allowed =
-        (method === 'POST' && /^\/api\/homes\/[^/]+\/layouts$/.test(url.pathname)) ||
-        (ownLayout !== undefined && url.pathname === `/api/layouts/${ownLayout}`);
-      if (write && !allowed) {
-        blocked.push(`${method} ${url.pathname}`);
-        return route.abort();
+      const headers = { ...request.headers(), authorization: `Bearer ${token}` };
+      const json = (status, body) =>
+        route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+      const placements = /^\/api\/homes\/([^/]+)\/placements(?:\/([^/]+)(\/restore)?)?$/.exec(
+        url.pathname,
+      );
+      // Reads are free; the placement list gets this run's furniture merged in.
+      if (method === 'GET' || method === 'HEAD') {
+        if (!placements || placements[2]) return route.continue({ headers });
+        const response = await route.fetch({ headers });
+        const body = await response.json();
+        return json(response.status(), { items: [...body.items, ...fake.values()] });
       }
-      return route.continue({
-        headers: { ...request.headers(), authorization: `Bearer ${token}` },
-      });
+      // Placement writes: answered here with what the api would answer, never sent.
+      if (placements) {
+        answered++;
+        const homeId = decodeURIComponent(placements[1]);
+        const id = placements[2] && decodeURIComponent(placements[2]);
+        const current = id && fake.get(id);
+        if (!id && method === 'POST') {
+          const body = request.postDataJSON();
+          const n = fake.size + 1;
+          const created = {
+            id: `mobile-smoke-${n}`,
+            homeId,
+            typeId: body.typeId,
+            name: body.name ?? `Mobile smoke · ${n}`,
+            levelId: body.levelId,
+            roomId: null,
+            position: body.position,
+            rotationY: body.rotationY ?? 0,
+            params: body.params ?? {},
+            version: 1,
+            createdAt: now(),
+            updatedAt: now(),
+            removedAt: null,
+            purgeAt: null,
+          };
+          fake.set(created.id, created);
+          return json(201, created);
+        }
+        if (!current) {
+          // Not this run's: a real placement is never changed.
+          blocked.push(`${method} ${url.pathname}`);
+          return route.abort();
+        }
+        const removed = method === 'DELETE';
+        const patch =
+          method === 'PATCH'
+            ? { ...request.postDataJSON() }
+            : { removedAt: removed ? now() : null };
+        delete patch.version;
+        const next = { ...current, ...patch, version: current.version + 1, updatedAt: now() };
+        fake.set(id, next);
+        return json(200, next);
+      }
+      // Anything else (photos, requests, settings, the home) is refused here.
+      blocked.push(`${method} ${url.pathname}`);
+      return route.abort();
     });
     page = await context.newPage();
     const errors = [];
@@ -96,8 +149,6 @@ async function smoke(out, homeId) {
     page.on('console', (message) => {
       if (message.type() === 'error') errors.push(`console: ${message.text()}`);
     });
-    // "Delete layout ...?" for the layout of this run.
-    page.on('dialog', (dialog) => void dialog.accept());
 
     await page.goto(new URL(target, base).href, { waitUntil: 'networkidle', timeout: 60_000 });
     if (new URL(page.url()).host !== host)
@@ -312,28 +363,23 @@ async function smoke(out, homeId) {
       (await page.locator('.room-label').count()) > 0,
     );
 
-    // Furniture, in a layout of this run's own.
+    // Furniture: the home's one placement set, with no layout manager.
     await tab(/Furniture/).tap();
     await settle();
     const furniture = page.getByRole('region', { name: 'Furniture' });
     check('the Furniture panel shows', await furniture.isVisible());
     await named('of the Furniture panel');
+    check(
+      'there is no layout manager',
+      (await furniture.getByRole('group', { name: 'Layout' }).count()) === 0 &&
+        (await furniture.getByRole('button', { name: 'New', exact: true }).count()) === 0,
+    );
     const saved = () => furniture.getByRole('status').filter({ hasText: 'All changes saved' });
+    await saved().waitFor({ timeout: 20_000 });
     const created = page.waitForResponse(
       (response) =>
         response.request().method() === 'POST' &&
-        /\/api\/homes\/[^/]+\/layouts$/.test(new URL(response.url()).pathname),
-      { timeout: 20_000 },
-    );
-    await furniture.getByRole('button', { name: 'New', exact: true }).tap();
-    ownLayout = (await (await created).json()).id;
-    check('a layout of its own was created', typeof ownLayout === 'string');
-    await saved().waitFor({ timeout: 20_000 });
-    // The edit is saved a moment later: wait for that request, not for the status text before it.
-    const save = page.waitForResponse(
-      (response) =>
-        response.request().method() === 'PUT' &&
-        new URL(response.url()).pathname === `/api/layouts/${ownLayout}`,
+        /\/api\/homes\/[^/]+\/placements$/.test(new URL(response.url()).pathname),
       { timeout: 20_000 },
     );
     // A piece with a solid top (not a bed, whose top is mostly air above the mattress): the touch
@@ -343,13 +389,13 @@ async function smoke(out, homeId) {
     await ((await solid.count()) > 0 ? solid : catalog).first().tap();
     await furniture.getByLabel('Selected item').waitFor({ timeout: 10_000 });
     check('a tap in the catalog places an item and selects it', true);
-    check('the layout is saved', (await save).ok());
+    check('the placement is saved', (await created).ok());
     await saved().waitFor({ timeout: 20_000 });
-    const stored = await page.evaluate(
-      async (id) => (await (await fetch(`/api/layouts/${id}`)).json()).items.length,
-      ownLayout,
+    check('the item is saved as one placement', active().length === 1, `${active().length}`);
+    check(
+      'it gets the id the server gave it',
+      (await furniture.getByLabel('Selected item').textContent()).includes('Mobile smoke · 1'),
     );
-    check('the item is saved in the layout', stored === 1, `${stored} item(s)`);
 
     // Editing by touch with the panel closed: the item's tools float next to it.
     await page.getByRole('button', { name: 'Close the panel' }).tap();
@@ -374,11 +420,7 @@ async function smoke(out, homeId) {
       );
     check(`its buttons are at least ${TOUCH} px`, smallTools.length === 0, smallTools.join(', '));
 
-    const items = () =>
-      page.evaluate(
-        async (id) => (await (await fetch(`/api/layouts/${id}`)).json()).items,
-        ownLayout,
-      );
+    const items = async () => active();
     /** The stored items once `done` holds for them (the app saves a moment after an edit). */
     const until = async (done) => {
       const deadline = Date.now() + 20_000;
@@ -488,62 +530,24 @@ async function smoke(out, homeId) {
     await page.setViewportSize(PORTRAIT);
     await page.waitForTimeout(1500);
 
-    // Clean up: remove the layout of this run through the app.
     await tab(/Furniture/).tap();
     await settle();
     await page.screenshot({ path: out });
-    await removeOwnLayout(page, ownLayout);
     check(
       'no console or page errors',
       errors.length === 0,
       errors.slice(0, 5).map(redact).join(' | '),
     );
-    // Asking for the removed layout logs a 404 in the console, so this comes after the check above.
-    const left = await page.evaluate(
-      async (id) => (await fetch(`/api/layouts/${id}`)).status,
-      ownLayout,
+    check(
+      'every placement write was answered in the browser',
+      answered >= 5,
+      `${answered} answered`,
     );
-    check('its layout is removed again', left === 404, `GET answers ${left}`);
-    if (left === 404) ownLayout = undefined;
-    check('nothing but its own layout was written', blocked.length === 0, blocked.join(', '));
+    check('nothing was written', blocked.length === 0, blocked.join(', '));
     console.log(`screenshot ${out}`);
   } finally {
-    // A run that stopped half-way still removes its layout: open the panel afresh and delete it.
-    if (ownLayout !== undefined && page) {
-      const id = ownLayout;
-      const gone = await (async () => {
-        const fresh = `${target}${target.includes('?') ? '&' : '?'}panel=furniture&sheet=full&hints=off`;
-        await page.setViewportSize(PORTRAIT);
-        await page.goto(new URL(fresh, base).href, { waitUntil: 'networkidle', timeout: 60_000 });
-        await page.getByRole('region', { name: 'Furniture' }).waitFor({ timeout: 30_000 });
-        await page.waitForTimeout(2000);
-        await removeOwnLayout(page, id);
-        return page.evaluate(async (layout) => (await fetch(`/api/layouts/${layout}`)).status, id);
-      })().catch(() => undefined);
-      if (gone === 404) ownLayout = undefined;
-    }
-    if (ownLayout !== undefined)
-      console.log(`LEFT BEHIND: layout ${ownLayout} could not be removed; remove it in the app`);
     await browser.close();
   }
-}
-
-/** Removes the layout with the app's own Delete button, after making sure it is the open one. */
-async function removeOwnLayout(page, id) {
-  const furniture = page.getByRole('region', { name: 'Furniture' });
-  // The first field of the panel: which layout is open.
-  const select = furniture.locator('select').first();
-  if ((await select.inputValue()) !== id) await select.selectOption(id);
-  await page.waitForTimeout(1000);
-  if ((await select.inputValue()) !== id) return;
-  const removed = page.waitForResponse(
-    (response) =>
-      new URL(response.url()).pathname === `/api/layouts/${id}` && response.status() === 204,
-    { timeout: 20_000 },
-  );
-  await furniture.getByRole('button', { name: 'Delete', exact: true }).first().tap();
-  await removed.catch(() => {});
-  await page.waitForTimeout(1500);
 }
 
 smoke(process.argv[2], process.argv[3]).then(

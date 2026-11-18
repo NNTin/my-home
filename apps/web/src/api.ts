@@ -2,22 +2,22 @@ import {
   ApiError,
   CatalogUsageResponse,
   HomeModel,
-  Layout,
-  LayoutConflict,
   ListHomesResponse,
+  ListOpeningOverridesResponse,
+  ListPlacementsResponse,
   EmptyTrashResponse,
   HomeSettings,
-  ListLayoutsResponse,
   ListPhotoRequestsResponse,
   ListPhotosResponse,
   Photo,
   PhotoRequest,
+  Placement,
   TrashResponse,
-  type CreateLayoutBody,
   type CreatePhotoMeta,
+  type CreatePlacementBody,
   type PutHomeSettingsBody,
-  type UpdateLayoutBody,
   type UpdatePhotoBody,
+  type UpdatePlacementBody,
 } from '@my-home/shared';
 
 interface Schema<T> {
@@ -36,14 +36,6 @@ export class ApiRequestError extends Error {
   }
 }
 
-/** `PUT /api/layouts/:id` with a stale version. */
-export class LayoutConflictError extends Error {
-  constructor(readonly currentVersion: number) {
-    super(`The layout was changed elsewhere (now at version ${currentVersion})`);
-    this.name = 'LayoutConflictError';
-  }
-}
-
 async function request<T>(
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   url: string,
@@ -59,8 +51,6 @@ async function request<T>(
   const res = await (method === 'GET' ? fetch(url, { signal }) : fetch(url, init));
   if (!res.ok) {
     const json: unknown = await res.json().catch(() => undefined);
-    const conflict = res.status === 409 && LayoutConflict.safeParse(json);
-    if (conflict && conflict.success) throw new LayoutConflictError(conflict.data.currentVersion);
     const error = ApiError.safeParse(json);
     throw new ApiRequestError(
       `${method} ${url} failed: ${error.success ? error.data.message : res.status}`,
@@ -73,7 +63,6 @@ async function request<T>(
 }
 
 const homeUrl = (id: string) => `/api/homes/${encodeURIComponent(id)}`;
-const layoutUrl = (id: string) => `/api/layouts/${encodeURIComponent(id)}`;
 
 /** Typed API client; every response is validated with the shared schemas. */
 export const fetchHomes = (signal?: AbortSignal): Promise<ListHomesResponse> =>
@@ -100,23 +89,38 @@ export const homeSettingsApi = {
 };
 export type HomeSettingsApi = typeof homeSettingsApi;
 
-export const layoutsApi = {
+const placementUrl = (homeId: string, id: string) =>
+  `${homeUrl(homeId)}/placements/${encodeURIComponent(id)}`;
+
+/**
+ * The home's furniture: one placement set per home (docs/furniture.md). Writes answer 409 (an
+ * `ApiRequestError`, body `UseConflict`) when `version` is stale; removing moves to the trash.
+ */
+export const placementsApi = {
+  /** Every placement, the trashed ones included (so an undone delete can be restored). */
   list: (homeId: string, signal?: AbortSignal) =>
-    request('GET', `${homeUrl(homeId)}/layouts`, ListLayoutsResponse, { signal }),
-  get: (id: string, signal?: AbortSignal) => request('GET', layoutUrl(id), Layout, { signal }),
-  create: (homeId: string, body: CreateLayoutBody) =>
-    request('POST', `${homeUrl(homeId)}/layouts`, Layout, { body }),
-  /** Throws `LayoutConflictError` when `body.version` is stale. */
-  update: (id: string, body: UpdateLayoutBody) => request('PUT', layoutUrl(id), Layout, { body }),
-  remove: (id: string) => request('DELETE', layoutUrl(id), undefined),
-  duplicate: (id: string, name?: string) =>
-    request('POST', `${layoutUrl(id)}/duplicate`, Layout, { body: name ? { name } : {} }),
-  /** Creates a layout from a layout file (the parsed JSON of an export). */
-  import: (homeId: string, file: unknown) =>
-    request('POST', `${homeUrl(homeId)}/layouts/import`, Layout, { body: file }),
-  exportUrl: (id: string) => `${layoutUrl(id)}/export`,
+    request('GET', `${homeUrl(homeId)}/placements?include=removed`, ListPlacementsResponse, {
+      signal,
+    }),
+  create: (homeId: string, body: CreatePlacementBody) =>
+    request('POST', `${homeUrl(homeId)}/placements`, Placement, { body }),
+  update: (homeId: string, id: string, body: UpdatePlacementBody) =>
+    request('PATCH', placementUrl(homeId, id), Placement, { body }),
+  remove: (homeId: string, id: string, version: number) =>
+    request('DELETE', `${placementUrl(homeId, id)}?version=${version}`, Placement),
+  restore: (homeId: string, id: string) =>
+    request('POST', `${placementUrl(homeId, id)}/restore`, Placement),
 };
-export type LayoutsApi = typeof layoutsApi;
+export type PlacementsApi = typeof placementsApi;
+
+/** Basic-parameter overrides of the home model's openings, roof windows and gates. */
+export const openingOverridesApi = {
+  list: (homeId: string, signal?: AbortSignal) =>
+    request('GET', `${homeUrl(homeId)}/opening-overrides`, ListOpeningOverridesResponse, {
+      signal,
+    }),
+};
+export type OpeningOverridesApi = typeof openingOverridesApi;
 
 const photoUrl = (id: string) => `/api/photos/${encodeURIComponent(id)}`;
 

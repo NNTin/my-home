@@ -486,6 +486,8 @@ function checkSemantics(model: z.infer<typeof HomeModelShape>, ctx: z.Refinement
     if (previous) issue(path, `Duplicate id "${id}" (already used by ${previous})`);
     else seen.set(id, where || 'the home');
   };
+  // The home's own id too: the api uses it as the use id of the home's settings history.
+  claim(model.id, ['id']);
   claim(model.building.id, ['building', 'id']);
   model.terrain.patches.forEach((p, i) => claim(p.id, ['terrain', 'patches', i, 'id']));
   const collections = [

@@ -40,7 +40,9 @@ flowchart LR
    2. staging only (`RESET_PUBLIC=true`, guarded by `ALLOW_DATABASE_RESET=true`): it drops the `public` and
       `drizzle` schemas (homes, layouts and their migration journal);
    3. it migrates `public`, `media` and `userdata`;
-   4. it syncs the homes from git (see [Homes come from git](#homes-come-from-git)) and logs one line per home.
+   4. it syncs the homes from git (see [Homes come from git](#homes-come-from-git)) and logs one line per home;
+   5. it imports the named layouts of a home without placements into its placement set, once per home
+      ([furniture.md](furniture.md#the-one-time-import)): `release: home "home": imported layout "Default layout" (7 items)`.
 
    It never touches the `media` and `userdata` schemas: **photos, photo requests, furniture placements, opening
    overrides, notes, home settings and their history survive every deploy**, whichever branch is deployed
@@ -123,16 +125,16 @@ Since photos ([photos.md](photos.md)) the **staging database is no longer throwa
 owner's photos, which exist nowhere else until they are copied to production. The databases are provisioned in
 NNTin/lair.nntin.xyz; this repository only states what it needs from both of them:
 
-| Requirement    | Production and staging                                                                                                                                    |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Storage        | PostgreSQL data on a persistent volume that survives pod restarts and redeploys                                                                           |
-| Schema to keep | `media` (tables `photos`, `photo_blobs`, `photo_thumbnails`, `photo_requests`, `photo_subjects`, `schema_migrations`)                                     |
-| Schema to keep | `userdata` (tables `placements`, `opening_overrides`, `history`, `issued_ids`, `notes`, `home_settings`, `schema_migrations`); must be kept and backed up |
-| Expected size  | about 1 MB per photo; plan for 2,000 photos: **2 GiB of data, at least 5 GiB volume** per database                                                        |
-| Backup         | daily `pg_dump` in custom format that includes the `media` and `userdata` schemas, 14 days kept                                                           |
-| Restore        | restoring one schema must be possible: `pg_restore --schema=media`, `pg_restore --schema=userdata`                                                        |
-| Database role  | may create the `media` and `userdata` schemas (`CREATE` on the database), as it recreates `public` on staging                                             |
-| Request size   | the ingress in front of the web container accepts request bodies of at least 32 MB (photo uploads)                                                        |
+| Requirement    | Production and staging                                                                                                                                               |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Storage        | PostgreSQL data on a persistent volume that survives pod restarts and redeploys                                                                                      |
+| Schema to keep | `media` (tables `photos`, `photo_blobs`, `photo_thumbnails`, `photo_requests`, `photo_subjects`, `schema_migrations`)                                                |
+| Schema to keep | `userdata` (tables `placements`, `opening_overrides`, `history`, `issued_ids`, `notes`, `home_settings`, `imports`, `schema_migrations`); must be kept and backed up |
+| Expected size  | about 1 MB per photo; plan for 2,000 photos: **2 GiB of data, at least 5 GiB volume** per database                                                                   |
+| Backup         | daily `pg_dump` in custom format that includes the `media` and `userdata` schemas, 14 days kept                                                                      |
+| Restore        | restoring one schema must be possible: `pg_restore --schema=media`, `pg_restore --schema=userdata`                                                                   |
+| Database role  | may create the `media` and `userdata` schemas (`CREATE` on the database), as it recreates `public` on staging                                                        |
+| Request size   | the ingress in front of the web container accepts request bodies of at least 32 MB (photo uploads)                                                                   |
 
 `userdata` is small (one row per placement, per overridden opening and per change; a few MB at most). Production's
 full dump already includes it; adding it to the staging dump is an infrastructure follow-up of #39 in

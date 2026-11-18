@@ -77,7 +77,10 @@ export const homeRoutes =
           });
         }
         if (!(await store.replace(request.body))) return reply.code(404).send(notFound(id));
-        return reply.header('warning', REPLACED_ON_DEPLOY).send(request.body);
+        // What a GET now answers: the settings stay on top of the replaced model.
+        return reply
+          .header('warning', REPLACED_ON_DEPLOY)
+          .send(withSettings(request.body, await settings.find(id)));
       },
     );
 
@@ -90,7 +93,7 @@ export const homeRoutes =
         return reply
           .code(status === 'created' ? 201 : 200)
           .header('warning', REPLACED_ON_DEPLOY)
-          .send(request.body);
+          .send(withSettings(request.body, await settings.find(request.body.id)));
       },
     );
 
