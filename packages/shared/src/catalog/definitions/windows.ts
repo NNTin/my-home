@@ -27,7 +27,7 @@ const wallWindowParams = {
   glassDepth: fixedLength('Glass thickness', 0.024),
   glassColor: color('Glass colour', '#a8d4ff', 'design'),
   glassOpacity: number('Glass opacity', 0.35),
-  handleColor: color('Handle colour', '#f4f4f2', 'design'),
+  handleColor: color('Handle colour', '#e4e4e0', 'design'),
   boardThickness: fixedLength('Window board thickness', 0.03),
   boardOverhang: fixedLength('Window board overhang', 0.03),
   sillColor: color('Outside sill colour', '#9c9fa3', 'design'),
