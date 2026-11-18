@@ -1,6 +1,6 @@
 import type { Photo, PhotoRequest } from '@my-home/shared';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildHome } from '../builder/buildHome';
 import { createContext } from '../editor/operations';
@@ -8,7 +8,7 @@ import { furniture } from '../catalog/furniture';
 import { mockHome, testRequest } from '../test/fixtures';
 import type { Figure } from './figure';
 import { saveHomeDeclination } from './declination';
-import { useWalk } from './useWalk';
+import { useWalk, type Walk } from './useWalk';
 import { WalkHud, type WalkView } from './WalkHud';
 import { minimapLevels } from './minimap';
 import { WALK_SESSION_KEY } from './walkSession';
@@ -57,6 +57,8 @@ const fakeApi = (): { [K in keyof Api]: ReturnType<typeof vi.fn<Api[K]>> } => ({
   update: vi.fn<Api['update']>((id, body) => Promise.resolve(photo({ id, pose: body.pose! }))),
 });
 
+/** The walk of the rendered harness, for its live figure. */
+const harness: { walk?: Walk } = {};
 const onExit = vi.fn();
 const onDeclination = vi.fn<(degrees: number, source: string) => Promise<void>>(() =>
   Promise.resolve(),
@@ -83,6 +85,9 @@ function Harness({
   declinationSaver?: (degrees: number, source: 'geodata' | 'measured') => Promise<void>;
 }) {
   const walk = useWalk(world, start, true);
+  useEffect(() => {
+    harness.walk = walk;
+  });
   const [view, setView] = useState<WalkView>('first');
   return (
     <WalkHud
@@ -119,6 +124,21 @@ const at = () => ({
   yaw: Number(hud().dataset.yaw),
 });
 const pitch = () => Number(hud().dataset.pitch);
+/**
+ * The figure right now. The HUD shows it as of up to a publish interval ago, so a step taken just
+ * before a check can still show up there afterwards: whether the figure stands still is read here.
+ */
+const live = () => harness.walk!.figureRef.current;
+/** Lets the walk's frame loop run `count` more frames. */
+const frames = (count = 2) =>
+  act(
+    () =>
+      new Promise<void>((resolve) => {
+        const step = (left: number) =>
+          left === 0 ? resolve() : requestAnimationFrame(() => step(left - 1));
+        step(count);
+      }),
+  );
 const rad = (degrees: number) => (degrees * Math.PI) / 180;
 /** A mocked orientation event; `bearing` makes it an absolute (compass) one. */
 const tiltPhone = (beta: number, bearing?: number) =>
@@ -180,10 +200,11 @@ describe('WalkHud', () => {
     expect(at().x).toBeCloseTo(0.5);
 
     firePointer(pad, 'pointerup', 0, -44);
-    await act(() => new Promise((resolve) => setTimeout(resolve, 150)));
-    const stopped = at();
-    await act(() => new Promise((resolve) => setTimeout(resolve, 150)));
-    expect(at()).toEqual(stopped);
+    const stopped = live();
+    await frames();
+    expect(live()).toBe(stopped);
+    // And the HUD catches up with where it stopped.
+    await waitFor(() => expect(at().z).toBe(Number(stopped.z.toFixed(2))));
   });
 
   it('turns with the pad pushed sideways and ignores a second finger', async () => {
@@ -216,15 +237,13 @@ describe('WalkHud', () => {
     fireEvent.keyDown(window, { key: 'ArrowUp' });
     await waitFor(() => expect(at().z).toBeLessThan(-0.1));
     fireEvent.keyUp(window, { key: 'ArrowUp' });
-    // A frame already scheduled may still step once after the key is released: let it land.
-    await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
 
     takePhoto();
     const note = screen.getByLabelText('Note');
-    const before = at();
+    const before = live();
     fireEvent.keyDown(note, { key: 'w' });
-    await act(() => new Promise((resolve) => setTimeout(resolve, 200)));
-    expect(at()).toEqual(before);
+    await frames();
+    expect(live()).toBe(before);
   });
 
   it('switches between first person and the overview, and exits', () => {
@@ -1037,11 +1056,14 @@ describe('WalkHud', () => {
       await waitFor(() => expect(take).toBeEnabled());
       // Nothing about a camera app on its way: the page never leaves.
       expect(kept().pending).toBeUndefined();
+      expect(track.stop).not.toHaveBeenCalled();
       fireEvent.click(take);
 
       const sheet = within(await screen.findByRole('region', { name: 'New photo' }));
       expect(screen.queryByRole('region', { name: 'Camera' })).not.toBeInTheDocument();
-      expect(track.stop).toHaveBeenCalled();
+      // The photo arrives after a promise, outside act(): React takes the viewfinder off the page
+      // at once but runs its effect cleanups, which stop the stream, in a task of their own.
+      await waitFor(() => expect(track.stop).toHaveBeenCalled());
       expect(onCamera).toHaveBeenLastCalledWith(false);
       fireEvent.click(sheet.getByRole('button', { name: 'Save photo' }));
       await sheet.findByText('Photo saved');
