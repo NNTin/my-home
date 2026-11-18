@@ -119,7 +119,7 @@ describe('the media schema outlives resets and other branches', () => {
     const source = readFileSync(join(__dirname, '../src/db/reset.ts'), 'utf8');
     const dropped = [...source.matchAll(/drop schema if exists (\w+)/g)].map((m) => m[1]);
     expect(dropped.sort()).toEqual(['drizzle', 'public']);
-    expect(source).not.toMatch(/media|truncate|delete from/i);
+    expect(source).not.toMatch(/media|userdata|truncate|delete from/i);
   });
 
   describe('migrations from branches deployed in any order', () => {

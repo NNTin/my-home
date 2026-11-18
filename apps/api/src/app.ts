@@ -8,10 +8,14 @@ import type { Logger, LoggerOptions } from 'pino';
 import type { Config } from './config';
 import type { Database } from './db/client';
 import { errorHandler } from './errors';
+import { catalogRoutes } from './routes/catalog';
 import { healthRoutes } from './routes/health';
 import { homeRoutes } from './routes/homes';
 import { layoutRoutes } from './routes/layouts';
+import { openingOverrideRoutes } from './routes/opening-overrides';
 import { photoRoutes } from './routes/photos';
+import { placementRoutes } from './routes/placements';
+import { useRoutes } from './routes/uses';
 
 export function loggerOptions(config: Config): LoggerOptions {
   const pretty = config.env === 'development' && process.stdout.isTTY;
@@ -37,6 +41,10 @@ export async function buildApp(config: Config, database: Database, logger: Logge
       await api.register(homeRoutes(database.db));
       await api.register(layoutRoutes(database.db));
       await api.register(photoRoutes(database.db, config));
+      await api.register(catalogRoutes(database.db, config));
+      await api.register(useRoutes(database.db, config));
+      await api.register(placementRoutes(database.db, config));
+      await api.register(openingOverrideRoutes(database.db, config));
     },
     { prefix: '/api' },
   );

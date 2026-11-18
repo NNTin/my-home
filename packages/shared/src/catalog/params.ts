@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 /**
  * Parameters of a catalogue type. A `basic` parameter may be changed per use, within its limits;
  * a `design` parameter is fixed by the type (changing it is a design change in git).
@@ -30,6 +32,8 @@ export type ParamSpec =
   | { type: 'number'; tier: 'design'; label: string; default: number; unit?: string };
 
 export type ParamValues = Record<string, string | number>;
+/** Stored or sent parameter values: numbers and strings (colours) by key. */
+export const ParamValues = z.record(z.string(), z.union([z.string(), z.number()]));
 
 /** Every length is edited in steps of 1 mm (one decimal in centimetres). */
 export const LENGTH_STEP = 0.001;

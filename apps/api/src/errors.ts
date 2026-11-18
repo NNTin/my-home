@@ -19,8 +19,38 @@ const pointerToPath = (pointer: string) =>
       .map((p) => (/^\d+$/.test(p) ? Number(p) : p)),
   );
 
+/**
+ * A 4xx with its whole response body (e.g. a `UseConflict` with `currentVersion` and `conflicts`),
+ * thrown by stores and sent as is by the error handler.
+ */
+export class HttpProblem extends Error {
+  constructor(
+    readonly statusCode: number,
+    readonly body: ApiError & Record<string, unknown>,
+  ) {
+    super(body.message);
+  }
+}
+
+const reasons: Record<number, string> = {
+  400: 'Bad Request',
+  404: 'Not Found',
+  409: 'Conflict',
+  422: 'Unprocessable Entity',
+};
+
+/** A problem with the standard `ApiError` fields plus `extra`. */
+export const problem = (statusCode: number, message: string, extra: object = {}) =>
+  new HttpProblem(statusCode, {
+    statusCode,
+    error: reasons[statusCode] ?? 'Error',
+    message,
+    ...extra,
+  });
+
 /** Validation errors become a 400 listing path-based issues; other errors keep their status. */
 export function errorHandler(err: FastifyError, request: FastifyRequest, reply: FastifyReply) {
+  if (err instanceof HttpProblem) return reply.code(err.statusCode).send(err.body);
   if (hasZodFastifySchemaValidationErrors(err)) {
     const issues = err.validation.map((v) => ({
       path: pointerToPath(v.instancePath),

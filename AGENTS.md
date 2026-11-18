@@ -33,8 +33,9 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - web tests run in jsdom: mock the R3F canvas, never require WebGL.
 - Keep changes scoped; conventional commit messages.
 - Never mention the house's address or location (coordinates, map links, tile IDs, place names) in the repo or on GitHub.
-- Photos (`docs/photos.md`) live in the `media` schema, which no deploy resets: its migrations
-  (`apps/api/media-migrations/`) are expand-only (add tables, columns, indexes; never drop, rename or tighten).
+- Photos (`docs/photos.md`) live in the `media` schema, and placements, opening overrides and their history
+  (`docs/userdata.md`) in `userdata`; no deploy resets either. Their migrations (`apps/api/media-migrations/`,
+  `apps/api/userdata-migrations/`) are expand-only (add tables, columns, indexes; never drop, rename or tighten).
 - Agents never delete or purge photos or photo requests, and never commit photos. Unsure about a wall, room, opening
   or furniture? Look at the photos, then ask for one (`photo-requests.sh`) instead of guessing.
 

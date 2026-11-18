@@ -23,6 +23,7 @@ grep -q 'helm.sh/hook: pre-install,pre-upgrade' <<<"$rendered" || fail 'release 
 grep -q 'command: \[node, dist/migrate.js\]' <<<"$rendered" || fail 'production hook must only migrate'
 ! grep -q 'ALLOW_DATABASE_RESET' <<<"$rendered" || fail 'reset allowed by default'
 grep -A1 'name: MIGRATE_ON_START' <<<"$rendered" | grep -q '"false"' || fail 'api migrates on start'
+grep -A1 'name: AGENT_USERNAMES' <<<"$rendered" | grep -q '"nntin-bot"' || fail 'agent usernames not rendered'
 grep -A1 'livenessProbe:' <<<"$rendered" | grep -q '/api/health/live' || fail 'api liveness must use /api/health/live'
 grep -A1 'readinessProbe:' <<<"$rendered" | grep -q 'path: /api/health,' || fail 'api readiness must use /api/health'
 

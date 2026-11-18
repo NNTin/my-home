@@ -31,6 +31,8 @@ capabilities:
   value: "false"
 - name: SEED_ON_START
   value: "false"
+- name: AGENT_USERNAMES
+  value: {{ .Values.api.agentUsernames | quote }}
 - name: DATABASE_URL
   valueFrom:
     secretKeyRef:

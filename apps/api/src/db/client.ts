@@ -10,6 +10,7 @@ import pg from 'pg';
 import type { Config } from '../config';
 import { migrationsFolder } from '../paths';
 import { migrateMedia } from './media-migrate';
+import { migrateUserdata } from './userdata-migrate';
 import * as schema from './schema';
 
 export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
@@ -23,7 +24,10 @@ export interface DbLogger {
 export interface Database {
   db: Db;
   driver: DbDriver;
-  /** Applies the `public` migrations (drizzle), then the `media` schema's own (photos). */
+  /**
+   * Applies the `public` migrations (drizzle), then the `media` schema's own (photos), then the
+   * `userdata` schema's (placements, overrides, history).
+   */
   migrate(): Promise<void>;
   ping(): Promise<void>;
   close(): Promise<void>;
@@ -46,6 +50,7 @@ export function createDatabase(
       migrate: async () => {
         await migratePg(db, { migrationsFolder });
         await migrateMedia(db as unknown as Db);
+        await migrateUserdata(db as unknown as Db);
       },
       ping: async () => void (await db.execute(sql`select 1`)),
       close: () => pool.end(),
@@ -62,6 +67,7 @@ export function createDatabase(
     migrate: async () => {
       await migratePglite(db, { migrationsFolder });
       await migrateMedia(db as unknown as Db);
+      await migrateUserdata(db as unknown as Db);
     },
     ping: async () => void (await db.execute(sql`select 1`)),
     close: () => client.close(),

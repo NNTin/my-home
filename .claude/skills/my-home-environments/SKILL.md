@@ -8,10 +8,10 @@ description: >-
 
 # my-home environments
 
-| Environment | Base URL                         | Deployed from                                         | Data                                       |
-| ----------- | -------------------------------- | ----------------------------------------------------- | ------------------------------------------ |
-| staging     | `https://home-staging.nntin.xyz` | same-repo PR pushes, `v*` tags, dispatch; latest wins | reset to the real + mock home; photos stay |
-| production  | `https://home.nntin.xyz`         | every push to `main`                                  | real data; change only when asked to       |
+| Environment | Base URL                         | Deployed from                                         | Data                                                    |
+| ----------- | -------------------------------- | ----------------------------------------------------- | ------------------------------------------------------- |
+| staging     | `https://home-staging.nntin.xyz` | same-repo PR pushes, `v*` tags, dispatch; latest wins | reset to the real + mock home; photos and userdata stay |
+| production  | `https://home.nntin.xyz`         | every push to `main`                                  | real data; change only when asked to                    |
 
 Both are behind authentik SSO. Agents exchange the **nntin-bot** GitHub token (`GH_TOKEN`, `GITHUB_TOKEN` or
 `gh auth token`) at `POST <base>/agent-auth/token` for a per-host site token valid for 1 hour, sent as
@@ -44,6 +44,8 @@ $S/with-site-token.sh staging -- node e2e.mjs            # SITE_TOKEN and SITE_B
 $S/raise-env-issue.sh --dry-run staging "health fails"   # what it would post; drop --dry-run to post
 $S/photos.sh staging list --room souterrain-kitchen      # the owner's photos with their poses
 $S/photo-requests.sh staging create --room souterrain-kitchen --reason "Which wall has the window?"
+$S/uses.sh staging whoami                                # the actor recorded for the agent token: agent
+$S/uses.sh staging list --home mock-home --status needs-attention   # where-used, with problems
 ```
 
 - `site-curl.sh <env> <path> [curl args...]`: checks once that the GitHub token is nntin-bot's, caches the site
@@ -137,6 +139,35 @@ furniture. `--home` defaults to the first home.
 owner's action in the app. The only exception is test data you uploaded yourself in the same task. Photos
 survive staging redeploys, so anything you upload stays until it is deleted.
 
+## Uses, placements and colours
+
+A **use** is one piece in a home: an opening, roof window or gate from git (`data/homes/`), or a furniture
+**placement** stored in the database (`docs/userdata.md`). Uses keep the basic parameters they change (colours,
+some sizes, within the type's limits), and every change is recorded in the use's history with its actor and can
+be undone. Agents may edit them on **both** environments; **production only when asked**. Placements and
+overrides are **not** reset by staging deploys.
+
+- `uses.sh <env> whoami`: the actor the api records for this token (`agent`, source `identity` on deployed hosts).
+- `uses.sh <env> types`: the catalogue types with their parameters (tier `basic` = changeable per use, limits).
+- `uses.sh <env> list [--type TYPEID] [--status ok|needs-attention] [--include removed]`: where-used. Git uses
+  with their overrides, placements, and orphans (an override whose opening left git, a placement whose type,
+  level or room is gone) with `problems`.
+- `uses.sh <env> place --type furniture.bed --level ID --at X,Z [--rotation-deg D] [--param k=v]... [--name TEXT]`:
+  the server picks the id (`<apartment>-<type>-<n>`, never reused), the name ("Bedroom · Bed") and the room.
+- `uses.sh <env> set <useId> --param k=v [--param k=v]... [--clear k]...`: a placement's params or an opening's
+  override (colours `#rrggbb`, lengths in metres). `move <id> --at X,Z [--rotation-deg D]`, `rename <id> TEXT`.
+- `uses.sh <env> remove|restore <placementId>`: to the trash (purged with its history after 30 days) and back.
+- `uses.sh <env> history <useId>`, `uses.sh <env> undo <useId> <entryId>`: undo is field by field; it refuses
+  (409) when a field changed again later or the entry was already undone. An undo can itself be undone.
+
+Every write reads the current version first; a 409 means someone changed the use in between: list again.
+
+### Test data
+
+Only on **`mock-home`**, and cleaned up in the same task: undo your changes to git uses (or `set --clear` them),
+and `remove` the placements you made (they leave the trash after 30 days). The browser smoke tests stay
+read-only; the CI docker job runs the same place → set → history → undo → remove round trip on a throwaway stack.
+
 ## Playwright
 
 Attach the token only to requests for the environment's own host. Never use `extraHTTPHeaders`: it sends the
@@ -182,7 +213,8 @@ of creating a duplicate.
 - Never print, log, commit or paste the GitHub token or the site token, including in issues, PR comments and
   test output. Never send either to any host other than api.github.com and the environment itself.
 - Prefer staging for tests and experiments. Homes and layouts are reset on every deploy, so keep nothing there
-  you need later; photos and photo requests are **not** reset, so clean up test photos you uploaded.
+  you need later; photos, photo requests, placements, overrides and history are **not** reset, so clean up test
+  photos you uploaded and test uses you made (on `mock-home` only).
   Change production only when the task asks for it.
 - Never use the browser login flow on auth.nntin.xyz. The token exchange is the only supported way for agents.
 - Reuse the cached site token; exchanging per request hits the rate limit (30 per minute).

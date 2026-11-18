@@ -52,6 +52,7 @@
       "properties": {
         "replicas": { "$ref": "#/$defs/replicas" },
         "logLevel": { "enum": ["fatal", "error", "warn", "info", "debug", "trace", "silent"] },
+        "agentUsernames": { "type": "string", "minLength": 1 },
         "resources": { "$ref": "#/$defs/resources" }
       }
     },

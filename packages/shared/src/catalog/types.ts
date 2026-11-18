@@ -2,8 +2,11 @@ import type { OpeningType } from '../home-model';
 import type { CatalogKind, TypeId } from './ids';
 import type { ParamSpec } from './params';
 
-/** Where a piece sits: in a wall (or an outbuilding edge), a roof plane, a fence line or on a floor. */
-export type Placement = 'wall' | 'roof' | 'fence' | 'floor';
+/**
+ * Where a piece sits: in a wall (or an outbuilding edge), a roof plane, a fence line or on a floor.
+ * (Called `Placement` until #39, which gave that name to the stored furniture placement record.)
+ */
+export type PlacementKind = 'wall' | 'roof' | 'fence' | 'floor';
 
 /**
  * A catalogue type: one kind of piece (a casement window, a bed) with its metadata and parameters.
@@ -19,7 +22,7 @@ export interface CatalogType {
   icon: string;
   /** Furniture: "Bed room", "Dining", … (the groups of the furniture catalogue panel). */
   category?: string;
-  placement: Placement;
+  placement: PlacementKind;
   /** Wall openings: the home model `Opening.type` values this type may carry. */
   openingTypes?: readonly OpeningType[];
   /** The hole used by the piece page's preview when there is no real use (openings). */

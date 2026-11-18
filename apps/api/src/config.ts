@@ -33,6 +33,13 @@ const EnvSchema = z.object({
     emptyToUndefined,
     z.coerce.number().positive().default(30),
   ),
+  /** Days a removed placement stays in the trash before it is purged with its history. */
+  USERDATA_TRASH_RETENTION_DAYS: z.preprocess(
+    emptyToUndefined,
+    z.coerce.number().positive().default(30),
+  ),
+  /** SSO usernames (comma-separated) whose changes are recorded as `agent`, not `owner`. */
+  AGENT_USERNAMES: z.preprocess(emptyToUndefined, z.string().default('nntin-bot')),
 });
 
 export type Config = {
@@ -49,6 +56,8 @@ export type Config = {
   allowDatabaseReset: boolean;
   photoMaxUploadBytes: number;
   photoTrashRetentionDays: number;
+  userdataTrashRetentionDays: number;
+  agentUsernames: string[];
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -71,5 +80,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     allowDatabaseReset: e.ALLOW_DATABASE_RESET,
     photoMaxUploadBytes: e.PHOTO_MAX_UPLOAD_BYTES,
     photoTrashRetentionDays: e.PHOTO_TRASH_RETENTION_DAYS,
+    userdataTrashRetentionDays: e.USERDATA_TRASH_RETENTION_DAYS,
+    agentUsernames: e.AGENT_USERNAMES.split(',')
+      .map((name) => name.trim())
+      .filter((name) => name !== ''),
   };
 }
