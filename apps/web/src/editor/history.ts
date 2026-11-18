@@ -1,4 +1,4 @@
-import type { LayoutItem } from '@my-home/shared';
+import type { EditorItem } from './item';
 
 /**
  * Undo/redo as a stack of reversible commands. A command lists per-item changes (`before`
@@ -8,8 +8,8 @@ import type { LayoutItem } from '@my-home/shared';
 
 export interface Change {
   id: string;
-  before?: LayoutItem;
-  after?: LayoutItem;
+  before?: EditorItem;
+  after?: EditorItem;
   /** Position in the list before the change, so undoing a delete restores the order. */
   index?: number;
 }
@@ -29,10 +29,10 @@ export const HISTORY_LIMIT = 200;
 
 /** Applies a command's changes forwards (`after`) or backwards (`before`). */
 export function applyChanges(
-  items: LayoutItem[],
+  items: EditorItem[],
   changes: Change[],
   direction: 'forward' | 'backward',
-): LayoutItem[] {
+): EditorItem[] {
   let next = items;
   const ordered = direction === 'forward' ? changes : [...changes].reverse();
   for (const change of ordered) {
@@ -51,7 +51,7 @@ export function applyChanges(
 }
 
 /** Builds a command from item lists, recording only items that actually changed. */
-export function diff(label: string, before: LayoutItem[], after: LayoutItem[]): Command {
+export function diff(label: string, before: EditorItem[], after: EditorItem[]): Command {
   const changes: Change[] = [];
   const afterById = new Map(after.map((i) => [i.id, i]));
   const beforeIds = new Set(before.map((i) => i.id));
@@ -71,7 +71,7 @@ export function record(history: History, command: Command, limit = HISTORY_LIMIT
   return { past: [...history.past, command].slice(-limit), future: [] };
 }
 
-export function undo(history: History, items: LayoutItem[]) {
+export function undo(history: History, items: EditorItem[]) {
   const command = history.past.at(-1);
   if (!command) return undefined;
   return {
@@ -81,7 +81,7 @@ export function undo(history: History, items: LayoutItem[]) {
   };
 }
 
-export function redo(history: History, items: LayoutItem[]) {
+export function redo(history: History, items: EditorItem[]) {
   const command = history.future.at(-1);
   if (!command) return undefined;
   return {
@@ -89,4 +89,32 @@ export function redo(history: History, items: LayoutItem[]) {
     items: applyChanges(items, command.changes, 'forward'),
     history: { past: [...history.past, command], future: history.future.slice(0, -1) },
   };
+}
+
+/**
+ * Renames item `from` to `to` in every command (the server gave a new item its stable id) and
+ * applies `patch` (server-assigned fields such as the name) to each of its snapshots, so a later
+ * undo or redo writes to the stable id and does not revert the name. Pure.
+ */
+export function remapId(
+  history: History,
+  from: string,
+  to: string,
+  patch: Partial<EditorItem> = {},
+): History {
+  const item = (i: EditorItem | undefined) => i && { ...i, ...patch, id: to };
+  const command = (c: Command): Command =>
+    c.changes.some((ch) => ch.id === from)
+      ? {
+          ...c,
+          changes: c.changes.map((ch) => {
+            if (ch.id !== from) return ch;
+            const next: Change = { ...ch, id: to };
+            if (ch.before) next.before = item(ch.before)!;
+            if (ch.after) next.after = item(ch.after)!;
+            return next;
+          }),
+        }
+      : c;
+  return { past: history.past.map(command), future: history.future.map(command) };
 }

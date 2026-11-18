@@ -1,6 +1,7 @@
 import { OrbitControls } from '@react-three/drei';
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas, useThree, type RootState } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, type RefObject } from 'react';
+import type { PerspectiveCamera } from 'three';
 import type { HomeScene, Vec3 } from '../builder/buildHome';
 import type { RoomLabel } from '../builder/visibility';
 import type { CompassMarker } from '../compass/compass';
@@ -8,7 +9,8 @@ import { CompassMarkers, CompassRose, CompassTracker } from '../compass/Compass'
 import type { FurnitureToolbarProps } from '../overlay/FurnitureToolbar';
 import { onCanvas } from './canvasEvent';
 import { FurnitureLayer, type FurnitureHandlers, type FurnitureView } from './FurnitureLayer';
-import { HomeMeshes } from './HomeMeshes';
+import type { FrameRequest } from '../placements/focus';
+import { HomeMeshes, type PieceHandlers } from './HomeMeshes';
 import {
   PhotoMarkers,
   RequestGhosts,
@@ -49,6 +51,10 @@ export interface SceneProps {
   resetViewRef?: RefObject<(() => void) | undefined>;
   /** Draw no frames for now: something covers the view (the camera while walking). */
   paused?: boolean;
+  /** Windows, doors, roof windows and gates can be picked (not while walking). */
+  pieces?: PieceHandlers | undefined;
+  /** Turns the orbit camera to frame a use (`?focus=`); a new `key` frames again. */
+  frame?: (FrameRequest & { key: number }) | undefined;
 }
 
 /** Stops the frame loop while `paused`, and puts back whichever loop ran before. */
@@ -145,6 +151,51 @@ function ViewReset({
   return null;
 }
 
+/** How far the framed use's sphere is from the edge of the view: 1 = touching it. */
+const FRAME_MARGIN = 1.4;
+const MIN_FRAME_DISTANCE = 2.5;
+
+/** The camera distance at which a sphere of `radius` fills the narrower side of the view. */
+export function frameDistance(radius: number, fovDegrees: number, aspect: number): number {
+  const half = (fovDegrees * Math.PI) / 360;
+  const narrow = aspect > 0 && aspect < 1 ? Math.atan(Math.tan(half) * aspect) : half;
+  return Math.max(MIN_FRAME_DISTANCE, (radius / Math.sin(narrow)) * FRAME_MARGIN);
+}
+
+/** Points the orbit camera at `frame` from its direction, at a distance that fits it. */
+function applyFrame(state: RootState, frame: FrameRequest) {
+  const { camera, size, controls, invalidate } = state;
+  const fov = (camera as PerspectiveCamera).fov ?? 45;
+  const d = frameDistance(frame.radius, fov, size.width / size.height);
+  const [x, y, z] = frame.center;
+  const [fx, fy, fz] = frame.from;
+  resetOrbit(
+    controls as unknown as OrbitReset | null,
+    camera,
+    [x + fx * d, y + fy * d, z + fz * d],
+    frame.center,
+  );
+  invalidate();
+}
+
+/**
+ * Inside the canvas: frames a use, a frame after the commit that applied the controls' new
+ * target (the cutaway), so it has the last word.
+ */
+function FrameView({ frame }: { frame: (FrameRequest & { key: number }) | undefined }) {
+  const get = useThree((s) => s.get);
+  const key = frame?.key;
+  useEffect(() => {
+    if (!frame) return;
+    // A frame later: on the first render the camera and controls are still being set up.
+    const id = requestAnimationFrame(() => applyFrame(get(), frame));
+    return () => cancelAnimationFrame(id);
+    // Only a new request frames: the same one must not pull the camera back on a re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [get, key]);
+  return null;
+}
+
 /** Full-size canvas; R3F resizes the renderer and camera with its container. */
 export function Scene({
   scene,
@@ -163,6 +214,8 @@ export function Scene({
   toolbar,
   resetViewRef,
   paused = false,
+  pieces,
+  frame,
 }: SceneProps) {
   const roseRef = useRef<HTMLButtonElement>(null);
   const labelsRef = useRef<HTMLDivElement>(null);
@@ -198,7 +251,7 @@ export function Scene({
         >
           <orthographicCamera attach="shadow-camera" args={[-30, 30, 30, -30, 1, 100]} />
         </directionalLight>
-        <HomeMeshes scene={scene} />
+        <HomeMeshes scene={scene} pieces={pieces} />
         <FurnitureLayer items={furniture} handlers={handlers} touch={touch} toolbar={toolbar} />
         <CompassMarkers markers={markers} />
         <RoomLabelTracker labels={labels} layerRef={labelsRef} />
@@ -215,6 +268,7 @@ export function Scene({
         {resetViewRef && (
           <ViewReset bounds={scene.bounds} target={target} resetRef={resetViewRef} />
         )}
+        <FrameView frame={frame} />
         <RequestGhosts ghosts={requestGhosts} />
         <CompassTracker northBearing={northBearing} roseRef={roseRef} northUpRef={northUpRef} />
       </Canvas>

@@ -1,4 +1,5 @@
-import type { HomeModel, LayoutItem } from '@my-home/shared';
+import type { HomeModel } from '@my-home/shared';
+import type { EditorItem } from './item';
 import type { Vec2 } from '../builder/buildHome';
 import { UNKNOWN_SIZE, type FurnitureRegistry, type ResolvedFurniture } from '../catalog/furniture';
 import { findCollisions, type Collision } from './collision';
@@ -8,8 +9,8 @@ import { constrainMove, isInside, allowedArea, placementPosition, roomAt } from 
 import { snapAngle, snapToGrid, snapToWalls, DEFAULT_GRID_STEP } from './snapping';
 
 /**
- * Editing operations on layout items: pure functions of the home, the furniture types and
- * settings. An item is sized from its type's effective values (`LayoutItem.props` as overrides).
+ * Editing operations on furniture items: pure functions of the home, the furniture types and
+ * settings. An item is sized from its type's effective values (`EditorItem.params` as overrides).
  */
 
 export interface EditorSettings {
@@ -45,23 +46,23 @@ export function createContext(
 
 export { UNKNOWN_SIZE };
 
-export const typeOf = (ctx: EditorContext, item: LayoutItem): ResolvedFurniture | undefined =>
-  ctx.furniture.resolve(item.typeId, item.props);
+export const typeOf = (ctx: EditorContext, item: EditorItem): ResolvedFurniture | undefined =>
+  ctx.furniture.resolve(item.typeId, item.params);
 
-export const localFootprint = (ctx: EditorContext, item: LayoutItem): Vec2[] =>
+export const localFootprint = (ctx: EditorContext, item: EditorItem): Vec2[] =>
   typeOf(ctx, item)?.footprint ?? rectangle(UNKNOWN_SIZE.width, UNKNOWN_SIZE.depth);
 
-export const positionOf = (item: LayoutItem): Vec2 => [item.position.x, item.position.z];
+export const positionOf = (item: EditorItem): Vec2 => [item.position.x, item.position.z];
 
-export const worldFootprint = (ctx: EditorContext, item: LayoutItem, at = positionOf(item)) =>
+export const worldFootprint = (ctx: EditorContext, item: EditorItem, at = positionOf(item)) =>
   transform(localFootprint(ctx, item), at, item.rotationY);
 
 const withPosition = (
   ctx: EditorContext,
-  item: LayoutItem,
+  item: EditorItem,
   [x, z]: Vec2,
   rotationY = item.rotationY,
-): LayoutItem => {
+): EditorItem => {
   const plan = ctx.plans.get(item.levelId);
   const room = plan && roomAt(plan, [x, z]);
   const rest = { ...item };
@@ -81,7 +82,7 @@ export interface ItemIssues {
   missingRoom: boolean;
 }
 
-export function issuesOf(ctx: EditorContext, item: LayoutItem): ItemIssues {
+export function issuesOf(ctx: EditorContext, item: EditorItem): ItemIssues {
   const plan = ctx.plans.get(item.levelId);
   return {
     unknownType: !typeOf(ctx, item),
@@ -94,9 +95,9 @@ export function issuesOf(ctx: EditorContext, item: LayoutItem): ItemIssues {
 export const hasIssues = (i: ItemIssues) => i.unknownType || i.missingLevel || i.missingRoom;
 
 /** Footprint collisions of all items, level by level. */
-export function collisions(ctx: EditorContext, items: LayoutItem[]): Map<string, Collision> {
+export function collisions(ctx: EditorContext, items: EditorItem[]): Map<string, Collision> {
   const result = new Map<string, Collision>();
-  const byLevel = new Map<string, LayoutItem[]>();
+  const byLevel = new Map<string, EditorItem[]>();
   for (const item of items) byLevel.set(item.levelId, [...(byLevel.get(item.levelId) ?? []), item]);
   for (const [levelId, levelItems] of byLevel) {
     const plan = ctx.plans.get(levelId);
@@ -110,15 +111,15 @@ export function collisions(ctx: EditorContext, items: LayoutItem[]): Map<string,
   return result;
 }
 
-const others = (items: LayoutItem[], id: string) => items.filter((i) => i.id !== id);
+const others = (items: EditorItem[], id: string) => items.filter((i) => i.id !== id);
 
 /** Whether `item` at `p` is inside its area and collides with nothing. */
 function fitsAt(
   ctx: EditorContext,
   plan: FloorPlan,
-  item: LayoutItem,
+  item: EditorItem,
   p: Vec2,
-  items: LayoutItem[],
+  items: EditorItem[],
 ) {
   const polygon = worldFootprint(ctx, item, p);
   if (!isInside(allowedArea(plan, p), polygon)) return false;
@@ -134,17 +135,18 @@ function fitsAt(
 /** A new item of `typeId` in `roomId` on `levelId`, at the first free spot near the room centre. */
 export function createItem(
   ctx: EditorContext,
-  items: LayoutItem[],
+  items: EditorItem[],
   { id, typeId, levelId, roomId }: { id: string; typeId: string; levelId: string; roomId?: string },
-): LayoutItem {
+): EditorItem {
   const plan = ctx.plans.get(levelId);
-  const draft: LayoutItem = {
+  const draft: EditorItem = {
     id,
     typeId,
     levelId,
     position: { x: 0, z: 0 },
     rotationY: 0,
-    props: {},
+    params: {},
+    name: '',
   };
   if (!plan) return draft;
   const p = placementPosition(plan, roomId, (p) => fitsAt(ctx, plan, draft, p, items));
@@ -155,7 +157,7 @@ export function createItem(
  * Moves an item towards `target` (the pointer on the floor): grid snapping, then wall snapping
  * (which may also turn it to face away from the wall), then the stay-inside constraint.
  */
-export function moveItem(ctx: EditorContext, item: LayoutItem, target: Vec2): LayoutItem {
+export function moveItem(ctx: EditorContext, item: EditorItem, target: Vec2): EditorItem {
   const plan = ctx.plans.get(item.levelId);
   if (!plan) return item;
   const { settings } = ctx;
@@ -181,23 +183,26 @@ export function moveItem(ctx: EditorContext, item: LayoutItem, target: Vec2): La
 }
 
 /** Rotates by `steps` rotation steps (90° when rotation is free). */
-export function rotateItem(ctx: EditorContext, item: LayoutItem, steps: number): LayoutItem {
+export function rotateItem(ctx: EditorContext, item: EditorItem, steps: number): EditorItem {
   const step = ctx.settings.rotationStep > 0 ? ctx.settings.rotationStep : Math.PI / 2;
   return setRotation(ctx, item, snapAngle(item.rotationY, step) + steps * step);
 }
 
-export function setRotation(ctx: EditorContext, item: LayoutItem, rotationY: number): LayoutItem {
+export function setRotation(ctx: EditorContext, item: EditorItem, rotationY: number): EditorItem {
   return withPosition(ctx, item, positionOf(item), rotationY);
 }
 
-/** A copy next to the original (or at the nearest free spot), under a new id. */
+/**
+ * A copy next to the original (or at the nearest free spot), under a new id and without a name
+ * (the server names it, numbered: "Bedroom · Bed 2").
+ */
 export function duplicateItem(
   ctx: EditorContext,
-  items: LayoutItem[],
-  item: LayoutItem,
+  items: EditorItem[],
+  item: EditorItem,
   id: string,
-): LayoutItem {
-  const copy: LayoutItem = structuredClone({ ...item, id });
+): EditorItem {
+  const copy: EditorItem = structuredClone({ ...item, id, name: '' });
   const plan = ctx.plans.get(item.levelId);
   if (!plan) return copy;
   const [x, z] = positionOf(item);
@@ -217,14 +222,14 @@ export function duplicateItem(
 /** Moves an item whose level or room is gone to a room on `levelId` (rescue after a building change). */
 export function relocateItem(
   ctx: EditorContext,
-  items: LayoutItem[],
-  item: LayoutItem,
+  items: EditorItem[],
+  item: EditorItem,
   levelId: string,
   roomId?: string,
-): LayoutItem {
+): EditorItem {
   const plan = ctx.plans.get(levelId);
   if (!plan) return item;
-  const moved: LayoutItem = { ...item, levelId };
+  const moved: EditorItem = { ...item, levelId };
   const p = placementPosition(plan, roomId ?? plan.rooms[0]?.id, (p) =>
     fitsAt(ctx, plan, moved, p, items),
   );

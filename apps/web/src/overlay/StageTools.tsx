@@ -1,11 +1,11 @@
-import type { SaveStatus } from '../layouts/saver';
+import type { SyncStatus as SaveStatus } from '../placements/sync';
 
 /** What is going on, in a few words, for when no panel is open to say it. */
 export interface StageStatus {
-  /** The layouts are still loading. */
+  /** The furniture is still loading. */
   loading: boolean;
   save: SaveStatus;
-  /** Whether the layout was edited since it was opened: only then is "Saved" worth saying. */
+  /** Whether the furniture was edited since it was loaded: only then is "Saved" worth saying. */
   edited: boolean;
   /** An error of the photo gallery, if any. */
   photosError: string | undefined;

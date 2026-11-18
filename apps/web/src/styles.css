@@ -1783,6 +1783,46 @@ body {
   touch-action: manipulation;
 }
 
+.item-toolbar a.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  height: 2.75rem;
+  padding: 0 0.25rem;
+  box-sizing: border-box;
+  border-radius: 0.5rem;
+  color: inherit;
+  font-size: 1.25rem;
+  text-decoration: none;
+  touch-action: manipulation;
+}
+
+/* The selected window, door or gate on a phone: at the top of the 3D view. */
+.piece-toolbar {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  z-index: 7;
+  max-width: calc(100% - 1.5rem);
+  transform: translateX(-50%);
+}
+
+.piece-toolbar .item-toolbar-name {
+  max-width: 12rem;
+}
+
+.piece-toolbar .piece-type {
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.piece-toolbar a.button {
+  padding: 0 0.75rem;
+  background: rgb(40 90 140 / 0.85);
+  font-size: 0.875rem;
+}
+
 .item-toolbar button:active {
   background: rgb(255 255 255 / 0.15);
 }

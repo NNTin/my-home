@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { layoutItem } from '../test/fixtures';
-import { applyChanges, diff, emptyHistory, record, redo, undo } from './history';
+import { editorItem } from '../test/fixtures';
+import { applyChanges, diff, emptyHistory, record, redo, remapId, undo } from './history';
 
-const a = layoutItem({ id: 'a' });
-const b = layoutItem({ id: 'b', typeId: 'sofa' });
-const c = layoutItem({ id: 'c', typeId: 'desk' });
+const a = editorItem({ id: 'a' });
+const b = editorItem({ id: 'b', typeId: 'furniture.sofa' });
+const c = editorItem({ id: 'c', typeId: 'furniture.desk' });
 
 describe('history', () => {
   it('diffs item lists into changes', () => {
@@ -62,5 +62,31 @@ describe('history', () => {
     let capped = emptyHistory;
     for (let i = 0; i < 5; i++) capped = record(capped, diff(`${i}`, [], [a]), 3);
     expect(capped.past.map((c) => c.label)).toEqual(['2', '3', '4']);
+  });
+
+  it('remaps a temporary id in both stacks, with the server name, and leaves others alone', () => {
+    const temp = editorItem({ id: 'new-1', name: '' });
+    const moved = { ...temp, position: { x: 0, z: 0 } };
+    let history = record(emptyHistory, diff('Place', [a], [a, temp]));
+    history = record(history, diff('Move', [a, temp], [a, moved]));
+    const undone = undo(history, [a, moved])!;
+    const remapped = remapId(undone.history, 'new-1', 'souterrain-bed-1', {
+      name: 'Bedroom · Bed',
+    });
+
+    expect(remapped.past[0]!.changes).toEqual([
+      { id: 'souterrain-bed-1', after: { ...temp, id: 'souterrain-bed-1', name: 'Bedroom · Bed' } },
+    ]);
+    expect(remapped.future[0]!.changes[0]).toMatchObject({
+      id: 'souterrain-bed-1',
+      before: { id: 'souterrain-bed-1', name: 'Bedroom · Bed', position: temp.position },
+      after: { id: 'souterrain-bed-1', name: 'Bedroom · Bed', position: { x: 0, z: 0 } },
+    });
+    // Pure: the input is unchanged; an unknown id changes nothing.
+    expect(undone.history.past[0]!.changes[0]!.id).toBe('new-1');
+    expect(remapId(history, 'zzz', 'y')).toEqual(history);
+    // Undo after the remap removes the stable id.
+    const items = [a, { ...temp, id: 'souterrain-bed-1', name: 'Bedroom · Bed' }];
+    expect(undo(remapped, items)!.items).toEqual([a]);
   });
 });

@@ -1,14 +1,17 @@
-import { useMemo } from 'react';
+import { useThree, type ThreeEvent } from '@react-three/fiber';
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import {
   Color,
   DoubleSide,
   Euler,
   ExtrudeGeometry,
   Path,
+  Raycaster,
   Shape,
   ShapeGeometry,
   Vector2,
   type BufferGeometry,
+  type Object3D,
 } from 'three';
 import {
   slopeY,
@@ -24,6 +27,8 @@ import {
   type Vec3,
 } from '../builder/buildHome';
 import { PartsMesh } from '../catalog/PartsMesh';
+import type { PartState } from '../catalog/types';
+import { onCanvas } from './canvasEvent';
 
 // Thin rendering layer: every shape and position comes from the builder's descriptors. Windows,
 // doors and gates are drawn from the parts of their piece modules (src/catalog).
@@ -194,111 +199,174 @@ function SurfaceMesh({ surface, color }: { surface: Surface; color: string }) {
   );
 }
 
-/** A window or door: its parts in the frame of its hole. */
-function OpeningMesh({ opening }: { opening: PieceUse & { center: Vec3; rotationY: number } }) {
+/** Picking windows, doors, roof windows and gates (not while walking). */
+export interface PieceHandlers {
+  /** A piece was tapped or clicked; undefined: something in front of it was. */
+  onSelectPiece(id: string | undefined): void;
+  /** Glows like selected furniture (after `?focus=` or a click, for a moment). */
+  highlightId?: string | undefined;
+}
+
+const Pieces = createContext<PieceHandlers | undefined>(undefined);
+const HIGHLIGHT: PartState = { selected: true, colliding: false };
+/** A press that moved further than this many pixels turned the view: not a click. */
+const CLICK_SLOP = 6;
+
+/** Whether `group` is what the ray meets first in the scene (a wall may stand in front of it). */
+function frontmost(scene: Object3D, e: ThreeEvent<MouseEvent>, group: Object3D) {
+  const hit = new Raycaster(e.ray.origin, e.ray.direction)
+    .intersectObject(scene, true)
+    .find((h) => h.object.visible && 'isMesh' in h.object);
+  for (let o: Object3D | null = hit?.object ?? null; o; o = o.parent) if (o === group) return true;
+  return false;
+}
+
+/** A piece's group: the parts, with the click handler and highlight while picking is on. */
+function Piece({
+  id,
+  parts,
+  children,
+  ...group
+}: {
+  id: string;
+  parts: PieceUse['parts'];
+  children?: ReactNode;
+  position?: Vec3;
+  rotation?: [number, number, number] | Euler;
+}) {
+  const handlers = useContext(Pieces);
+  const get = useThree((s) => s.get);
+  const onClick = handlers
+    ? (e: ThreeEvent<MouseEvent>) => {
+        if (!onCanvas(e.nativeEvent) || e.delta > CLICK_SLOP) return;
+        if (!frontmost(get().scene, e, e.eventObject)) return handlers.onSelectPiece(undefined);
+        e.stopPropagation();
+        handlers.onSelectPiece(id);
+      }
+    : undefined;
   return (
-    <group position={opening.center} rotation={[0, opening.rotationY, 0]}>
-      <PartsMesh parts={opening.parts} />
+    <group {...group} {...(onClick && { onClick })}>
+      <PartsMesh parts={parts} {...(handlers?.highlightId === id && { state: HIGHLIGHT })} />
+      {children}
     </group>
+  );
+}
+
+/** A window or door: its parts in the frame of its hole. */
+function OpeningMesh({
+  opening,
+}: {
+  opening: PieceUse & { id: string; center: Vec3; rotationY: number };
+}) {
+  return (
+    <Piece
+      id={opening.id}
+      parts={opening.parts}
+      position={opening.center}
+      rotation={[0, opening.rotationY, 0]}
+    />
   );
 }
 
 /** A roof window: its parts turned by `tilt`, then by `rotationY` (YXZ) onto the roof plane. */
 function RoofWindowMesh({ window: w }: { window: RoofWindowDescriptor }) {
   const rotation = useMemo(() => new Euler(w.tilt, w.rotationY, 0, 'YXZ'), [w]);
-  return (
-    <group position={w.center} rotation={rotation}>
-      <PartsMesh parts={w.parts} />
-    </group>
-  );
+  return <Piece id={w.id} parts={w.parts} position={w.center} rotation={rotation} />;
 }
 
-export function HomeMeshes({ scene }: { scene: HomeScene }) {
+export function HomeMeshes({
+  scene,
+  pieces,
+}: {
+  scene: HomeScene;
+  /** Set to make windows, doors, roof windows and gates selectable. */
+  pieces?: PieceHandlers | undefined;
+}) {
   return (
-    <group>
-      {scene.terrain.map((t) => (
-        <PrismMesh key={t.id} prism={t} color={colors.terrain} />
-      ))}
-      {scene.outdoorAreas.map((a) => (
-        <group key={a.id}>
-          <SurfaceMesh surface={a} color={colors[a.kind]} />
-          {a.contours.map((c, i) => (
-            <SurfaceMesh key={i} surface={c} color={contourColor(colors[a.kind])} />
-          ))}
-        </group>
-      ))}
-      {scene.slabs.map((s) => (
-        <PrismMesh
-          key={s.id}
-          prism={s}
-          color={s.kind === 'roof' ? colors.roof : colors.floorSlab}
-        />
-      ))}
-      {scene.roomFloors.map((r, i) => (
-        <SurfaceMesh key={r.id} surface={r} color={roomColors[i % roomColors.length]!} />
-      ))}
-      {scene.walls.map((w) =>
-        w.outline ? (
-          <ProfileMesh
-            key={w.id}
-            center={w.center}
-            rotationY={w.rotationY}
-            depth={w.size[2]}
-            outline={w.outline}
-            color={colors[w.kind]}
+    <Pieces.Provider value={pieces}>
+      <group>
+        {scene.terrain.map((t) => (
+          <PrismMesh key={t.id} prism={t} color={colors.terrain} />
+        ))}
+        {scene.outdoorAreas.map((a) => (
+          <group key={a.id}>
+            <SurfaceMesh surface={a} color={colors[a.kind]} />
+            {a.contours.map((c, i) => (
+              <SurfaceMesh key={i} surface={c} color={contourColor(colors[a.kind])} />
+            ))}
+          </group>
+        ))}
+        {scene.slabs.map((s) => (
+          <PrismMesh
+            key={s.id}
+            prism={s}
+            color={s.kind === 'roof' ? colors.roof : colors.floorSlab}
           />
-        ) : (
-          <BoxMesh key={w.id} box={w} color={colors[w.kind]} />
-        ),
-      )}
-      {scene.roofPlanes.map((r) => (
-        <ProfileMesh key={r.id} {...r} color={colors.roof} />
-      ))}
-      {scene.roofWindows.map((w) => (
-        <RoofWindowMesh key={w.id} window={w} />
-      ))}
-      {scene.openings.map((o) => (
-        <OpeningMesh key={o.id} opening={o} />
-      ))}
-      {scene.stairs.flatMap((s) =>
-        s.steps.map((step) => <BoxMesh key={step.id} box={step} color={colors.stair} />),
-      )}
-      {scene.fences.map((f) =>
-        f.parts ? (
-          <group key={f.id}>
-            <PartsMesh parts={f.parts} />
-          </group>
-        ) : (
-          <group key={f.id}>
-            {f.posts.map((post) => (
-              <BoxMesh
-                key={post.id}
-                box={post}
-                color={f.kind === 'trellis' ? colors.brickPillar : colors.fencePost}
-              />
+        ))}
+        {scene.roomFloors.map((r, i) => (
+          <SurfaceMesh key={r.id} surface={r} color={roomColors[i % roomColors.length]!} />
+        ))}
+        {scene.walls.map((w) =>
+          w.outline ? (
+            <ProfileMesh
+              key={w.id}
+              center={w.center}
+              rotationY={w.rotationY}
+              depth={w.size[2]}
+              outline={w.outline}
+              color={colors[w.kind]}
+            />
+          ) : (
+            <BoxMesh key={w.id} box={w} color={colors[w.kind]} />
+          ),
+        )}
+        {scene.roofPlanes.map((r) => (
+          <ProfileMesh key={r.id} {...r} color={colors.roof} />
+        ))}
+        {scene.roofWindows.map((w) => (
+          <RoofWindowMesh key={w.id} window={w} />
+        ))}
+        {scene.openings.map((o) => (
+          <OpeningMesh key={o.id} opening={o} />
+        ))}
+        {scene.stairs.flatMap((s) =>
+          s.steps.map((step) => <BoxMesh key={step.id} box={step} color={colors.stair} />),
+        )}
+        {scene.fences.map((f) =>
+          f.parts ? (
+            <Piece key={f.id} id={f.id} parts={f.parts} />
+          ) : (
+            <group key={f.id}>
+              {f.posts.map((post) => (
+                <BoxMesh
+                  key={post.id}
+                  box={post}
+                  color={f.kind === 'trellis' ? colors.brickPillar : colors.fencePost}
+                />
+              ))}
+              {f.panels.map((panel) => (
+                <BoxMesh
+                  key={panel.id}
+                  box={panel}
+                  color={fenceColors[f.kind as keyof typeof fenceColors]}
+                  transparent={f.kind === 'chain-link'}
+                />
+              ))}
+            </group>
+          ),
+        )}
+        {scene.outbuildings.map((b) => (
+          <group key={b.id}>
+            {b.walls.map((w) => (
+              <BoxMesh key={w.id} box={w} color={outbuildingColors[b.kind] ?? colors.outbuilding} />
             ))}
-            {f.panels.map((panel) => (
-              <BoxMesh
-                key={panel.id}
-                box={panel}
-                color={fenceColors[f.kind as keyof typeof fenceColors]}
-                transparent={f.kind === 'chain-link'}
-              />
+            <PrismMesh prism={b.roof} color={colors.floorSlab} />
+            {b.openings.map((o) => (
+              <OpeningMesh key={o.id} opening={o} />
             ))}
           </group>
-        ),
-      )}
-      {scene.outbuildings.map((b) => (
-        <group key={b.id}>
-          {b.walls.map((w) => (
-            <BoxMesh key={w.id} box={w} color={outbuildingColors[b.kind] ?? colors.outbuilding} />
-          ))}
-          <PrismMesh prism={b.roof} color={colors.floorSlab} />
-          {b.openings.map((o) => (
-            <OpeningMesh key={o.id} opening={o} />
-          ))}
-        </group>
-      ))}
-    </group>
+        ))}
+      </group>
+    </Pieces.Provider>
   );
 }
