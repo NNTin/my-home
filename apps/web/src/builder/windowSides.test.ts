@@ -1,6 +1,6 @@
 import { HomeModel } from '@my-home/shared';
 import { describe, expect, it } from 'vitest';
-import mockHomeJson from '../../../../data/homes/mock-home.json';
+import mockHomeJson from '../../../../packages/shared/test-fixtures/mock-home.json';
 import realHomeJson from '../../../../data/homes/home.json';
 import { pointInPolygon } from '../editor/geometry';
 import { buildHome, type Vec2 } from './buildHome';
