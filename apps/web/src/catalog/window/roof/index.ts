@@ -21,7 +21,7 @@ export default definePiece({
     ),
   ],
   dimensions: (_values, { width: w, height: l }) => [
-    dimension([-w / 2, 0, l / 2], [w / 2, 0, l / 2], w),
-    dimension([w / 2, 0, -l / 2], [w / 2, 0, l / 2], l),
+    dimension([-w / 2, 0, l / 2], [w / 2, 0, l / 2], w, 'Width'),
+    dimension([w / 2, 0, -l / 2], [w / 2, 0, l / 2], l, 'Length'),
   ],
 });

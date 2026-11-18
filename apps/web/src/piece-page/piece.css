@@ -1,0 +1,371 @@
+/* The piece page (a chunk of its own, like its code). Base page styles: styles.css. */
+
+.piece-page h2 {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 1.0625rem;
+}
+
+.piece-kind {
+  flex-basis: 100%;
+  margin: -0.25rem 0 0;
+  color: #aab0b8;
+  font-size: 0.875rem;
+}
+
+.piece-description {
+  margin: 1rem 0;
+  color: #c5c9d0;
+}
+
+.piece-note {
+  margin: 0 0 0.75rem;
+  color: #aab0b8;
+  font-size: 0.875rem;
+}
+
+/* Desktop and a phone held across: the preview on the left (about 60 %), the panel on the right. */
+.piece-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.piece-page.portrait .piece-layout {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+}
+
+.piece-page.desktop .piece-stage {
+  position: sticky;
+  top: 5.5rem;
+}
+
+.piece-viewport {
+  position: relative;
+  height: min(65vh, 40rem);
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 0.5rem;
+  background: #cfdde8;
+}
+
+/* Upright: the preview takes 40 % of the height, the panel scrolls below it. */
+.piece-page.portrait .piece-viewport {
+  height: 40vh;
+  height: 40svh;
+}
+
+/* Across (844×390): as high as the screen allows under the header. */
+.piece-page.landscape .piece-viewport {
+  height: calc(100vh - 6.5rem);
+  height: calc(100svh - 6.5rem);
+  min-height: 11rem;
+}
+
+.inspector-canvas {
+  position: absolute !important;
+  inset: 0;
+}
+
+.dimension-labels {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.dimension-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 0.0625rem 0.3125rem;
+  border-radius: 0.25rem;
+  background: rgb(255 255 255 / 0.9);
+  color: #1f4e8c;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+
+.piece-page button,
+.piece-page .button {
+  min-width: 44px;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid rgb(255 255 255 / 0.3);
+  border-radius: 0.375rem;
+  background: rgb(255 255 255 / 0.1);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.piece-page button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.piece-page button:focus-visible,
+.piece-page input:focus-visible {
+  outline: 2px solid #8ab4f8;
+  outline-offset: 2px;
+}
+
+.piece-views {
+  display: inline-flex;
+  margin-bottom: 0.5rem;
+}
+
+.piece-views button {
+  border-radius: 0;
+}
+
+.piece-views button:first-child {
+  border-radius: 0.375rem 0 0 0.375rem;
+}
+
+.piece-views button:last-child {
+  border-left: none;
+  border-radius: 0 0.375rem 0.375rem 0;
+}
+
+.piece-views button[aria-pressed='true'] {
+  background: #3d8bff;
+  border-color: #3d8bff;
+  color: #fff;
+}
+
+.piece-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.piece-toggle {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  min-height: 44px;
+}
+
+.piece-toggle input {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.piece-dimensions,
+.design-params,
+.section-labels {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.25rem 1rem;
+  margin: 0;
+}
+
+.piece-dimensions div,
+.design-params div,
+.section-labels div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+}
+
+.piece-dimensions dt,
+.design-params dt,
+.section-labels dt {
+  color: #aab0b8;
+}
+
+.piece-dimensions dd,
+.design-params dd,
+.section-labels dd {
+  display: inline-flex;
+  gap: 0.375rem;
+  align-items: center;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The section: SVG on the light preview background. */
+.section-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  margin: 0;
+  overflow: auto;
+}
+
+svg.section {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+}
+
+svg.section rect {
+  stroke: #2c2f36;
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+.section-floor {
+  stroke: #5d5a54;
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+}
+
+.section-mark line {
+  stroke: #1f4e8c;
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+}
+
+.section-mark text {
+  fill: #1f4e8c;
+  font-weight: 600;
+}
+
+.section-view figcaption {
+  padding: 0.5rem 0.75rem;
+  background: #1d2129;
+  font-size: 0.875rem;
+}
+
+.section-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0 0 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.section-legend li {
+  display: inline-flex;
+  gap: 0.375rem;
+  align-items: center;
+}
+
+.section-swatch {
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid rgb(255 255 255 / 0.4);
+}
+
+.section-note {
+  margin: 0.5rem 0 0;
+  color: #aab0b8;
+  font-size: 0.8125rem;
+}
+
+/* The playground. */
+.piece-section {
+  margin-bottom: 1rem;
+}
+
+.piece-panel .piece-section:first-child h2 {
+  margin-top: 0;
+}
+
+.playground-row {
+  margin: 0 0 0.75rem;
+}
+
+.playground-row > label,
+.playground-label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+.playground-control {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.playground-color {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / 0.3);
+  border-radius: 0.375rem;
+  background: none;
+  cursor: pointer;
+}
+
+.playground-field {
+  width: 6.5rem;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0.375rem 0.5rem;
+  border: 1px solid rgb(255 255 255 / 0.3);
+  border-radius: 0.375rem;
+  background: rgb(255 255 255 / 0.08);
+  color: inherit;
+  /* 16 px: iOS does not zoom the page when the field is focused. */
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.playground-field[aria-invalid='true'] {
+  border-color: #ff8a80;
+}
+
+.playground-slider {
+  flex: 1 1 10rem;
+  min-width: 8rem;
+  min-height: 44px;
+  margin: 0;
+}
+
+.playground-stepper output {
+  min-width: 2.5rem;
+  text-align: center;
+  font-size: 1.125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.playground-hint {
+  margin: 0.25rem 0 0;
+  color: #aab0b8;
+  font-size: 0.8125rem;
+}
+
+.playground-error {
+  margin: 0.25rem 0 0;
+  color: #ff8a80;
+  font-size: 0.875rem;
+}
+
+.fit-issues {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.75rem 0.5rem 1.75rem;
+  border-radius: 0.375rem;
+  background: rgb(255 193 7 / 0.12);
+  color: #ffe082;
+  font-size: 0.875rem;
+}
+
+.swatch {
+  display: inline-block;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: none;
+  border: 1px solid rgb(255 255 255 / 0.4);
+  border-radius: 0.25rem;
+}
+
+.design-params .swatch {
+  width: 1rem;
+  height: 1rem;
+}

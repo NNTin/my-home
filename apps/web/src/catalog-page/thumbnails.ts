@@ -1,4 +1,4 @@
-import type { CatalogType } from '@my-home/shared';
+import { catalog, type CatalogType } from '@my-home/shared';
 import { useEffect, useState } from 'react';
 import type { Part } from '../catalog/types';
 import { previewParts } from './preview';
@@ -33,7 +33,12 @@ export interface ThumbnailStore {
   get(key: string): Promise<Blob | undefined>;
   /** Stores `blob` under `key` and forgets the type's other (older) thumbnails. */
   put(key: string, blob: Blob): Promise<void>;
+  /** Forgets the thumbnails of every type not in `typeIds` (types gone from the catalogue). */
+  prune?(typeIds: ReadonlySet<string>): Promise<void>;
 }
+
+/** The type id in a `thumb:<typeId>:<hash>` key. */
+const typeOfKey = (key: string) => key.split(':')[1];
 
 /** The Cache Storage API; entries are requests to `/__thumbnails/<key>`, never fetched. */
 export function cacheStorageStore(name = THUMBNAIL_CACHE): ThumbnailStore {
@@ -51,6 +56,15 @@ export function cacheStorageStore(name = THUMBNAIL_CACHE): ThumbnailStore {
       for (const request of await cache.keys()) {
         if (request.url.startsWith(typePrefix) && request.url !== url(key))
           await cache.delete(request);
+      }
+    },
+    async prune(typeIds) {
+      const cache = await caches.open(name);
+      const prefix = url('');
+      for (const request of await cache.keys()) {
+        if (!request.url.startsWith(prefix)) continue;
+        const typeId = typeOfKey(decodeURIComponent(request.url.slice(prefix.length)));
+        if (!typeId || !typeIds.has(typeId)) await cache.delete(request);
       }
     },
   };
@@ -112,11 +126,13 @@ export function createThumbnailer({
 }
 
 let shared: Thumbnailer | undefined;
-const thumbnailer = () =>
-  (shared ??= createThumbnailer({
-    store: typeof caches === 'undefined' ? memoryStore() : cacheStorageStore(),
-    render: renderThumbnail,
-  }));
+const thumbnailer = () => {
+  if (shared) return shared;
+  const store = typeof caches === 'undefined' ? memoryStore() : cacheStorageStore();
+  // Once per page load: the thumbnails of types that left the catalogue are never shown again.
+  void store.prune?.(new Set(catalog.types.map((t) => t.id))).catch(() => undefined);
+  return (shared = createThumbnailer({ store, render: renderThumbnail }));
+};
 
 /**
  * The thumbnail of `type` once its card has come into view (`element`); undefined until it is

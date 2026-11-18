@@ -176,11 +176,21 @@ describe('frame parts', () => {
     ]);
   });
 
-  it('measures the hole', () => {
+  it('measures the hole, the frame and the sashes', () => {
     const type = catalog.get('window.casement')!;
     const lines = pieces
       .get('window.casement')!
-      .dimensions(defaultParams(type), { width: 1.2, height: 1.4, wallDepth: 0.36 });
-    expect(lines.map((l) => l.label)).toEqual(['120.0 cm', '140.0 cm']);
+      .dimensions(
+        { ...defaultParams(type), sashes: 2 },
+        { width: 1.2, height: 1.4, wallDepth: 0.36, sill: 0.9 },
+      );
+    expect(lines.map((l) => `${l.name}: ${l.label}`)).toEqual([
+      'Width: 120.0 cm',
+      'Height: 140.0 cm',
+      'Sill height: 90.0 cm',
+      'Frame width: 6.0 cm',
+      'Sash 1 width: 51.0 cm',
+      'Sash 2 width: 51.0 cm',
+    ]);
   });
 });

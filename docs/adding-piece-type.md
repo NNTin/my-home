@@ -86,7 +86,15 @@ export default definePiece({
   shadows). [`PartsMesh`](../apps/web/src/catalog/PartsMesh.tsx) draws every piece the same way,
   in the order of its parts (keep glass after the frame), and adds the selection and collision
   highlight to furniture.
-- `dimensions(values, ctx)` lists the measurements the piece page shows (metres, labels in cm).
+- `dimensions(values, ctx)` lists the measurements the piece page shows: lines in the local frame
+  with a `value` in metres, a `label` in cm with one decimal and a `name` ("Width", "Sill height"),
+  built with `dimension(from, to, value, name)`. At most 8 lines (the piece page labels at most 8 in
+  3D). Windows and doors use `framedDimensions` (hole, sill when `ctx.sill` is known, frame width,
+  each sash or leaf), furniture `furnitureDimensions` or `roundDimensions`.
+- Optional `section(values, ctx)` (openings): the piece's own section as `SectionShape`s (rectangles
+  in depth × height, tagged by role), when the generic cut of its parts through the centre
+  (`sectionOf` in [`piece-page/section.ts`](../apps/web/src/piece-page/section.ts)) is not right,
+  e.g. once a design draws real sill or sash profiles. The wall around the hole is added by the page.
 
 ## 3. Check it
 

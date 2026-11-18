@@ -1,6 +1,15 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { href, keptQuery, Link, navigate, parseRoute, useRoute, type Route } from '.';
+import {
+  href,
+  keptQuery,
+  Link,
+  navigate,
+  parseRoute,
+  useRestoredScroll,
+  useRoute,
+  type Route,
+} from '.';
 
 afterEach(() => window.history.replaceState(null, '', '/'));
 
@@ -111,6 +120,53 @@ describe('navigation', () => {
       window.dispatchEvent(new PopStateEvent('popstate'));
     });
     expect(where()).toEqual({ page: 'not-found' });
+  });
+});
+
+describe('scroll positions in history entries', () => {
+  function Page() {
+    useRestoredScroll();
+    return null;
+  }
+  afterEach(() => {
+    vi.restoreAllMocks();
+    Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
+  });
+
+  it('keeps the scroll of the page left, and puts it back when that page is back', () => {
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    window.history.replaceState({ other: 1 }, '', '/catalog');
+    Object.defineProperty(window, 'scrollY', { value: 640, configurable: true });
+    navigate('/catalog/furniture/furniture.bed');
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0 });
+    expect(window.history.state).toBeNull();
+    // A replace keeps the entry's state.
+    window.history.replaceState({ scrollY: 12 }, '');
+    navigate('/catalog/furniture/furniture.bed?p=x', { replace: true });
+    expect(window.history.state).toEqual({ scrollY: 12 });
+
+    window.history.back();
+    return new Promise<void>((resolve) => {
+      window.addEventListener(
+        'popstate',
+        () => {
+          expect(window.location.pathname).toBe('/catalog');
+          expect(window.history.state).toEqual({ other: 1, scrollY: 640 });
+          scrollTo.mockClear();
+          render(<Page />);
+          expect(scrollTo).toHaveBeenCalledWith({ top: 640 });
+          resolve();
+        },
+        { once: true },
+      );
+    });
+  });
+
+  it('leaves a page without a saved position where it is', () => {
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    window.history.replaceState(null, '', '/catalog');
+    render(<Page />);
+    expect(scrollTo).not.toHaveBeenCalled();
   });
 });
 

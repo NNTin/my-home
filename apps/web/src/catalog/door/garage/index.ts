@@ -1,5 +1,5 @@
 import { colorParam, numberParam } from '../../parts';
-import { frameOf, frameParts, holeDimensions } from '../../openings/frame';
+import { frameOf, frameParts, framedDimensions } from '../../openings/frame';
 import { definePiece } from '../../types';
 
 /** A frame without a sill and a closed panel down to the floor. */
@@ -15,5 +15,5 @@ export default definePiece({
         color: colorParam(values, 'panelColor'),
       },
     }),
-  dimensions: (_values, ctx) => holeDimensions(ctx),
+  dimensions: (values, ctx) => framedDimensions(values, ctx),
 });

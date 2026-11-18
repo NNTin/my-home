@@ -88,8 +88,44 @@ export function fittingCount(
   return Math.max(1, Math.min(requested, fits));
 }
 
-/** Width along the bottom of the hole, height up its right side. */
-export const holeDimensions = ({ width: w, height: h }: PieceContext): DimensionLine[] => [
-  dimension([-w / 2, -h / 2, 0], [w / 2, -h / 2, 0], w),
-  dimension([w / 2, -h / 2, 0], [w / 2, h / 2, 0], h),
-];
+/**
+ * Width along the bottom of the hole, height up its right side, and (where the context knows it)
+ * the sill height from the floor up to the hole's left corner.
+ */
+export function holeDimensions({ width: w, height: h, sill }: PieceContext): DimensionLine[] {
+  const lines = [
+    dimension([-w / 2, -h / 2, 0], [w / 2, -h / 2, 0], w, 'Width'),
+    dimension([w / 2, -h / 2, 0], [w / 2, h / 2, 0], h, 'Height'),
+  ];
+  if (sill !== undefined && sill > 0) {
+    lines.push(dimension([-w / 2, -h / 2 - sill, 0], [-w / 2, -h / 2, 0], sill, 'Sill height'));
+  }
+  return lines;
+}
+
+/**
+ * A framed opening's dimensions: the hole's, the frame width along the top of the left jamb, and
+ * the clear width of each sash or leaf under the head (`each` names them: "Sash", "Leaf"), as
+ * `frameParts` draws them.
+ */
+export function framedDimensions(
+  values: ParamValues,
+  ctx: PieceContext,
+  divisions?: { count: number; each: string },
+): DimensionLine[] {
+  const { width: w, height: h } = ctx;
+  const f = Math.min(numberParam(values, 'frameWidth'), w / 4, h / 4);
+  const lines = [
+    ...holeDimensions(ctx),
+    dimension([-w / 2, h / 2, 0], [-w / 2 + f, h / 2, 0], f, 'Frame width'),
+  ];
+  if (!divisions) return lines;
+  const n = divisions.count;
+  const clear = (w - 2 * f - (n - 1) * f) / n;
+  for (let i = 0; i < n; i++) {
+    const x = -w / 2 + f + i * (clear + f);
+    const name = n === 1 ? `${divisions.each} width` : `${divisions.each} ${i + 1} width`;
+    lines.push(dimension([x, h / 2 - f, 0], [x + clear, h / 2 - f, 0], clear, name));
+  }
+  return lines;
+}

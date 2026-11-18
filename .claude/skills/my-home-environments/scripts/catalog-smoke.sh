@@ -5,9 +5,12 @@
 # 844x390 for sideways scrolling): the top-bar or control-panel entry opens /catalog, both kinds are
 # shown with use counts and rendered thumbnails (kept in the Cache Storage), search filters, a card
 # opens its piece page, the back button returns to /catalog and then to /, and a deep link to
-# /catalog/furniture/furniture.bed loads in a fresh browser and survives a reload. Also: no console
-# or page errors, every control has a name, nothing scrolls sideways on the phone. Ends with
-# screenshots (<out> and <out>-phone.png). Exit 0 when every check passes.
+# /catalog/furniture/furniture.bed loads in a fresh browser and survives a reload. Every type's
+# piece page draws in 3D with dimension labels in cm, openings have a section with frame (and glass)
+# rectangles, and the playground changes the bed's colour and width live. Also: no console or page
+# errors, every control has a name, nothing scrolls sideways on the phone, the inspector is usable
+# at 844x390. Screenshots: <out>, <out>-phone.png, <out>-{window,window-section,door,bed}.png and
+# <out>-bed{,-across}-phone.png. Exit 0 when every check passes.
 # Read-only: every write is refused inside the browser; the default layout the viewer creates for a
 # home without one is answered there, never stored. Uses the Playwright set-up of screenshot.sh.
 # --home picks a home by id (kept in the links as ?home=).
@@ -17,7 +20,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$script_dir/lib.sh"
 
 usage() {
-  sed -n '2,13s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,16s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 

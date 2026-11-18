@@ -16,7 +16,8 @@ vi.mock('./scene/Scene', () => ({
   },
 }));
 
-// The catalogue's thumbnails need WebGL too.
+// The piece page's inspector and the catalogue's thumbnails need WebGL too.
+vi.mock('./piece-page/Inspector', () => ({ Inspector: () => <div data-testid="inspector" /> }));
 vi.mock('./catalog-page/renderThumbnail', () => ({
   renderThumbnail: () => Promise.reject(new Error('no WebGL in jsdom')),
   THUMBNAIL_SIZE: 256,
@@ -327,6 +328,7 @@ describe('App', () => {
       render(<App />);
       expect(await screen.findByRole('heading', { level: 1, name: 'Bed' })).toBeInTheDocument();
       expect(screen.getByRole('link', { name: '← Catalogue' })).toHaveAttribute('href', '/catalog');
+      expect(screen.getByTestId('inspector')).toBeInTheDocument();
       expect(document.title).toBe('Bed · my-home');
     });
 

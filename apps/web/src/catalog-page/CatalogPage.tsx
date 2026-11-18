@@ -1,7 +1,7 @@
 import { catalog, type CatalogType } from '@my-home/shared';
 import { useId, useMemo, useState } from 'react';
 import { useLayoutMode } from '../overlay/useLayoutMode';
-import { href, keptQuery, Link, useDocumentTitle } from '../routing';
+import { href, keptQuery, Link, useDocumentTitle, useRestoredScroll } from '../routing';
 import './catalog.css';
 import { catalogSections, usesText, type CatalogGroup } from './sections';
 import { useThumbnail } from './thumbnails';
@@ -70,6 +70,7 @@ function Cards({
 /** `/catalog`: every type by kind, with search, thumbnails and the number of uses here. */
 export default function CatalogPage() {
   useDocumentTitle('Catalogue');
+  useRestoredScroll();
   const layout = useLayoutMode();
   const [query, setQuery] = useState('');
   const usage = useUsage();
