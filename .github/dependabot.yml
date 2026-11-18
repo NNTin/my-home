@@ -1,0 +1,12 @@
+# Keeps the SHA-pinned actions in .github/workflows current. Only GitHub Actions: npm/pnpm updates stay manual.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ['*']
