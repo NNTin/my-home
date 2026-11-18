@@ -234,8 +234,9 @@ describe('PlacementSync', () => {
     expect(sync.current.status).toBe('saved');
   });
 
-  it('marks a refused change rejected and does not retry it until it changes', async () => {
-    const { server, sync, writes } = setup();
+  it('puts a refused change back to the server copy: idle, refresh applies, nothing replayed', async () => {
+    const ops = memoryOps();
+    const { server, sync, synced, writes } = setup({ ops });
     const [b, c] = sync.open([bed, chair]);
     const realFetch = server.fetch.getMockImplementation()!;
     server.fetch.mockImplementationOnce(
@@ -244,19 +245,60 @@ describe('PlacementSync', () => {
           status: 422,
         }),
     );
-    sync.edit([{ ...b!, params: { width: 2.2 } }, c!]);
+    sync.edit([{ ...b!, params: { width: 2.2 } }, c!]); // a bed that no longer fits its room
     await sync.flush();
+    server.fetch.mockImplementation(realFetch);
     expect(sync.current).toMatchObject({
       status: 'rejected',
       error: expect.stringMatching(/too wide/),
     });
-    server.fetch.mockImplementation(realFetch);
-    sync.edit([{ ...b!, params: { width: 2.2 } }, { ...c! }]);
-    await sync.flush();
-    expect(writes()).toHaveLength(1);
-    sync.edit([{ ...b!, params: { width: 2 } }, c!]);
+    // The editor gets the server's copy back; nothing is pending or kept for the next visit.
+    expect(synced).toEqual([[bed.id, toEditorItem(bed)]]);
+    expect(sync.idle).toBe(true);
+    expect(ops.saved).toEqual([]);
+
+    // The tab's reload (visible again) applies: an agent's edit shows up.
+    server.touch(chair.id, { rotationY: 1 });
+    const { items } = await placementsApi.list('mock-home');
+    expect(sync.refresh(items)?.find((i) => i.id === chair.id)?.rotationY).toBe(1);
+
+    // A fresh visit (a new sync on the same storage and server) replays nothing.
+    const before = writes().length;
+    const again = new PlacementSync({
+      homeId: 'mock-home',
+      api: placementsApi,
+      ops,
+      onChange: () => {},
+      onSynced: () => {},
+    });
+    again.open(items);
+    await again.flush();
+    expect(writes()).toHaveLength(before);
+    again.close();
+
+    // The next edit is saved and ends "Not saved".
+    sync.edit([
+      { ...b!, params: { width: 2 } },
+      { ...c!, rotationY: 1 },
+    ]);
     await sync.flush();
     expect(sync.current.status).toBe('saved');
+    expect(writes()).toEqual(['PATCH /souterrain-bed-1', 'PATCH /souterrain-bed-1']);
+  });
+
+  it('drops a refused new item', async () => {
+    const { server, sync, synced } = setup();
+    const items = sync.open([bed]);
+    server.fetch.mockImplementationOnce(
+      async () =>
+        new Response(JSON.stringify({ statusCode: 400, error: 'x', message: 'Unknown type' }), {
+          status: 400,
+        }),
+    );
+    sync.edit([...items, editorItem({ id: 'new-1', name: '', typeId: 'furniture.piano' })]);
+    await sync.flush();
+    expect(synced).toEqual([['new-1', undefined]]);
+    expect(sync).toMatchObject({ idle: true, current: { status: 'rejected' } });
   });
 
   it('takes the server copy when it stores a value differently, instead of patching forever', async () => {

@@ -174,15 +174,16 @@ const message = (err: unknown) => (err instanceof Error ? err.message : String(e
  * - a gone one is `DELETE`d (to the trash), and restored when it comes back (undo).
  * One call runs at a time, so calls for the same item never overlap. The pending changes are kept
  * in localStorage and replayed after a reload (`open`) or retried after a failure; a 409 (an agent
- * or another tab changed the item) reloads that item from the server: "changed elsewhere".
+ * or another tab changed the item) reloads that item from the server: "changed elsewhere". Any
+ * other 4xx puts the item back to the server's copy and says "Not saved" with the reason.
  */
 export class PlacementSync {
   private known = new Map<string, Known>();
   private desired = new Map<string, EditorItem>();
   /** Temporary id → stable id, for edits made while their create was on its way. */
   private aliases = new Map<string, string>();
-  /** Ops the server refused (4xx): skipped until the item changes again. */
-  private rejected = new Map<string, string>();
+  /** The server refused a change (a 4xx): "Not saved" with its reason, until the next edit. */
+  private refused = false;
   private running: Promise<void> | undefined;
   private busy = false;
   private again = false;
@@ -264,6 +265,7 @@ export class PlacementSync {
     const rest = { ...this.state };
     delete rest.changedElsewhere;
     this.state = rest;
+    this.refused = false;
     this.persist();
     this.update();
     this.kick();
@@ -306,18 +308,21 @@ export class PlacementSync {
     this.options.onChange(state);
   }
 
-  /** Derives the status; `conflict` ("changed elsewhere") stays until the next edit. */
+  /**
+   * Derives the status; `rejected` (the server refused a change) and `conflict` ("changed
+   * elsewhere") stay until the next edit. Neither leaves anything pending: the item is back at
+   * the server's copy.
+   */
   private update() {
     const { restored, error, changedElsewhere } = this.state;
     const base: SyncState = { status: 'saved', restored };
     if (changedElsewhere) base.changedElsewhere = changedElsewhere;
-    const pending = this.pending();
-    const open = pending.filter((op) => !this.isRejected(op));
+    const open = this.pending();
     let next: SyncState;
     if (this.busy && open.length > 0) next = { ...base, status: 'saving' };
     else if (this.offline && open.length > 0) next = { ...base, status: 'offline' };
     else if (open.length > 0) next = { ...base, status: 'pending' };
-    else if (pending.length > 0) next = { ...base, status: 'rejected' };
+    else if (this.refused) next = { ...base, status: 'rejected' };
     else if (changedElsewhere) next = { ...base, status: 'conflict' };
     else next = base;
     if (error !== undefined && (next.status === 'offline' || next.status === 'rejected')) {
@@ -326,8 +331,16 @@ export class PlacementSync {
     this.set(next);
   }
 
-  private isRejected(op: PendingOp) {
-    return this.rejected.get(op.id) === canonical(op);
+  /**
+   * A change the server refused: the item goes back to the server's copy (a refused create is
+   * dropped), so nothing stays pending, blocks the reload of the tab or comes back next visit.
+   */
+  private revert(id: string) {
+    const k = this.known.get(id);
+    const item = k && !k.removed ? k.item : undefined;
+    if (item) this.desired.set(id, item);
+    else this.desired.delete(id);
+    this.options.onSynced(id, item);
   }
 
   private kick() {
@@ -360,15 +373,11 @@ export class PlacementSync {
     let done: string | undefined;
     for (;;) {
       if (this.closed) return;
-      const op = this.pending().find((o) => !this.isRejected(o));
+      const op = this.pending()[0];
       if (!op) return;
       if (sameChange(op) === done) {
         // The server stored it differently (e.g. a colour in lower case): take its copy.
-        const k = this.known.get(op.id);
-        if (k && !k.removed) {
-          this.desired.set(op.id, k.item);
-          this.options.onSynced(op.id, k.item);
-        } else this.rejected.set(op.id, canonical(op));
+        this.revert(op.id);
         continue;
       }
       this.update();
@@ -385,7 +394,8 @@ export class PlacementSync {
             return;
           }
         } else if (err instanceof ApiRequestError && err.status >= 400 && err.status < 500) {
-          this.rejected.set(op.id, canonical(op));
+          this.revert(op.id);
+          this.refused = true;
           this.state = { ...this.state, error: message(err) };
         } else {
           this.fail(err);

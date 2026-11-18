@@ -60,7 +60,7 @@ const statusText: Record<SyncStatus, string> = {
   pending: 'Unsaved changes…',
   saving: 'Saving…',
   offline: 'Offline: changes kept in this browser, retrying',
-  rejected: 'Not saved: the server rejected a change (kept in this browser)',
+  rejected: 'Not saved: the server refused a change; the item is back as it was',
   conflict: 'Changed elsewhere',
 };
 

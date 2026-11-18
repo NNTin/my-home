@@ -57,8 +57,9 @@ The API (`/api/homes/:homeId/placements`, history and undo) is in [userdata.md](
   period loses nothing. A replayed change to an item that was changed elsewhere meanwhile is dropped.
 - **A 409** (an agent or another tab changed the item): the item is reloaded from the server and the panel says
   "Changed elsewhere … reloaded: <name>" until the next edit.
-- **Another 4xx** (e.g. a size that does not fit, 422): "Not saved" with the server's reason; that change is not
-  retried until the item changes again.
+- **Another 4xx** (e.g. a size that does not fit, 422): "Not saved" with the server's reason, and the item goes back
+  to the server's copy (a refused new item is dropped). Nothing stays pending, so the change neither blocks the
+  reload of the tab nor comes back on the next visit.
 - Status (`saved | pending | saving | offline | rejected | conflict`) shows in the panel and, on a phone, in the
   chip at the foot of the 3D view.
 - When the tab becomes visible again and nothing is pending, the placements and the opening overrides are reloaded,

@@ -268,7 +268,7 @@ describe('furniture editor', () => {
     expect(api.placements.get('souterrain-bed-1')?.version).toBe(2);
   });
 
-  it('shows why the server refused a change and does not retry it', async () => {
+  it('shows why the server refused a change, puts the item back and does not retry it', async () => {
     const api = fakeApi({ placements: [testPlacement()] });
     await renderApp();
     const real = api.fetch.getMockImplementation()!;
@@ -284,6 +284,9 @@ describe('furniture editor', () => {
     key('r');
     await vi.waitFor(() => expect(status()).toMatch(/^Not saved/), { timeout: 3000 });
     expect(panel().getByText(/too wide/)).toBeInTheDocument();
+    // The bed is back as the server has it; nothing waits in this browser.
+    expect(furniture()[0]!.rotationY).toBe(0);
+    expect(localStorage.getItem('my-home:placement-ops:mock-home')).toBeNull();
     await new Promise((r) => setTimeout(r, 300));
     expect(api.calls('PATCH', /placements/)).toHaveLength(1);
   });
