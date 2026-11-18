@@ -176,6 +176,9 @@ function applyFrame(state: RootState, frame: FrameRequest) {
     frame.center,
   );
   invalidate();
+  // On demand (a phone), only what asks draws a frame: a few more let overlays that follow the
+  // camera, such as the selected item's toolbar, find their place.
+  for (const ms of [100, 400, 1000]) setTimeout(() => invalidate(), ms);
 }
 
 /**
