@@ -194,9 +194,10 @@ describe('placements', () => {
         purgedPlacements: 1,
       });
       expect((await list('?include=removed')).map((p) => p.id)).toEqual([kept.id]);
-      expect(
-        (await inject('GET', `/api/homes/mock-home/uses/${gone.id}/history`)).json().items,
-      ).toEqual([]);
+      // Its history went with it: the use is unknown now.
+      expect((await inject('GET', `/api/homes/mock-home/uses/${gone.id}/history`)).statusCode).toBe(
+        404,
+      );
       expect(
         (await inject('GET', `/api/homes/mock-home/uses/${kept.id}/history`)).json().items,
       ).toHaveLength(1);

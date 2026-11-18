@@ -9,7 +9,7 @@ import {
 import { and, asc, eq } from 'drizzle-orm';
 import { problem } from '../errors';
 import type { Db } from './client';
-import { recordHistory, type HistoryActor, type Tx } from './history';
+import { recordHistory, sameJson, type HistoryActor, type Tx } from './history';
 import { homeStore } from './homes';
 import { conflict, notFound, validOverrides } from './placements';
 import { openingOverrides, type OpeningOverrideRow } from './userdata-schema';
@@ -85,6 +85,9 @@ export function openingOverrideStore(db: Db) {
             ['version'],
           );
         }
+        // Nothing changes: no new version, no history (as for placements).
+        if (current && current.typeId === type.id && sameJson(current.params, params))
+          return current;
         const [written] = current
           ? await tx
               .update(openingOverrides)

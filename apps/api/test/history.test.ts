@@ -148,6 +148,9 @@ describe('history and undo', () => {
       after: { params: { sashes: 2 } },
     });
     expect((await inject('GET', '/api/homes/nope/uses/x/history')).statusCode).toBe(404);
+    expect((await inject('GET', `${home}/uses/nope/history`)).statusCode).toBe(404);
+    // A git use without any change yet has an empty history.
+    expect(await historyOf('souterrain-bedroom-window')).toEqual([]);
   });
 
   it('undoes an update field by field, records the undo and refuses a second one', async () => {

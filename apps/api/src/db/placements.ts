@@ -14,7 +14,7 @@ import {
 import { and, asc, eq, isNull, like, lt } from 'drizzle-orm';
 import { problem } from '../errors';
 import type { Db } from './client';
-import { recordHistory, type HistoryActor, type Tx } from './history';
+import { recordHistory, sameJson, type HistoryActor, type Tx } from './history';
 import { homeStore } from './homes';
 import { history, issuedIds, placements, type PlacementRow } from './userdata-schema';
 
@@ -169,7 +169,12 @@ export function placementStore(db: Db, options: { retentionDays: number }) {
       const rows = await tx
         .select({ id: issuedIds.id })
         .from(issuedIds)
-        .where(and(eq(issuedIds.homeId, homeId), like(issuedIds.id, `${prefix}-%`)));
+        .where(
+          and(
+            eq(issuedIds.homeId, homeId),
+            like(issuedIds.id, `${prefix.replace(/[\\%_]/g, '\\$&')}-%`),
+          ),
+        );
       const pattern = new RegExp(`^${prefix.replace(/[-]/g, '\\-')}-(\\d+)$`);
       return Math.max(0, ...rows.map((r) => Number(pattern.exec(r.id)?.[1] ?? 0)));
     };
@@ -295,7 +300,7 @@ export function placementStore(db: Db, options: { retentionDays: number }) {
         const rotationY = input.rotationY ?? current.rotationY;
 
         // A size change must not push a footprint that fitted its room out of it.
-        if (type && room && JSON.stringify(params) !== JSON.stringify(current.params)) {
+        if (type && room && !sameJson(params, current.params)) {
           const at = { ...position, rotationY };
           const fitted = furnitureFitIssues(
             type,
@@ -321,7 +326,7 @@ export function placementStore(db: Db, options: { retentionDays: number }) {
           params,
         };
         const before = placementState(current);
-        if (JSON.stringify(placementState({ ...current, ...next })) === JSON.stringify(before)) {
+        if (sameJson(placementState({ ...current, ...next }), before)) {
           return current; // nothing changed: no new version, no history
         }
         const [updated] = await tx

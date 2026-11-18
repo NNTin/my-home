@@ -69,7 +69,18 @@ const read = (state: UseState, field: string): Value => {
   return state[field as (typeof SCALAR_FIELDS)[number]];
 };
 
-const same = (a: Value, b: Value) => JSON.stringify(a) === JSON.stringify(b);
+/** JSON with object keys sorted: jsonb reorders keys, so plain `JSON.stringify` is order-dependent. */
+const canonical = (value: unknown): string =>
+  JSON.stringify(value, (_key, v: unknown) =>
+    v && typeof v === 'object' && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+      : v,
+  );
+
+/** Deep equality of JSON values, whatever their key order. */
+export const sameJson = (a: unknown, b: unknown) => canonical(a) === canonical(b);
+
+const same = (a: Value, b: Value) => sameJson(a, b);
 
 /** The state an undo starts from for a creation: the same use, removed. */
 const beforeOf = (entry: Pick<HistoryRow, 'before' | 'after'>): UseState | null =>

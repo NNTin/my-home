@@ -229,13 +229,14 @@ export function useStore(db: Db, options: { retentionDays: number }) {
   });
 
   const entries = async (homeId: string, m: HomeModel, useId: string): Promise<HistoryEntry[]> => {
-    const rows = await listHistoryRows(db, homeId, useId);
     const s = await subject(homeId, m, useId);
+    if (!s) throw notFound('Use', useId);
+    const rows = await listHistoryRows(db, homeId, useId);
     const undoneBy = new Map(rows.filter((r) => r.undoesId).map((r) => [r.undoesId!, r.id]));
     return rows.map((row) =>
       toHistoryEntry(row, {
-        type: s && catalog.get(s.typeId),
-        current: s?.state,
+        type: catalog.get(s.typeId),
+        current: s.state,
         undoneById: undoneBy.get(row.id) ?? null,
         ...names(m),
       }),
@@ -315,7 +316,21 @@ export function useStore(db: Db, options: { retentionDays: number }) {
         });
       } catch (err) {
         if (isUniqueViolation(err)) {
-          throw conflict('This change was already undone', 0, ['already undone']);
+          // A concurrent undo of the same entry won: report the version it left behind.
+          const now = await subject(homeId, m, useId);
+          const [row] =
+            now?.kind === 'placement'
+              ? await db
+                  .select({ version: placements.version })
+                  .from(placements)
+                  .where(and(eq(placements.homeId, homeId), eq(placements.id, useId)))
+              : await db
+                  .select({ version: openingOverrides.version })
+                  .from(openingOverrides)
+                  .where(
+                    and(eq(openingOverrides.homeId, homeId), eq(openingOverrides.useId, useId)),
+                  );
+          throw conflict('This change was already undone', row?.version ?? 0, ['already undone']);
         }
         throw err;
       }

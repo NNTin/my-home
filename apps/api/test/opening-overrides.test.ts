@@ -41,6 +41,18 @@ describe('opening overrides', () => {
     const stale = await put('souterrain-kitchen-window', { version: 5, params: {} });
     expect(UseConflict.parse(stale.json())).toMatchObject({ statusCode: 409, currentVersion: 1 });
 
+    // The same params again (in another key order) change nothing: no version, no history.
+    const same = await put('souterrain-kitchen-window', {
+      version: 1,
+      params: { sashes: 2, frameColor: '#383e42' },
+    });
+    expect(OpeningOverride.parse(same.json())).toMatchObject({ version: 1 });
+    const history = await inject(
+      'GET',
+      '/api/homes/mock-home/uses/souterrain-kitchen-window/history',
+    );
+    expect(history.json().items).toHaveLength(1);
+
     // An empty object keeps the row (and its version history).
     const cleared = await put('souterrain-kitchen-window', { version: 1, params: {} });
     expect(OpeningOverride.parse(cleared.json())).toMatchObject({ params: {}, version: 2 });

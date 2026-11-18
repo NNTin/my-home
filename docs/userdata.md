@@ -90,8 +90,8 @@ of that knowledge (`apps/api/src/actor.ts`):
 ## Writes, versions and history
 
 Every write runs in **one transaction** with its history row, and bumps the use's `version`. A write carries the
-version it read; a stale one is a `409` (`UseConflict`: `currentVersion`, `conflicts`). A patch that changes
-nothing writes nothing.
+version it read; a stale one is a `409` (`UseConflict`: `currentVersion`, `conflicts`). A write that changes
+nothing (the same params, name or position again) writes nothing: no new version, no history.
 
 | Route                                              | Notes                                                                                 |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------- |
