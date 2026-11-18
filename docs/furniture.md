@@ -3,7 +3,9 @@
 Each home has **one set of furniture**: its placements, stored per environment in the database (`userdata.placements`,
 [userdata.md](userdata.md)) and kept across every deploy. The viewer edits that set directly; every change is saved
 per piece of furniture and becomes a history entry with its actor, so agents can read, change and undo it too
-(`uses.sh`, see `SKILL.md`). The named layouts of earlier versions are gone from the viewer
+(`uses.sh`, see `SKILL.md`). New furniture and fixtures are catalogue types in git ([adding a
+type](adding-piece-type.md)), reviewed by PR; their placements and basic parameters never go into `data/homes/*.json`.
+The named layouts of earlier versions are gone from the viewer
 ([§ The one-time import](#the-one-time-import)).
 
 ## A placement

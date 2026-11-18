@@ -41,6 +41,22 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - Agents never delete or purge photos or photo requests, and never commit photos. Unsure about a wall, room, opening
   or furniture? Look at the photos, then ask for one (`photo-requests.sh`) instead of guessing.
 
+## House model
+
+- **The exterior is fixed**: footprint, exterior walls (position, thickness, height) and roof come from surveyed
+  geodata (#13). Never move, resize or re-angle them.
+- **Refinements change only the inside**: rooms, interior walls, doors, openings, stairs, ceilings, floor levels.
+  An interior wall change rescales the rooms beside it, never an exterior wall; if one seems needed, ask the owner in
+  an issue.
+- **Only the souterrain apartment is modelled inside.** The ground-floor and attic interiors are out of scope: keep
+  their geometry (floors and windows as seen from outside) and never request photos inside them; photos of their
+  windows only from the owner's garden, patio or the street.
+- **New furniture and fixtures are catalogue types in git** (reviewed by PR, #26). Placements and basic params
+  (colour, sizes) are DB data per environment, set via the app or the uses/placements API, never in
+  `data/homes/*.json`.
+- **Refinement photos stay in the photo store**: reference them by photo id in issues and PRs; never upload them to GitHub
+  or commit them.
+
 ## Environments
 
 - staging `https://home-staging.nntin.xyz`: homes synced from git (real + mock) on every deploy (same-repo PR
