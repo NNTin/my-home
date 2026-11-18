@@ -93,16 +93,13 @@ export function redo(history: History, items: EditorItem[]) {
 
 /**
  * Renames item `from` to `to` in every command (the server gave a new item its stable id) and
- * applies `patch` (server-assigned fields such as the name) to each of its snapshots, so a later
- * undo or redo writes to the stable id and does not revert the name. Pure.
+ * fills the server's `name` into its snapshots that have none (a new item's), so a later undo or
+ * redo writes to the stable id and does not clear the name. A snapshot with a name keeps it (an
+ * older rename stays undoable). Pure.
  */
-export function remapId(
-  history: History,
-  from: string,
-  to: string,
-  patch: Partial<EditorItem> = {},
-): History {
-  const item = (i: EditorItem | undefined) => i && { ...i, ...patch, id: to };
+export function remapId(history: History, from: string, to: string, name?: string): History {
+  const item = (i: EditorItem | undefined) =>
+    i && { ...i, ...(i.name === '' && name !== undefined && { name }), id: to };
   const command = (c: Command): Command =>
     c.changes.some((ch) => ch.id === from)
       ? {

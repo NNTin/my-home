@@ -28,6 +28,7 @@ try {
     // Local dev: the one-time layout import the release job runs on deployed environments.
     const imported = await importLayouts(database.db, {
       retentionDays: config.userdataTrashRetentionDays,
+      warn: (line) => app.log.warn(line),
     });
     const { info, warn } = describeImports(imported);
     info.forEach((line) => app.log.info(line));

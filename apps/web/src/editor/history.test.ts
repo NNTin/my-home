@@ -70,9 +70,7 @@ describe('history', () => {
     let history = record(emptyHistory, diff('Place', [a], [a, temp]));
     history = record(history, diff('Move', [a, temp], [a, moved]));
     const undone = undo(history, [a, moved])!;
-    const remapped = remapId(undone.history, 'new-1', 'souterrain-bed-1', {
-      name: 'Bedroom · Bed',
-    });
+    const remapped = remapId(undone.history, 'new-1', 'souterrain-bed-1', 'Bedroom · Bed');
 
     expect(remapped.past[0]!.changes).toEqual([
       { id: 'souterrain-bed-1', after: { ...temp, id: 'souterrain-bed-1', name: 'Bedroom · Bed' } },
@@ -88,5 +86,12 @@ describe('history', () => {
     // Undo after the remap removes the stable id.
     const items = [a, { ...temp, id: 'souterrain-bed-1', name: 'Bedroom · Bed' }];
     expect(undo(remapped, items)!.items).toEqual([a]);
+  });
+
+  it('fills a name only into snapshots without one: an older rename stays undoable', () => {
+    const named = editorItem({ id: 'x', name: 'Old name' });
+    const renamed = { ...named, name: 'New name' };
+    const history = record(emptyHistory, diff('Rename', [named], [renamed]));
+    expect(remapId(history, 'x', 'x', 'Server name')).toEqual(history);
   });
 });

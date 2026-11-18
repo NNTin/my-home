@@ -73,7 +73,7 @@ export function importedParams(
  */
 export async function importLayouts(
   db: Db,
-  options: { retentionDays: number },
+  options: { retentionDays: number; warn?: (line: string) => void },
 ): Promise<LayoutImport[]> {
   const store = placementStore(db, options);
   const homeIds = await db
@@ -92,7 +92,14 @@ export async function importLayouts(
       const [home] = await tx.select().from(homes).where(eq(homes.id, homeId));
       const model = home && HomeModel.safeParse(home.model);
       // A home that cannot be read is not claimed, so a later run retries it.
-      if (!layout || !model?.success) return undefined;
+      if (!layout) return undefined;
+      if (!model?.success) {
+        const why = model ? model.error.issues[0]?.message : 'the home is not stored';
+        options.warn?.(
+          `release: home "${homeId}": layouts not imported, its stored model is invalid (${why}); retried on the next run`,
+        );
+        return undefined;
+      }
 
       // Claim the import: a concurrent run waits on the key, then finds it taken.
       const claimed = await tx

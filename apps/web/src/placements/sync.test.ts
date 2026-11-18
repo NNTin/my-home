@@ -286,6 +286,21 @@ describe('PlacementSync', () => {
     expect(writes()).toEqual(['PATCH /souterrain-bed-1', 'PATCH /souterrain-bed-1']);
   });
 
+  it('names a new item by its type when its create is answered 404', async () => {
+    const { server, sync } = setup();
+    const items = sync.open([bed]);
+    server.fetch.mockImplementationOnce(
+      async () =>
+        new Response(JSON.stringify({ statusCode: 404, error: 'x', message: 'Level gone' }), {
+          status: 404,
+        }),
+    );
+    sync.edit([...items, editorItem({ id: 'new-1', name: '', typeId: 'furniture.desk' })]);
+    await sync.flush();
+    expect(sync.current).toMatchObject({ status: 'conflict', changedElsewhere: ['Desk'] });
+    expect(sync.idle).toBe(true);
+  });
+
   it('drops a refused new item', async () => {
     const { server, sync, synced } = setup();
     const items = sync.open([bed]);

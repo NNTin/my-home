@@ -50,6 +50,7 @@ export async function runRelease(
   warn.forEach((line) => log.warn(line));
   const imported = await importLayouts(database.db, {
     retentionDays: config.userdataTrashRetentionDays,
+    warn: (line) => log.warn(line),
   });
   const lines = describeImports(imported);
   lines.info.forEach((line) => log.info(line));

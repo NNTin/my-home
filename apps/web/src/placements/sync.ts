@@ -1,8 +1,9 @@
-import type {
-  CreatePlacementBody,
-  ListPlacementsResponse,
-  Placement,
-  UpdatePlacementBody,
+import {
+  catalog,
+  type CreatePlacementBody,
+  type ListPlacementsResponse,
+  type Placement,
+  type UpdatePlacementBody,
 } from '@my-home/shared';
 import { ApiRequestError } from '../api';
 import type { EditorItem } from '../editor/item';
@@ -473,7 +474,14 @@ export class PlacementSync {
   private async reload(id: string) {
     const { items } = await this.options.api.list(this.options.homeId);
     const fresh = items.find((p) => p.id === id);
-    const name = this.known.get(id)?.item.name ?? fresh?.name ?? id;
+    // A new item (a temporary id) has no name yet: its type's name.
+    const local = this.desired.get(id);
+    const name =
+      this.known.get(id)?.item.name ||
+      fresh?.name ||
+      local?.name ||
+      (local && (catalog.get(local.typeId)?.name ?? local.typeId)) ||
+      id;
     if (fresh) this.remember(fresh);
     else this.known.delete(id);
     const item = fresh && fresh.removedAt === null ? toEditorItem(fresh) : undefined;

@@ -181,6 +181,28 @@ describe('the one-time layout import (release job)', () => {
     );
   });
 
+  it('warns about a home whose stored model is invalid and retries it later', async () => {
+    await addLayout('l', 'Default layout', [item()], '2026-02-01T00:00:00Z');
+    const [stored] = await ctx.database.db.select().from(homes).where(eq(homes.id, 'mock-home'));
+    await ctx.database.db
+      .update(homes)
+      .set({ model: { ...stored!.model, levels: [] } })
+      .where(eq(homes.id, 'mock-home'));
+    const warnings: string[] = [];
+    expect(
+      await importLayouts(ctx.database.db, { retentionDays: 30, warn: (l) => warnings.push(l) }),
+    ).toEqual([]);
+    expect(warnings).toEqual([
+      expect.stringMatching(
+        /^release: home "mock-home": layouts not imported, its stored model is invalid \(.+\); retried on the next run$/,
+      ),
+    ]);
+    expect(await ctx.database.db.select().from(imports)).toEqual([]);
+    // Once the sync has put a valid model back, it is imported.
+    await release();
+    expect(await placements()).toHaveLength(1);
+  });
+
   it('maps type ids and params', () => {
     expect(importedTypeId('wardrobe')).toBe('furniture.wardrobe');
     expect(importedTypeId('Lamp_2')).toBe('furniture.unknown');

@@ -78,12 +78,12 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       const to = item?.id ?? from;
       let next: EditorState = { ...state, items };
       if (item && from !== to) {
-        next.history = remapId(state.history, from, to, { name: item.name });
+        next.history = remapId(state.history, from, to, item.name);
         if (state.drag?.id === from)
           next.drag = { id: to, before: { ...state.drag.before, id: to } };
         if (state.selectedId === from) next = withSelection(next, to);
       } else if (item && item.name) {
-        next.history = remapId(state.history, from, from, { name: item.name });
+        next.history = remapId(state.history, from, from, item.name);
       }
       return withSelection(next, keepSelection(items, next.selectedId));
     }
