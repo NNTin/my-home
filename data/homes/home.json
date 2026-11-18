@@ -2650,18 +2650,44 @@
   "openings": [
     {
       "id": "window-souterrain-living-room-south",
-      "name": "Living room · south window",
+      "name": "Living room · south window, west",
       "typeId": "window.tilt-turn",
       "wallId": "souterrain-wall-south-west",
       "type": "window",
       "offset": {
-        "value": 1.94,
+        "value": 1.91,
         "source": "estimated-from-photo",
-        "note": "Below grade, in a light well; two sashes"
+        "note": "Two windows with a 0.20 pier, centred on the light well (x 2.1–4.4); 7a0b7fa8, bcc9f58e (radiator as scale)"
       },
       "width": {
-        "value": 1.9,
+        "value": 0.88,
+        "source": "estimated-from-photo",
+        "note": "Each window ≈0.88 at the wall face, about square (7a0b7fa8)"
+      },
+      "height": {
+        "value": 1.0,
         "source": "estimated-from-photo"
+      },
+      "sill": {
+        "value": 1.25,
+        "source": "estimated-from-photo"
+      }
+    },
+    {
+      "id": "window-souterrain-living-room-south-east",
+      "name": "Living room · south window, east",
+      "typeId": "window.tilt-turn",
+      "wallId": "souterrain-wall-south-west",
+      "type": "window",
+      "offset": {
+        "value": 2.99,
+        "source": "estimated-from-photo",
+        "note": "East of the 0.20 pier; see window-souterrain-living-room-south"
+      },
+      "width": {
+        "value": 0.88,
+        "source": "estimated-from-photo",
+        "note": "Each window ≈0.88 at the wall face, about square (7a0b7fa8)"
       },
       "height": {
         "value": 1.0,
@@ -2681,7 +2707,7 @@
       "offset": {
         "value": 3.4,
         "source": "estimated-from-photo",
-        "note": "Bed room window on the east patio"
+        "note": "Bed room window on the east patio. Checked: north edge ≈1.06 m from the room's north wall (7bdeed3a). The exterior (0ab48d98) puts it ≈3.0 m south of the patio door, so the door may sit ≈0.9 m further north than modelled"
       },
       "width": {
         "value": 1.0,
@@ -2727,13 +2753,14 @@
       "wallId": "souterrain-wall-north",
       "type": "window",
       "offset": {
-        "value": 1.54,
+        "value": 1.51,
         "source": "estimated-from-photo",
-        "note": "Just above the lawn; seen only at a grazing angle"
+        "note": "Frame ≈10.55–11.55 (±0.15): exterior c51a59e4/cbe9bda7 (from the NE corner) and interior b652a36e (from the east wall)"
       },
       "width": {
-        "value": 0.6,
-        "source": "estimated-from-photo"
+        "value": 1.0,
+        "source": "estimated-from-photo",
+        "note": "About square, like the other north windows (cbe9bda7 frame 350×340 px; b652a36e); was 0.6"
       },
       "height": {
         "value": 1.0,
@@ -2751,13 +2778,14 @@
       "wallId": "souterrain-wall-north",
       "type": "window",
       "offset": {
-        "value": 4.84,
+        "value": 4.77,
         "source": "estimated-from-photo",
-        "note": "Just above the lawn; seen only at a grazing angle"
+        "note": "Centre ≈7.71 (±0.15) from the NE corner in cbe9bda7; unchanged"
       },
       "width": {
-        "value": 1.0,
-        "source": "estimated-from-photo"
+        "value": 1.15,
+        "source": "estimated-from-photo",
+        "note": "Wider than tall: frame 400×340 px next to the kitchen window in cbe9bda7, 760×650 inside (0e7191b4); was 1.0"
       },
       "height": {
         "value": 1.0,
@@ -2777,7 +2805,7 @@
       "offset": {
         "value": 7.94,
         "source": "estimated-from-photo",
-        "note": "Just above the lawn; seen only at a grazing angle"
+        "note": "Checked: frame ≈4.2–5.1 from the west end in c51a59e4 (±0.2); the overlays at f77468e4/6c8b4a31 are off only because their poses are set by hand"
       },
       "width": {
         "value": 1.0,
