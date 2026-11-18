@@ -336,7 +336,9 @@ Errors carry a path into the document, for example
 
 ## The real home
 
-`data/homes/home.json` (id `home`) is the house the project is about. Values come from:
+`data/homes/home.json` (id `home`) is the house the project is about. Its exterior (footprint, exterior walls,
+roof) is derived from geodata and fixed; refinements change only the inside (rules in
+[`AGENTS.md`](../AGENTS.md#house-model)). Values come from:
 
 - **geodata**: the building footprint, eave and ridge heights (roof pitch 29°, ridge east-west), the
   garage, the terrain levels and `northBearing` (2.5°, including the map grid's convergence) were
