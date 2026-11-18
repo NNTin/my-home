@@ -76,7 +76,7 @@ One chain, in [`apps/web/src/walk/orientation.ts`](../apps/web/src/walk/orientat
 
 The **declination** is a setting of the home, `building.magneticDeclination`
 ([home-model.md](home-model.md#orientation)). Enter it once in the **Calibrate** sheet from a declination chart
-for your area; it is 0 until then. The sheet also asks where the value is from (a chart or model, or measured on site), which is stored as its provenance. Saving changes only the declination of the home as it is stored at that moment, so edits made elsewhere in the meantime are kept. The app never works it out from a location, and never asks for one.
+for your area; it is 0 until then. The sheet also asks where the value is from (a chart or model, or measured on site), which is stored as its provenance. Saving stores it as the home's setting (`PUT /api/homes/:homeId/settings`, [userdata.md](userdata.md#home-settings)), on top of the home file from git, so the sync on every deploy keeps it; it shows in the home's history and can be undone. The app never works it out from a location, and never asks for one.
 
 ### Calibrating
 

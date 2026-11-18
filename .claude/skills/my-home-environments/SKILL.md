@@ -8,16 +8,22 @@ description: >-
 
 # my-home environments
 
-| Environment | Base URL                         | Deployed from                                         | Data                                                    |
-| ----------- | -------------------------------- | ----------------------------------------------------- | ------------------------------------------------------- |
-| staging     | `https://home-staging.nntin.xyz` | same-repo PR pushes, `v*` tags, dispatch; latest wins | reset to the real + mock home; photos and userdata stay |
-| production  | `https://home.nntin.xyz`         | every push to `main`                                  | real data; change only when asked to                    |
+| Environment | Base URL                         | Deployed from                                         | Data                                                                               |
+| ----------- | -------------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| staging     | `https://home-staging.nntin.xyz` | same-repo PR pushes, `v*` tags, dispatch; latest wins | homes synced from git (real + mock); placements, colours, notes and photos persist |
+| production  | `https://home.nntin.xyz`         | every push to `main`                                  | homes synced from git (`home.json`) on every deploy; change only when asked to     |
 
 Both are behind authentik SSO. Agents exchange the **nntin-bot** GitHub token (`GH_TOKEN`, `GITHUB_TOKEN` or
 `gh auth token`) at `POST <base>/agent-auth/token` for a per-host site token valid for 1 hour, sent as
 `Authorization: Bearer`. A missing or expired token gets a **302 to `https://auth.nntin.xyz`**, not a 401.
 `GET /api/health/live` is public and returns the deployed `commit`. The full instruction sheet, API overview and
 error table are in [issue #9](https://github.com/NNTin/my-home/issues/9); deploys in `docs/deployment.md`.
+
+**Homes come from git**: every deploy replaces the stored homes with the deployed commit's `data/homes` (the release
+job's log names the uses that need attention afterwards). **Changing the house = a PR to `data/homes`**;
+`PUT /api/homes/:id` and `POST /api/homes/import` are staging experiments, lost on the next deploy (`Warning`
+header). The magnetic declination is a home setting that deploys keep:
+`site-curl.sh <env> /api/homes/<home>/settings` (GET, or `-X PUT --json '{"version":N,"magneticDeclination":…|null}'`).
 
 The scripts below do all of this. Dependencies: `bash`, `curl`, `jq`, `gh`. Run them from the repository root.
 

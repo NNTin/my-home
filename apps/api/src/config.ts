@@ -19,6 +19,13 @@ const EnvSchema = z.object({
   APP_COMMIT: z.preprocess(emptyToUndefined, z.string().optional()),
   /** Allows `dist/reset.js` to drop all data. Set only for throwaway environments (staging). */
   ALLOW_DATABASE_RESET: z.preprocess(emptyToUndefined, z.stringbool().default(false)),
+  /** `dist/release.js` drops `public` before migrating (staging); needs ALLOW_DATABASE_RESET too. */
+  RESET_PUBLIC: z.preprocess(emptyToUndefined, z.stringbool().default(false)),
+  /**
+   * Home files `dist/release.js` syncs, comma-separated; names resolve against data/homes.
+   * Default: every data/homes/*.json, home.json first.
+   */
+  HOME_FILES: z.preprocess(emptyToUndefined, z.string().optional()),
   /** Largest accepted photo upload. Uploads are resized and re-encoded, so stored photos are smaller. */
   PHOTO_MAX_UPLOAD_BYTES: z.preprocess(
     emptyToUndefined,
@@ -54,6 +61,8 @@ export type Config = {
   seedFile: string | undefined;
   commit: string | null;
   allowDatabaseReset: boolean;
+  resetPublic: boolean;
+  homeFiles: string[] | undefined;
   photoMaxUploadBytes: number;
   photoTrashRetentionDays: number;
   userdataTrashRetentionDays: number;
@@ -78,6 +87,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     seedFile: e.SEED_FILE,
     commit: e.APP_COMMIT ?? null,
     allowDatabaseReset: e.ALLOW_DATABASE_RESET,
+    resetPublic: e.RESET_PUBLIC,
+    homeFiles: e.HOME_FILES?.split(',')
+      .map((file) => file.trim())
+      .filter((file) => file !== ''),
     photoMaxUploadBytes: e.PHOTO_MAX_UPLOAD_BYTES,
     photoTrashRetentionDays: e.PHOTO_TRASH_RETENTION_DAYS,
     userdataTrashRetentionDays: e.USERDATA_TRASH_RETENTION_DAYS,

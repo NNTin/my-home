@@ -1,4 +1,5 @@
-# Runs before any new pod receives traffic: migrations (production) or a full reset, migrate and seed (staging).
+# Runs before any new pod receives traffic on every environment: validate data/homes, (staging) reset `public`, migrate,
+# then sync the homes from git (dist/release.js, docs/deployment.md). A failure aborts the upgrade.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -30,12 +31,17 @@ spec:
       containers:
         - name: release
           image: {{ include "my-home.image" (dict "root" . "role" "api") }}
-          command: [node, {{ ternary "dist/reset.js" "dist/migrate.js" .Values.database.resetOnDeploy }}]
+          command: [node, dist/release.js]
           securityContext: {{ include "my-home.security" . | nindent 12 }}
           resources: {{ toYaml .Values.release.resources | nindent 12 }}
           env:
             {{- include "my-home.apiEnv" . | nindent 12 }}
+            {{- $defaultFiles := ternary (list "home.json" "mock-home.json") (list "home.json") .Values.database.resetOnDeploy }}
+            - name: HOME_FILES
+              value: {{ join "," ((.Values.homes).files | default $defaultFiles) | quote }}
             {{- if .Values.database.resetOnDeploy }}
             - name: ALLOW_DATABASE_RESET
+              value: "true"
+            - name: RESET_PUBLIC
               value: "true"
             {{- end }}

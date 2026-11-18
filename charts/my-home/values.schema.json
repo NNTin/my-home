@@ -33,6 +33,17 @@
         "resetOnDeploy": { "type": "boolean" }
       }
     },
+    "homes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "files": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*\\.json$" }
+        }
+      }
+    },
     "release": {
       "type": "object",
       "additionalProperties": false,

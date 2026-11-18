@@ -12,7 +12,7 @@ const externalNpmPackages = {
 };
 
 await build({
-  entryPoints: ['src/server.ts', 'src/migrate.ts', 'src/seed.ts', 'src/reset.ts'],
+  entryPoints: ['src/server.ts', 'src/migrate.ts', 'src/seed.ts', 'src/reset.ts', 'src/release.ts'],
   outdir: 'dist',
   bundle: true,
   platform: 'node',

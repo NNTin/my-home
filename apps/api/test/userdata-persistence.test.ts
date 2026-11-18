@@ -12,6 +12,7 @@ import { clearUserdata, createTestApp, injector } from './helpers';
 
 const TABLES = [
   'history',
+  'home_settings',
   'issued_ids',
   'notes',
   'opening_overrides',

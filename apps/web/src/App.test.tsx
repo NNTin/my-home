@@ -177,8 +177,7 @@ describe('App', () => {
       vi.stubGlobal('DeviceOrientationEvent', class {});
       // The camera modes are offered on phones.
       stubScreen('portrait');
-      const models: Record<string, unknown> = {};
-      const fetchMock = stubApi(undefined, models);
+      const fetchMock = stubApi();
       render(<App />);
       fireEvent.click(await screen.findByRole('button', { name: /Walk and take photos/ }));
       fireEvent.click(screen.getByRole('radio', { name: /Sensors/ }));
@@ -188,44 +187,35 @@ describe('App', () => {
       expect(sheet.getAllByRole('button', { name: /^(Door|Window):/ }).length).toBeGreaterThan(0);
       expect(sheet.getByLabelText(/Magnetic declination/)).toHaveValue(0);
 
-      // While the page is open, the stored home changes: an agent corrects it through the api.
-      const corrected = {
-        ...mockHome,
-        name: 'Mock home, corrected by an agent',
-        rooms: mockHome.rooms.map((r, i) => (i === 0 ? { ...r, name: 'Renamed room' } : r)),
-      };
-      models['mock-home'] = corrected;
-
       fireEvent.change(sheet.getByLabelText(/Magnetic declination/), { target: { value: '4' } });
       fireEvent.click(sheet.getByRole('button', { name: 'Save' }));
       expect(await sheet.findByText('Declination saved for this home.')).toBeInTheDocument();
       const puts = () => fetchMock.mock.calls.filter(([, init]) => init?.method === 'PUT');
-      expect(puts()[0]![0]).toBe('/api/homes/mock-home');
-      const saved = JSON.parse(puts()[0]![1]!.body as string) as typeof mockHome;
+      // A home setting on top of the model from git (which every deploy replaces), never a
+      // replace of the whole home.
+      expect(puts().map(([url]) => url)).toEqual(['/api/homes/mock-home/settings']);
       // By default the value counts as read off a chart or model.
-      expect(saved.building.magneticDeclination).toEqual({
-        value: 4,
-        source: 'geodata',
-        note: 'From a declination chart or model, entered in the app',
-      });
-      // The save is made on the home as it is stored now: the agent's correction survives, and
-      // nothing but the declination differs from it.
-      expect(saved.name).toBe('Mock home, corrected by an agent');
-      expect(saved.rooms[0]!.name).toBe('Renamed room');
-      expect({ ...saved, building: { ...saved.building, magneticDeclination: undefined } }).toEqual(
-        {
-          ...corrected,
-          building: { ...corrected.building, magneticDeclination: undefined },
+      expect(JSON.parse(puts()[0]![1]!.body as string)).toEqual({
+        version: 0,
+        magneticDeclination: {
+          value: 4,
+          source: 'geodata',
+          note: 'From a declination chart or model, entered in the app',
         },
-      );
+      });
 
-      // The provenance can be set to a measurement on site.
+      // The provenance can be set to a measurement on site; the save uses the current version.
       fireEvent.change(sheet.getByLabelText('Where it is from'), { target: { value: 'measured' } });
       fireEvent.click(sheet.getByRole('button', { name: 'Save' }));
       await waitFor(() => expect(puts()).toHaveLength(2));
-      const measured = JSON.parse(puts()[1]![1]!.body as string) as typeof mockHome;
-      expect(measured.building.magneticDeclination).toMatchObject({ value: 4, source: 'measured' });
-      expect(measured.name).toBe('Mock home, corrected by an agent');
+      expect(JSON.parse(puts()[1]![1]!.body as string)).toMatchObject({
+        version: 1,
+        magneticDeclination: { value: 4, source: 'measured' },
+      });
+      expect(puts().every(([url]) => url === '/api/homes/mock-home/settings')).toBe(true);
+      // The home as the api returns it now has the setting.
+      const home = (await (await fetchMock('/api/homes/mock-home')).json()) as typeof mockHome;
+      expect(home.building.magneticDeclination).toMatchObject({ value: 4, source: 'measured' });
     });
 
     it('comes back walking where the shutter was tapped when the camera app reloaded the page', async () => {

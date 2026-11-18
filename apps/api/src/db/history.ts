@@ -62,7 +62,15 @@ export const listHistoryRows = (db: Db | Tx, homeId: string, useId: string) =>
 
 type Value = UseState[keyof UseState] | string | number | undefined;
 
-const SCALAR_FIELDS = ['name', 'levelId', 'roomId', 'position', 'rotationY', 'removed'] as const;
+const SCALAR_FIELDS = [
+  'name',
+  'levelId',
+  'roomId',
+  'position',
+  'rotationY',
+  'removed',
+  'magneticDeclination',
+] as const;
 
 const read = (state: UseState, field: string): Value => {
   if (field.startsWith('params.')) return state.params[field.slice('params.'.length)];
