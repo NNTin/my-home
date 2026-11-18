@@ -119,9 +119,12 @@ async function smoke(out, homeId) {
           await focused.evaluate(() => document.querySelector('canvas')?.width > 0),
         );
         await focused.waitForTimeout(1500); // the camera has moved and the frame is drawn
-        await focused.screenshot({
-          path: out.replace(/\.png$/, `-focus${device.hasTouch ? '-phone' : ''}.png`),
-        });
+        // Best effort: the viewer draws continuously, which software rendering can make slow.
+        const shot = out.replace(/\.png$/, `-focus${device.hasTouch ? '-phone' : ''}.png`);
+        await focused
+          .screenshot({ path: shot, timeout: 60_000 })
+          .then(() => console.log(`screenshot ${shot}`))
+          .catch((error) => console.log(`no focus screenshot: ${redact(error.message)}`));
         focusUrl.searchParams.set('focus', 'catalog-smoke-nope');
         await focused.goto(focusUrl.href, { waitUntil: 'networkidle', timeout: 60_000 });
         const alert = focused.getByRole('alert').filter({ hasText: 'Not found in this home' });
