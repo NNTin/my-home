@@ -22,9 +22,10 @@ concurrency:
 env:
   HUSKY: '0'
 
+# Temporary: Sengi runners (limited build minutes) while GitHub-hosted runners are blocked by billing.
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: sengi-standard-2-ubuntu-2404
     steps:
       - uses: actions/checkout@v7
       # shellcheck is preinstalled on the runner; the skill tests are offline (gh is stubbed).
@@ -43,7 +44,7 @@ jobs:
       - run: pnpm build
 
   test-postgres:
-    runs-on: ubuntu-latest
+    runs-on: sengi-standard-2-ubuntu-2404
     services:
       postgres:
         image: postgres:17-alpine
@@ -71,7 +72,7 @@ jobs:
       - run: pnpm --filter @my-home/api test
 
   docker:
-    runs-on: ubuntu-latest
+    runs-on: sengi-standard-2-ubuntu-2404
     env:
       IMAGE_TAG: ci
     steps:
@@ -261,7 +262,7 @@ jobs:
         run: docker compose down -v
 
   chart:
-    runs-on: ubuntu-latest
+    runs-on: sengi-standard-2-ubuntu-2404
     steps:
       - uses: actions/checkout@v7
       - uses: azure/setup-helm@v4
@@ -273,7 +274,7 @@ jobs:
     # Fork pull requests are validated only: no secrets, no images, no deploy.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     needs: [check, test-postgres, docker, chart]
-    runs-on: ubuntu-latest
+    runs-on: sengi-standard-2-ubuntu-2404
     permissions:
       contents: read
       packages: write
@@ -361,7 +362,7 @@ jobs:
     # is only published here, so the latest deploy wins and two deploys never race. GitHub records each run as a
     # deployment of the environment and marks the previous one inactive, which the pull request shows.
     needs: publish
-    runs-on: ubuntu-latest
+    runs-on: sengi-standard-2-ubuntu-2404
     permissions:
       contents: read
       packages: write

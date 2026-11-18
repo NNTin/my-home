@@ -16,9 +16,10 @@ permissions:
   contents: read
   packages: write
 
+# Temporary: Sengi runners (limited build minutes) while GitHub-hosted runners are blocked by billing.
 jobs:
   cleanup:
-    runs-on: ubuntu-latest
+    runs-on: sengi-standard-2-ubuntu-2404
     steps:
       - uses: actions/checkout@v7
       - run: python3 tools/cleanup-packages.py
