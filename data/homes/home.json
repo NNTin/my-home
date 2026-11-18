@@ -2651,7 +2651,7 @@
     {
       "id": "window-souterrain-living-room-south",
       "name": "Living room · south window",
-      "typeId": "window.casement",
+      "typeId": "window.tilt-turn",
       "wallId": "souterrain-wall-south-west",
       "type": "window",
       "offset": {
@@ -2675,7 +2675,7 @@
     {
       "id": "window-souterrain-bed-room-east",
       "name": "Bed room · east window",
-      "typeId": "window.casement",
+      "typeId": "window.tilt-turn",
       "wallId": "souterrain-wall-east",
       "type": "window",
       "offset": {
@@ -2723,7 +2723,7 @@
     {
       "id": "window-souterrain-kitchen-north",
       "name": "Kitchen · north window",
-      "typeId": "window.casement",
+      "typeId": "window.tilt-turn",
       "wallId": "souterrain-wall-north",
       "type": "window",
       "offset": {
@@ -2747,7 +2747,7 @@
     {
       "id": "window-souterrain-bath-room-north",
       "name": "Bath room · north window",
-      "typeId": "window.casement",
+      "typeId": "window.tilt-turn",
       "wallId": "souterrain-wall-north",
       "type": "window",
       "offset": {
@@ -2771,7 +2771,7 @@
     {
       "id": "window-souterrain-work-room-north",
       "name": "Work room · north window",
-      "typeId": "window.casement",
+      "typeId": "window.tilt-turn",
       "wallId": "souterrain-wall-north",
       "type": "window",
       "offset": {
