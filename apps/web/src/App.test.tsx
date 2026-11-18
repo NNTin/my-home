@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import type { SceneProps } from './scene/Scene';
@@ -14,6 +14,12 @@ vi.mock('./scene/Scene', () => ({
     lastScene = props;
     return <div data-testid="scene" />;
   },
+}));
+
+// The catalogue's thumbnails need WebGL too.
+vi.mock('./catalog-page/renderThumbnail', () => ({
+  renderThumbnail: () => Promise.reject(new Error('no WebGL in jsdom')),
+  THUMBNAIL_SIZE: 256,
 }));
 
 const jsonResponse = (body: unknown, status = 200) =>
@@ -291,6 +297,89 @@ describe('App', () => {
       render(<App />);
       expect(await screen.findByRole('application', { name: 'Movement pad' })).toBeInTheDocument();
       expect(lastScene?.walk?.view).toBe('third');
+    });
+  });
+
+  describe('pages', () => {
+    it('shows the viewer on / with the title of the app', async () => {
+      stubApi();
+      render(<App />);
+      expect(await screen.findByTestId('scene')).toBeInTheDocument();
+      expect(document.title).toBe('my-home');
+      expect(screen.getByRole('region', { name: 'View controls' })).toBeInTheDocument();
+    });
+
+    it('shows the catalogue on /catalog, without loading the home or reading ?walk', async () => {
+      window.history.replaceState(null, '', '/catalog?walk=first&home=mock-home');
+      const fetchMock = stubApi();
+      render(<App />);
+      expect(await screen.findByRole('heading', { name: 'Catalogue' })).toBeInTheDocument();
+      expect(screen.queryByTestId('scene')).not.toBeInTheDocument();
+      expect(screen.queryByRole('application', { name: 'Movement pad' })).not.toBeInTheDocument();
+      expect(sessionStorage.getItem(WALK_SESSION_KEY)).toBeNull();
+      expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['/api/catalog/usage']);
+      expect(document.title).toBe('Catalogue · my-home');
+    });
+
+    it('shows a piece page with the name of its type', async () => {
+      window.history.replaceState(null, '', '/catalog/furniture/furniture.bed');
+      stubApi();
+      render(<App />);
+      expect(await screen.findByRole('heading', { level: 1, name: 'Bed' })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: '← Catalogue' })).toHaveAttribute('href', '/catalog');
+      expect(document.title).toBe('Bed · my-home');
+    });
+
+    it.each(['/nope', '/catalog/furniture/furniture.throne', '/catalog/openings/furniture.bed'])(
+      'shows not-found on %s, with a link home',
+      async (path) => {
+        window.history.replaceState(null, '', `${path}?home=tiny`);
+        stubApi();
+        render(<App />);
+        expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: '← Home' })).toHaveAttribute('href', '/?home=tiny');
+      },
+    );
+
+    it('goes from the viewer to the catalogue and back, keeping ?home= only', async () => {
+      window.history.replaceState(null, '', '/?home=mock-home&panel=photos');
+      stubApi();
+      render(<App />);
+      expect(await screen.findByRole('region', { name: 'Photos' })).toBeInTheDocument();
+      const entry = screen.getByRole('link', { name: '📚 Catalogue' });
+      expect(entry).toHaveAttribute('href', '/catalog?home=mock-home');
+      fireEvent.click(entry);
+      expect(await screen.findByRole('heading', { name: 'Catalogue' })).toBeInTheDocument();
+      expect(screen.queryByTestId('scene')).not.toBeInTheDocument();
+      expect(window.location.pathname + window.location.search).toBe('/catalog?home=mock-home');
+
+      fireEvent.click(await screen.findByRole('link', { name: /^Bed/ }));
+      expect(await screen.findByRole('heading', { level: 1, name: 'Bed' })).toBeInTheDocument();
+
+      // The back button returns to the catalogue.
+      act(() => {
+        window.history.replaceState(null, '', '/catalog?home=mock-home');
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      });
+      fireEvent.click(await screen.findByRole('link', { name: '← Home' }));
+      // A fresh viewer: the photos panel of the first visit is not reopened.
+      expect(await screen.findByTestId('scene')).toBeInTheDocument();
+      expect(window.location.search).toBe('?home=mock-home');
+      expect(screen.queryByRole('region', { name: 'Photos' })).not.toBeInTheDocument();
+      expect(document.title).toBe('my-home');
+    });
+
+    it('keeps ?home= when the home is changed', async () => {
+      const tiny = { ...mockHome, id: 'tiny', name: 'Tiny home', outdoorAreas: [] };
+      stubApi([homeSummary('mock-home', 'Mock home'), homeSummary('tiny', 'Tiny home')], { tiny });
+      render(<App />);
+      fireEvent.change(await screen.findByLabelText('Home'), { target: { value: 'tiny' } });
+      await vi.waitFor(() =>
+        expect(screen.getByRole('link', { name: '📚 Catalogue' })).toHaveAttribute(
+          'href',
+          '/catalog?home=tiny',
+        ),
+      );
     });
   });
 });

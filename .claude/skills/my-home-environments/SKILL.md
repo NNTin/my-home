@@ -44,6 +44,8 @@ $S/visual-diff.sh staging shoot --out /tmp/vd-main         # 8 fixed canvas view
 $S/visual-diff.sh compare /tmp/vd-main /tmp/vd-pr          # identical, or differing pixels + diff PNGs
 $S/walk-smoke.sh staging                                 # phone-sized smoke test of walk mode
 $S/mobile-smoke.sh staging                               # phone layout: top bar, sheet, levels, furniture, walk
+$S/catalog-smoke.sh staging                              # /catalog and piece pages: deep links, reload, back
+$S/screenshot.sh staging --viewport 390x844 --touch --path '/catalog'   # the catalogue on a phone
 $S/compass-smoke.sh staging                              # Sensors / Manual camera modes, mocked sensor events
 $S/camera-smoke.sh staging                               # taking a photo with a fake camera, uploads checked
 $S/with-site-token.sh staging -- node e2e.mjs            # SITE_TOKEN and SITE_BASE for the child only
@@ -66,7 +68,7 @@ $S/uses.sh staging list --home mock-home --status needs-attention   # where-used
   below). Exit 4 when one is BROKEN, 1 on a script
   or tool error. The output names the PR or tag staging runs.
 - `screenshot.sh <env> [--path /?home=...] [--out file.png] [--wait ms] [--viewport WxH] [--touch]`: waits for the canvas
-  plus `--wait` (default 6000 ms), then runs any `--click <playwright selector>` and `--drag DX,DY` (pixels from
+  (on other pages than `/`, such as `/catalog`, for the heading) plus `--wait` (default 6000 ms), then runs any `--click <playwright selector>` and `--drag DX,DY` (pixels from
   the canvas centre, orbits the camera) in the given order, and prints the final host, status and console/page errors. It runs in the
   shared `ao-heavy` queue when available. In walk mode (`--path '/?walk=first'` or `'/?walk=third'`, see
   `docs/walking.md`), `--pad DX,DY,MS` holds the movement pad deflected (up to 44 px; negative DY walks
@@ -96,6 +98,17 @@ $S/uses.sh staging list --home mock-home --status needs-attention   # where-used
   or "Reset view" draws again), checks the canvas' pixel ratio (at most 1.5), that every control has a name,
   and that the web app manifest and its icons are served. It writes only to a **layout it creates itself and removes again**; every other write is refused inside
   the browser.
+- `catalog-smoke.sh <env> [--out file.png] [--home ID]`: the catalogue pages (`docs/catalog.md`) at 1440x900 and
+  at 390x844 with touch. The control-panel or top-bar entry opens `/catalog`; both kinds are shown, every card
+  has its number of uses, thumbnails are rendered and kept in the Cache Storage, and search filters. A card
+  opens its piece page, and the back button returns to `/catalog`, then to `/`. A deep link to
+  `/catalog/furniture/furniture.bed` loads in a fresh browser and survives a reload. It also checks: no console
+  or page errors, every control and link has a name, and on the phone one column, touch targets of at least
+  44 px, a sticky header, and no sideways scrolling upright or across (844x390). Screenshots: `<out>` (desktop) and
+  `<out>-phone.png`. Read-only: every write is refused inside the browser (the default layout the viewer creates for a home without
+  one is answered there, never stored). `screenshot.sh --path '/catalog'`
+  shoots the catalogue too: off `/` it waits for the page's heading instead of the canvas (the thumbnails
+  render within the default `--wait`).
 - `compass-smoke.sh <env> [--out file.png]`: the camera modes of walk mode (Sensors / Manual) at 390x844 with
   **mocked** orientation events (Android absolute alpha and the iOS `webkitCompassHeading` path). Manual mode
   ignores the events and turns by drag and ▲; Sensor mode turns and tilts the figure with the mocked phone (north

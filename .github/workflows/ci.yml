@@ -109,6 +109,13 @@ jobs:
                 and .building.roof.type == "gable" and (.outdoorAreas | length) == 3'
           curl -fsS http://localhost:8080/api/homes/mock-home/export | jq -e '.id == "mock-home"'
           curl -fsS http://localhost:8080/ | grep -q '<div id="root">'
+          # Deep links to the app's pages get index.html (the SPA fallback), revalidated on every
+          # load; unknown api paths are still the api's 404, not the fallback.
+          for path in /catalog /catalog/ /catalog/furniture/furniture.bed; do
+            curl -fsS -D page.headers "http://localhost:8080$path" | grep -q '<div id="root">'
+            grep -qi '^cache-control: no-cache' page.headers
+          done
+          test "$(curl -sS -o /dev/null -w '%{http_code}' http://localhost:8080/api/nope)" = 404
           # The web app manifest and its icons (installable app).
           curl -fsS -D manifest.headers -o manifest.json http://localhost:8080/manifest.webmanifest
           grep -qi '^content-type: application/manifest+json' manifest.headers

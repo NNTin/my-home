@@ -1,6 +1,7 @@
 import type { HomeSummary } from '@my-home/shared';
 import type { HomeScene } from '../builder/buildHome';
 import { roofIndex, toggleId, type Visibility } from '../builder/visibility';
+import { href, keptQuery, Link } from '../routing';
 
 interface Props {
   homes: HomeSummary[];
@@ -75,6 +76,9 @@ export function ControlPanel({
         <button type="button" aria-pressed={photosOpen} onClick={onPhotos}>
           📷 Photos ({photoCount}){openRequests > 0 && ` · ${openRequests} requested`}
         </button>
+        <Link className="button" to={href({ page: 'catalog' }, keptQuery())}>
+          📚 Catalogue
+        </Link>
       </div>
 
       <fieldset>

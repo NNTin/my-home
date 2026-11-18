@@ -1,5 +1,6 @@
 import {
   ApiError,
+  CatalogUsageResponse,
   HomeModel,
   Layout,
   LayoutConflict,
@@ -80,6 +81,12 @@ export const fetchHomes = (signal?: AbortSignal): Promise<ListHomesResponse> =>
 
 export const fetchHome = (id: string, signal?: AbortSignal): Promise<HomeModel> =>
   request('GET', homeUrl(id), HomeModel, { signal });
+
+/** How often each catalogue type is used in this environment, over all homes. */
+export const catalogApi = {
+  usage: (signal?: AbortSignal) =>
+    request('GET', '/api/catalog/usage', CatalogUsageResponse, { signal }),
+};
 
 /**
  * A home's settings, stored on top of its git model (which every deploy replaces): the magnetic

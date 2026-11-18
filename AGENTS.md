@@ -12,6 +12,8 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - `apps/web/src/catalog/<family>/<variant>/`: one piece module per catalogue type (windows, doors, gates,
   furniture), auto-registered (`docs/adding-piece-type.md`); layouts and the editor in `docs/layouts.md`;
   the phone layout (top bar, sheet) in `docs/mobile.md`
+- `apps/web/src/routing/` (no router library) and `apps/web/src/catalog-page/`: the pages `/catalog` and
+  `/catalog/<kind>/<typeId>`, lazy chunks; thumbnails cached in the browser (`docs/catalog.md`)
 - `docs/`: project docs; `docker-compose.yml` runs postgres + api + web
 - `charts/my-home`: Helm chart deployed to Kubernetes by CI + Flux (`docs/deployment.md`); `tools/check-chart.sh`
 

@@ -22,6 +22,8 @@ screen while the page is open (turning the phone, resizing a window), and what w
 - The home: its name, or a selector when there are several.
 - **🚶 Walk** starts [walking](walking.md); **📷 Photos (n)** opens the gallery in the sheet, with a badge for
   open photo requests.
+- **📚 Catalogue** opens the [catalogue](catalog.md) (a link, keeping `?home=`). Below 440 px of width, where
+  the home, Walk and Photos already take the row, it shows only its icon; its name stays "Catalogue".
 - The **level switcher**, a segmented control for the cutaway: Roof and then the levels from the top down. The
   buttons show short names ("First floor (attic)" becomes "Attic", "Ground floor" becomes "Ground";
   `shortLevelName()`), and keep the full name as their accessible name. The arrow keys move through it like a
@@ -93,6 +95,7 @@ For links, screenshots and tests:
 - `?hints=off` leaves the first-run hints out, without marking them as seen.
 
 They combine with `?home=` and are read once when the page opens. `?walk` wins over the panel parameters.
+They mean something on `/` only: the [catalogue pages](catalog.md#query-parameters) keep just `?home=`.
 
 ## Screen edges and browser bars
 

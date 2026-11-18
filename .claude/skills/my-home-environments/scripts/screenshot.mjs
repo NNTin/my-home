@@ -126,7 +126,9 @@ async function shoot([
     const finalHost = new URL(page.url()).host;
     console.log(`final host ${finalHost}, status ${response?.status() ?? 'none'}`);
     if (finalHost !== host) throw new Error(`ended on ${finalHost}, not ${host} (login redirect?)`);
-    await page.waitForSelector('canvas', { timeout: 30_000 });
+    // The viewer (`/`) draws a canvas; the other pages (`/catalog`, …) have a heading instead.
+    const viewer = new URL(page.url()).pathname === '/';
+    await page.waitForSelector(viewer ? 'canvas' : 'h1', { timeout: 30_000 });
     await page.waitForTimeout(Number(waitMs));
     console.log(`title ${await page.title()}`);
     const paused = await runActions(page, JSON.parse(actions), canvas === 'canvas');
