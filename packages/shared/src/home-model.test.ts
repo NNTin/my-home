@@ -171,6 +171,15 @@ describe('HomeModel', () => {
     expect(issues.map((i) => i.path)).toContain('walls[1].id');
   });
 
+  it("rejects an id equal to the home's own id (it names the home's settings history)", () => {
+    const home = mockHome();
+    home.openings[0]!.id = home.id;
+    expect(issuesOf(home)).toContainEqual({
+      path: 'openings[0].id',
+      message: `Duplicate id "${home.id}" (already used by the home)`,
+    });
+  });
+
   it('rejects shape errors such as a missing source, unknown keys or a negative width', () => {
     const home = mockHome() as unknown as Record<string, unknown> & HomeModel;
     delete (home.levels[0]!.height as Partial<HomeModel['levels'][0]['height']>).source;

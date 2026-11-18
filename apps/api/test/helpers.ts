@@ -8,6 +8,7 @@ import { homes } from '../src/db/schema';
 import {
   history,
   homeSettings,
+  imports,
   issuedIds,
   notes,
   openingOverrides,
@@ -46,7 +47,7 @@ export async function clearMedia({ database }: Pick<TestApp, 'database'>) {
   await database.db.delete(photoRequests);
 }
 
-/** Empties the test database's userdata tables (placements, overrides, history, ids, notes, settings). */
+/** Empties the test database's userdata tables (placements, overrides, history, ids, notes, settings, imports). */
 export async function clearUserdata({ database }: Pick<TestApp, 'database'>) {
   await database.db.delete(placements);
   await database.db.delete(openingOverrides);
@@ -54,6 +55,7 @@ export async function clearUserdata({ database }: Pick<TestApp, 'database'>) {
   await database.db.delete(issuedIds);
   await database.db.delete(notes);
   await database.db.delete(homeSettings);
+  await database.db.delete(imports);
 }
 
 /** `app.inject` with a JSON body; `actor` sends the declared `X-My-Home-Actor` header. */

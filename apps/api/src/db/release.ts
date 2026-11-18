@@ -1,5 +1,6 @@
 import type { Config } from '../config';
 import type { Database } from './client';
+import { describeImports, importLayouts, type LayoutImport } from './layout-import';
 import { resetDatabase } from './reset';
 import { describeSync, homeFiles, loadHomeFiles, syncHomes, type SyncReport } from './sync';
 
@@ -15,7 +16,8 @@ export interface ReleaseLog {
  * 2. with `RESET_PUBLIC` (staging, guarded by `ALLOW_DATABASE_RESET`), drop `public` and the
  *    drizzle journal; `media` and `userdata` are never touched;
  * 3. migrate `public`, `media` and `userdata`;
- * 4. sync the homes from git in one transaction (`syncHomes`). Nothing is deleted.
+ * 4. sync the homes from git in one transaction (`syncHomes`). Nothing is deleted;
+ * 5. import the named layouts once into the placement sets (`importLayouts`, #44).
  */
 export async function runRelease(
   database: Database,
@@ -25,7 +27,7 @@ export async function runRelease(
   >,
   log: ReleaseLog,
   folder?: string,
-): Promise<SyncReport> {
+): Promise<SyncReport & { imports: LayoutImport[] }> {
   if (config.resetPublic && !config.allowDatabaseReset) {
     throw new Error('refusing to reset public: RESET_PUBLIC needs ALLOW_DATABASE_RESET=true');
   }
@@ -46,5 +48,11 @@ export async function runRelease(
   const { info, warn } = describeSync(report);
   info.forEach((line) => log.info(line));
   warn.forEach((line) => log.warn(line));
-  return report;
+  const imported = await importLayouts(database.db, {
+    retentionDays: config.userdataTrashRetentionDays,
+  });
+  const lines = describeImports(imported);
+  lines.info.forEach((line) => log.info(line));
+  lines.warn.forEach((line) => log.warn(line));
+  return { ...report, imports: imported };
 }

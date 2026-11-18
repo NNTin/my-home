@@ -38,8 +38,8 @@ export function homeSettingsStore(db: Db) {
     return row;
   };
 
-  const requireHome = async (homeId: string) => {
-    const [row] = await db.select({ id: homes.id }).from(homes).where(eq(homes.id, homeId));
+  const requireHome = async (homeId: string, tx: Tx | Db = db) => {
+    const [row] = await tx.select({ id: homes.id }).from(homes).where(eq(homes.id, homeId));
     if (!row) throw notFound('Home', homeId);
   };
 
@@ -60,8 +60,8 @@ export function homeSettingsStore(db: Db) {
       input: { version: number; magneticDeclination: HomeSettings['magneticDeclination'] },
       actor: HistoryActor,
     ): Promise<HomeSettings> {
-      await requireHome(homeId);
       const row = await db.transaction(async (tx) => {
+        await requireHome(homeId, tx);
         const [current] = await tx
           .select()
           .from(homeSettings)

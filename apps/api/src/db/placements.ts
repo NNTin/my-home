@@ -156,12 +156,12 @@ export function placementStore(db: Db, options: { retentionDays: number }) {
     tx: Tx,
     homeId: string,
     m: HomeModel,
-    type: CatalogType,
+    typeId: string,
     levelId: string,
     room: HomeModel['rooms'][number] | undefined,
   ) => {
     const area = room?.apartmentId?.replace(/^apt-/, '') || levelId;
-    const variant = type.id.slice(type.id.indexOf('.') + 1);
+    const variant = typeId.slice(typeId.indexOf('.') + 1);
     const prefixFor = (n: number) =>
       `${area.slice(0, Math.max(1, MAX_ID - variant.length - String(n).length - 2))}-${variant}`;
     const taken = collect(m, 'id');
@@ -198,7 +198,7 @@ export function placementStore(db: Db, options: { retentionDays: number }) {
     tx: Tx,
     homeId: string,
     m: HomeModel,
-    type: CatalogType,
+    typeName: string,
     place: string,
   ) => {
     const taken = collect(m, 'name');
@@ -207,7 +207,7 @@ export function placementStore(db: Db, options: { retentionDays: number }) {
       .from(placements)
       .where(eq(placements.homeId, homeId));
     for (const row of rows) taken.add(row.name);
-    const base = `${place} · ${type.name}`;
+    const base = `${place} · ${typeName}`;
     if (!taken.has(base)) return base;
     for (let k = 2; ; k++) if (!taken.has(`${base} ${k}`)) return `${base} ${k}`;
   };
@@ -235,37 +235,61 @@ export function placementStore(db: Db, options: { retentionDays: number }) {
       const type = furnitureType(input.typeId);
       const level = levelOf(m, input.levelId);
       const params = validOverrides(type, input.params);
-      const room = roomOf(m, level.id, input.position);
-      const row = await db.transaction(async (tx) => {
-        const id = await issueId(tx, homeId, m, type, level.id, room);
-        const name = input.name ?? (await autoName(tx, homeId, m, type, room?.name ?? level.name));
-        const [inserted] = await tx
-          .insert(placements)
-          .values({
-            homeId,
-            id,
-            typeId: type.id,
-            name,
-            levelId: level.id,
-            roomId: room?.id ?? null,
-            x: input.position.x,
-            z: input.position.z,
-            rotationY: input.rotationY,
-            params,
-          })
-          .returning();
-        await recordHistory(tx, {
-          homeId,
-          useId: id,
-          useKind: 'placement',
-          action: 'create',
-          actor,
-          before: null,
-          after: placementState(inserted!),
-        });
-        return inserted!;
-      });
+      const row = await db.transaction((tx) =>
+        store.insert(tx, homeId, m, { ...input, typeId: type.id, params }, actor, 'create', {
+          typeName: type.name,
+          levelName: level.name,
+        }),
+      );
       return toPlacement(row);
+    },
+
+    /**
+     * Inserts a placement with an issued id (and a server name unless given) and its history row,
+     * in `tx`. The input is not validated: `create` checks it first; the layout import keeps
+     * unknown types and gone levels as they are (they show as needs-attention).
+     */
+    async insert(
+      tx: Tx,
+      homeId: string,
+      m: HomeModel,
+      input: Omit<CreateInput, 'params'> & { params: ParamValues },
+      actor: HistoryActor,
+      action: 'create' | 'import',
+      names: { typeName: string; levelName: string },
+    ): Promise<PlacementRow> {
+      const room = m.levels.some((l) => l.id === input.levelId)
+        ? roomOf(m, input.levelId, input.position)
+        : undefined;
+      const id = await issueId(tx, homeId, m, input.typeId, input.levelId, room);
+      const name =
+        input.name ??
+        (await autoName(tx, homeId, m, names.typeName, room?.name ?? names.levelName));
+      const [inserted] = await tx
+        .insert(placements)
+        .values({
+          homeId,
+          id,
+          typeId: input.typeId,
+          name,
+          levelId: input.levelId,
+          roomId: room?.id ?? null,
+          x: input.position.x,
+          z: input.position.z,
+          rotationY: input.rotationY,
+          params: input.params,
+        })
+        .returning();
+      await recordHistory(tx, {
+        homeId,
+        useId: id,
+        useKind: 'placement',
+        action,
+        actor,
+        before: null,
+        after: placementState(inserted!),
+      });
+      return inserted!;
     },
 
     async update(

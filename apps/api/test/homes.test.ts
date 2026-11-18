@@ -136,6 +136,23 @@ describe('homes API', () => {
       expect((await inject('GET', '/api/homes/mock-home')).json()).toEqual(mockHome);
     });
 
+    it('answers PUT and import with the effective model too', async () => {
+      await seed(ctx.database.db);
+      const declination = { value: 2, source: 'measured' as const };
+      await inject('PUT', '/api/homes/mock-home/settings', {
+        version: 0,
+        magneticDeclination: declination,
+      });
+      const updated = clone({ name: 'Updated' });
+      const expected = {
+        ...updated,
+        building: { ...updated.building, magneticDeclination: declination },
+      };
+      expect((await inject('PUT', '/api/homes/mock-home', updated)).json()).toEqual(expected);
+      expect((await inject('POST', '/api/homes/import', updated)).json()).toEqual(expected);
+      expect((await inject('GET', '/api/homes/mock-home')).json()).toEqual(expected);
+    });
+
     it('returns 404 for an unknown id', async () => {
       const res = await inject('GET', '/api/homes/nope');
       expect(res.statusCode).toBe(404);

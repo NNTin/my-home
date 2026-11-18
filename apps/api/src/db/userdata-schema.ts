@@ -134,3 +134,16 @@ export const homeSettings = userdata.table('home_settings', {
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),
 });
 export type HomeSettingsRow = typeof homeSettings.$inferSelect;
+
+/** One-time imports, one row per home and source (`layouts`: the named layouts → placements). */
+export const imports = userdata.table(
+  'imports',
+  {
+    homeId: text('home_id').notNull(),
+    source: text('source').notNull(),
+    at: timestamptz('at').notNull().defaultNow(),
+    detail: jsonb('detail').$type<Record<string, unknown>>().notNull().default({}),
+  },
+  (t) => [primaryKey({ columns: [t.homeId, t.source] })],
+);
+export type ImportRow = typeof imports.$inferSelect;
