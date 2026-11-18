@@ -216,6 +216,8 @@ describe('WalkHud', () => {
     fireEvent.keyDown(window, { key: 'ArrowUp' });
     await waitFor(() => expect(at().z).toBeLessThan(-0.1));
     fireEvent.keyUp(window, { key: 'ArrowUp' });
+    // A frame already scheduled may still step once after the key is released: let it land.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
 
     takePhoto();
     const note = screen.getByLabelText('Note');
