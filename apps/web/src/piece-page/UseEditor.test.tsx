@@ -145,6 +145,35 @@ describe('the per-use editor', () => {
     );
   });
 
+  it('keeps the list and the saved values when the refresh after a save fails', async () => {
+    const api = openPiece('/catalog/openings/window.casement');
+    const editor = await edit(kitchen, 'Kitchen · back window');
+    const real = api.fetch.getMockImplementation()!;
+    // From now on the where-used list fails; the save itself works.
+    api.fetch.mockImplementation((url: string, init?: RequestInit) =>
+      /\/uses\?typeId=/.test(url)
+        ? Promise.resolve(
+            new Response(
+              JSON.stringify({ statusCode: 500, error: 'Internal Server Error', message: 'down' }),
+              { status: 500 },
+            ),
+          )
+        : real(url, init),
+    );
+    fireEvent.click(editor.getByRole('button', { name: 'More sashes' }));
+    fireEvent.click(editor.getByRole('button', { name: 'Save' }));
+    expect(
+      await screen.findByText(/Saved, but the list could not be refreshed/),
+    ).toBeInTheDocument();
+    expect(api.overrides.get(`mock-home/${kitchen}`)!.params).toEqual({ sashes: 2 });
+    // No error state: the rows and the open editor stay, with the values that were saved.
+    expect(
+      rowOf('mock-home', 'souterrain-bedroom-window').getByText('Bedroom · front window'),
+    ).toBeTruthy();
+    expect(editor.getByRole('status', { name: 'Sashes' })).toHaveTextContent('2');
+    expect(screen.queryByText(/could not be loaded/)).not.toBeInTheDocument();
+  });
+
   it('renames, removes and restores furniture', async () => {
     const api = openPiece('/catalog/furniture/furniture.bed', {
       placements: [testPlacement({ params: { width: 1.8 } })],

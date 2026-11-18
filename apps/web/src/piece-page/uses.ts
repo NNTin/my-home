@@ -33,6 +33,11 @@ export interface HomeData {
   requests: PhotoRequest[];
   /** Why the home could not be loaded (it is shown, the other homes still work). */
   error?: string;
+  /**
+   * Why the last reload failed (after a write that worked): the data shown is the one before, and
+   * the notice says it may be out of date. Cleared by the next reload that works.
+   */
+  notice?: string;
 }
 
 /** A use in a list: the use and the home it is in. */

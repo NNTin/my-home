@@ -52,8 +52,11 @@ interface Props {
   /** The unsaved values (undefined: none, the form shows the saved ones). */
   draft: ParamValues | undefined;
   onDraft(draft: ParamValues | undefined): void;
-  /** Loads the home's uses again (after a write, or to see what changed elsewhere). */
-  onReload(): Promise<void>;
+  /**
+   * Loads the home's uses again (after a write, or to see what changed elsewhere); false when that
+   * failed and the use shown is the one from before.
+   */
+  onReload(): Promise<boolean>;
 }
 
 /**
@@ -90,8 +93,8 @@ export function UseEditor({ type, homeId, use, model, draft, onDraft, onReload }
     setBusy(true);
     try {
       await action();
-      await onReload();
-      after?.();
+      // Without a fresh copy the form keeps its values: they are what was saved.
+      if (await onReload()) after?.();
       setFailure(undefined);
     } catch (err) {
       setFailure(failureOf(err));

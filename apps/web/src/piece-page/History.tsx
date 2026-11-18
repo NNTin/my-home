@@ -75,7 +75,7 @@ export function History({
   /** Changes when the use was saved, so the list follows. */
   refreshKey: string;
   /** After an undo: the home's uses are loaded again. */
-  onUndone(): Promise<void>;
+  onUndone(): Promise<unknown>;
 }) {
   const [entries, setEntries] = useState<HistoryEntry[]>();
   const [error, setError] = useState<string>();

@@ -33,7 +33,7 @@ interface RowProps {
   onOpen(open: OpenUse | undefined): void;
   draft: ParamValues | undefined;
   onDraft(draft: ParamValues | undefined): void;
-  reload(homeId: string): Promise<void>;
+  reload(homeId: string): Promise<boolean>;
 }
 
 function UseItem({ type, row, data, attention, open, onOpen, draft, onDraft, reload }: RowProps) {
@@ -183,7 +183,7 @@ function Trash({
 }: {
   homeId: string;
   trash: Placement[];
-  reload(homeId: string): Promise<void>;
+  reload(homeId: string): Promise<boolean>;
 }) {
   const [error, setError] = useState<string>();
   const restore = async (p: Placement) => {
@@ -237,7 +237,7 @@ export function Uses({
 }: {
   type: CatalogType;
   state: WhereUsedState;
-  reload(homeId: string): Promise<void>;
+  reload(homeId: string): Promise<boolean>;
   open: OpenUse | undefined;
   onOpen(open: OpenUse | undefined): void;
   draft: ParamValues | undefined;
@@ -287,6 +287,12 @@ export function Uses({
               {data.error && (
                 <p className="error" role="alert">
                   {data.error}
+                </p>
+              )}
+              {data.notice && (
+                <p className="piece-note uses-notice" role="status">
+                  Saved, but the list could not be refreshed ({data.notice}): it may be out of date.
+                  Reload the page to see the latest.
                 </p>
               )}
               {!data.error && levels.length === 0 && trash.length === 0 && (

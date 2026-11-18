@@ -45,7 +45,8 @@ async function loadHome(type: CatalogType, home: HomeSummary, signal?: AbortSign
 /**
  * The uses of a type in every home of this environment, with the homes' models, placements,
  * photos and photo requests. `reload(homeId)` fetches one home again (after a write); a newer
- * reload of the same home wins over an older, slower one.
+ * reload of the same home wins over an older, slower one, and a failed one keeps the data shown
+ * (with `notice`) rather than replacing it with an error. It resolves to whether it worked.
  */
 export function useWhereUsed(type: CatalogType) {
   const [state, setState] = useState<WhereUsedState>({ status: 'loading' });
@@ -70,14 +71,25 @@ export function useWhereUsed(type: CatalogType) {
       turns.current.set(homeId, turn);
       const current = state.status === 'ready' ? state.homes : [];
       const home = current.find((h) => h.home.id === homeId)?.home;
-      if (!home) return;
+      if (!home) return false;
       const fresh = await loadHome(type, home);
-      if (turns.current.get(homeId) !== turn) return;
+      if (turns.current.get(homeId) !== turn) return fresh.error === undefined;
       setState((s) =>
         s.status === 'ready'
-          ? { ...s, homes: s.homes.map((h) => (h.home.id === homeId ? fresh : h)) }
+          ? {
+              ...s,
+              homes: s.homes.map((h) => {
+                if (h.home.id !== homeId) return h;
+                // A failed reload keeps what was loaded (a save before it did work), with a notice.
+                if (fresh.error !== undefined && h.error === undefined) {
+                  return { ...h, notice: fresh.error };
+                }
+                return fresh;
+              }),
+            }
           : s,
       );
+      return fresh.error === undefined;
     },
     [state, type],
   );

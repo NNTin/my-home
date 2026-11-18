@@ -69,6 +69,27 @@ describe('photos and notes on the piece page', () => {
     expect(rowOf('mock-home', kitchen).getByText('📷 1 photo')).toBeInTheDocument();
   });
 
+  it('keeps the focus where it is while the page behind the photo re-renders', async () => {
+    openPiece('/catalog/openings/window.casement', { photos });
+    await screen.findByText(/uses in this environment/);
+    const strip = typeSection().getByRole('list', { name: 'Photos of Casement window' });
+    fireEvent.click(within(strip).getAllByRole('button')[0]!);
+    const viewer = within(screen.getByRole('dialog'));
+    expect(viewer.getByRole('button', { name: 'Close' })).toHaveFocus();
+    const gallery = viewer.getByRole('link', { name: 'Open in the gallery' });
+    gallery.focus();
+    // Opening a use re-renders the whole page, the viewer's parent included.
+    window.location.hash = `#use=${kitchen}`;
+    await waitFor(() =>
+      expect(
+        rowOf('mock-home', kitchen).getByRole('button', { name: 'Edit Kitchen · back window' }),
+      ).toHaveAttribute('aria-pressed', 'true'),
+    );
+    expect(gallery).toHaveFocus();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
   it("links a photo of the use's room to the use", async () => {
     const api = openPiece('/catalog/openings/window.casement', { photos });
     const group = await openRow();

@@ -698,7 +698,7 @@ async function usesStep({ label, device, open, press, base, homeId, shot }) {
   const editable = facts.hasMock && new URL(base).host !== PRODUCTION_HOST;
   if (!editable) {
     console.log(
-      `skip  ${label}: no ${MOCK} here (or production), so no edit and undo; where-used and Place run`,
+      `skip  ${label}: skipped: no ${MOCK} (or production): no edit and undo; where-used and Place run`,
     );
   } else {
     let target;

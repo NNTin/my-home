@@ -44,14 +44,20 @@ function PhotoStrip({
  */
 export function PhotoViewer({ photo, onClose }: { photo: Photo; onClose(): void }) {
   const close = useRef<HTMLButtonElement>(null);
+  // The latest `onClose`, so the effect below runs once per open photo, not on every render of
+  // the parent (which passes a new function each time).
+  const closeRef = useRef(onClose);
+  useEffect(() => {
+    closeRef.current = onClose;
+  });
   useEffect(() => {
     close.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') closeRef.current();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [photo.id]);
   const room = roomLabel(photo);
   return (
     <div
@@ -124,7 +130,7 @@ export function UsePhotos({
   requests: PhotoRequest[];
   roomName(id: string): string | undefined;
   /** After linking or unlinking: the home's photos are loaded again. */
-  onChanged(): Promise<void>;
+  onChanged(): Promise<unknown>;
 }) {
   const [picking, setPicking] = useState(false);
   const [onlyRoom, setOnlyRoom] = useState(use.roomIds.length > 0);
