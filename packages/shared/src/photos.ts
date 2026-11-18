@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Id, insideOutline, type Polygon } from './home-model';
+import { Subject, SubjectQuery, SubjectRef, Subjects } from './subjects';
 
 /**
  * Photos taken inside the model's context, and requests for new ones. Both live in the `media`
@@ -136,6 +137,11 @@ export const Photo = z.object({
   thumbnail: PhotoImageInfo,
   /** The sensor snapshot taken with the photo; null for photos stored without one. */
   sensors: PhotoSensors.nullable().default(null),
+  /**
+   * The catalogue types and uses the photo shows, with their names and status resolved against
+   * the current model and placements. Older photos (and older builds) have none.
+   */
+  subjects: z.array(SubjectRef).default([]),
   createdAt: Timestamp,
   updatedAt: Timestamp,
   /** Set while the photo is in the trash; `purgeAt` is when it is deleted for good. */
@@ -160,6 +166,8 @@ export const CreatePhotoMeta = z.strictObject({
   capturedRoomId: Id.nullish(),
   capturedRoomName: z.string().max(200).nullish(),
   sensors: PhotoSensors.nullish(),
+  /** Types and uses the photo shows (a request's subject is added when it answers one). */
+  subjects: Subjects.optional(),
 });
 export type CreatePhotoMeta = z.input<typeof CreatePhotoMeta>;
 
@@ -178,6 +186,8 @@ export const UpdatePhotoBody = z
     capturedRoomId: Id.nullable(),
     capturedRoomName: z.string().max(200).nullable(),
     sensors: PhotoSensors.nullable(),
+    /** Replaces the whole list. */
+    subjects: Subjects,
   })
   .partial();
 export type UpdatePhotoBody = z.input<typeof UpdatePhotoBody>;
@@ -200,6 +210,8 @@ export const ListPhotosQuery = z.object({
   roomId: Id.optional(),
   tag: PhotoTag.optional(),
   requestId: Id.optional(),
+  /** Photos linked to this type or use: `type:<typeId>` or `use:<useId>`. */
+  subject: SubjectQuery.optional(),
   near: Near.optional(),
   /** Bounds on `takenAt`: `since` inclusive, `until` exclusive. */
   since: Timestamp.optional(),
@@ -241,6 +253,8 @@ export const PhotoRequest = z.object({
   pitch: z.number().nullable(),
   reason: z.string(),
   requester: PhotoRequester,
+  /** The type or use the photo should show, resolved on read; a photo answering it is linked to it. */
+  subject: SubjectRef.nullable().default(null),
   status: PhotoRequestStatus,
   /** Photos linked to the request that are not in the trash, oldest first. */
   photoIds: z.array(Id),
@@ -260,10 +274,13 @@ export const CreatePhotoRequestBody = z
     yaw: z.number().nullish(),
     pitch: PhotoPose.shape.pitch.nullish(),
     reason: Reason,
-    requester: PhotoRequester,
+    /** Kept when given (older clients); otherwise the server records the request's actor. */
+    requester: PhotoRequester.optional(),
+    /** Without a room and a position, a use subject places the request in the use's first room. */
+    subject: Subject.optional(),
   })
-  .refine((body) => body.roomId != null || body.position != null, {
-    message: 'Give a roomId, a position or both',
+  .refine((body) => body.roomId != null || body.position != null || body.subject?.kind === 'use', {
+    message: 'Give a roomId, a position, both, or a use subject',
     path: ['position'],
   });
 export type CreatePhotoRequestBody = z.input<typeof CreatePhotoRequestBody>;

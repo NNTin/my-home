@@ -6,6 +6,7 @@ import {
   integer,
   jsonb,
   pgSchema,
+  primaryKey,
   text,
   timestamp,
 } from 'drizzle-orm/pg-core';
@@ -83,6 +84,23 @@ export const photoThumbnails = media.table('photo_thumbnails', {
   data: bytea('data').notNull(),
 });
 
+/** The types and uses a photo shows (soft references, resolved on read). */
+export const photoSubjects = media.table(
+  'photo_subjects',
+  {
+    photoId: text('photo_id')
+      .notNull()
+      .references(() => photos.id, { onDelete: 'cascade' }),
+    subjectKind: text('subject_kind').notNull(),
+    subjectId: text('subject_id').notNull(),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.photoId, t.subjectKind, t.subjectId] }),
+    index('photo_subjects_subject_idx').on(t.subjectKind, t.subjectId),
+  ],
+);
+
 export const photoRequests = media.table(
   'photo_requests',
   {
@@ -98,6 +116,8 @@ export const photoRequests = media.table(
     reason: text('reason').notNull(),
     requester: text('requester').notNull(),
     status: text('status').notNull().default('open'),
+    subjectKind: text('subject_kind'),
+    subjectId: text('subject_id'),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
     updatedAt: timestamptz('updated_at').notNull().defaultNow(),
     closedAt: timestamptz('closed_at'),

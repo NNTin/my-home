@@ -11,8 +11,12 @@ import {
   type ListPhotosQuery,
   type ModelRooms,
   type PhotoRequestStatus,
+  type Subject,
+  type SubjectRef,
   type UpdatePhotoBody,
 } from '@my-home/shared';
+import type { ResolvedActor } from '../actor';
+import { problem } from '../errors';
 import { and, asc, count, desc, eq, gte, inArray, isNotNull, isNull, lt, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { ProcessedImage } from '../photos/image';
@@ -21,11 +25,13 @@ import {
   photoBlobs,
   photoRequests,
   photos,
+  photoSubjects,
   photoThumbnails,
   type PhotoRequestRow,
   type PhotoRow,
 } from './media-schema';
 import { homes } from './schema';
+import { subjectResolver } from './subjects';
 
 type CreateMeta = z.output<typeof CreatePhotoMeta>;
 type UpdateBody = z.output<typeof UpdatePhotoBody>;
@@ -77,7 +83,7 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
     return parsed.success ? parsed.data : undefined;
   };
 
-  const toPhoto = (row: PhotoRow, model: ModelRooms | undefined): Photo =>
+  const toPhoto = (row: PhotoRow, model: ModelRooms | undefined, subjects: SubjectRef[]): Photo =>
     Photo.parse({
       id: row.id,
       homeId: row.homeId,
@@ -108,11 +114,70 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
         byteSize: row.thumbnailByteSize,
       },
       sensors: storedSensors(row.sensors),
+      subjects,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
       deletedAt: iso(row.deletedAt),
       purgeAt: purgeAt(row.deletedAt),
     });
+
+  /** The subjects linked to each photo, in the order they were linked (then by kind and id). */
+  const subjectsByPhoto = async (photoIds: string[]) => {
+    const byPhoto = new Map<string, Subject[]>();
+    if (photoIds.length === 0) return byPhoto;
+    const rows = await db
+      .select()
+      .from(photoSubjects)
+      .where(inArray(photoSubjects.photoId, photoIds))
+      .orderBy(
+        asc(photoSubjects.createdAt),
+        asc(photoSubjects.subjectKind),
+        asc(photoSubjects.subjectId),
+      );
+    for (const row of rows) {
+      const subject = { kind: row.subjectKind, id: row.subjectId } as Subject;
+      byPhoto.set(row.photoId, [...(byPhoto.get(row.photoId) ?? []), subject]);
+    }
+    return byPhoto;
+  };
+
+  /** Photos with their subjects resolved against the current model and placements. */
+  const toPhotos = async (rows: PhotoRow[], model: ModelRooms | undefined): Promise<Photo[]> => {
+    const links = await subjectsByPhoto(rows.map((r) => r.id));
+    const resolver = subjectResolver(db);
+    return Promise.all(
+      rows.map(async (row) =>
+        toPhoto(row, model, await resolver.refs(row.homeId, links.get(row.id) ?? [])),
+      ),
+    );
+  };
+  const one = async (row: PhotoRow | undefined, model?: ModelRooms) =>
+    row && (await toPhotos([row], model ?? (await modelRooms(row.homeId))))[0];
+
+  /** Links subjects to a photo; ones it already has are kept as they are. */
+  const link = async (tx: Pick<Db, 'insert'>, photoId: string, subjects: Subject[]) => {
+    if (subjects.length === 0) return;
+    await tx
+      .insert(photoSubjects)
+      .values(subjects.map((s) => ({ photoId, subjectKind: s.kind, subjectId: s.id })))
+      .onConflictDoNothing();
+  };
+
+  /** A photo answering a request of its own home shows the request's subject too. */
+  const linkRequestSubject = async (
+    tx: Pick<Db, 'insert' | 'select'>,
+    photoId: string,
+    requestId: string,
+    homeId: string,
+  ) => {
+    const [request] = await tx
+      .select({ kind: photoRequests.subjectKind, id: photoRequests.subjectId })
+      .from(photoRequests)
+      .where(and(eq(photoRequests.id, requestId), eq(photoRequests.homeId, homeId)));
+    if (request?.kind && request.id) {
+      await link(tx, photoId, [{ kind: request.kind, id: request.id } as Subject]);
+    }
+  };
 
   /** The captured room for a pose: what the caller recorded, else the room at the pose now. */
   const capturedRoom = (
@@ -155,7 +220,19 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
 
   const toRequests = async (rows: PhotoRequestRow[]): Promise<PhotoRequest[]> => {
     const linked = await photoIdsByRequest(rows);
-    return rows.map((row) =>
+    const resolver = subjectResolver(db);
+    const subjects = await Promise.all(
+      rows.map(async (row) =>
+        row.subjectKind && row.subjectId
+          ? (
+              await resolver.refs(row.homeId, [
+                { kind: row.subjectKind, id: row.subjectId } as Subject,
+              ])
+            )[0]!
+          : null,
+      ),
+    );
+    return rows.map((row, i) =>
       PhotoRequest.parse({
         id: row.id,
         homeId: row.homeId,
@@ -167,6 +244,7 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
         pitch: row.pitch,
         reason: row.reason,
         requester: row.requester,
+        subject: subjects[i],
         status: row.status,
         photoIds: linked.get(row.id) ?? [],
         createdAt: row.createdAt.toISOString(),
@@ -246,10 +324,14 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
         if (!inserted) return undefined;
         await tx.insert(photoBlobs).values({ photoId: id, data: processed.image.data });
         await tx.insert(photoThumbnails).values({ photoId: id, data: processed.thumbnail.data });
-        if (inserted.requestId) await fulfilOpenRequest(tx, inserted.requestId, homeId);
+        await link(tx, id, meta.subjects ?? []);
+        if (inserted.requestId) {
+          await linkRequestSubject(tx, id, inserted.requestId, homeId);
+          await fulfilOpenRequest(tx, inserted.requestId, homeId);
+        }
         return inserted;
       });
-      return row && toPhoto(row, model);
+      return one(row, model);
     },
 
     /** Photos of a home that are not in the trash, newest first. */
@@ -259,6 +341,20 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
         isNull(photos.deletedAt),
         query.levelId === undefined ? undefined : eq(photos.levelId, query.levelId),
         query.requestId === undefined ? undefined : eq(photos.requestId, query.requestId),
+        query.subject === undefined
+          ? undefined
+          : inArray(
+              photos.id,
+              db
+                .select({ id: photoSubjects.photoId })
+                .from(photoSubjects)
+                .where(
+                  and(
+                    eq(photoSubjects.subjectKind, query.subject.kind),
+                    eq(photoSubjects.subjectId, query.subject.id),
+                  ),
+                ),
+            ),
         query.tag === undefined
           ? undefined
           : sql`${photos.tags} @> ${JSON.stringify([query.tag])}::jsonb`,
@@ -277,23 +373,24 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
 
       // The resolved room depends on the current model, so a room filter is applied here.
       if (query.roomId !== undefined) {
-        const matches = (await ordered)
-          .map((row) => toPhoto(row, model))
-          .filter((p) => p.capturedRoomId === query.roomId || p.room?.id === query.roomId);
+        const matches = (await ordered).filter((row) => {
+          if (row.capturedRoomId === query.roomId) return true;
+          return (model ? roomAt(model, row.levelId, row) : null)?.id === query.roomId;
+        });
         return {
-          items: matches.slice(query.offset, query.offset + query.limit),
+          items: await toPhotos(matches.slice(query.offset, query.offset + query.limit), model),
           total: matches.length,
         };
       }
       const [total] = await db.select({ value: count() }).from(photos).where(where);
       const rows = await ordered.limit(query.limit).offset(query.offset);
-      return { items: rows.map((row) => toPhoto(row, model)), total: total?.value ?? 0 };
+      return { items: await toPhotos(rows, model), total: total?.value ?? 0 };
     },
 
     /** One photo, also when it is in the trash. */
     async get(id: string): Promise<Photo | undefined> {
       const [row] = await db.select().from(photos).where(eq(photos.id, id));
-      return row && toPhoto(row, await modelRooms(row.homeId));
+      return one(row);
     },
 
     async image(id: string, kind: 'image' | 'thumbnail') {
@@ -345,13 +442,18 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
           })
           .where(eq(photos.id, id))
           .returning();
+        if (updated && body.subjects !== undefined) {
+          await tx.delete(photoSubjects).where(eq(photoSubjects.photoId, id));
+          await link(tx, id, body.subjects);
+        }
         // Linking a photo to a request answers it, exactly as uploading it for the request does.
         if (updated && body.requestId) {
+          await linkRequestSubject(tx, id, body.requestId, updated.homeId);
           await fulfilOpenRequest(tx, body.requestId, updated.homeId);
         }
         return updated;
       });
-      return row && toPhoto(row, model);
+      return one(row, model);
     },
 
     /** Moves a photo to the trash (idempotent: the first deletion time is kept). */
@@ -361,7 +463,7 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
         .set({ deletedAt: sql`coalesce(${photos.deletedAt}, now())` })
         .where(eq(photos.id, id))
         .returning();
-      return row && toPhoto(row, await modelRooms(row.homeId));
+      return one(row);
     },
 
     async restore(id: string): Promise<Photo | undefined> {
@@ -370,7 +472,7 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
         .set({ deletedAt: null })
         .where(eq(photos.id, id))
         .returning();
-      return row && toPhoto(row, await modelRooms(row.homeId));
+      return one(row);
     },
 
     /** Deletes a photo and its image for good, but only from the trash. */
@@ -384,11 +486,28 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
       return row ? 'not-in-trash' : 'not-found';
     },
 
-    async createRequest(homeId: string, body: CreateRequest): Promise<PhotoRequest> {
+    /** `actor` is the requester when the body does not declare one. */
+    async createRequest(
+      homeId: string,
+      body: CreateRequest,
+      actor: Pick<ResolvedActor, 'actor'>,
+    ): Promise<PhotoRequest> {
       const model = await modelRooms(homeId);
+      // Only a use subject: the request is in the use's first room (or just on its level).
+      let use: { levelId: string | null; roomIds: string[] } | undefined;
+      if (body.roomId == null && body.position == null && body.subject?.kind === 'use') {
+        use = await subjectResolver(db).use(homeId, body.subject.id);
+        if (!use) {
+          throw problem(
+            400,
+            `Use "${body.subject.id}" is not in home "${homeId}": give a roomId or a position`,
+          );
+        }
+      }
       const roomId =
         body.roomId ??
         (model && body.position ? roomAt(model, body.levelId, body.position)?.id : undefined) ??
+        use?.roomIds[0] ??
         null;
       const room = model?.rooms.find((r) => r.id === roomId);
       const [row] = await db
@@ -396,7 +515,7 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
         .values({
           id: randomUUID(),
           homeId,
-          levelId: body.levelId ?? room?.levelId ?? null,
+          levelId: body.levelId ?? room?.levelId ?? use?.levelId ?? null,
           roomId,
           roomName: room?.name ?? null,
           x: body.position?.x ?? null,
@@ -404,7 +523,9 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
           yaw: body.yaw ?? null,
           pitch: body.pitch ?? null,
           reason: body.reason,
-          requester: body.requester,
+          requester: body.requester ?? actor.actor,
+          subjectKind: body.subject?.kind ?? null,
+          subjectId: body.subject?.id ?? null,
         })
         .returning();
       return (await toRequests([row!]))[0]!;
@@ -435,11 +556,15 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
     async fulfilRequest(id: string, photoId: string): Promise<FulfilResult> {
       const [request] = await db.select().from(photoRequests).where(eq(photoRequests.id, id));
       if (!request) return { status: 'not-found' };
-      const linked = await db
-        .update(photos)
-        .set({ requestId: id, updatedAt: new Date() })
-        .where(and(eq(photos.id, photoId), eq(photos.homeId, request.homeId)))
-        .returning({ id: photos.id });
+      const linked = await db.transaction(async (tx) => {
+        const rows = await tx
+          .update(photos)
+          .set({ requestId: id, updatedAt: new Date() })
+          .where(and(eq(photos.id, photoId), eq(photos.homeId, request.homeId)))
+          .returning({ id: photos.id });
+        if (rows.length > 0) await linkRequestSubject(tx, photoId, id, request.homeId);
+        return rows;
+      });
       if (linked.length === 0) return { status: 'photo-not-found' };
       return { status: 'fulfilled', request: (await setRequestStatus(id, 'fulfilled'))! };
     },
@@ -492,7 +617,7 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
         .where(and(eq(photoRequests.homeId, homeId), isNotNull(photoRequests.deletedAt)))
         .orderBy(desc(photoRequests.deletedAt), desc(photoRequests.id));
       return {
-        photos: photoRows.map((row) => toPhoto(row, model)),
+        photos: await toPhotos(photoRows, model),
         requests: await toRequests(requestRows),
         retentionDays: options.retentionDays,
       };

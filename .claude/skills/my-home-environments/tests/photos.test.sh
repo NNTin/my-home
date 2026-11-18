@@ -15,6 +15,7 @@ printf '%s\n' "$*" >>"$STUB_LOG"
 env=$1 path=$2
 photo() { jq -nc --arg id "$1" --arg note "$2" '{id: $id, levelId: "souterrain", takenAt: "2026-01-02T03:04:05.000Z",
   pose: {position: {x: 1, y: -1, z: 2}, yaw: 0.5, pitch: 0}, note: $note, tags: ["wall"], requestId: null,
+  subjects: (if $id == "ccc" then [{kind: "use", id: "w1", name: "Window", status: "current"}] else [] end),
   capturedRoomId: "souterrain-kitchen", capturedRoomName: "Kitchen", room: null, deletedAt: null}'; }
 case "$env $path" in
   *" /api/homes") echo '{"items":[{"id":"home"},{"id":"mock-home"}]}' ;;
@@ -22,7 +23,10 @@ case "$env $path" in
     --argjson c "$(photo ccc third)" '{items: [$c, $b, $a], total: 3}' ;;
   "production /api/homes/home/photos?"*) jq -nc --argjson a "$(photo aaa first)" '{items: [$a], total: 1}' ;;
   "production /api/homes/home/trash") jq -nc --argjson b "$(photo bbb second)" '{photos: [$b], requests: []}' ;;
-  "production /api/homes/home/photos") echo '{}' ;;
+  "production /api/homes/home/photos")
+    for arg in "$@"; do [[ $arg != meta=\<* ]] || cp "${arg#meta=<}" "$STUB_META"; done
+    echo '{}'
+    ;;
   *"/image" | *"/thumbnail") printf 'image-bytes-of-%s' "$path" ;;
   *"/api/photos/"*) photo "${path##*/}" "a note" ;;
   *"/photo-requests"*) echo '{"items":[{"id":"r1","status":"open"}],"id":"r1"}' ;;
@@ -30,7 +34,7 @@ case "$env $path" in
 esac
 STUB
 chmod +x "$work/site-curl"
-export SITE_CURL="$work/site-curl" STUB_LOG="$work/log" TMPDIR="$work"
+export SITE_CURL="$work/site-curl" STUB_LOG="$work/log" STUB_META="$work/meta.copy" TMPDIR="$work"
 
 pass=0 fail=0
 check() {
@@ -69,6 +73,18 @@ reset
 check "annotate patches the note and merges tags" \
   logged 'staging /api/photos/aaa -X PATCH --json {"tags":["wall","window"],"note":"Sink on the left"}'
 
+reset
+"$scripts/photos.sh" staging list --subject use:souterrain-kitchen-window >/dev/null
+check "list --subject filters by subject" \
+  logged "staging /api/homes/home/photos?limit=500&offset=0&subject=use%3Asouterrain-kitchen-window"
+check "--subject must be type: or use:" fails "$scripts/photos.sh" staging list --subject window
+"$scripts/photos.sh" staging annotate ccc --subject use:w2 --subject type:window.casement --no-subject use:w1 >/dev/null
+check "annotate links and unlinks subjects (the whole list is sent)" \
+  logged 'staging /api/photos/ccc -X PATCH --json {"tags":["wall"],"subjects":[{"kind":"use","id":"w2"},{"kind":"type","id":"window.casement"}]}'
+"$scripts/photos.sh" staging annotate ccc --subject use:w1 >/dev/null
+check "annotate keeps a subject already linked once" \
+  logged 'staging /api/photos/ccc -X PATCH --json {"tags":["wall"],"subjects":[{"kind":"use","id":"w1"}]}'
+
 # Agents never remove photos: the scripts offer no way to.
 for command in delete purge restore; do
   check "photos.sh has no $command command" fails "$scripts/photos.sh" staging "$command" aaa
@@ -85,6 +101,9 @@ reset
   --reason 'Which wall has the window?' >/dev/null
 check "create posts an agent request" logged 'staging /api/homes/home/photo-requests -X POST --json {"reason":"Which wall has the window?","requester":"agent","roomId":"souterrain-kitchen","position":{"x":4.5,"z":-6},"yaw":-1.5707963267948966}'
 check "create needs a target" fails "$scripts/photo-requests.sh" staging create --reason x
+check "a type subject is no target" fails "$scripts/photo-requests.sh" staging create --reason x --subject type:window.casement
+"$scripts/photo-requests.sh" staging create --home mock-home --subject use:souterrain-kitchen-window --reason test >/dev/null
+check "create with only a use subject" logged 'staging /api/homes/mock-home/photo-requests -X POST --json {"reason":"test","requester":"agent","subject":{"kind":"use","id":"souterrain-kitchen-window"}}'
 "$scripts/photo-requests.sh" staging list --status all >/dev/null
 check "list passes the status" logged "staging /api/homes/home/photo-requests?status=all"
 "$scripts/photo-requests.sh" staging close r1 >/dev/null
@@ -106,6 +125,7 @@ check "copy passes --since to the source" \
   logged "staging /api/homes/home/photos?limit=500&offset=0&since=2026-01-01T00%3A00%3A00Z"
 check "copy downloads the missing photo" logged "staging /api/photos/ccc/image"
 check "copy uploads it to the destination" logged "production /api/homes/home/photos -X POST -F meta=<"
+check "copy sends the photo's subjects along" grep -q '"subjects":\[{"kind":"use","id":"w1"}\]' "$work/meta.copy"
 check "copy uploads exactly one photo" test "$(grep -c -- '-X POST' "$STUB_LOG")" = 1
 check "copy never writes to the source" fails grep -E '^staging .* -X ' "$STUB_LOG"
 check "copy refuses to copy an environment onto itself" fails "$scripts/photos-copy.sh" staging stg --dry-run

@@ -15,6 +15,10 @@
 #   remove|restore <placementId>        to the trash (purged after 30 days) and back
 #   history <useId>                     newest first
 #   undo <useId> <entryId>
+#   notes <useId|typeId>                the notes on a use (of --home) or a type (environment-wide), oldest first
+#   note-add <useId|typeId> TEXT        a new note; ids with a "." are types (window.casement), others uses
+#   note-edit <noteId> TEXT             replaces a note's text
+#   note-delete <noteId>                deletes a note (soft); notes only, never photos
 #
 # --home ID (default: the first home). --rotation-deg is rotationY in degrees (counter-clockwise from above).
 # Every write first reads the current version. Test data only on mock-home, cleaned up by undo or remove.
@@ -23,7 +27,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/photos-lib.sh"
 
 usage() {
-  sed -n '2,21s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,25s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 
@@ -83,7 +87,18 @@ placement() {
     die "no placement '$1' in home '$home'"
 }
 
-[[ $command == whoami || $command == types || -n $home ]] || home=$(default_home "$env")
+# subject_json <useId|typeId>: the note subject; type ids have a dot, use ids never do.
+subject_json() {
+  local kind=use
+  [[ $1 == *.* ]] && kind=type
+  jq -nc --arg kind "$kind" --arg id "$1" '{kind: $kind, id: $id}'
+}
+
+case "$command" in
+  whoami | types | note-edit | note-delete) ;;
+  notes | note-add) [[ ${#args[@]} -eq 0 || ${args[0]} == *.* || -n $home ]] || home=$(default_home "$env") ;;
+  *) [[ -n $home ]] || home=$(default_home "$env") ;;
+esac
 
 case "$command" in
   whoami)
@@ -161,6 +176,30 @@ case "$command" in
   undo)
     [[ ${#args[@]} -eq 2 ]] || usage
     uapi "$(base)/uses/${args[0]}/history/${args[1]}/undo" -X POST | jq .
+    ;;
+  notes)
+    [[ ${#args[@]} -eq 1 ]] || usage
+    subject=$(subject_json "${args[0]}")
+    query="subject=$(uri "$(jq -r '"\(.kind):\(.id)"' <<<"$subject")")"
+    [[ $(jq -r .kind <<<"$subject") == type ]] || query+="&homeId=$(uri "$home")"
+    uapi "/api/notes?$query" | jq '.items'
+    ;;
+  note-add)
+    [[ ${#args[@]} -eq 2 ]] || usage
+    subject=$(subject_json "${args[0]}")
+    body=$(jq -c --arg body "${args[1]}" --arg home "$home" \
+      '{subject: ., body: $body} + (if .kind == "use" then {homeId: $home} else {} end)' <<<"$subject")
+    uapi /api/notes -X POST --json "$body" | jq .
+    ;;
+  note-edit)
+    [[ ${#args[@]} -eq 2 ]] || usage
+    uapi "/api/notes/${args[0]}" -X PATCH --json "$(jq -nc --arg body "${args[1]}" '{body: $body}')" | jq .
+    ;;
+  note-delete)
+    [[ ${#args[@]} -eq 1 ]] || usage
+    # A soft delete of a note. Never photos.
+    uapi "/api/notes/${args[0]}" -X DELETE
+    printf 'deleted note %s\n' "${args[0]}" >&2
     ;;
   *) usage ;;
 esac

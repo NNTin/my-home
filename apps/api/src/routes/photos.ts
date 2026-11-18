@@ -19,6 +19,7 @@ import {
 } from '@my-home/shared';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
+import { resolveActor } from '../actor';
 import type { Config } from '../config';
 import type { Db } from '../db/client';
 import { photoStore, type PurgeResult } from '../db/photos';
@@ -58,7 +59,7 @@ async function readUpload(request: FastifyRequest) {
 export const photoRoutes =
   (
     db: Db,
-    config: Pick<Config, 'photoMaxUploadBytes' | 'photoTrashRetentionDays'>,
+    config: Pick<Config, 'agentUsernames' | 'photoMaxUploadBytes' | 'photoTrashRetentionDays'>,
   ): FastifyPluginAsyncZod =>
   async (app) => {
     const store = photoStore(db, { retentionDays: config.photoTrashRetentionDays });
@@ -208,7 +209,15 @@ export const photoRoutes =
         },
       },
       async (request, reply) =>
-        reply.code(201).send(await store.createRequest(request.params.homeId, request.body)),
+        reply
+          .code(201)
+          .send(
+            await store.createRequest(
+              request.params.homeId,
+              request.body,
+              resolveActor(request.headers, config),
+            ),
+          ),
     );
 
     app.get(

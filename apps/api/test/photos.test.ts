@@ -11,7 +11,7 @@ import { eq } from 'drizzle-orm';
 import sharp from 'sharp';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { homeStore } from '../src/db/homes';
-import { photos } from '../src/db/media-schema';
+import { photos, photoSubjects } from '../src/db/media-schema';
 import { photoStore } from '../src/db/photos';
 import { homes } from '../src/db/schema';
 import { seed } from '../src/db/seed';
@@ -400,6 +400,104 @@ describe('photos API', () => {
       await ctx.database.db.delete(homes);
       expect((await list()).items[0]).toEqual(unreadable);
       expect((await inject('GET', `/api/photos/${photo.id}/image`)).statusCode).toBe(200);
+    });
+  });
+
+  describe('subjects', () => {
+    const casement = { kind: 'type', id: 'window.casement' } as const;
+    const bedroomWindow = { kind: 'use', id: 'souterrain-bedroom-window' } as const;
+    const kitchenWindow = { kind: 'use', id: 'souterrain-kitchen-window' } as const;
+
+    it('stores subjects on upload and resolves their names and status', async () => {
+      const photo = await upload({ subjects: [bedroomWindow, casement, bedroomWindow] });
+      // Subjects linked together are sorted by kind, then id; duplicates are dropped.
+      expect(photo.subjects).toEqual([
+        { ...casement, name: 'Casement window', status: 'current' },
+        { ...bedroomWindow, name: expect.any(String), status: 'current' },
+      ]);
+      const plain = await upload();
+      expect(plain.subjects).toEqual([]);
+      expect(
+        (
+          await post(
+            meta({
+              subjects: Array.from({ length: 11 }, (_, i) => ({ kind: 'use', id: `u${i}` })),
+            }),
+          )
+        ).statusCode,
+      ).toBe(400);
+      expect(
+        (await post(meta({ subjects: [{ kind: 'room', id: 'x' }] as never }))).statusCode,
+      ).toBe(400);
+    });
+
+    it('replaces the whole list on update and filters lists by subject', async () => {
+      const a = await upload({ subjects: [bedroomWindow] });
+      const b = await upload({ subjects: [kitchenWindow, casement] });
+      await upload();
+      expect(await ids('?subject=use:souterrain-bedroom-window')).toEqual([a.id]);
+      expect(await ids('?subject=type:window.casement')).toEqual([b.id]);
+      expect(await ids('?subject=use:nope')).toEqual([]);
+      expect((await inject('GET', '/api/homes/mock-home/photos?subject=nope')).statusCode).toBe(
+        400,
+      );
+
+      const updated = Photo.parse(
+        (await inject('PATCH', `/api/photos/${b.id}`, { subjects: [bedroomWindow] })).json(),
+      );
+      expect(updated.subjects.map((s) => s.id)).toEqual(['souterrain-bedroom-window']);
+      expect(await ids('?subject=use:souterrain-bedroom-window')).toEqual([b.id, a.id]);
+      expect(await ids('?subject=type:window.casement')).toEqual([]);
+      // Other fields leave the subjects alone.
+      const noted = Photo.parse(
+        (await inject('PATCH', `/api/photos/${b.id}`, { note: 'x' })).json(),
+      );
+      expect(noted.subjects.map((s) => s.id)).toEqual(['souterrain-bedroom-window']);
+      const cleared = Photo.parse(
+        (await inject('PATCH', `/api/photos/${b.id}`, { subjects: [] })).json(),
+      );
+      expect(cleared.subjects).toEqual([]);
+    });
+
+    it('resolves a use the model lost, an unknown type and a placement as missing or current', async () => {
+      const placed = await inject('POST', '/api/homes/mock-home/placements', {
+        typeId: 'furniture.bed',
+        levelId: 'souterrain',
+        position: { x: -3, z: 2.5 },
+      });
+      const bed = placed.json() as { id: string; name: string };
+      const photo = await upload({
+        subjects: [bedroomWindow, { kind: 'type', id: 'window.nope' }, { kind: 'use', id: bed.id }],
+      });
+      expect(photo.subjects.map((s) => [s.id, s.name, s.status])).toEqual([
+        ['window.nope', null, 'missing'],
+        [bed.id, bed.name, 'current'],
+        ['souterrain-bedroom-window', expect.any(String), 'current'],
+      ]);
+
+      const model = (await homeStore(ctx.database.db).get('mock-home'))!;
+      model.openings = model.openings.filter((o) => o.id !== bedroomWindow.id);
+      expect((await inject('PUT', '/api/homes/mock-home', model)).statusCode).toBe(200);
+      await inject('DELETE', `/api/homes/mock-home/placements/${bed.id}?version=1`);
+      const after = Photo.parse((await inject('GET', `/api/photos/${photo.id}`)).json());
+      expect(after.subjects.map((s) => [s.id, s.name, s.status])).toEqual([
+        ['window.nope', null, 'missing'],
+        [bed.id, bed.name, 'missing'],
+        ['souterrain-bedroom-window', null, 'missing'],
+      ]);
+      // The link itself is kept, so the filter still finds the photo.
+      expect(await ids('?subject=use:souterrain-bedroom-window')).toEqual([photo.id]);
+    });
+
+    it('a trashed and purged photo takes its links with it', async () => {
+      const photo = await upload({ subjects: [casement] });
+      await inject('DELETE', `/api/photos/${photo.id}`);
+      expect(await ids('?subject=type:window.casement')).toEqual([]);
+      const trash = TrashResponse.parse((await inject('GET', '/api/homes/mock-home/trash')).json());
+      expect(trash.photos[0]!.subjects.map((s) => s.id)).toEqual(['window.casement']);
+      await inject('POST', `/api/photos/${photo.id}/purge`);
+      const left = await ctx.database.db.select().from(photoSubjects);
+      expect(left).toEqual([]);
     });
   });
 

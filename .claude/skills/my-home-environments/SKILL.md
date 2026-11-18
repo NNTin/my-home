@@ -119,16 +119,21 @@ refining the model, and **ask for a photo instead of guessing** when unsure abou
 furniture. `--home` defaults to the first home.
 
 - `photos.sh <env> list [filters]`: metadata as JSON, newest first. Filters: `--room ID`, `--level ID`,
-  `--near X,Z,RADIUS` (metres on the plan), `--tag TAG`, `--request ID`, `--since TIME`, `--until TIME`.
+  `--near X,Z,RADIUS` (metres on the plan), `--tag TAG`, `--request ID`, `--since TIME`, `--until TIME`,
+  `--subject use:<useId>|type:<typeId>` (photos linked to that use or type; each photo lists its `subjects` with
+  their name and `current`/`missing` status).
 - `photos.sh <env> get <photo-id>`: one photo's metadata (pose, captured room, note, tags, sensor snapshot).
 - `photos.sh <env> sensors <photo-id>`: whether the photo's heading was measured by the phone's compass or
   set by hand, with the raw sensor values. Trust a measured heading more, but mind its accuracy.
 - `photos.sh <env> download [--dir DIR] [--thumbnail] <photo-id>... | [filters]`: saves `<id>.webp` and
   `<id>.json`. Use a temp or artifact directory, **never the repository**.
-- `photos.sh <env> annotate <photo-id> [--note TEXT] [--tag TAG]...`: record what the photo shows.
+- `photos.sh <env> annotate <photo-id> [--note TEXT] [--tag TAG]... [--subject S]... [--no-subject S]...`: record
+  what the photo shows; `--subject use:<id>` or `type:<id>` links it to a use or type, `--no-subject` unlinks.
 - `photo-requests.sh <env> create --reason TEXT [--room ID] [--at X,Z] [--level ID] [--heading-deg DEG | --yaw RAD]
-[--pitch RAD]`: ask the owner for a photo: where to stand, which way to look (degrees clockwise from plan
-  north, `-z`) and what you need to see. The owner sees it on the phone as a target marker.
+[--pitch RAD] [--subject use:<id>|type:<id>]`: ask the owner for a photo: where to stand, which way to look
+  (degrees clockwise from plan north, `-z`) and what you need to see. The owner sees it on the phone as a target
+  marker. With `--subject use:<id>`, `--room`/`--at` are optional: the server puts the request in the use's first
+  room. The photo that answers it is linked to the subject.
 - `photo-requests.sh <env> list [--status open|fulfilled|cancelled|all]`, `get <id>`,
   `close <id> [--photo PHOTO_ID]` (fulfilled by that photo; without `--photo`, cancelled).
 - `photos-copy.sh <from-env> <to-env> [--since TIME] [--dry-run]`: copies photos between the environments'
@@ -161,6 +166,13 @@ overrides are **not** reset by staging deploys.
   (409) when a field changed again later or the entry was already undone. An undo can itself be undone.
 
 Every write reads the current version first; a 409 means someone changed the use in between: list again.
+
+Notes (free text, `docs/userdata.md` § Notes; ids with a `.` are types, others uses of `--home`):
+
+- `uses.sh <env> notes <useId|typeId>`: oldest first. Type notes are environment-wide.
+- `uses.sh <env> note-add <useId|typeId> TEXT`, `note-edit <noteId> TEXT`, `note-delete <noteId>` (soft). Notes have
+  no history or undo. Agents may edit any note, but notes on the real home are the owner's: write test notes only
+  on `mock-home` and delete them again. `note-delete` deletes notes only, **never photos**.
 
 ### Test data
 

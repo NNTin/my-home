@@ -64,9 +64,11 @@ while IFS= read -r photo; do
   id=$(jq -r .id <<<"$photo")
   api "$from" "/api/photos/$id/image" >"$work/image.webp"
   # The destination resolves the room against its own model; the captured room travels as recorded.
-  # The sensor snapshot travels along when there is one.
+  # The sensor snapshot and the links to types and uses (subjects) travel along when there are any;
+  # the destination resolves the subjects against its own model and placements.
   jq -c '{id, levelId, pose, takenAt, note, tags, requestId, capturedRoomId, capturedRoomName}
-    + (if .sensors then {sensors} else {} end)' \
+    + (if .sensors then {sensors} else {} end)
+    + (if (.subjects // []) != [] then {subjects: (.subjects | map({kind, id}))} else {} end)' \
     <<<"$photo" >"$work/meta.json"
   api "$to" "/api/homes/$to_home/photos" -X POST -F "meta=<$work/meta.json" \
     -F "image=@$work/image.webp;type=image/webp" >/dev/null ||

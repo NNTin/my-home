@@ -12,6 +12,7 @@ import { catalogRoutes } from './routes/catalog';
 import { healthRoutes } from './routes/health';
 import { homeRoutes } from './routes/homes';
 import { layoutRoutes } from './routes/layouts';
+import { noteRoutes } from './routes/notes';
 import { openingOverrideRoutes } from './routes/opening-overrides';
 import { photoRoutes } from './routes/photos';
 import { placementRoutes } from './routes/placements';
@@ -45,6 +46,7 @@ export async function buildApp(config: Config, database: Database, logger: Logge
       await api.register(useRoutes(database.db, config));
       await api.register(placementRoutes(database.db, config));
       await api.register(openingOverrideRoutes(database.db, config));
+      await api.register(noteRoutes(database.db, config));
     },
     { prefix: '/api' },
   );

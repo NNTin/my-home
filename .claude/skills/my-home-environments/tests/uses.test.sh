@@ -24,6 +24,7 @@ case "$path" in
   */placements\?include=removed) jq -nc --argjson b "$bed" \
     '{items: [($b | del(.source, .overrides)), {id: "souterrain-chair-1", removedAt: "2026-11-17T00:00:00Z",
       purgeAt: "2026-12-17T00:00:00Z", version: 2}]}' ;;
+  /api/notes\?*) echo '{"items":[{"id":"n1","body":"Sticks"}]}' ;;
   */history) echo '{"items":[{"id":"e1","action":"update","changes":[{"text":"width 160.0 cm → 180.0 cm"}],"canUndo":true}]}' ;;
   *) echo '{"ok":true}' ;;
 esac
@@ -100,9 +101,31 @@ check "history lists the change texts" test "$(jq -r '.[0].changes[0]' <<<"$out"
 "$u" staging undo souterrain-bed-1 e1 --home mock-home >/dev/null
 check "undo posts" logged 'staging /api/homes/mock-home/uses/souterrain-bed-1/history/e1/undo -H X-My-Home-Actor: agent -X POST'
 
-# The only DELETE in uses.sh moves a placement to the trash; nothing touches photos.
-check "uses.sh deletes nothing but placements (soft)" \
-  test "$(grep -cE -- '-X +DELETE' "$u")" = "$(grep -cE -- '/placements/.*-X DELETE' "$u")"
+reset
+out=$("$u" staging notes souterrain-kitchen-window --home mock-home)
+check "notes lists a use's notes in its home" \
+  logged 'staging /api/notes?subject=use%3Asouterrain-kitchen-window&homeId=mock-home -H X-My-Home-Actor: agent'
+check "notes prints the items" test "$(jq -r '.[0].body' <<<"$out")" = Sticks
+reset
+"$u" staging notes window.casement >/dev/null
+check "type notes are environment-wide (no home lookup)" \
+  test "$(cat "$STUB_LOG")" = 'staging /api/notes?subject=type%3Awindow.casement -H X-My-Home-Actor: agent'
+reset
+"$u" staging note-add souterrain-kitchen-window 'Sticks in winter' >/dev/null
+check "note-add posts a use note in the first home" \
+  logged 'staging /api/notes -H X-My-Home-Actor: agent -X POST --json {"subject":{"kind":"use","id":"souterrain-kitchen-window"},"body":"Sticks in winter","homeId":"home"}'
+"$u" staging note-add window.casement 'Replaced in 2019' >/dev/null
+check "note-add posts a type note without a home" \
+  logged 'staging /api/notes -H X-My-Home-Actor: agent -X POST --json {"subject":{"kind":"type","id":"window.casement"},"body":"Replaced in 2019"}'
+"$u" staging note-edit n1 'Fixed' >/dev/null
+check "note-edit patches the body" logged 'staging /api/notes/n1 -H X-My-Home-Actor: agent -X PATCH --json {"body":"Fixed"}'
+"$u" staging note-delete n1 >/dev/null 2>&1
+check "note-delete deletes the note" logged 'staging /api/notes/n1 -H X-My-Home-Actor: agent -X DELETE'
+check "note-add needs a text" fails "$u" staging note-add window.casement
+
+# The only DELETEs in uses.sh move a placement to the trash and soft-delete a note; nothing touches photos.
+check "uses.sh deletes nothing but placements and notes (soft)" \
+  test "$(grep -cE -- '-X +DELETE' "$u")" = "$(grep -cE -- '/(placements|notes)/.*-X DELETE' "$u")"
 check "uses.sh never touches photos or purges" fails grep -qE -- '/photos[/?"]|/photo-requests|/purge|trash/empty' "$u"
 
 printf '%d passed, %d failed\n' "$pass" "$fail"

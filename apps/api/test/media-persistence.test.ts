@@ -57,6 +57,9 @@ describe('the media schema outlives resets and other branches', () => {
       t.photoId,
       t.data.toString('base64'),
     ]),
+    subjects: await rows(
+      sql`select photo_id, subject_kind, subject_id from media.photo_subjects order by 1, 2, 3`,
+    ),
     journal: await rows(sql`select tag, checksum from media.schema_migrations order by tag`),
   });
 
@@ -67,6 +70,7 @@ describe('the media schema outlives resets and other branches', () => {
           roomId: 'souterrain-bedroom',
           reason: 'Where is the radiator?',
           requester: 'agent',
+          subject: { kind: 'use', id: 'souterrain-bedroom-window' },
         })
       ).json(),
     );
@@ -78,7 +82,13 @@ describe('the media schema outlives resets and other branches', () => {
       absolute: true,
       yaw: -1.5,
     };
-    const kept = await upload({ note: 'Radiator', tags: ['wall'], requestId: request.id, sensors });
+    const kept = await upload({
+      note: 'Radiator',
+      tags: ['wall'],
+      requestId: request.id,
+      sensors,
+      subjects: [{ kind: 'type', id: 'window.casement' }],
+    });
     const trashed = await upload({ note: 'Blurry' });
     await inject('DELETE', `/api/photos/${trashed.id}`);
     const trashedRequest = PhotoRequest.parse(
@@ -95,6 +105,16 @@ describe('the media schema outlives resets and other branches', () => {
     const before = await snapshot();
     expect(before.photos.items.map((p) => p.id)).toEqual([kept.id]);
     expect(before.photos.items[0]!.sensors).toEqual(sensors);
+    // The photo's own subject, then the one of the request it answers.
+    expect(before.photos.items[0]!.subjects.map((s) => `${s.kind}:${s.id}:${s.status}`)).toEqual([
+      'type:window.casement:current',
+      'use:souterrain-bedroom-window:current',
+    ]);
+    expect(before.requests.items[0].subject).toMatchObject({
+      kind: 'use',
+      id: 'souterrain-bedroom-window',
+      status: 'current',
+    });
     expect(before.trash.photos.map((p) => p.id)).toEqual([trashed.id]);
     expect(before.trash.requests.map((r) => r.id)).toEqual([trashedRequest.id]);
     expect(before.blobs).toHaveLength(2);
@@ -106,7 +126,7 @@ describe('the media schema outlives resets and other branches', () => {
       const tables = await rows<{ schema: string; count: number }>(sql`
         select table_schema as schema, count(*)::int as count from information_schema.tables
         where table_schema in ('public', 'drizzle', 'media') group by table_schema`);
-      expect(tables).toEqual([{ schema: 'media', count: 5 }]);
+      expect(tables).toEqual([{ schema: 'media', count: 6 }]);
 
       await ctx.database.migrate();
       await seedHomes(ctx.database.db);
