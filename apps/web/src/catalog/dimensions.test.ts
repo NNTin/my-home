@@ -65,6 +65,37 @@ describe('dimensions of every piece module', () => {
     ]);
   });
 
+  it.each([
+    ['window.casement', 'sashes', 3],
+    ['window.casement', 'sashes', 4],
+    ['window.tilt-turn', 'sashes', 3],
+    ['door.french', 'leaves', 2],
+    ['door.french', 'leaves', 3],
+  ])('%s: each %s line (%i) spans a gap between the drawn jambs and mullions', (id, key, n) => {
+    const type = catalog.get(id)!;
+    const values = { ...defaultParams(type), [key]: n };
+    // Wide enough for every count; a 7 cm frame member.
+    const ctx = { width: 1.4, height: 1.4, wallDepth: 0.36 };
+    const module = pieces.get(id)!;
+    const members = module
+      .parts({ ...values, frameWidth: 0.07 }, ctx)
+      .filter((p) => p.role === 'frame' && p.size[1] > ctx.height / 2)
+      .map((p) => [p.center[0] - p.size[0] / 2, p.center[0] + p.size[0] / 2] as const)
+      .sort((a, b) => a[0] - b[0]);
+    expect(members).toHaveLength(n + 1);
+    const gaps = members.slice(1).map((m, i) => [members[i]![1], m[0]]);
+    const lines = module
+      .dimensions({ ...values, frameWidth: 0.07 }, ctx)
+      .filter((l) => / width$/.test(l.name ?? '') && !/^(Width|Frame width)$/.test(l.name!));
+    expect(lines).toHaveLength(n);
+    lines.forEach((line, i) => {
+      expect(line.from[0]).toBeCloseTo(gaps[i]![0]!, 9);
+      expect(line.to[0]).toBeCloseTo(gaps[i]![1]!, 9);
+      expect(line.value).toBeCloseTo(gaps[i]![1]! - gaps[i]![0]!, 9);
+    });
+    if (n >= 3) expect(lines[0]!.value).toBeGreaterThan(lines[1]!.value);
+  });
+
   it('gate: width and height', () => {
     expect(names('gate.swing')).toEqual(['Width 100.0 cm', 'Height 120.0 cm']);
   });

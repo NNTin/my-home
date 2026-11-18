@@ -121,11 +121,14 @@ export function framedDimensions(
   ];
   if (!divisions) return lines;
   const n = divisions.count;
-  const clear = (w - 2 * f - (n - 1) * f) / n;
+  // The mullions sit where frameParts centres them, evenly between the jambs; each sash spans the
+  // gap between two members' inner edges (so the outer ones are wider from 3 sashes on).
+  const mullion = (i: number) => -w / 2 + f + ((w - 2 * f) * i) / n;
   for (let i = 0; i < n; i++) {
-    const x = -w / 2 + f + i * (clear + f);
+    const from = i === 0 ? -w / 2 + f : mullion(i) + f / 2;
+    const to = i === n - 1 ? w / 2 - f : mullion(i + 1) - f / 2;
     const name = n === 1 ? `${divisions.each} width` : `${divisions.each} ${i + 1} width`;
-    lines.push(dimension([x, h / 2 - f, 0], [x + clear, h / 2 - f, 0], clear, name));
+    lines.push(dimension([from, h / 2 - f, 0], [to, h / 2 - f, 0], to - from, name));
   }
   return lines;
 }
