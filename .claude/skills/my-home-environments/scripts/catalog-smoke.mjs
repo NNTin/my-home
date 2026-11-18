@@ -597,6 +597,8 @@ async function smoke(out, homeId) {
 }
 
 const MOCK = 'mock-home';
+/** Production's host: the smoke never writes there, whatever its homes. */
+const PRODUCTION_HOST = 'home.nntin.xyz';
 const WINDOW = 'window.casement';
 
 /** Waits for `fn` (in the page) to be true; false after `timeout` ms. */
@@ -618,27 +620,46 @@ const mockUse = (page, id) =>
 
 /**
  * 7. The piece page's uses (#45). Where-used of `door.interior` in the first home (read-only), with
- * the catalogue's count. On the desktop, a real edit of a mock-home window's frame colour through
+ * the catalogue's count. Where `mock-home` exists (staging) and never on production: on the desktop, a real edit of a mock-home window's frame colour through
  * the editor, its history row (actor agent), and Undo, which puts the colour back: the smoke cleans
  * up after itself (the history rows stay, on the mock home). On the phone, that history read-only.
- * Place on the bed's page, with the POST answered inside the browser: no placement is created.
+ * Place on the bed's page (of the mock home, else the first home), with the POST answered inside the
+ * browser: no placement is created. Without a mock home the edit is skipped and logged, nothing else.
  */
 async function usesStep({ label, device, open, press, base, homeId, shot }) {
   const url = (p) => new URL(p, base).href;
+  let facts;
 
   // Where-used, read-only.
   {
     const { context, page, errors } = await open();
     await page.goto(url('/'), { waitUntil: 'domcontentloaded', timeout: 60_000 });
-    const facts = await page.evaluate(async (id) => {
-      const homes = (await (await fetch('/api/homes')).json()).items;
-      const usage = (await (await fetch('/api/catalog/usage')).json()).counts;
-      return { home: id ?? homes[0]?.id, count: usage['door.interior'] };
-    }, homeId ?? null);
+    facts = await page.evaluate(
+      async ({ id, mock }) => {
+        const homes = (await (await fetch('/api/homes')).json()).items;
+        const usage = (await (await fetch('/api/catalog/usage')).json()).counts;
+        return {
+          home: id ?? homes[0]?.id,
+          count: usage['door.interior'],
+          hasMock: homes.some((h) => h.id === mock),
+        };
+      },
+      { id: homeId ?? null, mock: MOCK },
+    );
     await page.goto(url(`/catalog/openings/door.interior?home=${encodeURIComponent(facts.home)}`), {
       waitUntil: 'networkidle',
       timeout: 60_000,
     });
+    await page.locator('.piece-page h1').waitFor({ timeout: 30_000 });
+    // A build from before #45 (production before its merge, an older branch on staging) has no
+    // uses on the piece page: say so and leave the rest of this step out.
+    if ((await page.getByRole('region', { name: 'Uses' }).count()) === 0) {
+      console.log(
+        `skip  ${label}: this build's piece page has no uses (before #45): step 7 left out`,
+      );
+      await context.close();
+      return;
+    }
     const count = page.locator('.uses-count');
     await count.waitFor({ timeout: 30_000 }).catch(() => {});
     check(
@@ -660,7 +681,7 @@ async function usesStep({ label, device, open, press, base, homeId, shot }) {
       `${await rows.count()} rows, ${links.length} links`,
     );
     const section = page.getByRole('region', { name: 'Uses' });
-    await section.scrollIntoViewIfNeeded();
+    await section.scrollIntoViewIfNeeded().catch(() => {});
     await section
       .screenshot({ path: shot('uses'), timeout: 60_000 })
       .catch((error) => console.log(`no uses screenshot: ${redact(error.message)}`));
@@ -672,8 +693,14 @@ async function usesStep({ label, device, open, press, base, homeId, shot }) {
     await context.close();
   }
 
-  // The mock home's window: edit (desktop only), history, undo.
-  {
+  // The mock home's window: edit (desktop only), history, undo. Only where there is a mock home
+  // (staging; production syncs home.json only) and never on production's host.
+  const editable = facts.hasMock && new URL(base).host !== PRODUCTION_HOST;
+  if (!editable) {
+    console.log(
+      `skip  ${label}: no ${MOCK} here (or production), so no edit and undo; where-used and Place run`,
+    );
+  } else {
     let target;
     const allow = (method, path) =>
       target !== undefined &&
@@ -740,23 +767,38 @@ async function usesStep({ label, device, open, press, base, homeId, shot }) {
             text,
           );
           await press(top.getByRole('button', { name: /^Undo/ }));
-          const undone = history.locator('li.undone');
+          // This run's rows: earlier runs left struck-through rows of their own further down.
+          const items = history.locator('li');
+          const undid = items
+            .nth(0)
+            .filter({ hasText: `${colour} →` })
+            .filter({ hasText: '(undo)' });
+          const struck = items
+            .nth(1)
+            .locator('s')
+            .filter({ hasText: `→ ${colour}` });
           check(
             `${label}: Undo is one click and strikes the change through`,
-            await undone
-              .first()
-              .waitFor({ timeout: 30_000 })
-              .then(
-                () => true,
-                () => false,
-              ),
+            await Promise.all([
+              undid.waitFor({ timeout: 30_000 }),
+              struck.waitFor({ timeout: 30_000 }),
+            ]).then(
+              () => true,
+              () => false,
+            ),
           );
-          const after = await mockUse(page, picked.id);
+          const same = (u) =>
+            u?.effective.frameColor === picked.effective.frameColor &&
+            JSON.stringify(Object.entries(u.overrides).sort()) ===
+              JSON.stringify(Object.entries(before).sort());
+          let after = await mockUse(page, picked.id);
+          for (let i = 0; i < 20 && !same(after); i++) {
+            await page.waitForTimeout(500);
+            after = await mockUse(page, picked.id);
+          }
           check(
             `${label}: the colour is back after the undo`,
-            after?.effective.frameColor === picked.effective.frameColor &&
-              JSON.stringify(Object.entries(after.overrides).sort()) ===
-                JSON.stringify(Object.entries(before).sort()),
+            same(after),
             `${after?.effective.frameColor}, overrides ${JSON.stringify(after?.overrides)}`,
           );
         } finally {
@@ -810,7 +852,8 @@ async function usesStep({ label, device, open, press, base, homeId, shot }) {
     await context.close();
   }
 
-  // Place, with the POST answered in the browser.
+  // Place, with the POST answered in the browser (on the mock home where there is one).
+  const placeHome = facts.hasMock ? MOCK : facts.home;
   {
     const posts = [];
     const fake = (method, path, body) => {
@@ -840,7 +883,7 @@ async function usesStep({ label, device, open, press, base, homeId, shot }) {
       };
     };
     const { context, page } = await open({ fake });
-    const p = `/catalog/furniture/furniture.bed?home=${MOCK}&p=${Buffer.from(JSON.stringify({ width: 1.8 })).toString('base64url')}`;
+    const p = `/catalog/furniture/furniture.bed?home=${encodeURIComponent(placeHome)}&p=${Buffer.from(JSON.stringify({ width: 1.8 })).toString('base64url')}`;
     await page.goto(url(p), { waitUntil: 'networkidle', timeout: 60_000 });
     const placeButton = page.getByRole('button', { name: 'Place…' });
     await placeButton.waitFor({ timeout: 30_000 }).catch(() => {});
@@ -861,7 +904,7 @@ async function usesStep({ label, device, open, press, base, homeId, shot }) {
           posts[0].params?.width === 1.8 &&
           search.get('focus') === 'catalog-smoke-place' &&
           search.get('panel') === 'furniture' &&
-          search.get('home') === MOCK,
+          search.get('home') === placeHome,
         `${JSON.stringify(posts[0] ?? {})} → ${page.url().replace(base, '')}`,
       );
     } else {

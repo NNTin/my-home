@@ -112,11 +112,12 @@ $S/uses.sh staging list --home mock-home --status needs-attention   # where-used
   40 % of the height upright and stays usable across. In the viewer, `/?focus=<a window of the home>` selects it
   (the chip shows its name and links its piece page) and an unknown id says "Not found in this home".
   The piece page's uses: where-used of `door.interior` in the first home (the count equals the catalogue's, every
-  use links to `?focus=`); on the desktop a **real, self-cleaning** edit of a `mock-home` casement window's frame
+  use links to `?focus=`); **only where `mock-home` exists (staging; never on production, which syncs `home.json`
+  only, so it is skipped there and logged)**, on the desktop a **real, self-cleaning** edit of a `mock-home` casement window's frame
   colour through `#use=` and the editor, its history row (actor agent), and one-click Undo, after which the colour
   is back (should a step fail, it puts the overrides back by hand); on the phone that history read-only; and
-  **Place** on the bed's page with its POST answered inside the browser (no placement is created), ending on
-  `/?home=mock-home&focus=…&panel=furniture`. Screenshots: `<out>` (desktop), `<out>-phone.png`, and
+  **Place** on the bed's page (the mock home's, else the first home's) with its POST answered inside the browser (no placement is created), ending on
+  `/?home=<that home>&focus=…&panel=furniture`. Screenshots: `<out>` (desktop), `<out>-phone.png`, and
   `<out>-{window,window-section,door,bed,focus,uses,history,place}.png`,
   `<out>-{bed,bed-across,focus,uses,history,place}-phone.png`. Every other write is refused inside the browser
   ("nothing else was written"); the only real writes are that edit and its undo, on `mock-home`. `screenshot.sh --path '/catalog'`

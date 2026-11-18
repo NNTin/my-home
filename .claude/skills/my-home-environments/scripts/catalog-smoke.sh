@@ -10,7 +10,8 @@
 # rectangles, and the playground changes the bed's colour and width live. Also: no console or page
 # errors, every control has a name, nothing scrolls sideways on the phone, the inspector is usable
 # at 844x390, and /?focus=<a window of the home> selects it (chip with its name and piece page link).
-# Uses: where-used, a real mock-home frame-colour edit undone again (the only writes), Place (faked).
+# Uses: where-used, Place (faked), and only where mock-home exists (staging, never production) a real
+# mock-home frame-colour edit undone again: the only writes.
 # Screenshots: <out>, <out>-phone.png, <out>-{window,window-section,door,bed,focus,uses,history,place}.png
 # and the same with -phone. Exit 0 when every check passes. Every other write is refused inside the
 # browser. Uses the Playwright set-up of screenshot.sh. --home picks a home by id (?home=).
@@ -20,7 +21,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$script_dir/lib.sh"
 
 usage() {
-  sed -n '2,16s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,17s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 
