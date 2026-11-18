@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { homes } from '../src/db/schema';
 import { seed } from '../src/db/seed';
 import { clearUserdata, createTestApp, injector } from './helpers';
+import { mockHomeFile } from './fixtures';
 
 const URL = '/api/homes/mock-home/settings';
 const measured = { value: 2.5, source: 'estimated-from-photo' } as const;
@@ -17,7 +18,7 @@ describe('home settings (the declination overlay)', () => {
   beforeEach(async () => {
     await ctx.database.db.delete(homes);
     await clearUserdata(ctx);
-    await seed(ctx.database.db);
+    await seed(ctx.database.db, { file: mockHomeFile });
   });
   afterAll(() => ctx.app.close());
 

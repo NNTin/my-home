@@ -1,5 +1,5 @@
 import { HomeModel, type Photo, type PhotoRequest, type Placement } from '@my-home/shared';
-import mockHomeJson from '../../../../data/homes/mock-home.json';
+import mockHomeJson from '../../../../packages/shared/test-fixtures/mock-home.json';
 import type { EditorItem } from '../editor/item';
 
 export const mockHome = HomeModel.parse(mockHomeJson);

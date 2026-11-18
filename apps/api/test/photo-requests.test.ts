@@ -9,6 +9,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { homes } from '../src/db/schema';
 import { seed } from '../src/db/seed';
 import { clearMedia, createTestApp, testImage, uploadPayload } from './helpers';
+import { mockHomeFile } from './fixtures';
 
 const body = (overrides: Partial<CreatePhotoRequestBody> = {}): CreatePhotoRequestBody => ({
   levelId: 'souterrain',
@@ -26,7 +27,7 @@ describe('photo requests API', () => {
     if (ctx) await ctx.database.db.delete(homes);
     else ctx = await createTestApp();
     await clearMedia(ctx);
-    await seed(ctx.database.db);
+    await seed(ctx.database.db, { file: mockHomeFile });
   });
   afterAll(() => ctx.app.close());
 

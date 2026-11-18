@@ -9,6 +9,7 @@ import { seedHomes } from '../src/db/seed';
 import { migrateUserdata, readUserdataMigrations } from '../src/db/userdata-migrate';
 import { userdataMigrationsFolder } from '../src/paths';
 import { clearUserdata, createTestApp, injector } from './helpers';
+import { testSeedFiles } from './fixtures';
 
 const TABLES = [
   'history',
@@ -30,7 +31,7 @@ describe('the userdata schema outlives resets and other branches', () => {
   });
   beforeEach(async () => {
     await clearUserdata(ctx);
-    await seedHomes(ctx.database.db);
+    await seedHomes(ctx.database.db, { files: testSeedFiles });
   });
   afterAll(() => ctx.app.close());
 
@@ -95,7 +96,7 @@ describe('the userdata schema outlives resets and other branches', () => {
       expect(tables.map((t) => t.table)).toEqual(TABLES);
 
       await ctx.database.migrate();
-      await seedHomes(ctx.database.db);
+      await seedHomes(ctx.database.db, { files: testSeedFiles });
       expect(await snapshot()).toEqual(before);
     }
     // The next id continues after the ones issued before the deploys.
@@ -138,7 +139,7 @@ describe('the userdata schema outlives resets and other branches', () => {
       ]);
       await resetDatabase(ctx.database.db);
       await ctx.database.migrate();
-      await seedHomes(ctx.database.db);
+      await seedHomes(ctx.database.db, { files: testSeedFiles });
       expect(await migrateUserdata(ctx.database.db)).toEqual([]);
       expect(await journal()).toEqual([...current, newer.tag]);
       const again = await place();

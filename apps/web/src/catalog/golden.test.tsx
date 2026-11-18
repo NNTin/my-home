@@ -1,7 +1,7 @@
 import { HomeModel } from '@my-home/shared';
 import { describe, expect, it } from 'vitest';
 import realHomeJson from '../../../../data/homes/home.json';
-import mockHomeJson from '../../../../data/homes/mock-home.json';
+import mockHomeJson from '../../../../packages/shared/test-fixtures/mock-home.json';
 import { buildHome } from '../builder/buildHome';
 import { FurnitureLayer, type FurnitureView } from '../scene/FurnitureLayer';
 import { HomeMeshes } from '../scene/HomeMeshes';

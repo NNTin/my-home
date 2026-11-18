@@ -1,7 +1,7 @@
 import type { HomeSummary } from '@my-home/shared';
 import type { KeyboardEvent } from 'react';
 import type { HomeScene } from '../builder/buildHome';
-import { roofIndex, type Visibility } from '../builder/visibility';
+import { roofIndex, showUpTo, type Visibility } from '../builder/visibility';
 import { href, keptQuery, Link } from '../routing';
 
 interface Props {
@@ -55,7 +55,7 @@ export function TopBar({
       .map((l) => ({ id: l.id, name: l.name, label: shortLevelName(l.name), index: l.index })),
   ];
   const chosen = Math.min(visibility.maxLevelIndex, roof);
-  const choose = (index: number) => onChange({ ...visibility, maxLevelIndex: index });
+  const choose = (index: number) => onChange(showUpTo(scene, visibility, index));
 
   // A radio group moves with the arrow keys and has one tab stop.
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {

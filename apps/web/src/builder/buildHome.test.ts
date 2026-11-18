@@ -1,6 +1,6 @@
 import { HomeModel, type Dimension } from '@my-home/shared';
 import { describe, expect, it } from 'vitest';
-import mockHomeJson from '../../../../data/homes/mock-home.json';
+import mockHomeJson from '../../../../packages/shared/test-fixtures/mock-home.json';
 import {
   buildHome,
   clipSpan,
@@ -11,7 +11,14 @@ import {
   type Vec2,
   type WallSegment,
 } from './buildHome';
-import { defaultVisibility, roofIndex, toggleId, visibleScene } from './visibility';
+import {
+  defaultVisibility,
+  roofIndex,
+  showUpTo,
+  toggleId,
+  visibleScene,
+  wholeVisibility,
+} from './visibility';
 
 const d = (value: number): Dimension => ({ value, source: 'mock' });
 const p = (x: number, z: number) => ({ x: d(x), z: d(z) });
@@ -380,26 +387,45 @@ describe('gable roof', () => {
 describe('visibleScene', () => {
   const scene = buildHome(fixture());
 
-  it('shows everything by default', () => {
-    expect(visibleScene(scene, defaultVisibility(scene))).toEqual(scene);
+  it('starts in the lowest level with the levels above unchecked', () => {
+    const v = defaultVisibility(scene);
+    const [low, ...above] = scene.levels;
+    expect(v.maxLevelIndex).toBe(low!.index);
+    expect(v.hiddenLevels).toEqual(above.map((l) => l.id));
+    expect(visibleScene(scene, v).walls.every((w) => w.levelId === low!.id)).toBe(true);
+    expect(visibleScene(scene, v).slabs.some((s) => s.kind === 'roof')).toBe(false);
+  });
+
+  it('showUpTo cuts above a level and checks the levels up to it', () => {
+    const top = scene.levels.at(-1)!;
+    const v = showUpTo(scene, defaultVisibility(scene), top.index);
+    expect(v.maxLevelIndex).toBe(top.index);
+    expect(v.hiddenLevels).toEqual([]);
+    expect(showUpTo(scene, defaultVisibility(scene), scene.levels[0]!.index)).toEqual(
+      defaultVisibility(scene),
+    );
+  });
+
+  it('shows everything when whole', () => {
+    expect(visibleScene(scene, wholeVisibility(scene))).toEqual(scene);
   });
 
   it('shows the roof only above the top level, so the top level can be looked into', () => {
-    const flat = visibleScene(scene, { ...defaultVisibility(scene), maxLevelIndex: 1 });
+    const flat = visibleScene(scene, { ...wholeVisibility(scene), maxLevelIndex: 1 });
     expect(roofIndex(scene)).toBe(2);
     expect(flat.slabs.map((s) => s.id)).toEqual(['up:floor', 'low:floor']);
 
     const gable = buildHome(gableFixture());
-    expect(visibleScene(gable, defaultVisibility(gable)).roofPlanes).toHaveLength(2);
-    const attic = visibleScene(gable, { ...defaultVisibility(gable), maxLevelIndex: 1 });
+    expect(visibleScene(gable, wholeVisibility(gable)).roofPlanes).toHaveLength(2);
+    const attic = visibleScene(gable, { ...wholeVisibility(gable), maxLevelIndex: 1 });
     expect(attic.roofPlanes).toEqual([]);
     expect(attic.walls.some((w) => w.wallId === 'w-up')).toBe(true);
-    const hidden = visibleScene(gable, { ...defaultVisibility(gable), hiddenLevels: ['up'] });
+    const hidden = visibleScene(gable, { ...wholeVisibility(gable), hiddenLevels: ['up'] });
     expect(hidden.roofPlanes).toEqual([]);
   });
 
   it('cuts away levels above the selected one, including their slabs and roof', () => {
-    const v = { ...defaultVisibility(scene), maxLevelIndex: 0 };
+    const v = { ...wholeVisibility(scene), maxLevelIndex: 0 };
     const shown = visibleScene(scene, v);
     expect(new Set(shown.walls.map((w) => w.levelId))).toEqual(new Set(['low']));
     expect(shown.slabs.map((s) => s.id)).toEqual(['low:floor']);
@@ -407,7 +433,7 @@ describe('visibleScene', () => {
   });
 
   it('hides individual levels, apartments, outdoor areas and the terrain', () => {
-    const base = defaultVisibility(scene);
+    const base = wholeVisibility(scene);
     expect(visibleScene(scene, { ...base, hiddenLevels: ['low'] }).roomFloors).toEqual([]);
     const noFlat = visibleScene(scene, { ...base, hiddenApartments: ['a1'] });
     expect(noFlat.walls.every((w) => w.apartmentId === 'a2')).toBe(true);

@@ -108,6 +108,8 @@ async function shoot([
     await context.route('**/*', (route) => {
       const request = route.request();
       if (new URL(request.url()).host !== host) return route.continue();
+      // Read-only: no write leaves the browser (nothing is stored on a deployed environment).
+      if (!['GET', 'HEAD'].includes(request.method())) return route.abort();
       return route.continue({
         headers: { ...request.headers(), authorization: `Bearer ${token}` },
       });

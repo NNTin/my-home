@@ -9,6 +9,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { homes } from '../src/db/schema';
 import { seed } from '../src/db/seed';
 import { createTestApp } from './helpers';
+import { mockHomeFile } from './fixtures';
 
 const item = (id: string, overrides: Partial<LayoutItem> = {}): LayoutItem => ({
   id,
@@ -26,7 +27,7 @@ describe('layouts API', () => {
   beforeEach(async () => {
     if (ctx) await ctx.database.db.delete(homes);
     else ctx = await createTestApp();
-    await seed(ctx.database.db);
+    await seed(ctx.database.db, { file: mockHomeFile });
   });
   afterAll(() => ctx.app.close());
 
@@ -179,7 +180,7 @@ describe('layouts API', () => {
     it('deletes the layouts of a deleted home', async () => {
       await create();
       await ctx.database.db.delete(homes);
-      await seed(ctx.database.db);
+      await seed(ctx.database.db, { file: mockHomeFile });
       expect(await list()).toEqual([]);
     });
   });
@@ -248,7 +249,7 @@ describe('layouts API', () => {
       const stale = [item('a', { levelId: 'attic', roomId: 'gone' })];
       const layout = await create('Default', stale);
 
-      await seed(ctx.database.db, { replace: true });
+      await seed(ctx.database.db, { file: mockHomeFile, replace: true });
       const home = (await inject('GET', '/api/homes/mock-home')).json();
       await inject('PUT', '/api/homes/mock-home', { ...home, name: 'Renamed home' });
       await inject('POST', '/api/homes/import', home);

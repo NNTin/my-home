@@ -11,6 +11,7 @@ import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { seedHomes } from '../src/db/seed';
 import { clearUserdata, createTestApp, injector } from './helpers';
+import { testSeedFiles } from './fixtures';
 
 const home = '/api/homes/mock-home';
 const agent = { 'X-My-Home-Actor': 'agent' };
@@ -79,7 +80,7 @@ describe('history and undo', () => {
   });
   beforeEach(async () => {
     await clearUserdata(ctx);
-    await seedHomes(ctx.database.db);
+    await seedHomes(ctx.database.db, { files: testSeedFiles });
   });
   afterAll(() => ctx.app.close());
 

@@ -8,10 +8,11 @@ import { runRelease, type ReleaseLog } from '../src/db/release';
 import { homes } from '../src/db/schema';
 import { readHomeFile } from '../src/db/seed';
 import { homeFiles } from '../src/db/sync';
-import { defaultHomeFile, homesFolder } from '../src/paths';
+import { homesFolder } from '../src/paths';
+import { mockHomeFile } from './fixtures';
 import { clearMedia, clearUserdata, createTestApp, injector } from './helpers';
 
-const mockHome = await readHomeFile(defaultHomeFile);
+const mockHome = await readHomeFile(mockHomeFile);
 const WINDOW = 'souterrain-kitchen-window';
 
 /** A data/homes folder with the given files. */
@@ -42,6 +43,7 @@ describe('the release job (dist/release.js)', () => {
     resetPublic: false,
     allowDatabaseReset: false,
     homeFiles: undefined,
+    purgeHomes: [],
     userdataTrashRetentionDays: 30,
     ...overrides,
   });
@@ -67,20 +69,15 @@ describe('the release job (dist/release.js)', () => {
   });
   afterAll(() => ctx.app.close());
 
-  it('syncs every data/homes file, home.json first', async () => {
+  it('syncs every data/homes file, home.json first: only "Our home"', async () => {
     expect((await homeFiles(undefined)).map((f) => f.slice(homesFolder.length + 1))).toEqual([
       'home.json',
-      'mock-home.json',
     ]);
     const report = await runRelease(ctx.database, config(), log);
-    expect(report.homes.map((h) => [h.id, h.status])).toEqual([
-      ['home', 'inserted'],
-      ['mock-home', 'inserted'],
-    ]);
-    // The viewer opens the oldest home: the real one.
+    expect(report.homes.map((h) => [h.id, h.status])).toEqual([['home', 'inserted']]);
     expect(
       (await inject('GET', '/api/homes')).json().items.map((h: { id: string }) => h.id),
-    ).toEqual(['home', 'mock-home']);
+    ).toEqual(['home']);
     expect(lines.info).toContain('release: home "home" inserted, 0 uses need attention');
   });
 
@@ -146,12 +143,52 @@ describe('the release job (dist/release.js)', () => {
   it('leaves a home that is not in git alone, with a warning', async () => {
     const other = variant({ id: 'other-home', name: 'Other home' });
     expect((await inject('POST', '/api/homes/import', other)).statusCode).toBe(201);
-    const report = await runRelease(ctx.database, config({ homeFiles: ['mock-home.json'] }), log);
+    const report = await runRelease(ctx.database, config({ homeFiles: [mockHomeFile] }), log);
     expect(report.notInGit).toEqual(['other-home']);
     expect((await stored()).map((h) => h.id).sort()).toEqual(['mock-home', 'other-home']);
     expect(lines.warn).toEqual([
       'release: home "other-home" is stored but not in the synced files; left alone',
     ]);
+  });
+
+  it('purges a retired home and its userdata, never photos, and nothing of another home', async () => {
+    await clearMedia(ctx);
+    await runRelease(ctx.database, config({ homeFiles: [mockHomeFile, 'home.json'] }), log);
+    const bed = { typeId: 'furniture.bed', levelId: 'souterrain', roomId: 'souterrain-bedroom' };
+    const place = (home: string) =>
+      inject('POST', `/api/homes/${home}/placements`, { ...bed, position: { x: 0, z: 0 } });
+    expect((await place('mock-home')).statusCode).toBe(201);
+    expect((await place('home')).statusCode).toBe(201);
+    const request = await inject('POST', '/api/homes/mock-home/photo-requests', {
+      levelId: 'souterrain',
+      roomId: 'souterrain-kitchen',
+      reason: 'purge test',
+    });
+    expect(request.statusCode).toBe(201);
+    lines = { info: [], warn: [] };
+
+    await runRelease(
+      ctx.database,
+      config({ homeFiles: ['home.json'], purgeHomes: ['mock-home'] }),
+      log,
+    );
+
+    expect(lines.info.find((l) => l.startsWith('release: purged home "mock-home"'))).toMatch(
+      /userdata\.placements=1 .*public\.homes=1/,
+    );
+    expect(lines.info).toContain(
+      'release: home "mock-home" keeps 0 photo(s) and 1 photo request(s) (never deleted)',
+    );
+    expect((await stored()).map((h) => h.id)).toEqual(['home']);
+    expect((await inject('GET', '/api/homes/home/placements')).json().items).toHaveLength(1);
+    expect((await inject('GET', `/api/photo-requests/${request.json().id}`)).statusCode).toBe(200);
+    await clearMedia(ctx);
+  });
+
+  it('refuses to purge a home that is synced', async () => {
+    await expect(
+      runRelease(ctx.database, config({ homeFiles: ['home.json'], purgeHomes: ['home'] }), log),
+    ).rejects.toThrow(/refusing to purge home "home"/);
   });
 
   it('refuses RESET_PUBLIC without ALLOW_DATABASE_RESET', async () => {
@@ -162,7 +199,7 @@ describe('the release job (dist/release.js)', () => {
 
   it('with RESET_PUBLIC, resets public and keeps media, userdata and the settings', async () => {
     await clearMedia(ctx);
-    await runRelease(ctx.database, config({ homeFiles: ['mock-home.json'] }), log);
+    await runRelease(ctx.database, config({ homeFiles: [mockHomeFile] }), log);
     const layout = await inject('POST', '/api/homes/mock-home/layouts', { name: 'L', items: [] });
     expect(layout.statusCode).toBe(201);
     await inject('PUT', `/api/homes/mock-home/opening-overrides/${WINDOW}`, {
@@ -187,7 +224,7 @@ describe('the release job (dist/release.js)', () => {
 
     await runRelease(
       ctx.database,
-      config({ resetPublic: true, allowDatabaseReset: true, homeFiles: ['mock-home.json'] }),
+      config({ resetPublic: true, allowDatabaseReset: true, homeFiles: [mockHomeFile] }),
       log,
     );
     expect(lines.info).toContain('release: public reset (media and userdata kept)');

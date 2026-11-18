@@ -3,9 +3,9 @@
 // Smoke test of the catalogue pages on a desktop screen (1440x900) and a phone (390x844, touch):
 // the entry from the viewer, both kinds, search, thumbnails, use counts, deep links, reload and the
 // back button; every type's piece page (3D, dimensions in cm, the section of openings) and the
-// playground; `/?focus=<an opening>` in the viewer; the piece page's uses (where-used, a mock-home
-// edit and its undo, Place). Every other write is refused (or, for Place, answered) inside the
-// browser. Playwright is loaded from MY_HOME_PLAYWRIGHT_DIR.
+// playground; `/?focus=<an opening>` in the viewer; the piece page's uses (where-used, the editor
+// and its history, Place). It never writes: every write is refused, or (Save, Place) answered
+// inside the browser. Playwright is loaded from MY_HOME_PLAYWRIGHT_DIR.
 /* global document, window, caches */
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -50,18 +50,16 @@ async function smoke(out, homeId) {
     args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
   });
   const blocked = [];
-  /** The mock-home edit and its undo (real writes, undone by the smoke itself). */
-  const written = [];
   /** Writes answered inside the browser. */
   const faked = [];
   try {
     for (const { label, viewport, across, ...device } of SCREENS) {
       /**
        * A fresh browser context: no cookies, no cache, no history. Every write is refused, unless
-       * `allow(method, path)` lets it through (the self-cleaning mock-home edit and undo) or
-       * `fake(method, path, body)` answers it inside the browser (Place).
+       * `fake(method, path, body)` answers it inside the browser (Save, Place): the smoke never
+       * writes on a deployed environment.
        */
-      const open = async ({ allow, fake } = {}) => {
+      const open = async ({ fake } = {}) => {
         const context = await browser.newContext({ viewport, ...device });
         await context.route('**/*', (route) => {
           const request = route.request();
@@ -73,12 +71,6 @@ async function smoke(out, homeId) {
             if (answer) {
               faked.push(`${method} ${url.pathname}`);
               return route.fulfill(answer);
-            }
-            if (allow?.(method, url.pathname)) {
-              written.push(`${method} ${url.pathname}`);
-              return route.continue({
-                headers: { ...request.headers(), authorization: `Bearer ${token}` },
-              });
             }
             blocked.push(`${method} ${url.pathname}`);
             return route.abort();
@@ -581,11 +573,10 @@ async function smoke(out, homeId) {
 
       await usesStep({ label, device, open, press, base, homeId, shot });
     }
-    check('nothing else was written', blocked.length === 0, blocked.join(', '));
     check(
-      'the only real writes were the mock-home edit and its undo',
-      written.every((w) => w.includes('/api/homes/mock-home/')) && written.length <= 2,
-      written.join(', ') || 'none',
+      'nothing was written: every write was answered in the browser',
+      blocked.length === 0,
+      blocked.join(', '),
     );
     console.log(`answered in the browser: ${faked.join(', ') || 'nothing'}`);
     console.log(
@@ -596,9 +587,6 @@ async function smoke(out, homeId) {
   }
 }
 
-const MOCK = 'mock-home';
-/** Production's host: the smoke never writes there, whatever its homes. */
-const PRODUCTION_HOST = 'home.nntin.xyz';
 const WINDOW = 'window.casement';
 
 /** Waits for `fn` (in the page) to be true; false after `timeout` ms. */
@@ -608,23 +596,12 @@ const until = (page, fn, arg, timeout = 30_000) =>
     () => false,
   );
 
-/** A use of the mock home as the api has it now. */
-const mockUse = (page, id) =>
-  page.evaluate(
-    async ({ home, type, id }) => {
-      const res = await fetch(`/api/homes/${home}/uses?typeId=${type}`);
-      return (await res.json()).items.find((u) => u.id === id);
-    },
-    { home: MOCK, type: WINDOW, id },
-  );
-
 /**
  * 7. The piece page's uses (#45). Where-used of `door.interior` in the first home (read-only), with
- * the catalogue's count. Where `mock-home` exists (staging) and never on production: on the desktop, a real edit of a mock-home window's frame colour through
- * the editor, its history row (actor agent), and Undo, which puts the colour back: the smoke cleans
- * up after itself (the history rows stay, on the mock home). On the phone, that history read-only.
- * Place on the bed's page (of the mock home, else the first home), with the POST answered inside the
- * browser: no placement is created. Without a mock home the edit is skipped and logged, nothing else.
+ * the catalogue's count. A window's editor opens from `#use=`; on the desktop its Save sends the
+ * edit, which the browser answers with an error (nothing is stored), and its history opens
+ * read-only. Place on the bed's page, with the POST answered inside the browser: no placement is
+ * created. No write ever reaches a deployed environment.
  */
 async function usesStep({ label, device, open, press, base, homeId, shot }) {
   const url = (p) => new URL(p, base).href;
@@ -635,16 +612,15 @@ async function usesStep({ label, device, open, press, base, homeId, shot }) {
     const { context, page, errors } = await open();
     await page.goto(url('/'), { waitUntil: 'domcontentloaded', timeout: 60_000 });
     facts = await page.evaluate(
-      async ({ id, mock }) => {
+      async ({ id }) => {
         const homes = (await (await fetch('/api/homes')).json()).items;
         const usage = (await (await fetch('/api/catalog/usage')).json()).counts;
         return {
           home: id ?? homes[0]?.id,
           count: usage['door.interior'],
-          hasMock: homes.some((h) => h.id === mock),
         };
       },
-      { id: homeId ?? null, mock: MOCK },
+      { id: homeId ?? null },
     );
     await page.goto(url(`/catalog/openings/door.interior?home=${encodeURIComponent(facts.home)}`), {
       waitUntil: 'networkidle',
@@ -693,21 +669,21 @@ async function usesStep({ label, device, open, press, base, homeId, shot }) {
     await context.close();
   }
 
-  // The mock home's window: edit (desktop only), history, undo. Only where there is a mock home
-  // (staging; production syncs home.json only) and never on production's host.
-  const editable = facts.hasMock && new URL(base).host !== PRODUCTION_HOST;
-  if (!editable) {
-    console.log(
-      `skip  ${label}: skipped: no ${MOCK} (or production): no edit and undo; where-used and Place run`,
-    );
-  } else {
-    let target;
-    const allow = (method, path) =>
-      target !== undefined &&
-      ((method === 'PUT' && path === `/api/homes/${MOCK}/opening-overrides/${target}`) ||
-        (method === 'POST' &&
-          new RegExp(`^/api/homes/${MOCK}/uses/${target}/history/[0-9a-f-]+/undo$`).test(path)));
-    const { context, page, errors } = await open({ allow: device.hasTouch ? undefined : allow });
+  // A window of the first home: its editor opens from `#use=`, the edit is sent (the PUT is
+  // answered inside the browser with an error: nothing is saved), and the history opens, read-only.
+  {
+    const puts = [];
+    const fake = (method, path, body) => {
+      if (method !== 'PUT' || !/^\/api\/homes\/[^/]+\/opening-overrides\/[^/]+$/.test(path))
+        return undefined;
+      puts.push(JSON.parse(body));
+      return {
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'catalog smoke: not saved' }),
+      };
+    };
+    const { context, page, errors } = await open({ fake });
     await page.goto(url('/'), { waitUntil: 'domcontentloaded', timeout: 60_000 });
     const picked = await page.evaluate(
       async ({ home, type }) => {
@@ -718,17 +694,16 @@ async function usesStep({ label, device, open, press, base, homeId, shot }) {
         );
         return items.find((u) => u.id === 'souterrain-kitchen-window') ?? items[0];
       },
-      { home: MOCK, type: WINDOW },
+      { home: facts.home, type: WINDOW },
     );
-    check(`${label}: the mock home has a ${WINDOW} to edit`, picked !== undefined);
+    check(`${label}: the home has a ${WINDOW} to open`, picked !== undefined);
     if (picked) {
-      const before = picked.overrides;
       const colour = picked.effective.frameColor === '#2a5d8f' ? '#8f2a5d' : '#2a5d8f';
-      await page.goto(url(`/catalog/openings/${WINDOW}?home=${MOCK}#use=${picked.id}`), {
-        waitUntil: 'networkidle',
-        timeout: 60_000,
-      });
-      const row = page.locator(`[id="use-${MOCK}-${picked.id}"]`);
+      await page.goto(
+        url(`/catalog/openings/${WINDOW}?home=${encodeURIComponent(facts.home)}#use=${picked.id}`),
+        { waitUntil: 'networkidle', timeout: 60_000 },
+      );
+      const row = page.locator(`[id="use-${facts.home}-${picked.id}"]`);
       const editor = page.getByRole('region', { name: `Edit ${picked.name}` });
       check(
         `${label}: #use= opens the use's editor`,
@@ -737,107 +712,31 @@ async function usesStep({ label, device, open, press, base, homeId, shot }) {
           () => false,
         ),
       );
-      const history = row.getByRole('region', { name: 'History' });
       if (!device.hasTouch) {
-        target = picked.id;
-        try {
-          const hex = editor.getByRole('textbox', { name: 'Frame colour, hex' });
-          await hex.fill(colour);
-          await hex.blur();
-          await press(editor.getByRole('button', { name: 'Save', exact: true }));
-          check(
-            `${label}: the edit is saved and shown in the row`,
-            await row
-              .getByLabel('Overrides')
-              .filter({ hasText: colour })
-              .waitFor({ timeout: 30_000 })
-              .then(
-                () => true,
-                () => false,
-              ),
-          );
-          await press(row.getByRole('button', { name: `History of ${picked.name}` }));
-          const top = history.locator('li').first();
-          await top.waitFor({ timeout: 30_000 }).catch(() => {});
-          const text = (await top.count()) ? await top.textContent() : '';
-          check(
-            // With the agent token the api records an agent; without one (local runs) the owner.
-            `${label}: the history shows the change, by ${token ? 'the agent' : 'you'}`,
-            text.includes(`→ ${colour}`) && text.includes(token ? 'Agent' : 'You'),
-            text,
-          );
-          await press(top.getByRole('button', { name: /^Undo/ }));
-          // This run's rows: earlier runs left struck-through rows of their own further down.
-          const items = history.locator('li');
-          const undid = items
-            .nth(0)
-            .filter({ hasText: `${colour} →` })
-            .filter({ hasText: '(undo)' });
-          const struck = items
-            .nth(1)
-            .locator('s')
-            .filter({ hasText: `→ ${colour}` });
-          check(
-            `${label}: Undo is one click and strikes the change through`,
-            await Promise.all([
-              undid.waitFor({ timeout: 30_000 }),
-              struck.waitFor({ timeout: 30_000 }),
-            ]).then(
-              () => true,
-              () => false,
-            ),
-          );
-          const same = (u) =>
-            u?.effective.frameColor === picked.effective.frameColor &&
-            JSON.stringify(Object.entries(u.overrides).sort()) ===
-              JSON.stringify(Object.entries(before).sort());
-          let after = await mockUse(page, picked.id);
-          for (let i = 0; i < 20 && !same(after); i++) {
-            await page.waitForTimeout(500);
-            after = await mockUse(page, picked.id);
-          }
-          check(
-            `${label}: the colour is back after the undo`,
-            same(after),
-            `${after?.effective.frameColor}, overrides ${JSON.stringify(after?.overrides)}`,
-          );
-        } finally {
-          // Cleans up by hand should a step have failed between the save and the undo.
-          const now = await mockUse(page, picked.id).catch(() => undefined);
-          if (
-            now &&
-            JSON.stringify(Object.entries(now.overrides).sort()) !==
-              JSON.stringify(Object.entries(before).sort())
-          ) {
-            const status = await page.evaluate(
-              async ({ home, id, version, params }) =>
-                (
-                  await fetch(`/api/homes/${home}/opening-overrides/${id}`, {
-                    method: 'PUT',
-                    headers: { 'content-type': 'application/json' },
-                    body: JSON.stringify({ version, params }),
-                  })
-                ).status,
-              { home: MOCK, id: picked.id, version: now.version, params: before },
-            );
-            check(`${label}: cleanup put the overrides back`, status === 200, String(status));
-          }
-          target = undefined;
-        }
-      } else {
-        await press(row.getByRole('button', { name: `History of ${picked.name}` }));
+        const hex = editor.getByRole('textbox', { name: 'Frame colour, hex' });
+        await hex.fill(colour);
+        await hex.blur();
+        await press(editor.getByRole('button', { name: 'Save', exact: true }));
         check(
-          `${label}: the history (read-only here) shows undone changes`,
-          await history
-            .locator('li')
-            .first()
-            .waitFor({ timeout: 30_000 })
-            .then(
-              () => true,
-              () => false,
-            ),
+          `${label}: Save sends the edit (answered in the browser, nothing is written)`,
+          (await page.waitForTimeout(1500),
+          puts.length === 1 && puts[0].params?.frameColor === colour),
+          JSON.stringify(puts[0] ?? {}),
+        );
+        check(
+          `${label}: the row still shows the stored overrides`,
+          (await row.getByLabel('Overrides').filter({ hasText: colour }).count()) === 0,
         );
       }
+      const history = row.getByRole('region', { name: 'History' });
+      await press(row.getByRole('button', { name: `History of ${picked.name}` }));
+      check(
+        `${label}: the history opens (read-only)`,
+        await history.waitFor({ timeout: 30_000 }).then(
+          () => true,
+          () => false,
+        ),
+      );
       await row.scrollIntoViewIfNeeded();
       await page.waitForTimeout(300);
       await row
@@ -845,15 +744,15 @@ async function usesStep({ label, device, open, press, base, homeId, shot }) {
         .catch((error) => console.log(`no history screenshot: ${redact(error.message)}`));
     }
     check(
-      `${label}: no console or page errors while editing`,
-      errors.length === 0,
+      `${label}: no console or page errors while opening the editor`,
+      errors.filter((e) => !/status of 500|catalog smoke/.test(e)).length === 0,
       errors.slice(0, 3).map(redact).join(' | '),
     );
     await context.close();
   }
 
-  // Place, with the POST answered in the browser (on the mock home where there is one).
-  const placeHome = facts.hasMock ? MOCK : facts.home;
+  // Place, with the POST answered in the browser.
+  const placeHome = facts.home;
   {
     const posts = [];
     const fake = (method, path, body) => {

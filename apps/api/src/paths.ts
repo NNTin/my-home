@@ -17,11 +17,8 @@ export const homesFolder = fileURLToPath(new URL('../../../data/homes', import.m
 const homeFile = (name: string) =>
   fileURLToPath(new URL(`../../../data/homes/${name}`, import.meta.url));
 
-/** The mock home: `data/homes/` at the repository root (copied into the image). */
-export const defaultHomeFile = homeFile('mock-home.json');
+/** The home: `data/homes/home.json` at the repository root (copied into the image). */
+export const defaultHomeFile = homeFile('home.json');
 
-/**
- * Homes seeded when no SEED_FILE is set, in order: the real home first, so the viewer (which shows
- * the oldest home) opens it, then the mock home.
- */
-export const defaultSeedFiles = [homeFile('home.json'), defaultHomeFile];
+/** Homes seeded when no SEED_FILE is set, in order (the viewer shows the oldest home first). */
+export const defaultSeedFiles = [defaultHomeFile];

@@ -4,6 +4,7 @@ import { placementStore } from '../src/db/placements';
 import { seedHomes } from '../src/db/seed';
 import { issuedIds } from '../src/db/userdata-schema';
 import { clearUserdata, createTestApp, injector } from './helpers';
+import { testSeedFiles } from './fixtures';
 
 const DAY = 24 * 60 * 60 * 1000;
 const url = '/api/homes/mock-home/placements';
@@ -17,7 +18,7 @@ describe('placements', () => {
   });
   beforeEach(async () => {
     await clearUserdata(ctx);
-    await seedHomes(ctx.database.db);
+    await seedHomes(ctx.database.db, { files: testSeedFiles });
   });
   afterAll(() => ctx.app.close());
 
