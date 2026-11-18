@@ -2753,14 +2753,14 @@
       "wallId": "souterrain-wall-north",
       "type": "window",
       "offset": {
-        "value": 1.51,
+        "value": 1.69,
         "source": "estimated-from-photo",
-        "note": "Frame ≈10.55–11.55 (±0.15): exterior c51a59e4/cbe9bda7 (from the NE corner) and interior b652a36e (from the east wall)"
+        "note": "x ≈10.41–11.37 (±0.07): calibrated ba8127e3 (#60 survey addendum); agrees with b652a36e (10.4–11.5) and cbe9bda7 (10.6–11.6)"
       },
       "width": {
-        "value": 1.0,
+        "value": 0.96,
         "source": "estimated-from-photo",
-        "note": "About square, like the other north windows (cbe9bda7 frame 350×340 px; b652a36e); was 0.6"
+        "note": "About square like the other north windows; 0.96 calibrated (ba8127e3, #60 survey), sill 1.10 / head 2.06 there; was 0.6"
       },
       "height": {
         "value": 1.0,
