@@ -154,14 +154,17 @@ ceiling; every other piece may stand on the floor or hang on a wall.
   under the corridor's suspended ceiling, 2.00 m under the box. It has no elevation of its own (always 0).
 - **Height**: the selected item's **Mounting** (floor or wall) and **Height above the floor** in cm are in the
   panel (Enter or leaving the field saves; one undo step); on a phone the toolbar's **▲ ▼** move it 5 cm. A
-  piece must not reach above the ceiling over it: the api refuses a create or a change that would (422, unless
-  it already did), and a drag stops before a lower ceiling.
+  piece must not reach above the ceiling over it: the editor raises it at most until its top meets the ceiling,
+  a drag stops before a lower ceiling, and the api refuses a create or a change that would (422, unless it
+  already did).
 - **Walking**: pieces on a wall or under the ceiling never block the figure ([walking.md](walking.md)).
 - **Needs attention** (panel and where-used): a wall piece whose back no longer touches a wall ("hangs on no
   wall (its wall is gone or moved)", e.g. after a git change of the floor plan), a ceiling piece outside every
   room ("no ceiling over it"), a piece reaching above the ceiling. Nothing is moved by itself.
 - **API and seed**: `POST`/`PATCH /placements` take `mounting` and `elevation` (0 to 10 m); a mounting the type
-  does not allow or an elevation under the ceiling is a 400. Both are in the history ("raised to 145.0 cm above
+  does not allow or an elevation under the ceiling is a 400. The api does **not** check that a wall piece's back
+  touches a wall (agents place it flush themselves, `uses.sh`); one that does not is saved and listed under
+  needs attention ("hangs on no wall"). Both are in the history ("raised to 145.0 cm above
   the floor", "mounted on a wall → on the floor") and are undone like the position. The seed has them only when
   not on the floor at 0 ([deployment.md](deployment.md#the-seed-comes-from-git)). Agents: `uses.sh … place|move
 --mount M --elevation-cm CM`.

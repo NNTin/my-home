@@ -350,13 +350,21 @@ export function moveItem(ctx: EditorContext, item: EditorItem, target: Vec2): Ed
 }
 
 /**
- * Sets the height of the item's bottom above the floor, in whole centimetres between 0 and
+ * Sets the height of the item's bottom above the floor, in whole centimetres from 0 up to where
+ * its top meets the ceiling over it (so the api never refuses it as too high), at most
  * `MAX_ELEVATION`; a ceiling piece has none.
  */
-export function setElevation(_ctx: EditorContext, item: EditorItem, elevation: number): EditorItem {
+export function setElevation(ctx: EditorContext, item: EditorItem, elevation: number): EditorItem {
   const mounting = mountingOfItem(item);
   if (mounting === 'ceiling' || !Number.isFinite(elevation)) return item;
-  const cm = Math.round(Math.min(MAX_ELEVATION, Math.max(0, elevation)) * 100) / 100;
+  const ceiling = ceilingAt(ctx, item);
+  const height = (typeOf(ctx, item)?.size ?? UNKNOWN_SIZE).height;
+  const highest =
+    ceiling === undefined
+      ? MAX_ELEVATION
+      : Math.max(0, Math.floor((ceiling - height) * 100 + 1e-6) / 100);
+  const top = Math.min(MAX_ELEVATION, highest);
+  const cm = Math.round(Math.min(top, Math.max(0, elevation)) * 100) / 100;
   return withMounting(item, mounting, cm);
 }
 

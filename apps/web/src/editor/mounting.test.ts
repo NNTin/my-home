@@ -80,12 +80,15 @@ describe('wall- and ceiling-mounted items (#63)', () => {
     expect([...collisions(ctx, [base, lowered]).keys()].sort()).toEqual([base.id, lowered.id]);
   });
 
-  it('sets the height in whole centimetres, never under a ceiling, and flags it above the ceiling', () => {
+  it('sets the height in whole centimetres up to the ceiling, never under one, and flags it above', () => {
     const cabinet = place('kitchen.wall-cabinet');
     expect(setElevation(ctx, cabinet, 1.4567).elevation).toBe(1.46);
     expect(setElevation(ctx, cabinet, -1).elevation).toBeUndefined(); // 0: the default
+    // Never above the ceiling: at most up to it (2.50 - 0.68 m).
     const high = setElevation(ctx, cabinet, 2);
-    expect(issuesOf(ctx, high).aboveCeiling).toBe(true);
+    expect(high.elevation).toBe(1.82);
+    expect(issuesOf(ctx, high).aboveCeiling).toBe(false);
+    expect(issuesOf(ctx, { ...cabinet, elevation: 2 }).aboveCeiling).toBe(true);
     const light = place('fixture.downlight');
     expect(setElevation(ctx, light, 1)).toBe(light);
   });
