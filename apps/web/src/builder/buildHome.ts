@@ -534,6 +534,7 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
       const reach = thickness / 2 + 0.1;
       return pointInPolygon([cx - dz * reach, cz + dx * reach], plan) ? -1 : 1;
     };
+    const clearHeight = levelById.get(wall.levelId)?.height.value;
     for (const o of wallOpenings) {
       const width = o.width.value;
       const height = o.height.value;
@@ -551,6 +552,9 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
           wallDepth: thickness,
           sill: o.sill.value,
           outside: outsideOf(o.offset.value + width / 2),
+          ...(clearHeight !== undefined && {
+            headroom: Math.max(0, clearHeight - o.sill.value - height),
+          }),
         }),
         center: at(o.offset.value + width / 2, base + o.sill.value + height / 2),
         size: [width, height, thickness],

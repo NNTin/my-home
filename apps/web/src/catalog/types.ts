@@ -25,6 +25,11 @@ export interface PieceContext {
    * (-1, the outdoors away from its camera).
    */
   outside?: 1 | -1;
+  /**
+   * Wall openings: the room between the top of the hole and the ceiling of its level, where known.
+   * A window keeps its curtain rod under the ceiling.
+   */
+  headroom?: number;
 }
 
 export type PartRole =

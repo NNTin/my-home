@@ -51,6 +51,9 @@ export function windowOptions(values: ParamValues) {
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
+/** The curtain rod's thickness. */
+const ROD = 0.022;
+
 /** Where the frame, the sashes and the reveals sit across the wall; `t` grows towards the outdoors. */
 export function windowLayout(ctx: PieceContext, values: ParamValues) {
   const o = windowOptions(values);
@@ -242,10 +245,13 @@ function curtainParts(
 ): Part[] {
   const { o, w, h, d } = L;
   const span = w + 2 * o.curtainRodReach;
-  const rodY = h / 2 + o.curtainRodHeight;
+  // The rod hangs `curtainRodHeight` over the hole, but never in the ceiling: with little room
+  // above the hole (a souterrain window just under the ceiling) it hangs 3 cm under the ceiling.
+  const room = ctx.headroom ?? Infinity;
+  const rodY = h / 2 + Math.max(ROD / 2, Math.min(o.curtainRodHeight, room - 0.03 - ROD / 2));
   const rodT = -d / 2 - 0.09;
   const parts = [
-    part(0, rodY, rodT - 0.011, rodT + 0.011, [span, 0.022], o.curtainRodColor, 'curtain'),
+    part(0, rodY, rodT - ROD / 2, rodT + ROD / 2, [span, ROD], o.curtainRodColor, 'curtain'),
   ];
   const top = rodY - 0.01;
   // Down to the floor where it is known, else just below the window board.
