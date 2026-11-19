@@ -31,6 +31,15 @@ function specProblem(spec: ParamSpec): string | undefined {
       }
       return undefined;
     }
+    case 'fraction':
+      if (!(spec.step > 0 && spec.step <= 1)) return `step ${spec.step} must be in (0, 1]`;
+      return spec.default >= 0 && spec.default <= 1 ? undefined : 'default must be from 0 to 1';
+    case 'choice': {
+      const values = spec.options.map((o) => o.value);
+      if (values.length < 2) return 'a choice needs at least two options';
+      if (new Set(values).size !== values.length) return 'duplicate option values';
+      return values.includes(spec.default) ? undefined : `default ${spec.default} is not an option`;
+    }
   }
 }
 

@@ -11,3 +11,6 @@ export function parseCm(text: string): number | undefined {
   const cm = Number(match[1]!.replace(',', '.'));
   return Number.isFinite(cm) ? Math.round(cm * 10) / 1000 : undefined;
 }
+
+/** A share from 0 to 1 as a whole percentage: `0.4` → `"40 %"`. */
+export const formatPercent = (share: number): string => `${Math.round(share * 100)} %`;

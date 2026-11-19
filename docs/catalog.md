@@ -67,14 +67,16 @@ What the page writes is in [its uses](#uses-on-the-piece-page), below the playgr
 - **Section** (openings; **3D / Section** swaps the views): `sectionOf(parts, ctx)` cuts the parts with the
   vertical plane through the opening's centre, perpendicular to the wall, into rectangles in (depth, height)
   tagged by role, plus the wall stub; a piece may give its own `section()`. It is drawn as SVG
-  (`SectionView.tsx`) with a legend by role and the wall depth, frame depth, glass (or panel) depth, sill height
-  and opening height in cm. It shows what the design draws today (frame and glass or panel), noted as
-  "simplified design".
+  (`SectionView.tsx`) with a legend by role and, in cm, the wall, frame, sash, glass (or panel), window board
+  and outside sill depths, a shutter box's height and depth, and the sill and opening heights. The
+  outdoors is on the left, the room on the right.
 - **Playground** (`Playground.tsx`), generated from the type's `params`:
   - a basic colour: a colour picker, a hex field (`#rgb` or `#rrggbb`, lower-cased) and a swatch; any colour;
   - a basic length: a slider in 1 cm steps and a field in cm with one decimal (`92,5` and `92.5` both work),
     with its limits ("80.0–220.0 cm"); a value beyond them says so and is not applied;
   - a basic count: − / value / + within its limits;
+  - a basic fraction: a slider from 0 to 100 % in 5 % steps, with the value in %;
+  - a basic choice: a drop-down list of its options;
   - **Reset to defaults**; openings show `openingFitIssues` against the preview hole.
   - The design parameters are listed read-only under "Design (changed only by a pull request)".
 - **`?p=`** holds the playground's overrides (base64url JSON, written a moment after the last change, replacing
@@ -201,3 +203,26 @@ Tests: `apps/web/src/routing/routing.test.tsx`, `apps/web/src/catalog-page/Catal
 page, uses, editor, history, Place, notes and photos; the fake api in `test/fakeApi.ts` has uses, history with
 undo, notes and photo subjects), `apps/web/src/catalog/dimensions.test.ts`, `App.test.tsx` § pages and `Mobile.test.tsx`. The piece page's
 tests mock `Inspector` (no WebGL in jsdom); the section is SVG and is tested as it is.
+
+## Wall windows (`window.casement`, `window.tilt-turn`)
+
+The standard German uPVC window, from the owner's photos (#47; `apps/web/src/catalog/openings/window.ts`).
+From the outdoors in:
+
+- an aluminium **outside sill** (Fensterbank außen), 5 cm past the facade;
+- the **frame** (Blendrahmen), 6.5 cm wide and 7 cm deep, set back 12 cm from the facade (clamped in thin walls);
+- per division a **sash** (Flügel), 6 cm wide and 7.8 cm deep, 1.8 cm proud of the frame into the room, with
+  2.4 cm double glazing, a white **handle** (Olive, pointing down: closed) at mid-height on the opening side
+  and two **hinges** on the other; several sashes have fixed mullions between them and their handles
+  towards the middle;
+- the inside **window board** (Fensterbank innen), 3 cm thick, 3 cm past the inner wall face.
+
+Basic parameters a use may set (all off by default, so a window looks the same everywhere until its use
+says otherwise): `handleSide` (`right`/`left`, as seen from the room), `boardColor`, a **roller shutter**
+(`shutter`: `none`, `outside` = a box on the facade, `inside` = a lid over the window in the room with the
+slats in the outer reveal; `shutterClosed` 0–100 %; `shutterColor`) and a **curtain** (`curtain`:
+`none`, `both`, `left`, `right`; `curtainClosed` 0–100 %; `curtainColor`) on a black rod 15 cm above the
+opening, reaching 25 cm past it, the panels down to the floor. Fabric roller blinds, pleated blinds and
+privacy film (seen on several souterrain windows) are not modelled. Per-window values are DB data
+(overrides, `uses.sh set`), never in `data/homes/*.json`. Both types share every parameter, so a git
+change from one to the other keeps a use's overrides.

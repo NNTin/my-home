@@ -1,20 +1,12 @@
-import type { ParamValues } from '@my-home/shared';
-import { fittingCount, frameOf, frameParts, framedDimensions, glassOf } from '../../openings/frame';
-import { definePiece, type PieceContext } from '../../types';
+import { windowDimensions, windowParts } from '../../openings/window';
+import { definePiece } from '../../types';
 
-const sashes = (values: ParamValues, ctx: PieceContext) =>
-  fittingCount('window.tilt-turn', 'sashes', values, ctx.width);
-
-/** A framed pane with a sill; more sashes add mullions. */
+/**
+ * The standard German window (`openings/window.ts`): frame, sashes with glass, handle and hinges,
+ * window board inside, sill outside; optional roller shutter and curtain.
+ */
 export default definePiece({
   id: 'window.tilt-turn',
-  parts: (values, ctx) =>
-    frameParts(ctx, {
-      ...frameOf(values),
-      sill: true,
-      divisions: sashes(values, ctx),
-      fill: glassOf(values),
-    }),
-  dimensions: (values, ctx) =>
-    framedDimensions(values, ctx, { count: sashes(values, ctx), each: 'Sash' }),
+  parts: (values, ctx) => windowParts('window.tilt-turn', values, ctx),
+  dimensions: (values, ctx) => windowDimensions('window.tilt-turn', values, ctx),
 });

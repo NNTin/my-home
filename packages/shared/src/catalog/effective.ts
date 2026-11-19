@@ -14,6 +14,10 @@ function valueSchema(spec: ParamSpec): z.ZodType<string | number> {
       return z.number().int().min(spec.min).max(spec.max);
     case 'number':
       return z.number();
+    case 'fraction':
+      return z.number().min(0).max(1);
+    case 'choice':
+      return z.enum(spec.options.map((o) => o.value) as [string, ...string[]]);
   }
 }
 

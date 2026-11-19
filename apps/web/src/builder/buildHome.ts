@@ -14,6 +14,7 @@ import { gateParts, gateSpec } from '../catalog/gate/swing';
 import { numberParam } from '../catalog/parts';
 import { pieces } from '../catalog/registry';
 import type { Part } from '../catalog/types';
+import { pointInPolygon } from '../editor/geometry';
 import { fenceLine, fenceSpec } from './fence';
 import { EPS, rotationFor, toOutline, toVec2 } from './plan';
 
@@ -479,6 +480,8 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
   for (const o of model.openings)
     openingsByWall.set(o.wallId, [...(openingsByWall.get(o.wallId) ?? []), o]);
 
+  // Which side of a wall opening is outdoors: windows put their board and curtain in the room.
+  const plan = toOutline(model.building.footprint);
   for (const wall of model.walls) {
     const [sx, sz] = toVec2(wall.start);
     const [ex, ez] = toVec2(wall.end);
@@ -525,6 +528,12 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
       });
     });
 
+    /** 1 when the opening's local +z, (-dz, dx) on the plan, leads out of the footprint. */
+    const outsideOf = (along: number): 1 | -1 => {
+      const [cx, cz] = [sx + dx * along, sz + dz * along];
+      const reach = thickness / 2 + 0.1;
+      return pointInPolygon([cx - dz * reach, cz + dx * reach], plan) ? -1 : 1;
+    };
     for (const o of wallOpenings) {
       const width = o.width.value;
       const height = o.height.value;
@@ -536,7 +545,13 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
         typeId: o.typeId,
         name: o.name,
         values,
-        parts: piece.parts(values, { width, height, wallDepth: thickness }),
+        parts: piece.parts(values, {
+          width,
+          height,
+          wallDepth: thickness,
+          sill: o.sill.value,
+          outside: outsideOf(o.offset.value + width / 2),
+        }),
         center: at(o.offset.value + width / 2, base + o.sill.value + height / 2),
         size: [width, height, thickness],
         rotationY,

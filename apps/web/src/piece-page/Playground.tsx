@@ -1,4 +1,10 @@
-import { formatCm, type CatalogType, type ParamSpec, type ParamValues } from '@my-home/shared';
+import {
+  formatCm,
+  formatPercent,
+  type CatalogType,
+  type ParamSpec,
+  type ParamValues,
+} from '@my-home/shared';
 import { useId, useState } from 'react';
 import { cmText, lengthInput, normalizeHex, rangeText, withOverride } from './playground';
 
@@ -145,9 +151,60 @@ function CountControl({ spec, value, onChange }: ControlProps<'count', number>) 
   );
 }
 
+/** A fraction: a slider from 0 to 100 % in the spec's steps, with the value in %. */
+function FractionControl({ spec, value, onChange }: ControlProps<'fraction', number>) {
+  const id = useId();
+  const step = Math.round(spec.step * 100);
+  return (
+    <div className="playground-row">
+      <label htmlFor={id}>{spec.label}</label>
+      <div className="playground-control">
+        <input
+          id={id}
+          type="range"
+          className="playground-slider"
+          min={0}
+          max={100}
+          step={step}
+          value={Math.round(value * 100)}
+          aria-valuetext={formatPercent(value)}
+          onChange={(e) => onChange(Number(e.target.value) / 100)}
+        />
+        <span className="playground-cm" aria-hidden="true">
+          {formatPercent(value)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** A choice: a drop-down list of the spec's options. */
+function ChoiceControl({ spec, value, onChange }: ControlProps<'choice', string>) {
+  const id = useId();
+  return (
+    <div className="playground-row">
+      <label htmlFor={id}>{spec.label}</label>
+      <div className="playground-control">
+        <select
+          id={id}
+          className="playground-field"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        >
+          {spec.options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
+
 /**
- * The control of one basic parameter: a colour, a length in cm or a count. The playground and the
- * per-use editor both use it.
+ * The control of one basic parameter: a colour, a length in cm, a count, a fraction in % or a
+ * choice. The playground and the per-use editor both use it.
  */
 export function BasicControl({
   spec,
@@ -165,6 +222,10 @@ export function BasicControl({
       return <LengthControl spec={spec} value={Number(value)} onChange={onChange} />;
     case 'count':
       return <CountControl spec={spec} value={Number(value)} onChange={onChange} />;
+    case 'fraction':
+      return <FractionControl spec={spec} value={Number(value)} onChange={onChange} />;
+    case 'choice':
+      return <ChoiceControl spec={spec} value={String(value)} onChange={onChange} />;
     default:
       return null;
   }
@@ -174,6 +235,9 @@ export function BasicControl({
 export function designText(spec: ParamSpec, value: string | number): string {
   if (spec.type === 'length' && typeof value === 'number') return formatCm(value);
   if (spec.type === 'number' && spec.unit) return `${value} ${spec.unit}`;
+  if (spec.type === 'fraction' && typeof value === 'number') return formatPercent(value);
+  if (spec.type === 'choice')
+    return spec.options.find((o) => o.value === value)?.label ?? String(value);
   return String(value);
 }
 

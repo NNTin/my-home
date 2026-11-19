@@ -17,23 +17,55 @@ const round = (n: number) => Math.round(n * 1e6) / 1e6;
 const rect = (s: { z: number[]; y: number[] }) => [...s.z, ...s.y].map(round);
 
 describe('sectionOf', () => {
-  it('cuts a casement window with one sash: wall under and over, head, sill member, glass', () => {
+  it('cuts a casement window with one sash: wall, frame, sash, glass, window board, outside sill', () => {
     const { shapes } = sectionFor('window.casement');
-    // Preview hole 1.2 × 1.2 m, sill 0.9 m, wall 0.36 m; frame 6 × 10 cm; glass 2 cm.
-    expect(roles(shapes)).toEqual(['wall', 'wall', 'frame', 'frame', 'glass']);
+    // Preview hole 1.2 × 1.2 m, sill 0.9 m, wall 0.36 m, the outdoors at -z (the room faces the
+    // camera). Frame 6.5 × 7 cm set back 12 cm from the facade; sash 6 × 7.8 cm; glass 2.4 cm.
+    expect(roles(shapes)).toEqual([
+      'wall',
+      'wall',
+      'frame',
+      'frame',
+      'sash',
+      'sash',
+      'glass',
+      'board',
+      'sill',
+    ]);
     expect(shapes.map(rect)).toEqual([
       [-0.18, 0.18, 0.6, 0.9], // over the head
-      [-0.18, 0.18, -1.5, -0.6], // under the sill, down to the floor
-      [-0.05, 0.05, 0.54, 0.6], // head
-      [-0.05, 0.05, -0.6, -0.54], // bottom member
-      [-0.01, 0.01, -0.54, 0.54], // glass
+      [-0.18, 0.18, -1.5, -0.6], // under the hole, down to the floor
+      [-0.06, 0.01, 0.535, 0.6], // frame head
+      [-0.06, 0.01, -0.6, -0.535], // frame bottom member
+      [-0.05, 0.028, 0.475, 0.535], // sash top member, 1.8 cm proud into the room
+      [-0.05, 0.028, -0.535, -0.475], // sash bottom member
+      [-0.023, 0.001, -0.475, 0.475], // glass
+      [0.01, 0.21, -0.61, -0.58], // window board, 3 cm past the inner wall face
+      [-0.23, -0.06, -0.615, -0.595], // outside sill, 5 cm past the facade
     ]);
   });
 
   it('cuts the mullion of a casement window with two sashes', () => {
     const { shapes } = sectionFor('window.casement', { sashes: 2 });
-    expect(roles(shapes)).toEqual(['wall', 'wall', 'frame', 'frame', 'frame', 'glass']);
-    expect(rect(shapes[4]!)).toEqual([-0.05, 0.05, -0.54, 0.54]);
+    expect(roles(shapes)).toEqual(['wall', 'wall', 'frame', 'frame', 'frame', 'board', 'sill']);
+    expect(rect(shapes[4]!)).toEqual([-0.06, 0.01, -0.535, 0.535]);
+  });
+
+  it('cuts a roller shutter box outside and a curtain rod in the room', () => {
+    const { shapes, labels } = sectionFor('window.tilt-turn', {
+      shutter: 'outside',
+      shutterClosed: 1,
+      curtain: 'both',
+    });
+    const shutter = shapes.filter((s) => s.role === 'shutter').map(rect);
+    // The box on the facade over the hole, and the closed slats in front of the window.
+    expect(shutter[0]).toEqual([-0.36, -0.18, 0.6, 0.8]);
+    expect(shutter[1]).toEqual([-0.212, -0.198, -0.6, 0.6]);
+    expect(shapes.filter((s) => s.role === 'curtain').map(rect)).toEqual([
+      [0.259, 0.281, 0.739, 0.761],
+    ]);
+    expect(labels.map((l) => l.name)).toContain('Shutter box height');
+    expect(labels.find((l) => l.name === 'Shutter box depth')!.label).toBe('18.0 cm');
   });
 
   it('cuts a French door: no sill member and no wall under it, glass down to the floor', () => {
@@ -70,8 +102,11 @@ describe('sectionLabels', () => {
   it('labels a window in cm with one decimal', () => {
     expect(sectionFor('window.casement').labels.map((l) => `${l.name} ${l.label}`)).toEqual([
       'Wall depth 36.0 cm',
-      'Frame depth 10.0 cm',
-      'Glass depth 2.0 cm',
+      'Frame depth 7.0 cm',
+      'Sash depth 7.8 cm',
+      'Glass depth 2.4 cm',
+      'Window board depth 20.0 cm',
+      'Sill depth 17.0 cm',
       'Sill height 90.0 cm',
       'Opening height 120.0 cm',
     ]);

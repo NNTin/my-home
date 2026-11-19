@@ -1,4 +1,4 @@
-import { LENGTH_STEP, type ParamSpec, type ParamTier } from '../params';
+import { FRACTION_STEP, LENGTH_STEP, type ParamSpec, type ParamTier } from '../params';
 
 /** Shorthands for the definitions; not exported from the package. */
 
@@ -53,4 +53,26 @@ export const number = (label: string, value: number, unit?: string): ParamSpec =
   label,
   default: value,
   ...(unit && { unit }),
+});
+
+/** A basic share from 0 to 1 (shown in %), such as how far a shutter or curtain is closed. */
+export const fraction = (label: string, value: number): ParamSpec => ({
+  type: 'fraction',
+  tier: 'basic',
+  label,
+  default: value,
+  step: FRACTION_STEP,
+});
+
+/** A basic choice of one of `options` (value → label), the first entry's value as the default. */
+export const choice = (
+  label: string,
+  options: Record<string, string>,
+  value = Object.keys(options)[0]!,
+): ParamSpec => ({
+  type: 'choice',
+  tier: 'basic',
+  label,
+  default: value,
+  options: Object.entries(options).map(([v, l]) => ({ value: v, label: l })),
 });

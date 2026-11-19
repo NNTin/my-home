@@ -69,7 +69,8 @@ const holes: [number, number, number][] = [
   [2.5, 2.1, 0.24],
 ];
 
-const wallTypes = catalog.types.filter((t) => t.placement === 'wall');
+// The windows have their own design since #47 (`window.test.ts`); the doors still draw as before.
+const wallTypes = catalog.types.filter((t) => t.placement === 'wall' && t.family !== 'window');
 
 describe('frame parts', () => {
   it.each(wallTypes.map((t) => t.id))('%s at its defaults equals the old renderer', (id) => {
@@ -86,7 +87,10 @@ describe('frame parts', () => {
     const parts = partsOf('window.casement', { width: 1, height: 1, wallDepth: 0.3 });
     expect(parts.filter((p) => p.role === 'frame')).toHaveLength(4);
     const glass = parts.find((p) => p.role === 'glass')!;
-    expect(glass.size).toEqual([0.88, 0.88, 0.02]);
+    // Inside a 6.5 cm frame and a 6 cm sash on every side; double glazing 2.4 cm.
+    expect(glass.size[0]).toBeCloseTo(1 - 2 * 0.065 - 2 * 0.06, 9);
+    expect(glass.size[1]).toBeCloseTo(1 - 2 * 0.065 - 2 * 0.06, 9);
+    expect(glass.size[2]).toBeCloseTo(0.024, 9);
     expect(glass.material).toEqual({ transparent: true, opacity: 0.35, depthWrite: false });
   });
 
@@ -108,29 +112,28 @@ describe('frame parts', () => {
     expect(panel.color).toBe('#8a8d90');
   });
 
-  it.each([
-    ['window.casement', 'sashes', 4],
-    ['window.tilt-turn', 'sashes', 4],
-    ['door.french', 'leaves', 3],
-  ] as const)('%s: more %s add a mullion between each two', (id, key, max) => {
-    const ctx = { width: 2, height: 2.2, wallDepth: 0.36 };
-    const one = partsOf(id, ctx);
-    for (let n = 2; n <= max; n++) {
-      const parts = partsOf(id, ctx, { [key]: n });
-      expect(parts).toHaveLength(one.length + n - 1);
-      // The first members and the fill are unchanged; the mullions go between them.
-      const frames = one.filter((p) => p.role === 'frame').length;
-      expect(parts.slice(0, frames)).toEqual(one.slice(0, frames));
-      expect(parts.at(-1)).toEqual(one.at(-1));
-      const mullions = parts.slice(frames, frames + n - 1);
-      expect(mullions.every((p) => p.role === 'frame' && p.color === one[0]!.color)).toBe(true);
-      // Evenly spaced across the inside of the frame.
-      const inner = 2 - 2 * 0.06;
-      mullions.forEach((m, i) =>
-        expect(m.center[0]).toBeCloseTo(-1 + 0.06 + (inner * (i + 1)) / n),
-      );
-    }
-  });
+  it.each([['door.french', 'leaves', 3]] as const)(
+    '%s: more %s add a mullion between each two',
+    (id, key, max) => {
+      const ctx = { width: 2, height: 2.2, wallDepth: 0.36 };
+      const one = partsOf(id, ctx);
+      for (let n = 2; n <= max; n++) {
+        const parts = partsOf(id, ctx, { [key]: n });
+        expect(parts).toHaveLength(one.length + n - 1);
+        // The first members and the fill are unchanged; the mullions go between them.
+        const frames = one.filter((p) => p.role === 'frame').length;
+        expect(parts.slice(0, frames)).toEqual(one.slice(0, frames));
+        expect(parts.at(-1)).toEqual(one.at(-1));
+        const mullions = parts.slice(frames, frames + n - 1);
+        expect(mullions.every((p) => p.role === 'frame' && p.color === one[0]!.color)).toBe(true);
+        // Evenly spaced across the inside of the frame.
+        const inner = 2 - 2 * 0.06;
+        mullions.forEach((m, i) =>
+          expect(m.center[0]).toBeCloseTo(-1 + 0.06 + (inner * (i + 1)) / n),
+        );
+      }
+    },
+  );
 
   it('falls back to the largest count that fits instead of throwing', () => {
     // 4 sashes need 1 m (0.25 m each); 0.6 m fits 2.
@@ -188,9 +191,9 @@ describe('frame parts', () => {
       'Width: 120.0 cm',
       'Height: 140.0 cm',
       'Sill height: 90.0 cm',
-      'Frame width: 6.0 cm',
-      'Sash 1 width: 51.0 cm',
-      'Sash 2 width: 51.0 cm',
+      'Frame width: 6.5 cm',
+      'Sash 1 width: 50.2 cm',
+      'Sash 2 width: 50.2 cm',
     ]);
   });
 });
