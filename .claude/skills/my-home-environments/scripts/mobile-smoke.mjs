@@ -444,7 +444,9 @@ async function smoke(out, homeId) {
     // A drag leaves the spot at once (a finger that rests there is a long press): the press and
     // the first moves go out together, without waiting for the slow software renderer in between.
     void touch('touchStart', from.x, from.y);
-    const dragStep = { x: 7, y: 4 };
+    // A shorter drag towards the camera, which ends clear of the walls: the long press below must
+    // land on the item, and a drag that ends against a wall leaves the item hidden behind it.
+    const dragStep = { x: 0, y: 3 };
     const dragSteps = 8;
     /** Where the finger let go: the item followed it there. */
     const dropped = { x: from.x + dragSteps * dragStep.x, y: from.y + dragSteps * dragStep.y };

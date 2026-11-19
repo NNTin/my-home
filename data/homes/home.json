@@ -3,7 +3,7 @@
   "schemaVersion": 1,
   "id": "home",
   "name": "Our home",
-  "description": "The real house: footprint, roof and terrain levels from official geodata (Datenquelle: Bayerische Vermessungsverwaltung, CC BY 4.0), windows and levels estimated from street-level photos, the souterrain rooms from the owner's plan sketch. Terrain is simplified to levelled areas and slopes. Heights are relative to the ground-floor finished floor (0).",
+  "description": "The real house: footprint, roof and terrain levels from official geodata (Datenquelle: Bayerische Vermessungsverwaltung, CC BY 4.0), windows and levels estimated from street-level photos, the souterrain rooms from the owner's room measurements. Terrain is simplified to levelled areas and slopes. Heights are relative to the ground-floor finished floor (0).",
   "building": {
     "id": "building",
     "name": "House",
@@ -1052,42 +1052,43 @@
       "outline": [
         {
           "x": {
-            "value": 0.36,
-            "source": "estimated-from-photo"
+            "value": 0.48,
+            "source": "measured",
+            "note": "#78: fitted to the owner's room measurements (inside W × D: 2.07 × 4.44); outline on the inner face of the outer walls and the centre line of the inner walls"
           },
           "z": {
-            "value": -10.59,
-            "source": "estimated-from-photo"
+            "value": -10.47,
+            "source": "measured"
           }
         },
         {
           "x": {
-            "value": 3.45,
-            "source": "estimated-from-photo"
+            "value": 2.715,
+            "source": "measured"
           },
           "z": {
-            "value": -10.59,
-            "source": "estimated-from-photo"
+            "value": -10.47,
+            "source": "measured"
           }
         },
         {
           "x": {
-            "value": 3.45,
-            "source": "estimated-from-photo"
+            "value": 2.715,
+            "source": "measured"
           },
           "z": {
-            "value": -5.4,
-            "source": "estimated-from-photo"
+            "value": -5.91,
+            "source": "measured"
           }
         },
         {
           "x": {
-            "value": 0.36,
-            "source": "estimated-from-photo"
+            "value": 0.48,
+            "source": "measured"
           },
           "z": {
-            "value": -5.4,
-            "source": "estimated-from-photo"
+            "value": -5.91,
+            "source": "measured"
           }
         }
       ]
@@ -1100,42 +1101,43 @@
       "outline": [
         {
           "x": {
-            "value": 3.45,
-            "source": "estimated-from-photo"
+            "value": 2.715,
+            "source": "measured",
+            "note": "#78: fitted to the owner's room measurements (inside W × D: 3.45 × 3.11); outline on the inner face of the outer walls and the centre line of the inner walls"
           },
           "z": {
-            "value": -10.59,
-            "source": "estimated-from-photo"
+            "value": -10.47,
+            "source": "measured"
           }
         },
         {
           "x": {
-            "value": 6.25,
-            "source": "estimated-from-photo"
+            "value": 6.45,
+            "source": "measured"
           },
           "z": {
-            "value": -10.59,
-            "source": "estimated-from-photo"
+            "value": -10.47,
+            "source": "measured"
           }
         },
         {
           "x": {
-            "value": 6.25,
-            "source": "estimated-from-photo"
+            "value": 6.45,
+            "source": "measured"
           },
           "z": {
-            "value": -6.6,
-            "source": "estimated-from-photo"
+            "value": -7.265,
+            "source": "measured"
           }
         },
         {
           "x": {
-            "value": 3.45,
-            "source": "estimated-from-photo"
+            "value": 2.715,
+            "source": "measured"
           },
           "z": {
-            "value": -6.6,
-            "source": "estimated-from-photo"
+            "value": -7.265,
+            "source": "measured"
           }
         }
       ]
@@ -1148,42 +1150,43 @@
       "outline": [
         {
           "x": {
-            "value": 6.25,
-            "source": "estimated-from-photo"
+            "value": 6.45,
+            "source": "measured",
+            "note": "#78: fitted to the owner's room measurements (inside W × D: 2.70 × 3.11); outline on the inner face of the outer walls and the centre line of the inner walls"
           },
           "z": {
-            "value": -10.59,
-            "source": "estimated-from-photo"
+            "value": -10.47,
+            "source": "measured"
           }
         },
         {
           "x": {
-            "value": 9.35,
-            "source": "estimated-from-photo"
+            "value": 9.44,
+            "source": "measured"
           },
           "z": {
-            "value": -10.59,
-            "source": "estimated-from-photo"
+            "value": -10.47,
+            "source": "measured"
           }
         },
         {
           "x": {
-            "value": 9.35,
-            "source": "estimated-from-photo"
+            "value": 9.44,
+            "source": "measured"
           },
           "z": {
-            "value": -6.6,
-            "source": "estimated-from-photo"
+            "value": -7.265,
+            "source": "measured"
           }
         },
         {
           "x": {
-            "value": 6.25,
-            "source": "estimated-from-photo"
+            "value": 6.45,
+            "source": "measured"
           },
           "z": {
-            "value": -6.6,
-            "source": "estimated-from-photo"
+            "value": -7.265,
+            "source": "measured"
           }
         }
       ]
@@ -1196,42 +1199,43 @@
       "outline": [
         {
           "x": {
-            "value": 9.35,
-            "source": "estimated-from-photo"
+            "value": 9.44,
+            "source": "measured",
+            "note": "#78: fitted to the owner's room measurements (inside W × D: 3.33 × 4.44 (down to the corridor's south wall)); outline on the inner face of the outer walls and the centre line of the inner walls"
           },
           "z": {
-            "value": -10.59,
-            "source": "estimated-from-photo"
+            "value": -10.47,
+            "source": "measured"
           }
         },
         {
           "x": {
-            "value": 13.06,
-            "source": "estimated-from-photo"
+            "value": 12.94,
+            "source": "measured"
           },
           "z": {
-            "value": -10.59,
-            "source": "estimated-from-photo"
+            "value": -10.47,
+            "source": "measured"
           }
         },
         {
           "x": {
-            "value": 13.06,
-            "source": "estimated-from-photo"
+            "value": 12.94,
+            "source": "measured"
           },
           "z": {
-            "value": -6.6,
-            "source": "estimated-from-photo"
+            "value": -7.265,
+            "source": "measured"
           }
         },
         {
           "x": {
-            "value": 9.35,
-            "source": "estimated-from-photo"
+            "value": 9.44,
+            "source": "measured"
           },
           "z": {
-            "value": -6.6,
-            "source": "estimated-from-photo"
+            "value": -7.265,
+            "source": "measured"
           }
         }
       ]
@@ -1244,42 +1248,43 @@
       "outline": [
         {
           "x": {
-            "value": 3.45,
-            "source": "estimated-from-photo"
+            "value": 2.715,
+            "source": "measured",
+            "note": "#78: fitted to the owner's room measurements (inside W × D: 9.82 × 1.16); outline on the inner face of the outer walls and the centre line of the inner walls"
           },
           "z": {
-            "value": -6.6,
-            "source": "estimated-from-photo"
+            "value": -7.265,
+            "source": "measured"
           }
         },
         {
           "x": {
-            "value": 13.06,
-            "source": "estimated-from-photo"
+            "value": 12.94,
+            "source": "measured"
           },
           "z": {
-            "value": -6.6,
-            "source": "estimated-from-photo"
+            "value": -7.265,
+            "source": "measured"
           }
         },
         {
           "x": {
-            "value": 13.06,
-            "source": "estimated-from-photo"
+            "value": 12.94,
+            "source": "measured"
           },
           "z": {
-            "value": -5.4,
-            "source": "estimated-from-photo"
+            "value": -5.91,
+            "source": "measured"
           }
         },
         {
           "x": {
-            "value": 3.45,
-            "source": "estimated-from-photo"
+            "value": 2.715,
+            "source": "measured"
           },
           "z": {
-            "value": -5.4,
-            "source": "estimated-from-photo"
+            "value": -5.91,
+            "source": "measured"
           }
         }
       ]
@@ -1292,42 +1297,43 @@
       "outline": [
         {
           "x": {
-            "value": 0.36,
-            "source": "estimated-from-photo"
+            "value": 0.48,
+            "source": "measured",
+            "note": "#78: fitted to the owner's room measurements (inside W × D: 5.44 × 5.40); outline on the inner face of the outer walls and the centre line of the inner walls"
           },
           "z": {
-            "value": -5.4,
-            "source": "estimated-from-photo"
+            "value": -5.91,
+            "source": "measured"
           }
         },
         {
           "x": {
-            "value": 6.04,
-            "source": "estimated-from-photo"
+            "value": 5.92,
+            "source": "measured"
           },
           "z": {
-            "value": -5.4,
-            "source": "estimated-from-photo"
+            "value": -5.91,
+            "source": "measured"
           }
         },
         {
           "x": {
-            "value": 6.04,
-            "source": "estimated-from-photo"
+            "value": 5.92,
+            "source": "measured"
           },
           "z": {
-            "value": -0.36,
-            "source": "estimated-from-photo"
+            "value": -0.48,
+            "source": "measured"
           }
         },
         {
           "x": {
-            "value": 0.36,
-            "source": "estimated-from-photo"
+            "value": 0.48,
+            "source": "measured"
           },
           "z": {
-            "value": -0.36,
-            "source": "estimated-from-photo"
+            "value": -0.48,
+            "source": "measured"
           }
         }
       ]
@@ -1340,42 +1346,43 @@
       "outline": [
         {
           "x": {
-            "value": 6.1,
-            "source": "estimated-from-photo"
+            "value": 6.04,
+            "source": "measured",
+            "note": "#78: fitted to the owner's room measurements (inside W × D: not measured; the space left between the living and bed rooms); outline on the inner face of the outer walls and the centre line of the inner walls"
           },
           "z": {
-            "value": -5.4,
-            "source": "estimated-from-photo"
+            "value": -5.91,
+            "source": "measured"
           }
         },
         {
           "x": {
-            "value": 8.55,
-            "source": "estimated-from-photo"
+            "value": 8.93,
+            "source": "measured"
           },
           "z": {
-            "value": -5.4,
-            "source": "estimated-from-photo"
+            "value": -5.91,
+            "source": "measured"
           }
         },
         {
           "x": {
-            "value": 8.55,
-            "source": "estimated-from-photo"
+            "value": 8.93,
+            "source": "measured"
           },
           "z": {
-            "value": -1.56,
-            "source": "estimated-from-photo"
+            "value": -1.68,
+            "source": "measured"
           }
         },
         {
           "x": {
-            "value": 6.1,
-            "source": "estimated-from-photo"
+            "value": 6.04,
+            "source": "measured"
           },
           "z": {
-            "value": -1.56,
-            "source": "estimated-from-photo"
+            "value": -1.68,
+            "source": "measured"
           }
         }
       ]
@@ -1388,42 +1395,43 @@
       "outline": [
         {
           "x": {
-            "value": 8.55,
-            "source": "estimated-from-photo"
+            "value": 8.93,
+            "source": "measured",
+            "note": "#78: fitted to the owner's room measurements (inside W × D: 3.89 × 4.07); outline on the inner face of the outer walls and the centre line of the inner walls"
           },
           "z": {
-            "value": -5.4,
-            "source": "estimated-from-photo"
+            "value": -5.91,
+            "source": "measured"
           }
         },
         {
           "x": {
-            "value": 13.06,
-            "source": "estimated-from-photo"
+            "value": 12.94,
+            "source": "measured"
           },
           "z": {
-            "value": -5.4,
-            "source": "estimated-from-photo"
+            "value": -5.91,
+            "source": "measured"
           }
         },
         {
           "x": {
-            "value": 13.06,
-            "source": "estimated-from-photo"
+            "value": 12.94,
+            "source": "measured"
           },
           "z": {
-            "value": -1.56,
-            "source": "estimated-from-photo"
+            "value": -1.68,
+            "source": "measured"
           }
         },
         {
           "x": {
-            "value": 8.55,
-            "source": "estimated-from-photo"
+            "value": 8.93,
+            "source": "measured"
           },
           "z": {
-            "value": -1.56,
-            "source": "estimated-from-photo"
+            "value": -1.68,
+            "source": "measured"
           }
         }
       ]
@@ -1573,11 +1581,11 @@
       "kind": "exterior",
       "start": {
         "x": {
-          "value": 0.36,
+          "value": 0.48,
           "source": "geodata"
         },
         "z": {
-          "value": -0.18,
+          "value": -0.24,
           "source": "geodata"
         }
       },
@@ -1587,14 +1595,14 @@
           "source": "geodata"
         },
         "z": {
-          "value": -0.18,
+          "value": -0.24,
           "source": "geodata"
         }
       },
       "thickness": {
-        "value": 0.36,
-        "source": "mock",
-        "note": "Assumed exterior wall thickness"
+        "value": 0.48,
+        "source": "measured",
+        "note": "#78: fitted to the owner's room measurements: one uniform souterrain outer wall thickness, best fit (the owner measured 0.35 to 0.41 at the window reveals); the outer face stays on the geodata outline, the centre line moved inward"
       },
       "height": {
         "value": 2.6,
@@ -1609,28 +1617,28 @@
       "kind": "exterior",
       "start": {
         "x": {
-          "value": 6.22,
+          "value": 6.16,
           "source": "geodata"
         },
         "z": {
-          "value": -0.36,
+          "value": -0.48,
           "source": "geodata"
         }
       },
       "end": {
         "x": {
-          "value": 6.22,
+          "value": 6.16,
           "source": "geodata"
         },
         "z": {
-          "value": -1.56,
+          "value": -1.68,
           "source": "geodata"
         }
       },
       "thickness": {
-        "value": 0.36,
-        "source": "mock",
-        "note": "Assumed exterior wall thickness"
+        "value": 0.48,
+        "source": "measured",
+        "note": "#78: fitted to the owner's room measurements: one uniform souterrain outer wall thickness, best fit (the owner measured 0.35 to 0.41 at the window reveals); the outer face stays on the geodata outline, the centre line moved inward"
       },
       "height": {
         "value": 2.6,
@@ -1645,28 +1653,28 @@
       "kind": "exterior",
       "start": {
         "x": {
-          "value": 6.04,
+          "value": 5.92,
           "source": "geodata"
         },
         "z": {
-          "value": -1.38,
+          "value": -1.44,
           "source": "geodata"
         }
       },
       "end": {
         "x": {
-          "value": 13.06,
+          "value": 12.94,
           "source": "geodata"
         },
         "z": {
-          "value": -1.38,
+          "value": -1.44,
           "source": "geodata"
         }
       },
       "thickness": {
-        "value": 0.36,
-        "source": "mock",
-        "note": "Assumed exterior wall thickness"
+        "value": 0.48,
+        "source": "measured",
+        "note": "#78: fitted to the owner's room measurements: one uniform souterrain outer wall thickness, best fit (the owner measured 0.35 to 0.41 at the window reveals); the outer face stays on the geodata outline, the centre line moved inward"
       },
       "height": {
         "value": 2.6,
@@ -1681,7 +1689,7 @@
       "kind": "exterior",
       "start": {
         "x": {
-          "value": 13.24,
+          "value": 13.18,
           "source": "geodata"
         },
         "z": {
@@ -1691,7 +1699,7 @@
       },
       "end": {
         "x": {
-          "value": 13.24,
+          "value": 13.18,
           "source": "geodata"
         },
         "z": {
@@ -1700,9 +1708,9 @@
         }
       },
       "thickness": {
-        "value": 0.36,
-        "source": "mock",
-        "note": "Assumed exterior wall thickness"
+        "value": 0.48,
+        "source": "measured",
+        "note": "#78: fitted to the owner's room measurements: one uniform souterrain outer wall thickness, best fit (the owner measured 0.35 to 0.41 at the window reveals); the outer face stays on the geodata outline, the centre line moved inward"
       },
       "height": {
         "value": 2.6,
@@ -1717,28 +1725,28 @@
       "kind": "exterior",
       "start": {
         "x": {
-          "value": 13.06,
+          "value": 12.94,
           "source": "geodata"
         },
         "z": {
-          "value": -10.77,
+          "value": -10.71,
           "source": "geodata"
         }
       },
       "end": {
         "x": {
-          "value": 0.36,
+          "value": 0.48,
           "source": "geodata"
         },
         "z": {
-          "value": -10.77,
+          "value": -10.71,
           "source": "geodata"
         }
       },
       "thickness": {
-        "value": 0.36,
-        "source": "mock",
-        "note": "Assumed exterior wall thickness"
+        "value": 0.48,
+        "source": "measured",
+        "note": "#78: fitted to the owner's room measurements: one uniform souterrain outer wall thickness, best fit (the owner measured 0.35 to 0.41 at the window reveals); the outer face stays on the geodata outline, the centre line moved inward"
       },
       "height": {
         "value": 2.6,
@@ -1753,7 +1761,7 @@
       "kind": "exterior",
       "start": {
         "x": {
-          "value": 0.18,
+          "value": 0.24,
           "source": "geodata"
         },
         "z": {
@@ -1763,7 +1771,7 @@
       },
       "end": {
         "x": {
-          "value": 0.18,
+          "value": 0.24,
           "source": "geodata"
         },
         "z": {
@@ -1772,9 +1780,9 @@
         }
       },
       "thickness": {
-        "value": 0.36,
-        "source": "mock",
-        "note": "Assumed exterior wall thickness"
+        "value": 0.48,
+        "source": "measured",
+        "note": "#78: fitted to the owner's room measurements: one uniform souterrain outer wall thickness, best fit (the owner measured 0.35 to 0.41 at the window reveals); the outer face stays on the geodata outline, the centre line moved inward"
       },
       "height": {
         "value": 2.6,
@@ -1789,28 +1797,28 @@
       "kind": "interior",
       "start": {
         "x": {
-          "value": 3.45,
-          "source": "estimated-from-photo"
+          "value": 2.715,
+          "source": "measured"
         },
         "z": {
-          "value": -10.59,
-          "source": "estimated-from-photo"
+          "value": -10.47,
+          "source": "measured"
         }
       },
       "end": {
         "x": {
-          "value": 3.45,
-          "source": "estimated-from-photo"
+          "value": 2.715,
+          "source": "measured"
         },
         "z": {
-          "value": -6.6,
-          "source": "estimated-from-photo"
+          "value": -7.265,
+          "source": "measured"
         }
       },
       "thickness": {
-        "value": 0.12,
-        "source": "mock",
-        "note": "Assumed interior wall thickness"
+        "value": 0.24,
+        "source": "measured",
+        "note": "#78: fitted to the owner's room measurements: one uniform inner wall thickness, best fit (the owner measured 0.17 in the north row and 0.30 south of the corridor)"
       },
       "height": {
         "value": 2.35,
@@ -1825,28 +1833,28 @@
       "kind": "interior",
       "start": {
         "x": {
-          "value": 3.45,
-          "source": "estimated-from-photo"
+          "value": 2.715,
+          "source": "measured"
         },
         "z": {
-          "value": -6.6,
-          "source": "estimated-from-photo"
+          "value": -7.265,
+          "source": "measured"
         }
       },
       "end": {
         "x": {
-          "value": 3.45,
-          "source": "estimated-from-photo"
+          "value": 2.715,
+          "source": "measured"
         },
         "z": {
-          "value": -5.4,
-          "source": "estimated-from-photo"
+          "value": -5.91,
+          "source": "measured"
         }
       },
       "thickness": {
-        "value": 0.12,
-        "source": "mock",
-        "note": "Assumed interior wall thickness"
+        "value": 0.24,
+        "source": "measured",
+        "note": "#78: fitted to the owner's room measurements: one uniform inner wall thickness, best fit (the owner measured 0.17 in the north row and 0.30 south of the corridor)"
       },
       "height": {
         "value": 2.35,
@@ -1861,28 +1869,28 @@
       "kind": "interior",
       "start": {
         "x": {
-          "value": 0.36,
-          "source": "estimated-from-photo"
+          "value": 0.48,
+          "source": "measured"
         },
         "z": {
-          "value": -5.4,
-          "source": "estimated-from-photo"
+          "value": -5.91,
+          "source": "measured"
         }
       },
       "end": {
         "x": {
-          "value": 3.45,
-          "source": "estimated-from-photo"
+          "value": 2.715,
+          "source": "measured"
         },
         "z": {
-          "value": -5.4,
-          "source": "estimated-from-photo"
+          "value": -5.91,
+          "source": "measured"
         }
       },
       "thickness": {
-        "value": 0.12,
-        "source": "mock",
-        "note": "Assumed interior wall thickness"
+        "value": 0.24,
+        "source": "measured",
+        "note": "#78: fitted to the owner's room measurements: one uniform inner wall thickness, best fit (the owner measured 0.17 in the north row and 0.30 south of the corridor)"
       },
       "height": {
         "value": 2.35,
@@ -1897,28 +1905,28 @@
       "kind": "interior",
       "start": {
         "x": {
-          "value": 6.25,
-          "source": "estimated-from-photo"
+          "value": 6.45,
+          "source": "measured"
         },
         "z": {
-          "value": -10.59,
-          "source": "estimated-from-photo"
+          "value": -10.47,
+          "source": "measured"
         }
       },
       "end": {
         "x": {
-          "value": 6.25,
-          "source": "estimated-from-photo"
+          "value": 6.45,
+          "source": "measured"
         },
         "z": {
-          "value": -6.6,
-          "source": "estimated-from-photo"
+          "value": -7.265,
+          "source": "measured"
         }
       },
       "thickness": {
-        "value": 0.12,
-        "source": "mock",
-        "note": "Assumed interior wall thickness"
+        "value": 0.24,
+        "source": "measured",
+        "note": "#78: fitted to the owner's room measurements: one uniform inner wall thickness, best fit (the owner measured 0.17 in the north row and 0.30 south of the corridor)"
       },
       "height": {
         "value": 2.35,
@@ -1933,28 +1941,28 @@
       "kind": "interior",
       "start": {
         "x": {
-          "value": 9.35,
-          "source": "estimated-from-photo"
+          "value": 9.44,
+          "source": "measured"
         },
         "z": {
-          "value": -10.59,
-          "source": "estimated-from-photo"
+          "value": -10.47,
+          "source": "measured"
         }
       },
       "end": {
         "x": {
-          "value": 9.35,
-          "source": "estimated-from-photo"
+          "value": 9.44,
+          "source": "measured"
         },
         "z": {
-          "value": -6.6,
-          "source": "estimated-from-photo"
+          "value": -7.265,
+          "source": "measured"
         }
       },
       "thickness": {
-        "value": 0.12,
-        "source": "mock",
-        "note": "Assumed interior wall thickness"
+        "value": 0.24,
+        "source": "measured",
+        "note": "#78: fitted to the owner's room measurements: one uniform inner wall thickness, best fit (the owner measured 0.17 in the north row and 0.30 south of the corridor)"
       },
       "height": {
         "value": 2.35,
@@ -1969,28 +1977,28 @@
       "kind": "interior",
       "start": {
         "x": {
-          "value": 3.45,
-          "source": "estimated-from-photo"
+          "value": 2.715,
+          "source": "measured"
         },
         "z": {
-          "value": -6.6,
-          "source": "estimated-from-photo"
+          "value": -7.265,
+          "source": "measured"
         }
       },
       "end": {
         "x": {
-          "value": 6.25,
-          "source": "estimated-from-photo"
+          "value": 6.45,
+          "source": "measured"
         },
         "z": {
-          "value": -6.6,
-          "source": "estimated-from-photo"
+          "value": -7.265,
+          "source": "measured"
         }
       },
       "thickness": {
-        "value": 0.12,
-        "source": "mock",
-        "note": "Assumed interior wall thickness"
+        "value": 0.24,
+        "source": "measured",
+        "note": "#78: fitted to the owner's room measurements: one uniform inner wall thickness, best fit (the owner measured 0.17 in the north row and 0.30 south of the corridor)"
       },
       "height": {
         "value": 2.35,
@@ -2005,28 +2013,28 @@
       "kind": "interior",
       "start": {
         "x": {
-          "value": 6.25,
-          "source": "estimated-from-photo"
+          "value": 6.45,
+          "source": "measured"
         },
         "z": {
-          "value": -6.6,
-          "source": "estimated-from-photo"
+          "value": -7.265,
+          "source": "measured"
         }
       },
       "end": {
         "x": {
-          "value": 9.41,
-          "source": "estimated-from-photo"
+          "value": 9.56,
+          "source": "measured"
         },
         "z": {
-          "value": -6.6,
-          "source": "estimated-from-photo"
+          "value": -7.265,
+          "source": "measured"
         }
       },
       "thickness": {
-        "value": 0.12,
-        "source": "mock",
-        "note": "Assumed interior wall thickness"
+        "value": 0.24,
+        "source": "measured",
+        "note": "#78: fitted to the owner's room measurements: one uniform inner wall thickness, best fit (the owner measured 0.17 in the north row and 0.30 south of the corridor)"
       },
       "height": {
         "value": 2.35,
@@ -2041,28 +2049,28 @@
       "kind": "interior",
       "start": {
         "x": {
-          "value": 3.45,
-          "source": "estimated-from-photo"
+          "value": 2.715,
+          "source": "measured"
         },
         "z": {
-          "value": -5.4,
-          "source": "estimated-from-photo"
+          "value": -5.91,
+          "source": "measured"
         }
       },
       "end": {
         "x": {
-          "value": 6.1,
-          "source": "estimated-from-photo"
+          "value": 6.04,
+          "source": "measured"
         },
         "z": {
-          "value": -5.4,
-          "source": "estimated-from-photo"
+          "value": -5.91,
+          "source": "measured"
         }
       },
       "thickness": {
-        "value": 0.12,
-        "source": "mock",
-        "note": "Assumed interior wall thickness"
+        "value": 0.24,
+        "source": "measured",
+        "note": "#78: fitted to the owner's room measurements: one uniform inner wall thickness, best fit (the owner measured 0.17 in the north row and 0.30 south of the corridor)"
       },
       "height": {
         "value": 2.35,
@@ -2077,28 +2085,28 @@
       "kind": "interior",
       "start": {
         "x": {
-          "value": 6.1,
-          "source": "estimated-from-photo"
+          "value": 6.04,
+          "source": "measured"
         },
         "z": {
-          "value": -5.4,
-          "source": "estimated-from-photo"
+          "value": -5.91,
+          "source": "measured"
         }
       },
       "end": {
         "x": {
-          "value": 8.55,
-          "source": "estimated-from-photo"
+          "value": 8.93,
+          "source": "measured"
         },
         "z": {
-          "value": -5.4,
-          "source": "estimated-from-photo"
+          "value": -5.91,
+          "source": "measured"
         }
       },
       "thickness": {
-        "value": 0.12,
-        "source": "mock",
-        "note": "Assumed interior wall thickness"
+        "value": 0.24,
+        "source": "measured",
+        "note": "#78: fitted to the owner's room measurements: one uniform inner wall thickness, best fit (the owner measured 0.17 in the north row and 0.30 south of the corridor)"
       },
       "height": {
         "value": 2.35,
@@ -2113,28 +2121,28 @@
       "kind": "interior",
       "start": {
         "x": {
-          "value": 8.55,
-          "source": "estimated-from-photo"
+          "value": 8.93,
+          "source": "measured"
         },
         "z": {
-          "value": -5.4,
-          "source": "estimated-from-photo"
+          "value": -5.91,
+          "source": "measured"
         }
       },
       "end": {
         "x": {
-          "value": 13.06,
-          "source": "estimated-from-photo"
+          "value": 12.94,
+          "source": "measured"
         },
         "z": {
-          "value": -5.4,
-          "source": "estimated-from-photo"
+          "value": -5.91,
+          "source": "measured"
         }
       },
       "thickness": {
-        "value": 0.12,
-        "source": "mock",
-        "note": "Assumed interior wall thickness"
+        "value": 0.24,
+        "source": "measured",
+        "note": "#78: fitted to the owner's room measurements: one uniform inner wall thickness, best fit (the owner measured 0.17 in the north row and 0.30 south of the corridor)"
       },
       "height": {
         "value": 2.35,
@@ -2149,28 +2157,28 @@
       "kind": "interior",
       "start": {
         "x": {
-          "value": 6.1,
-          "source": "estimated-from-photo"
+          "value": 6.04,
+          "source": "measured"
         },
         "z": {
-          "value": -5.4,
-          "source": "estimated-from-photo"
+          "value": -5.91,
+          "source": "measured"
         }
       },
       "end": {
         "x": {
-          "value": 6.1,
-          "source": "estimated-from-photo"
+          "value": 6.04,
+          "source": "measured"
         },
         "z": {
-          "value": -1.56,
-          "source": "estimated-from-photo"
+          "value": -1.68,
+          "source": "measured"
         }
       },
       "thickness": {
-        "value": 0.12,
-        "source": "mock",
-        "note": "Assumed interior wall thickness"
+        "value": 0.24,
+        "source": "measured",
+        "note": "#78: fitted to the owner's room measurements: one uniform inner wall thickness, best fit (the owner measured 0.17 in the north row and 0.30 south of the corridor)"
       },
       "height": {
         "value": 2.35,
@@ -2185,28 +2193,28 @@
       "kind": "interior",
       "start": {
         "x": {
-          "value": 8.55,
-          "source": "estimated-from-photo"
+          "value": 8.93,
+          "source": "measured"
         },
         "z": {
-          "value": -5.4,
-          "source": "estimated-from-photo"
+          "value": -5.91,
+          "source": "measured"
         }
       },
       "end": {
         "x": {
-          "value": 8.55,
-          "source": "estimated-from-photo"
+          "value": 8.93,
+          "source": "measured"
         },
         "z": {
-          "value": -1.56,
-          "source": "estimated-from-photo"
+          "value": -1.68,
+          "source": "measured"
         }
       },
       "thickness": {
-        "value": 0.12,
-        "source": "mock",
-        "note": "Assumed interior wall thickness"
+        "value": 0.24,
+        "source": "measured",
+        "note": "#78: fitted to the owner's room measurements: one uniform inner wall thickness, best fit (the owner measured 0.17 in the north row and 0.30 south of the corridor)"
       },
       "height": {
         "value": 2.35,
@@ -2655,7 +2663,7 @@
       "wallId": "souterrain-wall-south-west",
       "type": "window",
       "offset": {
-        "value": 1.91,
+        "value": 1.79,
         "source": "estimated-from-photo",
         "note": "Two windows with a 0.20 pier, centred on the light well (x 2.1–4.4); 7a0b7fa8, bcc9f58e (radiator as scale)"
       },
@@ -2680,7 +2688,7 @@
       "wallId": "souterrain-wall-south-west",
       "type": "window",
       "offset": {
-        "value": 2.99,
+        "value": 2.87,
         "source": "estimated-from-photo",
         "note": "East of the 0.20 pier; see window-souterrain-living-room-south"
       },
@@ -2729,9 +2737,9 @@
       "wallId": "souterrain-wall-east",
       "type": "door",
       "offset": {
-        "value": 5.55,
+        "value": 6.14,
         "source": "estimated-from-photo",
-        "note": "Patio entrance: exterior door at the east end of the corridor, reached by steps down from the souterrain patio"
+        "note": "Patio entrance: exterior door at the east end of the corridor, reached by steps down from the souterrain patio; centred on the corridor fitted in #78 (was 5.55, from the earlier corridor)"
       },
       "width": {
         "value": 0.9,
@@ -2753,7 +2761,7 @@
       "wallId": "souterrain-wall-north",
       "type": "window",
       "offset": {
-        "value": 1.69,
+        "value": 1.57,
         "source": "estimated-from-photo",
         "note": "x ≈10.41–11.37 (±0.07): calibrated ba8127e3 (#60 survey addendum); agrees with b652a36e (10.4–11.5) and cbe9bda7 (10.6–11.6)"
       },
@@ -2778,7 +2786,7 @@
       "wallId": "souterrain-wall-north",
       "type": "window",
       "offset": {
-        "value": 4.77,
+        "value": 4.65,
         "source": "estimated-from-photo",
         "note": "Centre ≈7.71 (±0.15) from the NE corner in cbe9bda7; unchanged"
       },
@@ -2803,7 +2811,7 @@
       "wallId": "souterrain-wall-north",
       "type": "window",
       "offset": {
-        "value": 7.94,
+        "value": 7.82,
         "source": "estimated-from-photo",
         "note": "Checked: frame ≈4.2–5.1 from the west end in c51a59e4 (±0.2); the overlays at f77468e4/6c8b4a31 are off only because their poses are set by hand"
       },
@@ -4529,9 +4537,9 @@
       "path": [
         {
           "x": {
-            "value": 2.85,
+            "value": 2.09,
             "source": "mock",
-            "note": "Assumed position in the stair hall; it turns counter-clockwise going up"
+            "note": "Assumed position in the stair hall, 5 mm clear of its walls (#78); it turns counter-clockwise going up"
           },
           "z": {
             "value": -8.43,
@@ -4540,27 +4548,27 @@
         },
         {
           "x": {
-            "value": 2.85,
+            "value": 2.09,
             "source": "mock"
           },
           "z": {
-            "value": -10.05,
+            "value": -9.97,
             "source": "mock"
           }
         },
         {
           "x": {
-            "value": 0.9,
+            "value": 0.985,
             "source": "mock"
           },
           "z": {
-            "value": -10.05,
+            "value": -9.97,
             "source": "mock"
           }
         },
         {
           "x": {
-            "value": 0.9,
+            "value": 0.985,
             "source": "mock"
           },
           "z": {

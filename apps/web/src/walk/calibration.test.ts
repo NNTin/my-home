@@ -14,7 +14,7 @@ describe('calibration targets', () => {
     const targets = calibrationTargets(
       home,
       'souterrain',
-      [10.78, -3.9],
+      [11.155, -4.4],
       outlineOf('souterrain-bed-room'),
     );
     expect(targets.length).toBeGreaterThan(0);
@@ -22,8 +22,8 @@ describe('calibration targets', () => {
       id: 'door-souterrain-corridor-bed-room',
       label: 'Door: corridor bed room',
     });
-    expect(targets[0]!.x).toBeCloseTo(10.775);
-    expect(targets[0]!.z).toBeCloseTo(-5.4);
+    expect(targets[0]!.x).toBeCloseTo(11.155);
+    expect(targets[0]!.z).toBeCloseTo(-5.91);
     expect(targets.map((t) => t.distance)).toEqual(
       [...targets.map((t) => t.distance)].sort((a, b) => a - b),
     );
@@ -39,16 +39,16 @@ describe('calibration targets', () => {
     const inDoorway = calibrationTargets(
       home,
       'souterrain',
-      [10.78, -5.3],
+      [11.155, -5.81],
       outlineOf('souterrain-bed-room'),
     );
     expect(inDoorway.map((t) => t.id)).not.toContain('door-souterrain-corridor-bed-room');
   });
 
   it('offers nearby openings when the figure is in no room', () => {
-    const outside = calibrationTargets(home, 'souterrain', [14.5, -6]);
+    const outside = calibrationTargets(home, 'souterrain', [14.5, -6.6]);
     expect(outside.map((t) => t.id)).toContain('door-souterrain-corridor-patio');
     expect(outside.every((t) => t.distance <= 8)).toBe(true);
-    expect(calibrationTargets(home, undefined, [14.5, -6])).toEqual([]);
+    expect(calibrationTargets(home, undefined, [14.5, -6.6])).toEqual([]);
   });
 });

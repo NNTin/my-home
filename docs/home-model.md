@@ -348,10 +348,18 @@ roof) is derived from geodata and fixed; refinements change only the inside (rul
 - **estimated-from-photo**: windows and doors (position, size, sill), floor levels, the light well,
   the fences, the drainage strips, the garden shed and the compost, from street-level and aerial
   photos. The north facade was only seen at
-  a grazing angle. The souterrain room layout is from the owner's annotated plan sketch (about
-  ±0.3 m).
-- **mock**: assumed wall, slab and roof thicknesses, the position of the interior doors along their
-  walls and the stair's position in the stair hall.
+  a grazing angle.
+- **measured**: the souterrain room layout and its wall thicknesses (#78). The owner measured every
+  room's inside size except the boiler room's. One uniform outer wall thickness (0.48) and one
+  uniform inner wall thickness (0.24) were fitted by least squares, so the rooms fill the fixed
+  exterior. Each room is within about 5 cm of its measured size, except the living room's depth
+  (−9 cm: the measured depths of the living and bed rooms differ by 13 cm more than the geodata
+  recess). The outer face of every souterrain wall stays on the geodata outline; the centre line
+  moved inward. Room outlines run along the inner face of the outer walls and the centre line of
+  the inner walls, so a room's inside size is its outline minus half an inner wall on each inner
+  side.
+- **mock**: the ground-floor and attic wall thicknesses, slab and roof thicknesses, the position of
+  the interior doors along their walls and the stair's position in the stair hall.
 
 The plan origin is the house's south-west outside corner, `x` runs along the south wall and `z`
 towards the street. Heights are relative to the ground-floor finished floor (`y = 0`), not to sea
