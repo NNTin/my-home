@@ -623,41 +623,261 @@
           {
             "x": {
               "value": 13.42,
-              "source": "geodata"
+              "source": "estimated-from-photo"
             },
             "z": {
-              "value": -4.8,
-              "source": "geodata"
+              "value": -6.1,
+              "source": "estimated-from-photo"
             }
           },
           {
             "x": {
-              "value": 15.2,
-              "source": "geodata"
+              "value": 16.1,
+              "source": "estimated-from-photo"
             },
             "z": {
-              "value": -4.8,
-              "source": "geodata"
+              "value": -6.1,
+              "source": "estimated-from-photo"
             }
           },
           {
             "x": {
-              "value": 15.2,
-              "source": "geodata"
+              "value": 16.1,
+              "source": "estimated-from-photo"
             },
             "z": {
-              "value": -7.2,
-              "source": "geodata"
+              "value": -6.19,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.36,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.19,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.36,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.27,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.64,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.27,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.64,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.36,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.87,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.36,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.87,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.44,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.06,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.44,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.06,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.5,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.23,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.5,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.72,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.5,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.72,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.3,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.23,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.3,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.06,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.3,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.06,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.36,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.87,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.36,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.87,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.44,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.64,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.44,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.64,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.53,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.36,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.53,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.36,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.61,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.1,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.61,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.1,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.7,
+              "source": "estimated-from-photo"
             }
           },
           {
             "x": {
               "value": 13.42,
-              "source": "geodata"
+              "source": "estimated-from-photo"
             },
             "z": {
-              "value": -7.2,
-              "source": "geodata"
+              "value": -8.7,
+              "source": "estimated-from-photo"
             }
           },
           {
@@ -697,27 +917,27 @@
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -7.2,
+              "value": -6.7,
               "source": "estimated-from-photo"
             }
           },
           {
             "x": {
-              "value": 14.6,
+              "value": 16.1,
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -7.2,
+              "value": -6.7,
               "source": "estimated-from-photo"
             }
           },
           {
             "x": {
-              "value": 14.6,
+              "value": 16.1,
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -4.8,
+              "value": -8.1,
               "source": "estimated-from-photo"
             }
           },
@@ -727,7 +947,7 @@
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -4.8,
+              "value": -8.1,
               "source": "estimated-from-photo"
             }
           }
@@ -735,109 +955,1107 @@
         "elevation": {
           "value": -2.6,
           "source": "estimated-from-photo",
-          "note": "At the souterrain floor, in front of the east door"
+          "note": "Paved landing at the souterrain floor in front of the east door (to x ≈15.3), then ≈0.65 of gravel at the same level before the first step; 1.4 wide between the side walls (±0.2): b2804d07 (from the top, scaled on the door frame), e1ad6c34, 7daf98e9"
         }
       },
       {
         "id": "terrain-entry-step-1",
-        "name": "Patio entrance step",
+        "name": "Patio entrance step 1",
         "outline": [
           {
             "x": {
-              "value": 14.6,
+              "value": 16.1,
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -7.2,
+              "value": -6.7,
               "source": "estimated-from-photo"
             }
           },
           {
             "x": {
-              "value": 14.9,
+              "value": 16.36,
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -7.2,
+              "value": -6.7,
               "source": "estimated-from-photo"
             }
           },
           {
             "x": {
-              "value": 14.9,
+              "value": 16.36,
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -4.8,
+              "value": -8.1,
               "source": "estimated-from-photo"
             }
           },
           {
             "x": {
-              "value": 14.6,
+              "value": 16.1,
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -4.8,
+              "value": -8.1,
               "source": "estimated-from-photo"
             }
           }
         ],
         "elevation": {
-          "value": -2.28,
+          "value": -2.464,
           "source": "estimated-from-photo",
-          "note": "Steps down from the patio"
+          "note": "Irregular natural-stone steps up to the patio, walked east: seven rises (7 steps: the owner, e1ad6c34), taken as equal (0.136; single rises not measurable); treads 0.26, 0.28, 0.23, 0.19, 0.17, 0.49 (±0.1, each nosing cast in e1ad6c34 and 7daf98e9, averaged); the top edge at x ≈17.72 (±0.15, b2804d07)"
         }
       },
       {
         "id": "terrain-entry-step-2",
-        "name": "Patio entrance step",
+        "name": "Patio entrance step 2",
         "outline": [
           {
             "x": {
-              "value": 14.9,
+              "value": 16.36,
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -7.2,
+              "value": -6.7,
               "source": "estimated-from-photo"
             }
           },
           {
             "x": {
-              "value": 15.2,
+              "value": 16.64,
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -7.2,
+              "value": -6.7,
               "source": "estimated-from-photo"
             }
           },
           {
             "x": {
-              "value": 15.2,
+              "value": 16.64,
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -4.8,
+              "value": -8.1,
               "source": "estimated-from-photo"
             }
           },
           {
             "x": {
-              "value": 14.9,
+              "value": 16.36,
               "source": "estimated-from-photo"
             },
             "z": {
-              "value": -4.8,
+              "value": -8.1,
               "source": "estimated-from-photo"
             }
           }
         ],
         "elevation": {
-          "value": -1.96,
+          "value": -2.329,
+          "source": "estimated-from-photo"
+        }
+      },
+      {
+        "id": "terrain-entry-step-3",
+        "name": "Patio entrance step 3",
+        "outline": [
+          {
+            "x": {
+              "value": 16.64,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.7,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.87,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.7,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.87,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.1,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.64,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.1,
+              "source": "estimated-from-photo"
+            }
+          }
+        ],
+        "elevation": {
+          "value": -2.193,
+          "source": "estimated-from-photo"
+        }
+      },
+      {
+        "id": "terrain-entry-step-4",
+        "name": "Patio entrance step 4",
+        "outline": [
+          {
+            "x": {
+              "value": 16.87,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.7,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.06,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.7,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.06,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.1,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.87,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.1,
+              "source": "estimated-from-photo"
+            }
+          }
+        ],
+        "elevation": {
+          "value": -2.057,
+          "source": "estimated-from-photo"
+        }
+      },
+      {
+        "id": "terrain-entry-step-5",
+        "name": "Patio entrance step 5",
+        "outline": [
+          {
+            "x": {
+              "value": 17.06,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.7,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.23,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.7,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.23,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.1,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.06,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.1,
+              "source": "estimated-from-photo"
+            }
+          }
+        ],
+        "elevation": {
+          "value": -1.921,
+          "source": "estimated-from-photo"
+        }
+      },
+      {
+        "id": "terrain-entry-step-6",
+        "name": "Patio entrance step 6",
+        "outline": [
+          {
+            "x": {
+              "value": 17.23,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.7,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.72,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.7,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.72,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.1,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.23,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.1,
+              "source": "estimated-from-photo"
+            }
+          }
+        ],
+        "elevation": {
+          "value": -1.786,
+          "source": "estimated-from-photo"
+        }
+      },
+      {
+        "id": "terrain-entry-wall-south-0",
+        "name": "Patio entrance · south side wall 0",
+        "outline": [
+          {
+            "x": {
+              "value": 13.42,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.7,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.1,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.7,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.1,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.1,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 13.42,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.1,
+              "source": "estimated-from-photo"
+            }
+          }
+        ],
+        "elevation": {
+          "value": -1.65,
           "source": "estimated-from-photo",
-          "note": "Steps down from the patio"
+          "note": "Rubble side walls of the sunken entry, falling steeply from the patio and lawn to the landing and each step; ≈0.6 wide at the landing, narrower up the flight (b2804d07, 0ab48d98, 65267d24, e1ad6c34; ±0.2)"
+        },
+        "slope": {
+          "towards": "-z",
+          "lowElevation": {
+            "value": -2.6,
+            "source": "estimated-from-photo"
+          }
+        }
+      },
+      {
+        "id": "terrain-entry-wall-north-0",
+        "name": "Patio entrance · north side wall 0",
+        "outline": [
+          {
+            "x": {
+              "value": 13.42,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.7,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.1,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.7,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.1,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.1,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 13.42,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.1,
+              "source": "estimated-from-photo"
+            }
+          }
+        ],
+        "elevation": {
+          "value": -1.65,
+          "source": "estimated-from-photo"
+        },
+        "slope": {
+          "towards": "+z",
+          "lowElevation": {
+            "value": -2.6,
+            "source": "estimated-from-photo"
+          }
+        }
+      },
+      {
+        "id": "terrain-entry-wall-south-1",
+        "name": "Patio entrance · south side wall 1",
+        "outline": [
+          {
+            "x": {
+              "value": 16.1,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.7,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.36,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.7,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.36,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.19,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.1,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.19,
+              "source": "estimated-from-photo"
+            }
+          }
+        ],
+        "elevation": {
+          "value": -1.65,
+          "source": "estimated-from-photo"
+        },
+        "slope": {
+          "towards": "-z",
+          "lowElevation": {
+            "value": -2.464,
+            "source": "estimated-from-photo"
+          }
+        }
+      },
+      {
+        "id": "terrain-entry-wall-north-1",
+        "name": "Patio entrance · north side wall 1",
+        "outline": [
+          {
+            "x": {
+              "value": 16.1,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.61,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.36,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.61,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.36,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.1,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.1,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.1,
+              "source": "estimated-from-photo"
+            }
+          }
+        ],
+        "elevation": {
+          "value": -1.65,
+          "source": "estimated-from-photo"
+        },
+        "slope": {
+          "towards": "+z",
+          "lowElevation": {
+            "value": -2.464,
+            "source": "estimated-from-photo"
+          }
+        }
+      },
+      {
+        "id": "terrain-entry-wall-south-2",
+        "name": "Patio entrance · south side wall 2",
+        "outline": [
+          {
+            "x": {
+              "value": 16.36,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.7,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.64,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.7,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.64,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.27,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.36,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.27,
+              "source": "estimated-from-photo"
+            }
+          }
+        ],
+        "elevation": {
+          "value": -1.65,
+          "source": "estimated-from-photo"
+        },
+        "slope": {
+          "towards": "-z",
+          "lowElevation": {
+            "value": -2.329,
+            "source": "estimated-from-photo"
+          }
+        }
+      },
+      {
+        "id": "terrain-entry-wall-north-2",
+        "name": "Patio entrance · north side wall 2",
+        "outline": [
+          {
+            "x": {
+              "value": 16.36,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.53,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.64,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.53,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.64,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.1,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.36,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.1,
+              "source": "estimated-from-photo"
+            }
+          }
+        ],
+        "elevation": {
+          "value": -1.65,
+          "source": "estimated-from-photo"
+        },
+        "slope": {
+          "towards": "+z",
+          "lowElevation": {
+            "value": -2.329,
+            "source": "estimated-from-photo"
+          }
+        }
+      },
+      {
+        "id": "terrain-entry-wall-south-3",
+        "name": "Patio entrance · south side wall 3",
+        "outline": [
+          {
+            "x": {
+              "value": 16.64,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.7,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.87,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.7,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.87,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.36,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.64,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.36,
+              "source": "estimated-from-photo"
+            }
+          }
+        ],
+        "elevation": {
+          "value": -1.65,
+          "source": "estimated-from-photo"
+        },
+        "slope": {
+          "towards": "-z",
+          "lowElevation": {
+            "value": -2.193,
+            "source": "estimated-from-photo"
+          }
+        }
+      },
+      {
+        "id": "terrain-entry-wall-north-3",
+        "name": "Patio entrance · north side wall 3",
+        "outline": [
+          {
+            "x": {
+              "value": 16.64,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.44,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.87,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.44,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.87,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.1,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.64,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.1,
+              "source": "estimated-from-photo"
+            }
+          }
+        ],
+        "elevation": {
+          "value": -1.65,
+          "source": "estimated-from-photo"
+        },
+        "slope": {
+          "towards": "+z",
+          "lowElevation": {
+            "value": -2.193,
+            "source": "estimated-from-photo"
+          }
+        }
+      },
+      {
+        "id": "terrain-entry-wall-south-4",
+        "name": "Patio entrance · south side wall 4",
+        "outline": [
+          {
+            "x": {
+              "value": 16.87,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.7,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.06,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.7,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.06,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.44,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.87,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.44,
+              "source": "estimated-from-photo"
+            }
+          }
+        ],
+        "elevation": {
+          "value": -1.65,
+          "source": "estimated-from-photo"
+        },
+        "slope": {
+          "towards": "-z",
+          "lowElevation": {
+            "value": -2.057,
+            "source": "estimated-from-photo"
+          }
+        }
+      },
+      {
+        "id": "terrain-entry-wall-north-4",
+        "name": "Patio entrance · north side wall 4",
+        "outline": [
+          {
+            "x": {
+              "value": 16.87,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.36,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.06,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.36,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.06,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.1,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 16.87,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.1,
+              "source": "estimated-from-photo"
+            }
+          }
+        ],
+        "elevation": {
+          "value": -1.65,
+          "source": "estimated-from-photo"
+        },
+        "slope": {
+          "towards": "+z",
+          "lowElevation": {
+            "value": -2.057,
+            "source": "estimated-from-photo"
+          }
+        }
+      },
+      {
+        "id": "terrain-entry-wall-south-5",
+        "name": "Patio entrance · south side wall 5",
+        "outline": [
+          {
+            "x": {
+              "value": 17.06,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.7,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.23,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.7,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.23,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.5,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.06,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.5,
+              "source": "estimated-from-photo"
+            }
+          }
+        ],
+        "elevation": {
+          "value": -1.65,
+          "source": "estimated-from-photo"
+        },
+        "slope": {
+          "towards": "-z",
+          "lowElevation": {
+            "value": -1.921,
+            "source": "estimated-from-photo"
+          }
+        }
+      },
+      {
+        "id": "terrain-entry-wall-north-5",
+        "name": "Patio entrance · north side wall 5",
+        "outline": [
+          {
+            "x": {
+              "value": 17.06,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.3,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.23,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.3,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.23,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.1,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.06,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.1,
+              "source": "estimated-from-photo"
+            }
+          }
+        ],
+        "elevation": {
+          "value": -1.65,
+          "source": "estimated-from-photo"
+        },
+        "slope": {
+          "towards": "+z",
+          "lowElevation": {
+            "value": -1.921,
+            "source": "estimated-from-photo"
+          }
+        }
+      },
+      {
+        "id": "terrain-entry-wall-south-6",
+        "name": "Patio entrance · south side wall 6",
+        "outline": [
+          {
+            "x": {
+              "value": 17.23,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.7,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.72,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.7,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.72,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.5,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.23,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -6.5,
+              "source": "estimated-from-photo"
+            }
+          }
+        ],
+        "elevation": {
+          "value": -1.65,
+          "source": "estimated-from-photo"
+        },
+        "slope": {
+          "towards": "-z",
+          "lowElevation": {
+            "value": -1.786,
+            "source": "estimated-from-photo"
+          }
+        }
+      },
+      {
+        "id": "terrain-entry-wall-north-6",
+        "name": "Patio entrance · north side wall 6",
+        "outline": [
+          {
+            "x": {
+              "value": 17.23,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.3,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.72,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.3,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.72,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.1,
+              "source": "estimated-from-photo"
+            }
+          },
+          {
+            "x": {
+              "value": 17.23,
+              "source": "estimated-from-photo"
+            },
+            "z": {
+              "value": -8.1,
+              "source": "estimated-from-photo"
+            }
+          }
+        ],
+        "elevation": {
+          "value": -1.65,
+          "source": "estimated-from-photo"
+        },
+        "slope": {
+          "towards": "+z",
+          "lowElevation": {
+            "value": -1.786,
+            "source": "estimated-from-photo"
+          }
         }
       },
       {
@@ -1026,7 +2244,7 @@
           "name": "Patio entrance",
           "roomId": "souterrain-corridor",
           "viaId": "door-souterrain-corridor-patio",
-          "description": "From the lane through the gate at the north end of the souterrain patio, across the patio and down the entry steps to the exterior door at the east end of the corridor."
+          "description": "From the lane through the gate at the north end of the souterrain patio, down a straight flight of seven natural-stone steps (walking west) between rubble side walls, and across the paved landing to the exterior door at the east end of the corridor."
         }
       ]
     },
@@ -2715,7 +3933,7 @@
       "offset": {
         "value": 3.4,
         "source": "estimated-from-photo",
-        "note": "Bed room window on the east patio. Checked: north edge ≈1.06 m from the room's north wall (7bdeed3a). The exterior (0ab48d98) puts it ≈3.0 m south of the patio door, so the door may sit ≈0.9 m further north than modelled"
+        "note": "Bed room window on the east patio. Checked: north edge ≈1.06 m from the room's north wall (7bdeed3a). The exterior 0ab48d98, scaled on the patio door frame, puts its north edge ≈2.75 m south of the door's centre (z ≈ -4.64): about 0.25 m further north than modelled"
       },
       "width": {
         "value": 1.0,
@@ -2737,13 +3955,14 @@
       "wallId": "souterrain-wall-east",
       "type": "door",
       "offset": {
-        "value": 6.14,
+        "value": 6.9,
         "source": "estimated-from-photo",
-        "note": "Patio entrance: exterior door at the east end of the corridor, reached by steps down from the souterrain patio; centred on the corridor fitted in #78 (was 5.55, from the earlier corridor)"
+        "note": "Frame outer z -6.88 to -7.91 (±0.05): eea54171 (east-wall vanishing point and the south-wall corner), 198a437e (fridge front as scale), 106b838c (frontal: the hole's south edge 0.82 from the corridor's south wall), cross-checked by the exterior 0ab48d98 and the corridor 9f479df7. Its north part opens into the kitchen side of the corridor's open east end"
       },
       "width": {
-        "value": 0.9,
-        "source": "estimated-from-photo"
+        "value": 1.0,
+        "source": "estimated-from-photo",
+        "note": "Frame outer width ≈1.03 (eea54171), 1.04 (width to height in 0ab48d98, frame 2.05 high); the frame fills the opening"
       },
       "height": {
         "value": 2.05,
@@ -3719,7 +4938,7 @@
         },
         {
           "x": {
-            "value": 15.2,
+            "value": 17.72,
             "source": "estimated-from-photo"
           },
           "z": {
@@ -3729,11 +4948,121 @@
         },
         {
           "x": {
-            "value": 15.2,
+            "value": 17.72,
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": -4.8,
+            "value": -6.5,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.23,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.5,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.06,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.5,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.06,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.44,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.87,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.44,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.87,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.36,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.64,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.36,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.64,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.27,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.36,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.27,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.36,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.19,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.1,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.19,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.1,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.1,
             "source": "estimated-from-photo"
           }
         },
@@ -3743,7 +5072,7 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": -4.8,
+            "value": -6.1,
             "source": "estimated-from-photo"
           }
         }
@@ -3751,6 +5080,1250 @@
       "elevation": {
         "value": -1.65,
         "source": "estimated-from-photo"
+      }
+    },
+    {
+      "id": "path-souterrain-entry-landing",
+      "name": "Patio entrance landing",
+      "kind": "path",
+      "ownerApartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 13.42,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 15.3,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 15.3,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 13.42,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -2.6,
+        "source": "estimated-from-photo",
+        "note": "Concrete pavers (b2804d07, 0ab48d98)"
+      }
+    },
+    {
+      "id": "gravel-souterrain-entry-landing",
+      "name": "Patio entrance gravel before the steps",
+      "kind": "gravel",
+      "ownerApartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 15.3,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.1,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.1,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 15.3,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -2.6,
+        "source": "estimated-from-photo"
+      }
+    },
+    {
+      "id": "gravel-souterrain-entry-step-1",
+      "name": "Patio entrance step 1 tread",
+      "kind": "gravel",
+      "ownerApartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 16.1,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.36,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.36,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.1,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -2.464,
+        "source": "estimated-from-photo",
+        "note": "Gravel treads between rows of natural stones (e1ad6c34, 7daf98e9)"
+      }
+    },
+    {
+      "id": "gravel-souterrain-entry-step-2",
+      "name": "Patio entrance step 2 tread",
+      "kind": "gravel",
+      "ownerApartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 16.36,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.64,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.64,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.36,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -2.329,
+        "source": "estimated-from-photo"
+      }
+    },
+    {
+      "id": "gravel-souterrain-entry-step-3",
+      "name": "Patio entrance step 3 tread",
+      "kind": "gravel",
+      "ownerApartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 16.64,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.87,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.87,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.64,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -2.193,
+        "source": "estimated-from-photo"
+      }
+    },
+    {
+      "id": "gravel-souterrain-entry-step-4",
+      "name": "Patio entrance step 4 tread",
+      "kind": "gravel",
+      "ownerApartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 16.87,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.06,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.06,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.87,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -2.057,
+        "source": "estimated-from-photo"
+      }
+    },
+    {
+      "id": "gravel-souterrain-entry-step-5",
+      "name": "Patio entrance step 5 tread",
+      "kind": "gravel",
+      "ownerApartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 17.06,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.23,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.23,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.06,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -1.921,
+        "source": "estimated-from-photo"
+      }
+    },
+    {
+      "id": "gravel-souterrain-entry-step-6",
+      "name": "Patio entrance step 6 tread",
+      "kind": "gravel",
+      "ownerApartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 17.23,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.72,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.72,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.23,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -1.786,
+        "source": "estimated-from-photo"
+      }
+    },
+    {
+      "id": "embankment-souterrain-entry-south-0",
+      "name": "Patio entrance · south rubble wall 0",
+      "kind": "embankment",
+      "ownerApartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 13.42,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.1,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.1,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.1,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 13.42,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.1,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -1.65,
+        "source": "estimated-from-photo"
+      },
+      "slope": {
+        "towards": "-z",
+        "lowElevation": {
+          "value": -2.6,
+          "source": "estimated-from-photo"
+        }
+      }
+    },
+    {
+      "id": "embankment-souterrain-entry-north-0",
+      "name": "Patio entrance · north rubble wall 0",
+      "kind": "embankment",
+      "ownerApartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 13.42,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.1,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.1,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 13.42,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -1.65,
+        "source": "estimated-from-photo"
+      },
+      "slope": {
+        "towards": "+z",
+        "lowElevation": {
+          "value": -2.6,
+          "source": "estimated-from-photo"
+        }
+      }
+    },
+    {
+      "id": "embankment-souterrain-entry-south-1",
+      "name": "Patio entrance · south rubble wall 1",
+      "kind": "embankment",
+      "ownerApartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 16.1,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.36,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.36,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.19,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.1,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.19,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -1.65,
+        "source": "estimated-from-photo"
+      },
+      "slope": {
+        "towards": "-z",
+        "lowElevation": {
+          "value": -2.464,
+          "source": "estimated-from-photo"
+        }
+      }
+    },
+    {
+      "id": "embankment-souterrain-entry-north-1",
+      "name": "Patio entrance · north rubble wall 1",
+      "kind": "embankment",
+      "ownerApartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 16.1,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.61,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.36,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.61,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.36,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.1,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -1.65,
+        "source": "estimated-from-photo"
+      },
+      "slope": {
+        "towards": "+z",
+        "lowElevation": {
+          "value": -2.464,
+          "source": "estimated-from-photo"
+        }
+      }
+    },
+    {
+      "id": "embankment-souterrain-entry-south-2",
+      "name": "Patio entrance · south rubble wall 2",
+      "kind": "embankment",
+      "ownerApartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 16.36,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.64,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.64,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.27,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.36,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.27,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -1.65,
+        "source": "estimated-from-photo"
+      },
+      "slope": {
+        "towards": "-z",
+        "lowElevation": {
+          "value": -2.329,
+          "source": "estimated-from-photo"
+        }
+      }
+    },
+    {
+      "id": "embankment-souterrain-entry-north-2",
+      "name": "Patio entrance · north rubble wall 2",
+      "kind": "embankment",
+      "ownerApartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 16.36,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.53,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.64,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.53,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.64,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.36,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -1.65,
+        "source": "estimated-from-photo"
+      },
+      "slope": {
+        "towards": "+z",
+        "lowElevation": {
+          "value": -2.329,
+          "source": "estimated-from-photo"
+        }
+      }
+    },
+    {
+      "id": "embankment-souterrain-entry-south-3",
+      "name": "Patio entrance · south rubble wall 3",
+      "kind": "embankment",
+      "ownerApartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 16.64,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.87,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.87,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.36,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.64,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.36,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -1.65,
+        "source": "estimated-from-photo"
+      },
+      "slope": {
+        "towards": "-z",
+        "lowElevation": {
+          "value": -2.193,
+          "source": "estimated-from-photo"
+        }
+      }
+    },
+    {
+      "id": "embankment-souterrain-entry-north-3",
+      "name": "Patio entrance · north rubble wall 3",
+      "kind": "embankment",
+      "ownerApartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 16.64,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.44,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.87,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.44,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.87,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.64,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -1.65,
+        "source": "estimated-from-photo"
+      },
+      "slope": {
+        "towards": "+z",
+        "lowElevation": {
+          "value": -2.193,
+          "source": "estimated-from-photo"
+        }
+      }
+    },
+    {
+      "id": "embankment-souterrain-entry-south-4",
+      "name": "Patio entrance · south rubble wall 4",
+      "kind": "embankment",
+      "ownerApartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 16.87,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.06,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.06,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.44,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.87,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.44,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -1.65,
+        "source": "estimated-from-photo"
+      },
+      "slope": {
+        "towards": "-z",
+        "lowElevation": {
+          "value": -2.057,
+          "source": "estimated-from-photo"
+        }
+      }
+    },
+    {
+      "id": "embankment-souterrain-entry-north-4",
+      "name": "Patio entrance · north rubble wall 4",
+      "kind": "embankment",
+      "ownerApartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 16.87,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.36,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.06,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.36,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.06,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.87,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -1.65,
+        "source": "estimated-from-photo"
+      },
+      "slope": {
+        "towards": "+z",
+        "lowElevation": {
+          "value": -2.057,
+          "source": "estimated-from-photo"
+        }
+      }
+    },
+    {
+      "id": "embankment-souterrain-entry-south-5",
+      "name": "Patio entrance · south rubble wall 5",
+      "kind": "embankment",
+      "ownerApartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 17.06,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.23,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.23,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.5,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.06,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.5,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -1.65,
+        "source": "estimated-from-photo"
+      },
+      "slope": {
+        "towards": "-z",
+        "lowElevation": {
+          "value": -1.921,
+          "source": "estimated-from-photo"
+        }
+      }
+    },
+    {
+      "id": "embankment-souterrain-entry-north-5",
+      "name": "Patio entrance · north rubble wall 5",
+      "kind": "embankment",
+      "ownerApartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 17.06,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.3,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.23,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.3,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.23,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.06,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -1.65,
+        "source": "estimated-from-photo"
+      },
+      "slope": {
+        "towards": "+z",
+        "lowElevation": {
+          "value": -1.921,
+          "source": "estimated-from-photo"
+        }
+      }
+    },
+    {
+      "id": "embankment-souterrain-entry-south-6",
+      "name": "Patio entrance · south rubble wall 6",
+      "kind": "embankment",
+      "ownerApartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 17.23,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.72,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.72,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.5,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.23,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -6.5,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -1.65,
+        "source": "estimated-from-photo"
+      },
+      "slope": {
+        "towards": "-z",
+        "lowElevation": {
+          "value": -1.786,
+          "source": "estimated-from-photo"
+        }
+      }
+    },
+    {
+      "id": "embankment-souterrain-entry-north-6",
+      "name": "Patio entrance · north rubble wall 6",
+      "kind": "embankment",
+      "ownerApartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 17.23,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.3,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.72,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.3,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.72,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.23,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.1,
+            "source": "estimated-from-photo"
+          }
+        }
+      ],
+      "elevation": {
+        "value": -1.65,
+        "source": "estimated-from-photo"
+      },
+      "slope": {
+        "towards": "+z",
+        "lowElevation": {
+          "value": -1.786,
+          "source": "estimated-from-photo"
+        }
       }
     },
     {
@@ -3791,11 +6364,141 @@
         },
         {
           "x": {
-            "value": 14.22,
+            "value": 17.72,
             "source": "estimated-from-photo"
           },
           "z": {
             "value": -7.2,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.72,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.3,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.23,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.3,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.06,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.3,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 17.06,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.36,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.87,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.36,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.87,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.44,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.64,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.44,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.64,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.53,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.36,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.53,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.36,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.61,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.1,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.61,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 16.1,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.7,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 14.22,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.7,
             "source": "estimated-from-photo"
           }
         },
@@ -3876,7 +6579,7 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": -7.2,
+            "value": -8.7,
             "source": "estimated-from-photo"
           }
         },
@@ -3886,7 +6589,7 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": -7.2,
+            "value": -8.7,
             "source": "estimated-from-photo"
           }
         },

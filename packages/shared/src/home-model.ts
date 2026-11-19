@@ -491,24 +491,44 @@ export function ceilingHeightAt(
   );
 }
 
+/** Samples along an opening's width for {@link openingAlongRoom}. */
+const OPENING_SAMPLES = 40;
+
 /**
- * Whether an opening stands on a wall along the room's outline (both its edges within half the
- * wall's thickness of it), so it leads into, or looks out of, that room.
+ * The share (0–1) of an opening's width that runs along the room's outline (within half the wall's
+ * thickness of it).
+ */
+function openingAlongRoom(
+  opening: Pick<Opening, 'offset' | 'width'>,
+  wall: Wall,
+  room: Room,
+): number {
+  if (wall.levelId !== room.levelId) return 0;
+  const length = wallLength(wall);
+  const reach = wall.thickness.value / 2 + EPS;
+  let along = 0;
+  for (let i = 0; i < OPENING_SAMPLES; i++) {
+    const at = opening.offset.value + (opening.width.value * (i + 0.5)) / OPENING_SAMPLES;
+    const t = length ? at / length : 0;
+    const x = wall.start.x.value + (wall.end.x.value - wall.start.x.value) * t;
+    const z = wall.start.z.value + (wall.end.z.value - wall.start.z.value) * t;
+    if (distanceToOutline(x, z, room.outline) <= reach) along++;
+  }
+  return along / OPENING_SAMPLES;
+}
+
+/**
+ * Whether an opening stands on a wall along the room's outline, so it leads into, or looks out of,
+ * that room: at least a quarter of its width runs along the outline. An opening where two rooms meet
+ * without a wall between them (the end of the corridor open to the kitchen) touches both; a room that
+ * only meets the wall at the opening's end does not.
  */
 export function openingTouchesRoom(
   opening: Pick<Opening, 'offset' | 'width'>,
   wall: Wall,
   room: Room,
 ): boolean {
-  if (wall.levelId !== room.levelId) return false;
-  const length = wallLength(wall);
-  const reach = wall.thickness.value / 2 + EPS;
-  return [opening.offset.value, opening.offset.value + opening.width.value].every((along) => {
-    const t = length ? along / length : 0;
-    const x = wall.start.x.value + (wall.end.x.value - wall.start.x.value) * t;
-    const z = wall.start.z.value + (wall.end.z.value - wall.start.z.value) * t;
-    return distanceToOutline(x, z, room.outline) <= reach;
-  });
+  return openingAlongRoom(opening, wall, room) >= 0.25;
 }
 
 const fmt = (n: number) => `${Math.round(n * 1000) / 1000} m`;

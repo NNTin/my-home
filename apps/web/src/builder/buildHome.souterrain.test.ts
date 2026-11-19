@@ -135,13 +135,13 @@ describe('the souterrain rooms', () => {
 
   it('put the patio door at the east end of the corridor and the east window in the bed room', () => {
     const door = scene.openings.find((o) => o.id === 'door-souterrain-corridor-patio')!;
-    // On the east wall's centre line, centred on the corridor (clear z -7.145 to -6.03).
+    // On the east wall's centre line, where the corridor's open end meets the kitchen (from photos).
     expect(door.center[0]).toBeCloseTo(13.18);
-    expect(door.center[2]).toBeCloseTo(-6.59);
+    expect(door.center[2]).toBeCloseTo(-7.4);
     const entry = scene.terrain.find((t) => t.id === 'terrain-entry')!;
     expect(entry.top).toBe(-2.6);
     const zs = entry.outline.map((p) => p[1]);
-    expect([Math.min(...zs), Math.max(...zs)]).toEqual([-7.2, -4.8]);
+    expect([Math.min(...zs), Math.max(...zs)]).toEqual([-8.1, -6.7]);
     const window = scene.openings.find((o) => o.id === 'window-souterrain-bed-room-east')!;
     expect(window.center[2]).toBeCloseTo(-3.9);
   });

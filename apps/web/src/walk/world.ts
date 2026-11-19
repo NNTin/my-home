@@ -429,13 +429,24 @@ export function startPose(model: HomeModel, world: WalkWorld): StartPose | undef
     if (!door || !wall || !room) continue;
     const start = toVec2(wall.start);
     const dir = scale(sub(toVec2(wall.end), start), 1 / wallLength(wall));
-    const middle = add(start, scale(dir, door.offset.value + door.width.value / 2));
     const normal: Vec2 = [-dir[1], dir[0]];
     const reach = wall.thickness.value / 2 + FIGURE_RADIUS + 0.4;
+    const outline = room.outline.map(toVec2);
     for (const side of [1, -1]) {
       const inward = scale(normal, side);
-      const point = add(middle, scale(inward, reach));
-      if (!pointInPolygon(point, room.outline.map(toVec2))) continue;
+      const inside = (along: number) =>
+        pointInPolygon(add(add(start, scale(dir, along)), scale(inward, reach)), outline);
+      // In front of the middle of the part of the door that opens into the room: a door where two
+      // rooms meet without a wall (the corridor's end open to the kitchen) opens into both.
+      const alongs = Array.from(
+        { length: 21 },
+        (_, i) => door.offset.value + (door.width.value * i) / 20,
+      ).filter(inside);
+      if (alongs.length === 0) continue;
+      const point = add(
+        add(start, scale(dir, (alongs[0]! + alongs.at(-1)!) / 2)),
+        scale(inward, reach),
+      );
       const placed = placeAt(world, point, levelOf(room.levelId));
       if (placed) return { ...placed, yaw: yawTowards(inward) };
     }

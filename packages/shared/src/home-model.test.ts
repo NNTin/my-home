@@ -341,8 +341,17 @@ describe('the souterrain apartment of the real home', () => {
         [corridor.x0, east].some(
           (x) => Math.abs(s.x0 - x) < 1e-6 && s.z0 >= corridor.z0 && s.z1 <= corridor.z1,
         );
+      if (door.id === 'door-souterrain-corridor-patio') {
+        // The patio door is where the corridor's east end is open to the kitchen: it starts on the
+        // corridor's edge and runs north into the kitchen's.
+        const kitchen = room('souterrain-kitchen');
+        expect(Math.abs(s.x0 - east)).toBeLessThan(1e-6);
+        expect(s.z1).toBeGreaterThan(corridor.z0 + 0.25);
+        expect(s.z1).toBeLessThanOrEqual(corridor.z1);
+        expect(s.z0).toBeGreaterThanOrEqual(kitchen.z0);
+        continue;
+      }
       expect([door.id, onEdge]).toEqual([door.id, true]);
-      if (door.id === 'door-souterrain-corridor-patio') continue;
       // ... and within the other room's extent along it.
       const other = room(
         `souterrain-${door.id.replace('door-souterrain-', '').replace(/-?corridor-?/, '')}`,
@@ -375,8 +384,14 @@ describe('the souterrain apartment of the real home', () => {
   it('opens the entrance onto the corridor, with its sunken steps, and the east window into the bed room', () => {
     const corridor = room('souterrain-corridor');
     const door = span('door-souterrain-corridor-patio');
-    expect(door.z0).toBeGreaterThan(corridor.z0);
+    // Its south part opens into the corridor, the rest into the kitchen beside it.
+    expect(door.z1).toBeGreaterThan(corridor.z0);
     expect(door.z1).toBeLessThan(corridor.z1);
+    expect(
+      modelUses(model)
+        .find((u) => u.id === 'door-souterrain-corridor-patio')!
+        .roomIds.sort(),
+    ).toEqual(['souterrain-corridor', 'souterrain-kitchen']);
     const entry = box(model.terrain.patches.find((p) => p.id === 'terrain-entry')!.outline);
     expect(entry.z0).toBeLessThanOrEqual(door.z0);
     expect(entry.z1).toBeGreaterThanOrEqual(door.z1);
@@ -423,8 +438,10 @@ describe('the souterrain apartment of the real home', () => {
     expect(exterior.map((o) => o.id)).toEqual(['door-souterrain-corridor-patio']);
     const door = span('door-souterrain-corridor-patio');
     const patio = box(model.outdoorAreas.find((a) => a.id === 'patio-souterrain')!.outline);
-    expect(door.z0).toBeGreaterThan(patio.z0);
-    expect(door.z1).toBeLessThan(patio.z1);
+    // It opens onto the sunken entry, whose steps lead east up to the patio's north end.
+    const entry = box(model.terrain.patches.find((p) => p.id === 'terrain-entry')!.outline);
+    expect(entry.z0).toBeLessThan(patio.z0);
+    expect(entry.z1).toBeGreaterThan(patio.z0);
     // The patio itself is entered from the lane through the gate at its north end, the only gate.
     expect(model.fences!.filter((f) => f.kind === 'gate').map((f) => f.id)).toEqual([
       'gate-souterrain-patio-lane',
@@ -432,8 +449,10 @@ describe('the souterrain apartment of the real home', () => {
     const gate = box(model.fences!.find((f) => f.id === 'gate-souterrain-patio-lane')!.path);
     expect(gate.x0).toBe(patio.x1);
     expect(gate.z0).toBe(patio.z0);
-    // It is a little north of the door.
-    expect(gate.z0 + gate.z1).toBeLessThan(door.z0 + door.z1);
+    // It is in line with the top of the steps: from the gate straight down to the door.
+    expect(gate.z0).toBeLessThan(entry.z1);
+    expect(gate.z1).toBeGreaterThan(entry.z0);
+    expect(gate.z0).toBeLessThan(door.z1);
   });
 
   it('lowers the ceiling of the corridor and the kitchen to 2.15, and to 2.00 under the box (#61)', () => {
@@ -489,12 +508,45 @@ describe('the outside of the real home', () => {
   });
 
   it('has gravel drainage strips along the facades, at the level of the ground next to them', () => {
-    const strips = model.outdoorAreas.filter((a) => a.kind === 'gravel');
+    const strips = model.outdoorAreas.filter(
+      (a) => a.kind === 'gravel' && a.id.startsWith('drainage-'),
+    );
     expect(strips.map((a) => [a.id, a.elevation.value])).toEqual([
       ['drainage-north-east', patch('terrain-lower').elevation.value],
       ['drainage-west', patch('terrain-west').elevation.value],
       ['drainage-south', patch('terrain-south').elevation.value],
     ]);
+  });
+
+  it('draws the sunken entry on its terrain: paved landing, gravel treads, rubble side walls', () => {
+    const box = (points: { x: { value: number }; z: { value: number } }[]) => ({
+      x0: Math.min(...points.map((p) => p.x.value)),
+      x1: Math.max(...points.map((p) => p.x.value)),
+      z0: Math.min(...points.map((p) => p.z.value)),
+      z1: Math.max(...points.map((p) => p.z.value)),
+    });
+    const entry = model.outdoorAreas.filter((a) => a.id.includes('-souterrain-entry'));
+    expect(entry.map((a) => a.kind).sort()).toEqual([
+      ...Array<string>(14).fill('embankment'),
+      ...Array<string>(7).fill('gravel'),
+      'path',
+    ]);
+    for (const area of entry) {
+      // Each surface lies on a terrain patch of the same height and slope.
+      const under = model.terrain.patches.find(
+        (p) =>
+          p.elevation.value === area.elevation.value &&
+          p.slope?.lowElevation.value === area.slope?.lowElevation.value &&
+          [box(area.outline)].every(
+            (b) =>
+              b.x0 >= box(p.outline).x0 &&
+              b.x1 <= box(p.outline).x1 &&
+              b.z0 >= box(p.outline).z0 &&
+              b.z1 <= box(p.outline).z1,
+          ),
+      );
+      expect([area.id, under?.id.startsWith('terrain-entry')]).toEqual([area.id, true]);
+    }
   });
 
   it('is fenced on the east, north and along the driveway, with a gate to the patio', () => {
@@ -693,11 +745,13 @@ describe('optional structures', () => {
     apartment.entrances!.push(
       entrance('e-window', 'souterrain-bed-room', 'window-souterrain-bed-room-east'),
       entrance('e-other-room', 'souterrain-stair-hall', 'door-souterrain-corridor-bed-room'),
-      entrance('e-far-wall', 'souterrain-kitchen', 'door-souterrain-corridor-patio'),
+      entrance('e-far-wall', 'souterrain-kitchen', 'door-souterrain-corridor-living-room'),
       entrance('e-stair', 'souterrain-corridor', 'stair-souterrain-stair-hall-ground-floor'),
       // Fine: a door leads into the rooms on both sides of its wall, a stair into both its ends.
       entrance('e-ok-door', 'souterrain-bed-room', 'door-souterrain-corridor-bed-room'),
       entrance('e-ok-door-2', 'souterrain-corridor', 'door-souterrain-corridor-bed-room'),
+      // ... and a door where two rooms meet without a wall into both of them.
+      entrance('e-ok-open-end', 'souterrain-kitchen', 'door-souterrain-corridor-patio'),
     );
     expect(issuesOf(home)).toEqual([
       {
@@ -712,7 +766,7 @@ describe('optional structures', () => {
       {
         path: `apartments[${at}].entrances[4].viaId`,
         message:
-          'Door "door-souterrain-corridor-patio" is not on a wall of room "souterrain-kitchen"',
+          'Door "door-souterrain-corridor-living-room" is not on a wall of room "souterrain-kitchen"',
       },
       {
         path: `apartments[${at}].entrances[5].viaId`,
