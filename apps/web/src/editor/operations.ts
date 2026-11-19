@@ -362,11 +362,13 @@ export function setElevation(_ctx: EditorContext, item: EditorItem, elevation: n
 
 /**
  * Changes what the item is fixed to (one of `mountingsFor` its type): a wall piece is hung on the
- * nearest wall and keeps its height; on the floor it stands at the type's elevation (0 for a type
- * that hangs on a wall).
+ * nearest wall and keeps its height, or, with no wall in reach, goes to the first free spot on a
+ * wall of its room (`freeSpot`); without one nothing changes, so a wall piece is never off a wall.
+ * On the floor it stands at the type's elevation (0 for a type that hangs on a wall).
  */
 export function setMounting(
   ctx: EditorContext,
+  items: EditorItem[],
   item: EditorItem,
   mounting: PlacementMounting,
 ): EditorItem {
@@ -379,8 +381,12 @@ export function setMounting(
     mounting === 'floor' ? (own === 'floor' ? (type.elevation ?? 0) : 0) : elevationOfItem(item);
   const next = withMounting(item, mounting, elevation);
   const plan = ctx.plans.get(item.levelId);
-  const hung = mounting === 'wall' && plan && hangOnWall(ctx, plan, next, positionOf(next));
-  return hung ? withPosition(ctx, next, hung.position, hung.rotationY) : next;
+  if (mounting !== 'wall') return next;
+  if (!plan) return item;
+  const hung = hangOnWall(ctx, plan, next, positionOf(next));
+  if (hung) return withPosition(ctx, next, hung.position, hung.rotationY);
+  const spot = freeSpot(ctx, plan, next, item.roomId, others(items, item.id));
+  return isOffWall(ctx, spot) ? item : spot;
 }
 
 /** Rotates by `steps` rotation steps (90° when rotation is free). */

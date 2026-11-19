@@ -92,17 +92,25 @@ describe('wall- and ceiling-mounted items (#63)', () => {
 
   it('switches between the floor and a wall', () => {
     const cabinet = place('kitchen.wall-cabinet');
-    const floor = setMounting(ctx, cabinet, 'floor');
+    const floor = setMounting(ctx, [cabinet], cabinet, 'floor');
     expect([mountingOfItem(floor), elevationOfItem(floor)]).toEqual(['floor', 0]);
-    expect(setMounting(ctx, cabinet, 'ceiling')).toBe(cabinet);
+    expect(setMounting(ctx, [cabinet], cabinet, 'ceiling')).toBe(cabinet);
     const shelf = editorItem({
       typeId: 'furniture.storage-shelf',
       ...kitchen,
       position: { x: 3, z: -3.2 },
     });
-    const hung = setMounting(ctx, shelf, 'wall');
+    const hung = setMounting(ctx, [shelf], shelf, 'wall');
     expect(hung.mounting).toBe('wall');
     expect(issuesOf(ctx, hung).offWall).toBe(false);
+    // More than 1 m from every wall: it goes to a free spot on a wall of its room, never off one.
+    const middle = { ...shelf, position: { x: 3.3, z: -1.7 } };
+    const moved = setMounting(ctx, [middle], middle, 'wall');
+    expect(moved).toMatchObject({ mounting: 'wall', roomId: 'souterrain-kitchen' });
+    expect(issuesOf(ctx, moved).offWall).toBe(false);
+    // On a level without any wall there is nowhere to hang it: nothing changes.
+    const bare = createContext({ ...mockHome, walls: [] }, furniture);
+    expect(setMounting(bare, [middle], middle, 'wall')).toBe(middle);
   });
 
   it('duplicates a wall piece next to it on the same wall, at the same height', () => {

@@ -542,7 +542,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     },
     mount(mounting: PlacementMounting) {
       if (!selectedItem) return;
-      const mounted = setMounting(ctx, selectedItem, mounting);
+      const mounted = setMounting(ctx, items, selectedItem, mounting);
       edit(
         'Mounting',
         items.map((i) => (i.id === mounted.id ? mounted : i)),

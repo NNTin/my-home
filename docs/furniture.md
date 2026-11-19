@@ -147,7 +147,8 @@ ceiling; every other piece may stand on the floor or hang on a wall.
 - **On a wall**: its back (local -z) is against a wall's face. The editor hangs it on the nearest wall within
   1 m, turned to it (and pulled into a corner within 25 cm), whether or not "Snap to walls" is on; a drag
   slides it along its wall and moves it to another wall only when that one is clearly nearer; it never leaves a
-  wall. A duplicate goes next to it on the same wall.
+  wall. A duplicate goes next to it on the same wall. Switching a piece to **On a wall** hangs it on the
+  nearest wall, or, with none within 1 m, at the first free spot on a wall of its room (else nothing changes).
 - **Under the ceiling**: it hangs at the ceiling over its position: the level's clear height, or a lowered
   ceiling or a box where the home model has one (`ceilingHeightAt`, [home-model.md](home-model.md)): 2.15 m
   under the corridor's suspended ceiling, 2.00 m under the box. It has no elevation of its own (always 0).
