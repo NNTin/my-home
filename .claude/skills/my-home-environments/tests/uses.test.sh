@@ -66,6 +66,10 @@ reset
 "$u" staging --allow-write place --home home --type furniture.bed --level souterrain --at -3,2.5 --rotation-deg 90 \
   --param width=1.8 --param color=#AABBCC --name 'Guest bed' >/dev/null
 check "place posts the placement" logged 'staging /api/homes/home/placements -H X-My-Home-Actor: agent -X POST --json {"typeId":"furniture.bed","levelId":"souterrain","position":{"x":-3,"z":2.5},"rotationY":1.5707963267948966,"params":{"width":1.8,"color":"#AABBCC"},"name":"Guest bed"}'
+reset
+"$u" staging --allow-write place --home home --type kitchen.wall-cabinet --level souterrain --at 2,-3.675 --mount wall \
+  --elevation-cm 133 >/dev/null
+check "place sends the mounting and the elevation" logged 'staging /api/homes/home/placements -H X-My-Home-Actor: agent -X POST --json {"typeId":"kitchen.wall-cabinet","levelId":"souterrain","position":{"x":2,"z":-3.675},"rotationY":0,"mounting":"wall","elevation":1.33,"params":{}}'
 check "place needs a type and a level" fails "$u" staging --allow-write place --at 1,2 --type furniture.bed
 check "place needs X,Z" fails "$u" staging --allow-write place --type furniture.bed --level souterrain --at north
 
@@ -83,6 +87,19 @@ reset
 "$u" staging --allow-write move souterrain-bed-1 --home home --at 1.5,-2 >/dev/null
 check "move patches the position" \
   logged 'staging /api/homes/home/placements/souterrain-bed-1 -H X-My-Home-Actor: agent -X PATCH --json {"version":3,"position":{"x":1.5,"z":-2}}'
+"$u" staging --allow-write rename souterrain-bed-1 'Spare bed' --home home >/dev/null
+check "move without a position, a rotation, a mounting or an elevation is usage" fails "$u" staging --allow-write move souterrain-bed-1 --home home
+reset
+"$u" staging --allow-write move souterrain-bed-1 --home home --elevation-cm 145 >/dev/null
+check "move sets the elevation alone, in metres" \
+  logged 'staging /api/homes/home/placements/souterrain-bed-1 -H X-My-Home-Actor: agent -X PATCH --json {"version":3,"elevation":1.45}'
+reset
+"$u" staging --allow-write move souterrain-bed-1 --home home --at 2,-3.675 --mount wall >/dev/null
+check "move hangs it on a wall" \
+  logged 'staging /api/homes/home/placements/souterrain-bed-1 -H X-My-Home-Actor: agent -X PATCH --json {"version":3,"position":{"x":2,"z":-3.675},"mounting":"wall"}'
+check "--mount takes floor, wall or ceiling" fails "$u" staging --allow-write move souterrain-bed-1 --home home --mount roof
+check "--elevation-cm takes centimetres" fails "$u" staging --allow-write move souterrain-bed-1 --home home --elevation-cm high
+reset
 "$u" staging --allow-write rename souterrain-bed-1 'Spare bed' --home home >/dev/null
 check "rename patches the name" \
   logged 'staging /api/homes/home/placements/souterrain-bed-1 -H X-My-Home-Actor: agent -X PATCH --json {"version":3,"name":"Spare bed"}'

@@ -3,7 +3,6 @@ import {
   effectiveParams,
   isPlacedKind,
   LEGACY_FURNITURE_TYPE_IDS,
-  standsOnFloor,
   type CatalogType,
   type ParamValues,
 } from '@my-home/shared';
@@ -65,8 +64,8 @@ export interface FurnitureCategory {
 
 export interface FurnitureRegistry {
   /**
-   * What the "Add" panel offers: the types standing on the floor (`standsOnFloor`; wall and ceiling
-   * mounting come with #63), grouped by category, then sorted by name (category order alphabetical).
+   * What the "Add" panel offers: every furniture and fixture type (on the floor, on a wall or under
+   * the ceiling), grouped by category, then sorted by name (category order alphabetical).
    */
   categories: FurnitureCategory[];
   /** By type id or legacy id. */
@@ -108,9 +107,9 @@ export function createFurniture(types: readonly CatalogType[] = catalog.types): 
       snapping: type.snapping?.wall ?? 'none',
     });
   }
-  const sorted = [...byId.values()]
-    .filter((t) => standsOnFloor(t.type))
-    .sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
+  const sorted = [...byId.values()].sort(
+    (a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name),
+  );
   const categories: FurnitureCategory[] = [];
   for (const type of sorted) {
     const last = categories.at(-1);

@@ -6,7 +6,7 @@ import {
   type UpdatePlacementBody,
 } from '@my-home/shared';
 import { ApiRequestError } from '../api';
-import type { EditorItem } from '../editor/item';
+import { elevationOfItem, mountingOfItem, type EditorItem } from '../editor/item';
 
 export type SyncStatus = 'saved' | 'pending' | 'saving' | 'offline' | 'rejected' | 'conflict';
 
@@ -94,6 +94,8 @@ export function toEditorItem(p: Placement): EditorItem {
     ...(p.roomId !== null && { roomId: p.roomId }),
     position: { x: p.position.x, z: p.position.z },
     rotationY: p.rotationY,
+    ...(p.mounting !== 'floor' && { mounting: p.mounting }),
+    ...(p.mounting !== 'ceiling' && p.elevation !== 0 && { elevation: p.elevation }),
     params: { ...p.params },
   };
 }
@@ -118,6 +120,8 @@ export function changedFields(
     body.position = { x: item.position.x, z: item.position.z };
   }
   if (item.rotationY !== server.rotationY) body.rotationY = item.rotationY;
+  if (mountingOfItem(item) !== mountingOfItem(server)) body.mounting = mountingOfItem(item);
+  if (elevationOfItem(item) !== elevationOfItem(server)) body.elevation = elevationOfItem(item);
   if (canonical(item.params) !== canonical(server.params)) body.params = { ...item.params };
   return body;
 }
@@ -436,6 +440,8 @@ export class PlacementSync {
         levelId: item.levelId,
         position: item.position,
         rotationY: item.rotationY,
+        mounting: mountingOfItem(item),
+        elevation: elevationOfItem(item),
         params: item.params,
         ...(item.name !== '' && { name: item.name }),
       });

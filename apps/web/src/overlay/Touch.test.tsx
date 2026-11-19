@@ -91,6 +91,47 @@ describe('furniture by touch', () => {
     expect(lastScene?.toolbar).toBeUndefined();
   });
 
+  it('raises and lowers a wall cabinet by 5 cm and drags it along its wall (#63)', async () => {
+    const cabinet = testPlacement({
+      id: 'cab-1',
+      name: 'Kitchen · Wall cabinet',
+      typeId: 'kitchen.wall-cabinet',
+      roomId: 'souterrain-kitchen',
+      position: { x: 3, z: -3.675 },
+      mounting: 'wall',
+      elevation: 1.33,
+    });
+    await open('portrait', {
+      placements: [
+        cabinet,
+        testPlacement({
+          id: 'light-1',
+          typeId: 'fixture.downlight',
+          mounting: 'ceiling',
+          position: { x: 3, z: -2 },
+        }),
+      ],
+    });
+    await vi.waitFor(() => expect(furniture()).toHaveLength(2));
+    const y = () => furniture().find((f) => f.id === 'cab-1')!.position[1];
+    const start = y();
+    act(() => lastScene!.handlers.onSelect('cab-1'));
+    act(() => lastScene!.toolbar!.onRaise!(5));
+    expect(y()).toBeCloseTo(start + 0.05);
+    act(() => lastScene!.toolbar!.onRaise!(-10));
+    expect(y()).toBeCloseTo(start - 0.05);
+    // A drag into the room keeps it on its wall, moved along it.
+    act(() => lastScene!.handlers.onMoveStart('cab-1'));
+    act(() => lastScene!.handlers.onMove('cab-1', [4, -3]));
+    act(() => lastScene!.handlers.onDragEnd());
+    const moved = furniture().find((f) => f.id === 'cab-1')!;
+    expect(moved.position[0]).toBeCloseTo(4);
+    expect(moved.position[2]).toBeCloseTo(-3.675);
+    // A light under the ceiling has no ▲ ▼.
+    act(() => lastScene!.handlers.onSelect('light-1'));
+    expect(lastScene!.toolbar!.onRaise).toBeUndefined();
+  });
+
   it('opens the furniture panel from "more" and from a long press', async () => {
     await openWithBed('portrait');
     act(() => lastScene!.handlers.onSelect('bed-1'));

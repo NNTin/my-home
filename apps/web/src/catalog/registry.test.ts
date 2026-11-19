@@ -114,7 +114,9 @@ describe('furniture types', () => {
       'Bed room',
       'Corridor',
       'Dining',
+      'Heating',
       'Kitchen',
+      'Lighting',
       'Living room',
       'Work room',
     ]);
@@ -125,10 +127,15 @@ describe('furniture types', () => {
       'furniture.shoe-cabinet',
       'chair',
       'table',
+      'fixture.radiator',
       'kitchen.base-cabinet',
       'appliance.fridge-freezer',
+      'appliance.microwave',
       'furniture.storage-shelf',
       'kitchen.tall-cabinet',
+      'kitchen.wall-cabinet',
+      'kitchen.wall-shelf',
+      'fixture.downlight',
       'sofa',
       'desk',
     ]);
@@ -139,7 +146,7 @@ describe('furniture types', () => {
     expect(furniture.get('bed')).toBe(furniture.get('furniture.bed'));
   });
 
-  it('resolves wall, ceiling and worktop pieces too, but offers only floor-standing ones (#63)', () => {
+  it('offers and resolves wall, ceiling and worktop pieces too (#63)', () => {
     const offered = new Set(furniture.categories.flatMap((c) => c.types.map((t) => t.id)));
     for (const id of [
       'kitchen.wall-cabinet',
@@ -148,7 +155,7 @@ describe('furniture types', () => {
       'fixture.downlight',
       'fixture.radiator',
     ]) {
-      expect(offered.has(id), id).toBe(false);
+      expect(offered.has(id), id).toBe(true);
       expect(furniture.resolve(id)?.parts.length, id).toBeGreaterThan(0);
     }
     expect(furniture.resolve('fixture.downlight')!.size).toEqual({

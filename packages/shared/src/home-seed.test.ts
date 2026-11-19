@@ -157,3 +157,63 @@ describe('isSeedChange', () => {
     expect(isSeedChange({ actor: 'agent', actorName: 'seed' })).toBe(false);
   });
 });
+
+describe('mounting and elevation in the seed (#63)', () => {
+  const home = realHome();
+  const cabinet: SeedPlacement = {
+    id: 'souterrain-wall-cabinet-1',
+    typeId: 'kitchen.wall-cabinet',
+    name: 'Stair hall · Wall cabinet',
+    levelId: 'souterrain',
+    position: { x: 10.76, z: -10.3 },
+    rotationY: 0,
+    mounting: 'wall',
+    elevation: 1.33,
+    params: {},
+  };
+
+  it('omits them on the floor at 0, so seeds from before them read and write the same', () => {
+    const floor = { ...bed, mounting: 'floor' as const, elevation: 0 };
+    expect(canonicalSeed({ ...emptySeed(home.id), placements: [floor] }).placements).toEqual([bed]);
+    expect(
+      Object.keys(canonicalSeed({ ...emptySeed(home.id), placements: [cabinet] }).placements[0]!),
+    ).toEqual([
+      'id',
+      'typeId',
+      'name',
+      'levelId',
+      'position',
+      'rotationY',
+      'mounting',
+      'elevation',
+      'params',
+    ]);
+  });
+
+  it('accepts the type’s mountings and rejects others and an elevation under the ceiling', () => {
+    const issues = (p: SeedPlacement) =>
+      seedIssues({ ...emptySeed(home.id), placements: [p] }, home).map((i) => i.message);
+    expect(issues(cabinet)).toEqual([]);
+    expect(issues({ ...cabinet, mounting: 'ceiling' })).toEqual([
+      'A wall cabinet cannot be mounted under the ceiling',
+    ]);
+    const light: SeedPlacement = {
+      ...cabinet,
+      id: 'souterrain-downlight-1',
+      typeId: 'fixture.downlight',
+      mounting: 'ceiling',
+      elevation: 0.5,
+    };
+    expect(issues(light)).toEqual([
+      'A piece under the ceiling has no elevation: it hangs at the ceiling',
+    ]);
+    // A downlight without a mounting stands on the floor: not one of its mountings.
+    expect(
+      issues({ ...light, mounting: undefined, elevation: undefined } as SeedPlacement),
+    ).toEqual(['A downlight cannot be mounted on the floor']);
+    expect(
+      HomeSeed.safeParse({ ...emptySeed(home.id), placements: [{ ...cabinet, elevation: -1 }] })
+        .success,
+    ).toBe(false);
+  });
+});

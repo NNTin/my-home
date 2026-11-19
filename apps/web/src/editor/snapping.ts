@@ -94,6 +94,8 @@ export interface SnapInput {
   rule: WallSnap;
   walls: PlanWall[];
   distance?: number;
+  /** How far the second wall (into a corner) pulls; `distance` when omitted. */
+  cornerDistance?: number;
   angle?: number;
 }
 
@@ -140,7 +142,8 @@ export function snapToWalls(input: SnapInput): SnapResult {
         continue;
       }
       const gap = gapTo(face, transform(footprint, position, r));
-      if (gap === undefined || Math.abs(gap) > reach) continue;
+      const within = pass === 0 ? reach : (input.cornerDistance ?? reach);
+      if (gap === undefined || Math.abs(gap) > within) continue;
       if (!best || Math.abs(gap) < Math.abs(best.gap)) best = { face, gap, rotationY: r };
     }
     if (!best) break;

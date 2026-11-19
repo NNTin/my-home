@@ -92,7 +92,7 @@ What the page writes is in [its uses](#uses-on-the-piece-page), below the playgr
 Below the playground and the design parameters, the page acts on **this environment's** data (#45; APIs in
 [userdata.md](userdata.md) and [photos.md](photos.md)). Agents may use all of it; photos are never deleted here.
 
-- **Place** (furniture and fixture types that stand on the floor; wall and ceiling pieces wait for #63):
+- **Place** (furniture and fixture types, on the floor, a wall or the ceiling as the type says):
   **Place…** opens a form, home → level → room (only levels with rooms; defaults:
   the `?home=` home, its first level with rooms, that level's first room). It finds a free spot in the room with
   the editor's `createItem` against the home's current placements, `POST`s the placement with the playground's

@@ -1,3 +1,5 @@
+import type { PlacementMounting } from '@my-home/shared';
+import { useState } from 'react';
 import type { EditorSettings } from '../editor/operations';
 import type { FurnitureCategory } from '../catalog/furniture';
 import type { SyncState, SyncStatus } from '../placements/sync';
@@ -11,6 +13,13 @@ export interface SelectedInfo {
   problems: string[];
   /** Its piece page, on this use. */
   href: string;
+  /** What it is fixed to, and what its type allows. */
+  mounting: PlacementMounting;
+  mountings: PlacementMounting[];
+  /** Height of its bottom above the floor, in metres (0 under a ceiling). */
+  elevation: number;
+  /** Where it starts above the floor: the elevation, or the ceiling it hangs at. */
+  hangsAt: number;
 }
 
 /** A selected window, door, roof window or gate. */
@@ -48,6 +57,9 @@ interface Props {
   onRotate(steps: number): void;
   onDuplicate(): void;
   onDelete(): void;
+  /** Sets the selected item's height above the floor, in metres. */
+  onElevation(elevation: number): void;
+  onMounting(mounting: PlacementMounting): void;
   settings: EditorSettings;
   onSettings(settings: EditorSettings): void;
   flagged: FlaggedItem[];
@@ -74,6 +86,76 @@ export function PieceLink({ href, name }: { href: string; name: string }) {
 }
 
 const degrees = (rad: number) => Math.round((rad * 180) / Math.PI);
+const cm = (m: number) => Math.round(m * 100);
+
+const mountingLabel: Record<PlacementMounting, string> = {
+  floor: 'On the floor',
+  wall: 'On a wall',
+  ceiling: 'Under the ceiling',
+};
+
+/**
+ * The height of the item's bottom above the floor in centimetres: typed freely, saved (one edit,
+ * one undo step) on Enter or when the field loses focus.
+ */
+function HeightField({ value, onChange }: { value: number; onChange(metres: number): void }) {
+  const [draft, setDraft] = useState<string>();
+  const commit = () => {
+    if (draft === undefined) return;
+    const next = Number(draft);
+    setDraft(undefined);
+    if (draft.trim() !== '' && Number.isFinite(next) && next !== cm(value)) onChange(next / 100);
+  };
+  return (
+    <label className="field">
+      Height above the floor{' '}
+      <input
+        type="number"
+        inputMode="numeric"
+        min={0}
+        step={1}
+        value={draft ?? String(cm(value))}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
+          // The editor's shortcuts (Delete, R …) must not act while typing a height.
+          e.stopPropagation();
+        }}
+        aria-label="Height above the floor in cm"
+      />{' '}
+      cm
+    </label>
+  );
+}
+
+/** How the selected item is mounted: on the floor or a wall, and its height (or its ceiling's). */
+function Mounting({ selected, props }: { selected: SelectedInfo; props: Props }) {
+  return (
+    <div className="mounting">
+      {selected.mountings.length > 1 && (
+        <label className="field">
+          Mounting{' '}
+          <select
+            value={selected.mounting}
+            onChange={(e) => props.onMounting(e.target.value as PlacementMounting)}
+          >
+            {selected.mountings.map((m) => (
+              <option key={m} value={m}>
+                {mountingLabel[m]}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {selected.mounting === 'ceiling' ? (
+        <p className="note">Hangs at the ceiling, {cm(selected.hangsAt)} cm above the floor.</p>
+      ) : (
+        <HeightField value={selected.elevation} onChange={props.onElevation} />
+      )}
+    </div>
+  );
+}
 const rotationSteps = [90, 45, 15, 0];
 
 export function FurniturePanel(props: Props) {
@@ -162,6 +244,7 @@ export function FurniturePanel(props: Props) {
                 {p}
               </p>
             ))}
+            <Mounting selected={selected} props={props} />
             <div className="buttons">
               <button type="button" onClick={() => props.onRotate(1)} title="R">
                 Rotate ⟲
@@ -189,8 +272,8 @@ export function FurniturePanel(props: Props) {
           </div>
         ) : (
           <p className="note">
-            Click an item to select it; drag to move, drag the ring to rotate. Click a window, door
-            or gate to open its piece page.
+            Click an item to select it; drag to move (a wall cabinet along its wall), drag the ring
+            to rotate. Click a window, door or gate to open its piece page.
           </p>
         )}
         <label className="toggle">

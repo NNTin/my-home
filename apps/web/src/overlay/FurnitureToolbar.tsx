@@ -1,5 +1,8 @@
 import { Link } from '../routing';
 
+/** How far ▲ and ▼ move the selected item up or down, in centimetres. */
+export const RAISE_STEP = 5;
+
 /** What the floating toolbar of the selected furniture item does. */
 export interface FurnitureToolbarProps {
   /** The item's name, e.g. "Bedroom · Bed". */
@@ -7,6 +10,8 @@ export interface FurnitureToolbarProps {
   /** Its piece page, on this use. */
   href: string;
   onRotate(steps: number): void;
+  /** Raises (or with a negative value lowers) the item by that many centimetres; absent under a ceiling. */
+  onRaise?(cm: number): void;
   onDuplicate(): void;
   onDelete(): void;
   /** Opens the furniture panel with the item's details and the other tools. */
@@ -21,6 +26,7 @@ export function FurnitureToolbar({
   name,
   href,
   onRotate,
+  onRaise,
   onDuplicate,
   onDelete,
   onMore,
@@ -44,6 +50,26 @@ export function FurnitureToolbar({
       >
         ⟳
       </button>
+      {onRaise && (
+        <>
+          <button
+            type="button"
+            aria-label={`Raise ${RAISE_STEP} cm`}
+            title={`Raise ${RAISE_STEP} cm`}
+            onClick={() => onRaise(RAISE_STEP)}
+          >
+            ▲
+          </button>
+          <button
+            type="button"
+            aria-label={`Lower ${RAISE_STEP} cm`}
+            title={`Lower ${RAISE_STEP} cm`}
+            onClick={() => onRaise(-RAISE_STEP)}
+          >
+            ▼
+          </button>
+        </>
+      )}
       <button type="button" aria-label="Duplicate" title="Duplicate" onClick={onDuplicate}>
         ⧉
       </button>

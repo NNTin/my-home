@@ -134,6 +134,8 @@ export async function exportSeed(db: Db | Tx, model: HomeModel): Promise<HomeSee
       levelId: p.levelId,
       position: { x: p.x, z: p.z },
       rotationY: p.rotationY,
+      mounting: p.mounting,
+      elevation: p.elevation,
       params: p.params,
     })),
     openingOverrides: overrides
@@ -166,6 +168,8 @@ const seedState = (model: HomeModel, p: SeedPlacement): UseState => ({
   roomId: roomAt(model, p.levelId, p.position)?.id ?? null,
   position: { x: p.position.x, z: p.position.z },
   rotationY: p.rotationY,
+  mounting: p.mounting ?? 'floor',
+  elevation: p.elevation ?? 0,
   removed: false,
 });
 
@@ -204,6 +208,8 @@ async function syncPlacements(
       x: p.position.x,
       z: p.position.z,
       rotationY: p.rotationY,
+      mounting: target.mounting ?? 'floor',
+      elevation: target.elevation ?? 0,
       params: p.params,
     };
     const row = byId.get(p.id);

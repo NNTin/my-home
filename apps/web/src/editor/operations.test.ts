@@ -115,11 +115,15 @@ describe('editor operations', () => {
       unknownType: false,
       missingLevel: false,
       missingRoom: false,
+      offWall: false,
+      aboveCeiling: false,
     });
     expect(issuesOf(ctx, editorItem({ typeId: 'furniture.piano', roomId: 'gone' }))).toEqual({
       unknownType: true,
       missingLevel: false,
       missingRoom: true,
+      offWall: false,
+      aboveCeiling: false,
     });
     const orphan = editorItem({ levelId: 'attic', roomId: 'attic-room' });
     expect(issuesOf(ctx, orphan)).toMatchObject({ missingLevel: true, missingRoom: true });

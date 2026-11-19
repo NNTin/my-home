@@ -13,7 +13,8 @@ import {
   LEGACY_FURNITURE_TYPE_IDS,
   openingFitIssues,
   parseCm,
-  standsOnFloor,
+  mountingsFor,
+  defaultElevation,
   type CatalogType,
 } from '../index';
 
@@ -197,11 +198,11 @@ describe('catalog', () => {
       'fixture.downlight': ['ceiling', undefined],
       'fixture.radiator': ['wall', 0.1],
     });
-    expect(standsOnFloor(type('furniture.shoe-cabinet'))).toBe(true);
-    expect(standsOnFloor(type('kitchen.base-cabinet'))).toBe(true);
-    expect(standsOnFloor(type('appliance.microwave'))).toBe(false);
-    expect(standsOnFloor(type('fixture.downlight'))).toBe(false);
-    expect(standsOnFloor(type('door.interior'))).toBe(false);
+    expect(mountingsFor(type('furniture.shoe-cabinet'))).toEqual(['floor', 'wall']);
+    expect(mountingsFor(type('kitchen.wall-cabinet'))).toEqual(['wall', 'floor']);
+    expect(mountingsFor(type('fixture.downlight'))).toEqual(['ceiling']);
+    expect(defaultElevation(type('appliance.microwave'), 'floor')).toBe(0.9);
+    expect(defaultElevation(type('fixture.downlight'), 'ceiling')).toBe(0);
     expect(LEGACY_FURNITURE_TYPE_IDS['shoe-cabinet']).toBeUndefined();
   });
 

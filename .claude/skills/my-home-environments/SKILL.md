@@ -212,8 +212,12 @@ parameters. To point the owner at one use in an issue or PR, link its row:
 - `uses.sh <env> list [--type TYPEID] [--status ok|needs-attention] [--include removed]`: where-used. Git uses
   with their overrides, placements, and orphans (an override whose opening left git, a placement whose type,
   level or room is gone) with `problems`.
-- `uses.sh <env> place --type furniture.bed --level ID --at X,Z [--rotation-deg D] [--param k=v]... [--name TEXT]`:
-  the server picks the id (`<apartment>-<type>-<n>`, never reused), the name ("Bedroom · Bed") and the room.
+- `uses.sh <env> place --type furniture.bed --level ID --at X,Z [--rotation-deg D] [--mount M] [--elevation-cm CM]
+[--param k=v]... [--name TEXT]`: the server picks the id (`<apartment>-<type>-<n>`, never reused), the name
+  ("Bedroom · Bed") and the room. `--mount floor|wall|ceiling` and `--elevation-cm` (the bottom's height above the
+  floor) default to the type's; a wall piece's back must touch a wall face (else it needs attention: "hangs on no
+  wall"), a ceiling piece hangs at the ceiling over it. `move <id> [--at X,Z] [--rotation-deg D] [--mount M]
+[--elevation-cm CM]` changes any of them.
 - `uses.sh <env> set <useId> --param k=v [--param k=v]... [--clear k]...`: a placement's params or an opening's
   override (colours `#rrggbb`, lengths in metres). `move <id> --at X,Z [--rotation-deg D]`, `rename <id> TEXT`.
 - `uses.sh <env> remove|restore <placementId>`: to the trash (purged with its history after 30 days) and back.

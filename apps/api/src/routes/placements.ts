@@ -48,7 +48,7 @@ export const placementRoutes =
         schema: {
           params: UseHomeParams,
           body: CreatePlacementBody,
-          response: { 201: Placement, 400: ApiError, 404: ApiError },
+          response: { 201: Placement, 400: ApiError, 404: ApiError, 422: ApiError },
         },
       },
       async (request, reply) => {

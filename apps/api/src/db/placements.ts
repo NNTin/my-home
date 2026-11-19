@@ -1,15 +1,20 @@
 import {
   basicOverridesSchema,
   catalog,
+  defaultElevation,
   effectiveParams,
   formatIssues,
   furnitureFitIssues,
+  heightFitIssues,
   isPlacedKind,
+  mountingIssue,
+  mountingsFor,
   roomAt,
   type CatalogType,
   type HomeModel,
   type ParamValues,
   type Placement,
+  type PlacementMounting,
   type UseState,
 } from '@my-home/shared';
 import { and, asc, eq, isNull, like, lt } from 'drizzle-orm';
@@ -27,6 +32,9 @@ export interface CreateInput {
   levelId: string;
   position: { x: number; z: number };
   rotationY: number;
+  /** The type's mounting and elevation when omitted (`mountingsFor`, `defaultElevation`). */
+  mounting?: PlacementMounting;
+  elevation?: number;
   params: Record<string, unknown>;
   name?: string;
 }
@@ -37,6 +45,8 @@ export interface UpdateInput {
   levelId?: string;
   position?: { x: number; z: number };
   rotationY?: number;
+  mounting?: PlacementMounting;
+  elevation?: number;
   params?: Record<string, unknown>;
 }
 
@@ -60,6 +70,8 @@ export const placementState = (row: PlacementRow): UseState => ({
   roomId: row.roomId,
   position: { x: row.x, z: row.z },
   rotationY: row.rotationY,
+  mounting: row.mounting,
+  elevation: row.elevation,
   removed: row.removedAt !== null,
 });
 
@@ -87,6 +99,16 @@ export function validOverrides(type: CatalogType, params: unknown): ParamValues 
   const first = issues[0]!;
   throw problem(400, `Invalid params: ${first.path}: ${first.message}`, { issues });
 }
+
+/** A 400 when the type cannot be mounted so. */
+const checkMounting = (type: CatalogType, mounting: PlacementMounting, elevation: number) => {
+  const issue = mountingIssue(type, mounting, elevation);
+  if (issue) throw problem(400, issue, { issues: [{ path: 'mounting', message: issue }] });
+};
+
+/** A 422 when the piece reaches above the ceiling over it. */
+const tooHigh = (issues: string[]) =>
+  problem(422, issues[0]!, { issues: issues.map((message) => ({ path: 'elevation', message })) });
 
 const furnitureType = (typeId: string): CatalogType => {
   const type = catalog.get(typeId);
@@ -126,6 +148,8 @@ export function placementStore(db: Db, options: { retentionDays: number }) {
     roomId: row.roomId,
     position: { x: row.x, z: row.z },
     rotationY: row.rotationY,
+    mounting: row.mounting,
+    elevation: row.elevation,
     params: row.params,
     version: row.version,
     createdAt: row.createdAt.toISOString(),
@@ -238,11 +262,29 @@ export function placementStore(db: Db, options: { retentionDays: number }) {
       const type = furnitureType(input.typeId);
       const level = levelOf(m, input.levelId);
       const params = validOverrides(type, input.params);
+      const mounting = input.mounting ?? mountingsFor(type)[0]!;
+      const elevation = input.elevation ?? defaultElevation(type, mounting);
+      checkMounting(type, mounting, elevation);
+      const values = effectiveParams(type, params).values;
+      const high = heightFitIssues(
+        m,
+        type,
+        values,
+        { ...input.position, levelId: level.id },
+        mounting,
+        elevation,
+      );
+      if (high.length > 0) throw tooHigh(high);
       const row = await db.transaction((tx) =>
-        store.insert(tx, homeId, m, { ...input, typeId: type.id, params }, actor, 'create', {
-          typeName: type.name,
-          levelName: level.name,
-        }),
+        store.insert(
+          tx,
+          homeId,
+          m,
+          { ...input, typeId: type.id, params, mounting, elevation },
+          actor,
+          'create',
+          { typeName: type.name, levelName: level.name },
+        ),
       );
       return toPlacement(row);
     },
@@ -280,6 +322,8 @@ export function placementStore(db: Db, options: { retentionDays: number }) {
           x: input.position.x,
           z: input.position.z,
           rotationY: input.rotationY,
+          mounting: input.mounting ?? 'floor',
+          elevation: input.elevation ?? 0,
           params: input.params,
         })
         .returning();
@@ -325,6 +369,38 @@ export function placementStore(db: Db, options: { retentionDays: number }) {
           : m.rooms.find((r) => r.id === current.roomId);
         const roomId = moved ? (room?.id ?? null) : current.roomId;
         const rotationY = input.rotationY ?? current.rotationY;
+        const mounting = input.mounting ?? current.mounting;
+        const elevation = input.elevation ?? (mounting === 'ceiling' ? 0 : current.elevation);
+        const mounted = mounting !== current.mounting || elevation !== current.elevation;
+        if (type && mounted) checkMounting(type, mounting, elevation);
+
+        // Nor a change push a piece that fitted under the ceiling above it.
+        if (type && (mounted || moved || !sameJson(params, current.params))) {
+          const height = (
+            p: ParamValues,
+            at: typeof position,
+            lev: string,
+            mo: PlacementMounting,
+            el: number,
+          ) =>
+            heightFitIssues(
+              m,
+              type,
+              effectiveParams(type, p).values,
+              { ...at, levelId: lev },
+              mo,
+              el,
+            );
+          const fitted = height(
+            current.params,
+            { x: current.x, z: current.z },
+            current.levelId,
+            current.mounting,
+            current.elevation,
+          );
+          const issues = height(params, position, levelId, mounting, elevation);
+          if (fitted.length === 0 && issues.length > 0) throw tooHigh(issues);
+        }
 
         // A size change must not push a footprint that fitted its room out of it.
         if (type && room && !sameJson(params, current.params)) {
@@ -350,6 +426,8 @@ export function placementStore(db: Db, options: { retentionDays: number }) {
           x: position.x,
           z: position.z,
           rotationY,
+          mounting,
+          elevation,
           params,
         };
         const before = placementState(current);
@@ -440,6 +518,8 @@ export function placementStore(db: Db, options: { retentionDays: number }) {
           x: state.position?.x ?? row.x,
           z: state.position?.z ?? row.z,
           rotationY: state.rotationY ?? row.rotationY,
+          mounting: state.mounting ?? row.mounting,
+          elevation: state.elevation ?? row.elevation,
           params: state.params,
           removedAt: state.removed ? (row.removedAt ?? new Date()) : null,
           version: row.version + 1,

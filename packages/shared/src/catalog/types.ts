@@ -63,13 +63,5 @@ export const isPlacedKind = (type: Pick<CatalogType, 'kind'>): boolean =>
 export const mountingOf = (type: Pick<CatalogType, 'mounting'>): Mounting =>
   type.mounting ?? 'floor';
 
-/**
- * Whether today's editor and Place can put the piece in a room: a placed kind standing on the
- * floor itself. Wall and ceiling mounting (and an elevation, the microwave on the worktop) come
- * with #63; until then those types are shown on their piece page only.
- */
-export const standsOnFloor = (type: CatalogType): boolean =>
-  isPlacedKind(type) && mountingOf(type) === 'floor' && !type.elevation;
-
 /** Identity helper that type-checks a definition; `catalog` validates it at import. */
 export const defineType = (type: CatalogType): CatalogType => type;

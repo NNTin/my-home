@@ -121,6 +121,23 @@ describe('walking through the souterrain apartment', () => {
     const upstairs = buildWalkWorld(home, scene, [{ ...table, levelId: 'ground-floor' }]);
     expect(go(stand(10, -6), [[5, -6]], upstairs).x).toBeCloseTo(5, 1);
   });
+
+  it('walks under something raised above its head, not through a raised piece at body height', () => {
+    const shelf: FurnitureBlocker = {
+      levelId: 'souterrain',
+      polygon: [
+        [7.5, -7.2],
+        [8.5, -7.2],
+        [8.5, -6],
+        [7.5, -6],
+      ],
+      height: 0.3,
+      bottom: 1.8,
+    };
+    expect(go(stand(10, -6), [[5, -6]], buildWalkWorld(home, scene, [shelf])).x).toBeCloseTo(5, 1);
+    const chest = buildWalkWorld(home, scene, [{ ...shelf, bottom: 0.9 }]);
+    expect(go(stand(10, -6), [[5, -6]], chest).x).toBeCloseTo(8.5 + FIGURE_RADIUS, 2);
+  });
 });
 
 describe('the stair between the souterrain and the ground floor', () => {

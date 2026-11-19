@@ -33,11 +33,11 @@ stable id from git (an opening, roof window, outbuilding opening or gate); the i
 ## Tables
 
 All in the schema `userdata`, created by `apps/api/userdata-migrations/0000_create_userdata.sql`,
-`0001_create_notes.sql`, `0002_home_settings.sql` and `0003_imports.sql`:
+`0001_create_notes.sql`, `0002_home_settings.sql`, `0003_imports.sql` and `0004_placement_mounting.sql`:
 
 | Table               | Key                 | Holds                                                                                                                               |
 | ------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `placements`        | `(home_id, id)`     | type, name, level, room, position (`x`, `z`), `rotation_y`, `params`, `version`, `removed_at`                                       |
+| `placements`        | `(home_id, id)`     | type, name, level, room, position (`x`, `z`), `rotation_y`, `mounting`, `elevation`, `params`, `version`, `removed_at`              |
 | `opening_overrides` | `(home_id, use_id)` | the type the override was written for, `params`, `version`                                                                          |
 | `history`           | `id` (uuid), `seq`  | use, kind (`placement`/`opening`/`home`), action, actor, actor source and name, `before`, `after`, `undoes_id`                      |
 | `issued_ids`        | `(home_id, id)`     | every placement id handed out                                                                                                       |
@@ -121,7 +121,10 @@ nothing (the same params, name or position again) writes nothing: no new version
 
 - **Placements**: the type must be a furniture or fixture type (kinds `furniture` and `fixtures`: lights,
   the radiator) and the level must exist; params are validated with the
-  type's limits (400 with path-based issues). The server derives the room from the position (`roomAt`) and
+  type's limits (400 with path-based issues). `mounting` and `elevation` default to the type's; a mounting the
+  type does not allow, or an elevation under the ceiling, is a 400, and a piece reaching above the ceiling over it
+  a 422 ([furniture.md](furniture.md#mounting-walls-and-ceilings)). Rows written by an older api have `floor`
+  and 0 (the columns' defaults). The server derives the room from the position (`roomAt`) and
   assigns the id and the name. A size change that pushes a footprint that fitted its room out of it is a 422;
   pieces already reaching outside are not rejected.
 - **Opening overrides**: the use must be in the current model (404). Params are validated against the use's
@@ -156,8 +159,9 @@ removal restores it. An entry can be undone once: a unique index on `undoes_id` 
 - the opening's type changed in git since the override was written (`type changed from window.casement`), and
   overrides that do not fit the new type are listed as `ignored: …` (writing the override again adopts the new
   type);
-- a placement's type, level or room is gone;
-- the effective values do not fit (sashes for the hole, a footprint for its room).
+- a placement's type, level or room is gone, a wall piece's wall is gone or moved ("hangs on no wall"), or a
+  ceiling piece is outside every room;
+- the effective values do not fit (sashes for the hole, a footprint for its room, a piece under its ceiling).
 
 ## Home settings
 

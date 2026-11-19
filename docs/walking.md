@@ -179,8 +179,10 @@ the real home:
   highest surface within one step (0.4 m) of its feet. That makes stairs, outdoor steps and gentle slopes work;
   a higher drop, a void (the stairwell seen from above) or a slope steeper than about 31° stops it. Under a stair
   flight it needs headroom.
-- **Blockers stop it**: walls, fences, outbuilding walls and the home's furniture, wherever they
-  overlap its body in height. **Doorways are open** (`door` and `french-door` openings; windows and garage doors
+- **Blockers stop it**: walls, fences, outbuilding walls and the home's furniture standing on the floor,
+  wherever they overlap its body in height (a raised piece from its elevation up: the microwave on the worktop).
+  Pieces on a wall or under the ceiling (wall cabinets, shelves, the radiator, lights) never block it: it walks
+  under them. **Doorways are open** (`door` and `french-door` openings; windows and garage doors
   are not), a boundary without a wall (kitchen to corridor) needs nothing, and a fence of kind `gate` is open.
 - It slides along what it touches instead of sticking.
 

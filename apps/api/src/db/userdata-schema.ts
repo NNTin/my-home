@@ -1,4 +1,4 @@
-import type { Bearing, ParamValues, UseState } from '@my-home/shared';
+import type { Bearing, ParamValues, PlacementMounting, UseState } from '@my-home/shared';
 import {
   bigint,
   doublePrecision,
@@ -41,6 +41,10 @@ export const placements = userdata.table(
     x: doublePrecision('x').notNull(),
     z: doublePrecision('z').notNull(),
     rotationY: doublePrecision('rotation_y').notNull(),
+    /** `floor`, `wall` or `ceiling` (validated by the api; no CHECK constraint). */
+    mounting: text('mounting').$type<PlacementMounting>().notNull().default('floor'),
+    /** Height of the bottom above the level's floor; 0 under a ceiling. */
+    elevation: doublePrecision('elevation').notNull().default(0),
     params: jsonb('params').$type<ParamValues>().notNull().default({}),
     version: integer('version').notNull().default(1),
     createdAt: timestamptz('created_at').notNull().defaultNow(),

@@ -26,6 +26,8 @@ export const testPlacement = (overrides: Partial<Placement> = {}): Placement => 
   roomId: 'souterrain-bedroom',
   position: { x: -3, z: 2.5 },
   rotationY: 0,
+  mounting: 'floor',
+  elevation: 0,
   params: {},
   version: 1,
   createdAt: '2026-01-01T00:00:00.000Z',

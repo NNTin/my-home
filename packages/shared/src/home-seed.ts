@@ -1,12 +1,19 @@
 import { z } from 'zod';
-import { basicOverridesSchema, catalog, isPlacedKind, ParamValues, TypeId } from './catalog';
+import {
+  basicOverridesSchema,
+  catalog,
+  isPlacedKind,
+  mountingIssue,
+  ParamValues,
+  TypeId,
+} from './catalog';
 import { openingFitIssues } from './catalog/fit';
 import { effectiveParams } from './catalog/effective';
 import { modelUses } from './catalog/uses';
 import { Id, type HomeModel } from './home-model';
 import { PlanPosition } from './layouts';
 import { Subject } from './subjects';
-import { Actor, MAX_NOTE_LENGTH } from './userdata';
+import { Actor, Elevation, MAX_NOTE_LENGTH, PlacementMounting } from './userdata';
 
 /**
  * A home's seed (`data/homes/<home>.seed.json`, docs/deployment.md § The seed comes from git): how
@@ -36,7 +43,11 @@ export const isSeedChange = (entry: { actor: string; actorName: string | null })
 
 const Timestamp = z.iso.datetime({ offset: true });
 
-/** An active placement: what the viewer draws. Its room follows from the position. */
+/**
+ * An active placement: what the viewer draws. Its room follows from the position. `mounting` and
+ * `elevation` (#63) are omitted on the floor at 0, so a seed from before them reads the same and
+ * the file only has them for pieces on a wall, under the ceiling or raised (the microwave).
+ */
 export const SeedPlacement = z.strictObject({
   id: Id,
   typeId: TypeId,
@@ -44,6 +55,8 @@ export const SeedPlacement = z.strictObject({
   levelId: Id,
   position: PlanPosition,
   rotationY: z.number(),
+  mounting: PlacementMounting.optional(),
+  elevation: Elevation.optional(),
   params: ParamValues,
 });
 export type SeedPlacement = z.infer<typeof SeedPlacement>;
@@ -100,6 +113,8 @@ export function canonicalSeed(seed: HomeSeed): HomeSeed {
         levelId: p.levelId,
         position: { x: p.position.x, z: p.position.z },
         rotationY: p.rotationY,
+        ...(p.mounting !== undefined && p.mounting !== 'floor' && { mounting: p.mounting }),
+        ...(p.elevation !== undefined && p.elevation !== 0 && { elevation: p.elevation }),
         params: sortedParams(p.params),
       }))
       .sort((a, b) => byKey(a.id, b.id)),
@@ -172,7 +187,8 @@ function modelIds(value: unknown, into = new Set<string>()): Set<string> {
 
 /**
  * Why a seed does not fit its home and the catalogue (empty when it does): every placement's type
- * is a furniture or fixture type, its params are valid basic params, its level exists and its id
+ * is a furniture or fixture type, its mounting one the type allows (`mountingsFor`), its params
+ * are valid basic params, its level exists and its id
  * is unique and not a home-model id; every override is of a use in the model, for the use's
  * current type, with valid params that fit the hole; every note's type is in the catalogue and
  * its use in the model or the seed's placements; ids are unique.
@@ -197,6 +213,8 @@ export function seedIssues(seed: HomeSeed, model: HomeModel): SeedIssue[] {
     if (!isPlacedKind(type)) {
       return add(`${at}.typeId`, `Type "${p.typeId}" is not a furniture or fixture type`);
     }
+    const mounted = mountingIssue(type, p.mounting ?? 'floor', p.elevation ?? 0);
+    if (mounted) add(`${at}.mounting`, mounted);
     const parsed = basicOverridesSchema(type).safeParse(p.params);
     if (!parsed.success) {
       for (const issue of parsed.error.issues) {

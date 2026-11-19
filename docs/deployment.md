@@ -91,8 +91,8 @@ used in the home: the furnished default. **Git is authoritative**, on staging an
 makes the environment's `userdata` match the deployed commit's seed. **An edit in the app or by an agent is a draft
 until it is exported into a pull request; a deploy overwrites unexported edits.**
 
-- **What is in it:** the active placements (id, type, name, level, position, rotation, basic params; the room
-  follows from the position), the opening overrides (window and door basic params, with the use's type) and the
+- **What is in it:** the active placements (id, type, name, level, position, rotation, mounting and elevation
+  when not on the floor at 0, basic params; the room follows from the position), the opening overrides (window and door basic params, with the use's type) and the
   notes on the home's uses and on types (id, subject, text, who and when). The schema is `HomeSeed` in
   `packages/shared/src/home-seed.ts`; the file is canonical (sorted by id, fixed key order, params by key), so a
   diff shows only what changed. CI checks it against the catalogue (every type exists and is placeable, params are

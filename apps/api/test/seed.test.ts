@@ -271,6 +271,23 @@ describe('the seed (data/homes/<home>.seed.json)', () => {
         agent,
       );
       expect(bed.statusCode, bed.body).toBe(201);
+      // On a wall and under the ceiling (#63): their mounting and elevation go through the seed.
+      for (const body of [
+        {
+          typeId: 'kitchen.wall-cabinet',
+          position: { x: 3, z: -3.675 },
+          elevation: 1.4,
+        },
+        { typeId: 'fixture.downlight', position: { x: 3, z: -2 } },
+      ]) {
+        const res = await inject(
+          'POST',
+          '/api/homes/mock-home/placements',
+          { levelId: 'souterrain', rotationY: 0, ...body },
+          agent,
+        );
+        expect(res.statusCode, res.body).toBe(201);
+      }
       await inject(
         'PUT',
         '/api/homes/mock-home/opening-overrides/souterrain-kitchen-window',
@@ -291,7 +308,11 @@ describe('the seed (data/homes/<home>.seed.json)', () => {
       const first = await exported('mock-home');
       const seed = HomeSeed.parse(JSON.parse(first));
       expect(first).toBe(formatSeed(seed));
-      expect(seed.placements).toHaveLength(1);
+      expect(seed.placements.map((p) => [p.typeId, p.mounting, p.elevation])).toEqual([
+        ['furniture.bed', undefined, undefined],
+        ['fixture.downlight', 'ceiling', undefined],
+        ['kitchen.wall-cabinet', 'wall', 1.4],
+      ]);
       expect(seed.openingOverrides).toEqual([
         {
           useId: 'souterrain-kitchen-window',
@@ -311,7 +332,17 @@ describe('the seed (data/homes/<home>.seed.json)', () => {
       expect(imported.statusCode, imported.body).toBe(200);
       expect(imported.headers.warning).toMatch(/next deploy/);
       const report = SeedSyncReport.parse(imported.json());
-      expect(report.homes[0]!.placements.created).toEqual([bed.json().id]);
+      expect(report.homes[0]!.placements.created).toEqual(seed.placements.map((p) => p.id));
+      const placed = (await inject('GET', '/api/homes/mock-home/placements')).json().items;
+      expect(
+        placed.map((p: { mounting: string; elevation: number }) => [p.mounting, p.elevation]),
+      ).toEqual(
+        expect.arrayContaining([
+          ['floor', 0],
+          ['wall', 1.4],
+          ['ceiling', 0],
+        ]),
+      );
       expect(report.typeNotes.created).toHaveLength(1);
       expect(await exported('mock-home')).toBe(first);
 
