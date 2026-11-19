@@ -327,7 +327,8 @@ describe('App', () => {
       expect(screen.queryByRole('application', { name: 'Movement pad' })).not.toBeInTheDocument();
       expect(sessionStorage.getItem(WALK_SESSION_KEY)).toBeNull();
       expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['/api/catalog/usage']);
-      expect(document.title).toBe('Catalogue · my-home');
+      // The title is set in an effect, which may run a moment after the lazy page is shown.
+      await waitFor(() => expect(document.title).toBe('Catalogue · my-home'));
     });
 
     it('shows a piece page with the name of its type', async () => {
@@ -337,7 +338,8 @@ describe('App', () => {
       expect(await screen.findByRole('heading', { level: 1, name: 'Bed' })).toBeInTheDocument();
       expect(screen.getByRole('link', { name: '← Catalogue' })).toHaveAttribute('href', '/catalog');
       expect(screen.getByTestId('inspector')).toBeInTheDocument();
-      expect(document.title).toBe('Bed · my-home');
+      // The title is set in an effect, which may run a moment after the lazy page is shown.
+      await waitFor(() => expect(document.title).toBe('Bed · my-home'));
     });
 
     it.each(['/nope', '/catalog/furniture/furniture.throne', '/catalog/openings/furniture.bed'])(

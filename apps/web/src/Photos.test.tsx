@@ -298,7 +298,9 @@ describe('photo gallery', () => {
 
     fireEvent.click(detail.getByLabelText('window'));
     await waitFor(() => expect(api.photos.get('hallway')!.tags).toEqual(['wall', 'window']));
-    fireEvent.click(await detail.findByLabelText('wall'));
+    // The chips show the photo as saved: toggle the next one only once they show this save.
+    await waitFor(() => expect(detail.getByLabelText('window')).toBeChecked());
+    fireEvent.click(detail.getByLabelText('wall'));
     await waitFor(() => expect(api.photos.get('hallway')!.tags).toEqual(['window']));
     fireEvent.change(detail.getByLabelText('New tag'), { target: { value: ' Radiator ' } });
     fireEvent.submit(detail.getByLabelText('New tag'));
