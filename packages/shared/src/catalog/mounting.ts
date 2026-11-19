@@ -1,4 +1,4 @@
-import { ceilingHeightAt, type HomeModel } from '../home-model';
+import { ceilingHeightAt, insideOutline, type HomeModel } from '../home-model';
 import { furnitureSize } from './fit';
 import { formatCm } from './format';
 import type { ParamValues } from './params';
@@ -155,4 +155,23 @@ export function mountIssues(
     return levelHasRooms && roomId === null ? ['no ceiling over it (outside every room)'] : [];
   }
   return [];
+}
+
+/**
+ * Why an outdoor piece may not stand where it is (undefined when it may): outdoor pieces stand on
+ * the ground outside, so never in a room of their level.
+ */
+export function outdoorRoomIssue(
+  model: Pick<HomeModel, 'rooms'>,
+  type: Pick<CatalogType, 'name' | 'kind'>,
+  levelId: string,
+  at: { x: number; z: number },
+): string | undefined {
+  if (!isOutdoorKind(type)) return undefined;
+  const room = model.rooms.find(
+    (r) => r.levelId === levelId && insideOutline(at.x, at.z, r.outline),
+  );
+  return room
+    ? `The ${type.name.toLowerCase()} is an outdoor piece: it stands outside the rooms, not in ${room.name}`
+    : undefined;
 }

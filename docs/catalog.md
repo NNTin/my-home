@@ -270,6 +270,7 @@ the ground outside ([furniture.md](furniture.md#outdoor-pieces)). Their piece pa
 | `garden.pergola`        | Patio        | lean-to, 320 × 260 cm, 245 cm at the facade, 215 at the posts; open | posts (2–4)                     |
 | `garden.table`          | Patio        | 140 × 80 × 74 cm, dark metal frame, glass top                       |                                 |
 | `garden.chair`          | Patio        | 58 × 62 × 105 cm, seat at 45 cm, mesh seat and back                 |                                 |
+| `garden.bench`          | Patio        | 120 × 55 × 85 cm, seat at 45 cm, weathered slats, leaning back      |                                 |
 | `garden.planter`        | Plants       | 38 cm across, pot 50 cm, plant 40 cm (zinc pot, lavender)           | shape (round, square)           |
 | `garden.shrub`          | Plants       | 90 cm across, 110 cm high                                           | flowers (none, roses)           |
 | `garden.grass`          | Plants       | 60 cm across, 120 cm high                                           |                                 |
