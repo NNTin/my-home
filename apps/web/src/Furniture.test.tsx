@@ -95,6 +95,42 @@ describe('furniture editor', () => {
     );
   });
 
+  it('hangs a wall cabinet on a wall and a downlight at the ceiling; sets the height, undoes it (#63)', async () => {
+    const api = fakeApi();
+    await renderApp();
+    showSouterrain();
+    fireEvent.change(panel().getByLabelText('Room'), { target: { value: 'souterrain-kitchen' } });
+    place(/Wall cabinet/);
+    await waitSaved();
+    const [cabinet] = [...api.placements.values()];
+    expect(cabinet).toMatchObject({
+      typeId: 'kitchen.wall-cabinet',
+      mounting: 'wall',
+      elevation: 1.33,
+    });
+    const height = panel().getByLabelText('Height above the floor in cm');
+    expect(height).toHaveValue(133);
+    expect(panel().getByLabelText('Mounting')).toHaveValue('wall');
+
+    fireEvent.change(height, { target: { value: '150' } });
+    fireEvent.keyDown(height, { key: 'Enter' });
+    await waitSaved();
+    expect(api.placements.get(cabinet!.id)).toMatchObject({ elevation: 1.5 });
+    key('z', { ctrlKey: true });
+    await waitSaved();
+    expect(api.placements.get(cabinet!.id)).toMatchObject({ elevation: 1.33 });
+
+    fireEvent.click(panel().getByRole('button', { name: /Downlight/ }));
+    await waitSaved();
+    const light = [...api.placements.values()].find((p) => p.typeId === 'fixture.downlight')!;
+    expect(light).toMatchObject({ mounting: 'ceiling', elevation: 0 });
+    expect(panel().queryByLabelText('Height above the floor in cm')).toBeNull();
+    expect(panel().getByText('Hangs at the ceiling, 250 cm above the floor.')).toBeInTheDocument();
+    // Drawn at their heights: the cabinet's bottom 1.33 m and the light 2.50 m above the floor.
+    const [c, l] = furniture();
+    expect(l!.position[1] - c!.position[1]).toBeCloseTo(2.5 - 1.33);
+  });
+
   it('saves each change per item: move, rotate, duplicate, delete, and their undo', async () => {
     const api = fakeApi();
     await renderApp();

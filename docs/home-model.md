@@ -198,7 +198,8 @@ A level's `height` is its structural clear height, floor to slab. A suspended ce
 (bulkhead) under it, is a `ceilings` entry: the area it covers and the height of its underside
 above the level's floor, below the level's `height`. Where entries overlap the lowest counts:
 `ceilingHeightAt(model, levelId, x, z)` (`packages/shared`) gives the ceiling at a plan point, the
-level's `height` where there is none (for ceiling-mounted fixtures, #63). The builder draws each as a
+level's `height` where there is none: where a ceiling-mounted fixture hangs
+([furniture.md](furniture.md#mounting-walls-and-ceilings)). The builder draws each as a
 solid from its underside up to the slab and shows it with the level above, so the cutaway still
 looks into the rooms from above while walk mode and "view from here" see it. Walls, openings and
 the walk world ignore ceilings: a door must simply fit under the ceiling it stands below.

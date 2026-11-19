@@ -77,7 +77,7 @@ describe('the piece page', () => {
     expect(dimensions()).toEqual(['Diameter110.0 cm', 'Height75.0 cm']);
   });
 
-  it('shows a ceiling fixture from below, under a ceiling, without Place (#63)', async () => {
+  it('shows a ceiling fixture from below, under a ceiling, with Place (#63)', async () => {
     open('/catalog/fixtures/fixture.downlight?home=mock-home');
     await screen.findByRole('heading', { level: 1, name: /Downlight/ });
     expect(screen.getByText('Fixtures · Lighting')).toBeInTheDocument();
@@ -87,9 +87,9 @@ describe('the piece page', () => {
     expect(inspector!.context).toHaveLength(1);
     expect(inspector!.context![0]!.center[1]).toBeGreaterThan(0);
     expect(dimensions()).toEqual(['Diameter8.5 cm', 'Housing depth7.0 cm']);
-    // Its uses are loaded like furniture's (placements), but it is not placed from here yet.
+    // Its uses are loaded like furniture's (placements), and it is placed from here too.
     await screen.findByText(/uses? in this environment/);
-    expect(screen.queryByRole('button', { name: 'Place…' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Place…' })).toBeInTheDocument();
   });
 
   it('hangs a wall piece on a wall stub, its floor at its elevation', async () => {
@@ -108,14 +108,14 @@ describe('the piece page', () => {
     expect(screen.queryByRole('button', { name: 'Section' })).not.toBeInTheDocument();
   });
 
-  it('stands the microwave on a worktop, and offers Place for floor pieces only', async () => {
+  it('stands the microwave on a worktop, and offers Place for it and floor pieces', async () => {
     open('/catalog/furniture/appliance.microwave');
     await screen.findByRole('heading', { level: 1, name: /Microwave/ });
     expect(screen.getByText('Furniture · Appliance · Kitchen')).toBeInTheDocument();
     expect(inspector!.ground).toBeCloseTo(-0.9);
     expect(inspector!.context).toHaveLength(1);
     await screen.findByText(/uses? in this environment/);
-    expect(screen.queryByRole('button', { name: 'Place…' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Place…' })).toBeInTheDocument();
     cleanup();
     open('/catalog/furniture/kitchen.base-cabinet');
     await screen.findByRole('heading', { level: 1, name: /Base cabinet run/ });

@@ -8,9 +8,10 @@
 #   types                               the catalogue types with their parameters
 #   list [--type TYPEID] [--status ok|needs-attention] [--include removed]
 #                                       where-used: git uses, placements and orphans (+ placements in the trash)
-#   place --type TYPEID --level ID --at X,Z [--rotation-deg D] [--param k=v]... [--name TEXT]
+#   place --type TYPEID --level ID --at X,Z [--rotation-deg D] [--mount M] [--elevation-cm CM] [--param k=v]...
+#         [--name TEXT]
 #   set <useId> [--param k=v]... [--clear k]...      placement params, or an opening's override
-#   move <placementId> --at X,Z [--rotation-deg D]
+#   move <placementId> [--at X,Z] [--rotation-deg D] [--mount M] [--elevation-cm CM]   (at least one of them)
 #   rename <placementId> TEXT
 #   remove|restore <placementId>        to the trash (purged after 30 days) and back
 #   history <useId>                     newest first
@@ -21,6 +22,8 @@
 #   note-delete <noteId>                deletes a note (soft); notes only, never photos
 #
 # --home ID (default: the first home; options may come before or after the command). --rotation-deg is rotationY in degrees (counter-clockwise from above).
+# --mount floor|wall|ceiling and --elevation-cm (the bottom's height above the floor; none under a ceiling) default to
+# the type's on place (docs/furniture.md § Mounting). A wall piece's back must touch a wall: place it flush yourself.
 # Reads (whoami, types, list, history, notes) are always fine. A write (place, set, move, rename, remove, restore, undo,
 # note-*) changes the owner's real data on a deployed environment, so it needs --allow-write: only for a change the
 # owner asked for, never for a test (there is no test home; API write tests run in CI against a throwaway database).
@@ -30,7 +33,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/photos-lib.sh"
 
 usage() {
-  sed -n '2,28s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,30s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 
@@ -40,7 +43,7 @@ shift
 resolve_env "$env"
 require_tools curl jq
 
-allow_write='' home='' query='' at='' rotation='' name='' include='' type='' level=''
+allow_write='' home='' query='' at='' rotation='' name='' include='' type='' level='' mount='' elevation=''
 args=() params=() clears=()
 add_query() { query+="${query:+&}$1=$(uri "$2")"; }
 while [[ $# -gt 0 ]]; do
@@ -53,6 +56,8 @@ while [[ $# -gt 0 ]]; do
     --level) level=${2:?} && shift 2 ;;
     --at) at=${2:?} && shift 2 ;;
     --rotation-deg) rotation=${2:?} && shift 2 ;;
+    --mount) mount=${2:?} && shift 2 ;;
+    --elevation-cm) elevation=${2:?} && shift 2 ;;
     --param) params+=("${2:?}") && shift 2 ;;
     --clear) clears+=("${2:?}") && shift 2 ;;
     --name) name=${2:?} && shift 2 ;;
@@ -66,6 +71,14 @@ done
 command=${args[0]}
 args=("${args[@]:1}")
 [[ -z $include || $include == removed ]] || die "--include takes only 'removed'"
+[[ -z $mount || $mount =~ ^(floor|wall|ceiling)$ ]] || die "--mount takes floor, wall or ceiling"
+[[ -z $elevation || $elevation =~ ^[0-9]+([.][0-9]+)?$ ]] || die "--elevation-cm takes centimetres, e.g. 133"
+
+# mounting_json: the --mount and --elevation-cm fields of a placement body (elevation in metres).
+mounting_json() {
+  jq -nc --arg m "$mount" --arg e "$elevation" \
+    '(if $m == "" then {} else {mounting: $m} end) + (if $e == "" then {} else {elevation: ($e | tonumber / 100)} end)'
+}
 
 # uapi <path> [curl args...]: an api request that declares the agent (the SSO identity wins where present).
 uapi() {
@@ -137,8 +150,9 @@ case "$command" in
     [[ -n $type && -n $level ]] || die "place needs --type and --level"
     body=$(jq -nc --arg typeId "$type" --arg levelId "$level" --argjson position "$(position_json "$at")" \
       --argjson rotationY "$(radians "${rotation:-0}")" --argjson params "$(params_json)" --arg name "$name" \
-      '{typeId: $typeId, levelId: $levelId, position: $position, rotationY: $rotationY, params: $params}
-        + (if $name == "" then {} else {name: $name} end)')
+      --argjson mounting "$(mounting_json)" \
+      '{typeId: $typeId, levelId: $levelId, position: $position, rotationY: $rotationY} + $mounting
+        + {params: $params} + (if $name == "" then {} else {name: $name} end)')
     uapi "$(base)/placements" -X POST --json "$body" | jq .
     ;;
   set)
@@ -159,12 +173,14 @@ case "$command" in
     fi
     ;;
   move)
-    [[ ${#args[@]} -eq 1 && -n $at ]] || usage
+    [[ ${#args[@]} -eq 1 && -n $at$rotation$mount$elevation ]] || usage
     current=$(placement "${args[0]}")
-    rad=null
+    rad=null position=null
     [[ -z $rotation ]] || rad=$(radians "$rotation")
-    body=$(jq -c --argjson position "$(position_json "$at")" --argjson rad "$rad" \
-      '{version, position: $position} + (if $rad == null then {} else {rotationY: $rad} end)' <<<"$current")
+    [[ -z $at ]] || position=$(position_json "$at")
+    body=$(jq -c --argjson position "$position" --argjson rad "$rad" --argjson mounting "$(mounting_json)" \
+      '{version} + (if $position == null then {} else {position: $position} end)
+        + (if $rad == null then {} else {rotationY: $rad} end) + $mounting' <<<"$current")
     uapi "$(base)/placements/${args[0]}" -X PATCH --json "$body" | jq .
     ;;
   rename)

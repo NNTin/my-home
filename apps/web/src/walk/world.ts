@@ -120,6 +120,8 @@ export interface FurnitureBlocker {
   /** Convex footprint on the plan. */
   polygon: Vec2[];
   height: number;
+  /** Height of its bottom above the floor (0 when omitted): a microwave on the worktop. */
+  bottom?: number;
 }
 
 export function buildWalkWorld(
@@ -233,11 +235,8 @@ export function buildWalkWorld(
   for (const item of furniture) {
     const level = levels.get(item.levelId);
     if (!level) continue;
-    blockers.push({
-      polygon: item.polygon,
-      bottom: level.elevation,
-      top: level.elevation + item.height,
-    });
+    const bottom = level.elevation + (item.bottom ?? 0);
+    blockers.push({ polygon: item.polygon, bottom, top: bottom + item.height });
   }
 
   return { surfaces, blockers };

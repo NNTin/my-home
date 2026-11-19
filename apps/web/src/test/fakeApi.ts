@@ -1,5 +1,7 @@
 import {
   catalog,
+  defaultElevation,
+  mountingsFor,
   describeChanges,
   effectiveParams,
   modelUses,
@@ -107,6 +109,7 @@ export function fakeApi({
     const variant = type.id.split('.')[1]!;
     let k = 1;
     while (placements.has(`${levelId}-${variant}-${k}`)) k++;
+    const mounting = (body.mounting as Placement['mounting'] | undefined) ?? mountingsFor(type)[0]!;
     const at = now();
     return {
       id: `${levelId}-${variant}-${k}`,
@@ -117,6 +120,8 @@ export function fakeApi({
       roomId: room?.id ?? null,
       position,
       rotationY: (body.rotationY as number | undefined) ?? 0,
+      mounting,
+      elevation: (body.elevation as number | undefined) ?? defaultElevation(type, mounting),
       params: (body.params as Placement['params'] | undefined) ?? {},
       version: 1,
       createdAt: at,

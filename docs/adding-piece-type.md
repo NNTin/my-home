@@ -59,9 +59,9 @@ both: 'Both sides' })`: one of a fixed list, the first the default). Both are ba
   and the per-use editor give them a slider and a drop-down list.
 - **Mounting** (furniture and fixtures): `floor` (the default), `wall` (a wall cabinet, the shelf, the radiator)
   or `ceiling` (a downlight), and an optional `elevation`: the default height of the piece's bottom above the
-  floor (a wall cabinet 1.33, the microwave on the worktop 0.90). A ceiling piece has none. Wall and ceiling
-  mounting in the house is #63: until then the furniture panel and **Place** offer only floor-standing types
-  (`standsOnFloor`), and the others are shown on their piece page.
+  floor (a wall cabinet 1.33, the microwave on the worktop 0.90). A ceiling piece has none. A new placement
+  gets them (`mountingsFor`, `defaultElevation`); each placement then stores its own
+  ([furniture.md](furniture.md#mounting-walls-and-ceilings)).
 - Only the first six furniture types have a legacy id (`LEGACY_FURNITURE_TYPE_IDS`: the old named layouts
   stored `bed`; the one-time import maps it). New types need none.
 

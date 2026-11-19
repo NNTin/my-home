@@ -28,24 +28,22 @@ const check = (name, ok, detail = '') => {
 
 /**
  * The kitchen, corridor and fixture types (#62): each must be on /catalog (under its kind), and its
- * piece page must say how it is mounted. Wall and ceiling pieces have no Place before #63.
+ * piece page must say how it is mounted, and offer Place (on the floor, a wall or the ceiling).
  */
 const MOUNTED_TYPES = {
-  'kitchen.base-cabinet': { kind: 'furniture', mounting: /^Stands on the floor\.$/, place: true },
+  'kitchen.base-cabinet': { kind: 'furniture', mounting: /^Stands on the floor\.$/ },
   'kitchen.wall-cabinet': { kind: 'furniture', mounting: /^Hangs on a wall, its bottom 133\.0 cm/ },
   'kitchen.wall-shelf': { kind: 'furniture', mounting: /^Hangs on a wall, its bottom 152\.0 cm/ },
-  'kitchen.tall-cabinet': { kind: 'furniture', mounting: /^Stands on the floor\.$/, place: true },
+  'kitchen.tall-cabinet': { kind: 'furniture', mounting: /^Stands on the floor\.$/ },
   'appliance.fridge-freezer': {
     kind: 'furniture',
     mounting: /^Stands on the floor\.$/,
-    place: true,
   },
   'appliance.microwave': { kind: 'furniture', mounting: /^Stands on a worktop, 90\.0 cm/ },
-  'furniture.shoe-cabinet': { kind: 'furniture', mounting: /^Stands on the floor\.$/, place: true },
+  'furniture.shoe-cabinet': { kind: 'furniture', mounting: /^Stands on the floor\.$/ },
   'furniture.storage-shelf': {
     kind: 'furniture',
     mounting: /^Stands on the floor\.$/,
-    place: true,
   },
   'fixture.downlight': { kind: 'fixtures', mounting: /^Fixed to the ceiling\.$/ },
   'fixture.radiator': { kind: 'fixtures', mounting: /^Hangs on a wall, its bottom 10\.0 cm/ },
@@ -512,18 +510,14 @@ async function smoke(out, homeId) {
               kindLine.startsWith(mounted.kind === 'fixtures' ? 'Fixtures' : 'Furniture'),
             `${href}; ${kindLine}; ${text}`,
           );
-          // Place is shown once the where-used has loaded, for floor-standing types only.
+          // Place is shown once the where-used has loaded, for every placed type.
           await p
             .getByText(/uses? in this environment/)
             .first()
             .waitFor({ timeout: 20_000 })
             .catch(() => {});
           const place = await p.getByRole('button', { name: 'Place…' }).count();
-          check(
-            `${label}: ${id} ${mounted.place ? 'offers' : 'has no'} Place`,
-            place === (mounted.place ? 1 : 0),
-            `${place} Place buttons`,
-          );
+          check(`${label}: ${id} offers Place`, place === 1, `${place} Place buttons`);
           if (!device.hasTouch) {
             await p.waitForTimeout(500);
             await p.screenshot({ path: shot(id.replace('.', '-')) });

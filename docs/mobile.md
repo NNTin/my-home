@@ -59,8 +59,8 @@ Walking takes the whole screen: the top bar and the sheet are gone until **Exit*
   scrolls under these (`touch-action`), and **⟲ Reset view** at the foot of the view puts the camera back where
   it started, fitted to the view as it is now. It is hidden while looking from a photo ("View from here").
 - **Furniture**: tap an item to select it and drag it to move it. The rotate ring is wide enough for a finger.
-  The selected item's tools float next to it: rotate left and right, duplicate, delete, and **⋯** for the
-  furniture panel. A **long press** on an item (0.45 s without moving) opens that panel too.
+  The selected item's tools float next to it: rotate left and right, **▲ ▼** (raise or lower it by 5 cm; for a
+  piece on a wall or raised), duplicate, delete, and **⋯** for the furniture panel (its mounting and height in cm). A **long press** on an item (0.45 s without moving) opens that panel too.
 - **Photos**: camera markers have a tap target larger than the camera they show.
 - In the panels, on/off settings are switches and every control is at least 44 px high.
 

@@ -3,7 +3,14 @@ import { placementsApi, type PlacementsApi } from '../api';
 import type { EditorItem } from '../editor/item';
 import { fakeApi } from '../test/fakeApi';
 import { editorItem, testPlacement } from '../test/fixtures';
-import { pendingOps, PlacementSync, toEditorItem, type OpStore, type PendingOp } from './sync';
+import {
+  changedFields,
+  pendingOps,
+  PlacementSync,
+  toEditorItem,
+  type OpStore,
+  type PendingOp,
+} from './sync';
 
 const memoryOps = (): OpStore & { saved: PendingOp[] } => {
   const store = {
@@ -342,5 +349,22 @@ describe('PlacementSync', () => {
     const known = new Map([[bed.id, { item: a, version: 1, removed: false }]]);
     expect(pendingOps(known, new Map([[bed.id, b]]))).toEqual([]);
     expect(pendingOps(k, new Map())).toEqual([{ op: 'delete', id: bed.id, baseVersion: 4 }]);
+  });
+});
+
+describe('mounting and elevation (#63)', () => {
+  it('leaves the defaults out of the editor item and sends only what changed', () => {
+    expect(toEditorItem(testPlacement())).not.toHaveProperty('mounting');
+    const cabinet = toEditorItem(
+      testPlacement({ typeId: 'kitchen.wall-cabinet', mounting: 'wall', elevation: 1.33 }),
+    );
+    expect(cabinet).toMatchObject({ mounting: 'wall', elevation: 1.33 });
+    const light = toEditorItem(testPlacement({ typeId: 'fixture.downlight', mounting: 'ceiling' }));
+    expect(light).not.toHaveProperty('elevation');
+    expect(changedFields(cabinet, { ...cabinet, elevation: 1.5 })).toEqual({ elevation: 1.5 });
+    const floor: EditorItem = { ...cabinet };
+    delete floor.mounting;
+    delete floor.elevation;
+    expect(changedFields(cabinet, floor)).toEqual({ mounting: 'floor', elevation: 0 });
   });
 });

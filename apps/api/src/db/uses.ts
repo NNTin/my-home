@@ -2,7 +2,9 @@ import {
   catalog,
   effectiveParams,
   furnitureFitIssues,
+  heightFitIssues,
   HomeModel,
+  mountIssues,
   modelUses,
   openingFitIssues,
   type HistoryEntry,
@@ -115,7 +117,10 @@ function orphanOverride(homeId: string, o: OpeningOverrideRow): Use {
   });
 }
 
-/** A placement; problems when its type, level or room is gone, or it does not fit its room. */
+/**
+ * A placement; problems when its type, level or room is gone, its wall or ceiling is gone, or it
+ * does not fit its room or under its ceiling.
+ */
 function placementUse(model: HomeModel, p: PlacementRow): Use {
   const type = catalog.get(p.typeId);
   const level = model.levels.find((l) => l.id === p.levelId);
@@ -138,6 +143,11 @@ function placementUse(model: HomeModel, p: PlacementRow): Use {
         room,
       ),
     );
+  }
+  if (type && level) {
+    const at = { levelId: p.levelId, x: p.x, z: p.z, rotationY: p.rotationY };
+    problems.push(...mountIssues(model, effective.values, at, p.mounting, p.roomId));
+    problems.push(...heightFitIssues(model, type, effective.values, at, p.mounting, p.elevation));
   }
   return withStatus({
     id: p.id,

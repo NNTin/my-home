@@ -3,6 +3,7 @@ import {
   CatalogKind,
   formatCm,
   formatPercent,
+  MAX_ELEVATION,
   ParamValues,
   TypeId,
   type CatalogType,
@@ -21,6 +22,13 @@ import { Subject, SubjectQuery } from './subjects';
 
 const Timestamp = z.iso.datetime({ offset: true });
 const Name = z.string().trim().min(1).max(200);
+
+/** What a placement is fixed to (`catalog/mounting.ts`): the floor, a wall or the ceiling. */
+export const PlacementMounting = z.enum(['floor', 'wall', 'ceiling']);
+export type PlacementMounting = z.infer<typeof PlacementMounting>;
+
+/** The height of a placement's bottom above its level's floor, in metres (0 under a ceiling). */
+export const Elevation = z.number().min(0).max(MAX_ELEVATION);
 
 /** Who made a change: the owner (a browser session), an agent, or the system (release job, imports). */
 export const Actor = z.enum(['owner', 'agent', 'system']);
@@ -44,6 +52,9 @@ export const UseState = z.object({
   roomId: Id.nullable().optional(),
   position: PlanPosition.optional(),
   rotationY: z.number().optional(),
+  /** Placements; absent in entries written before #63 (= floor, 0). */
+  mounting: PlacementMounting.optional(),
+  elevation: z.number().optional(),
   removed: z.boolean().optional(),
   /** Home settings only: the declination overlay, `null` = the home model's value. */
   magneticDeclination: Bearing.nullable().optional(),
@@ -63,6 +74,9 @@ export const Placement = z.object({
   roomId: Id.nullable(),
   position: PlanPosition,
   rotationY: z.number(),
+  /** Absent from an api before #63: on the floor, at 0. */
+  mounting: PlacementMounting.default('floor'),
+  elevation: z.number().min(0).default(0),
   params: ParamValues,
   version: z.number().int().positive(),
   createdAt: Timestamp,
@@ -233,7 +247,8 @@ export type ListPlacementsResponse = z.infer<typeof ListPlacementsResponse>;
 
 /**
  * A new piece of furniture or a fixture. The server assigns `id` and, unless given, `name`; it derives `roomId`
- * from the position (a sent `roomId` is ignored). `params` are basic overrides of the type.
+ * from the position (a sent `roomId` is ignored). `params` are basic overrides of the type. `mounting` and
+ * `elevation` default to the type's (`mountingsFor`, `defaultElevation`).
  */
 export const CreatePlacementBody = z.strictObject({
   typeId: TypeId,
@@ -241,6 +256,8 @@ export const CreatePlacementBody = z.strictObject({
   roomId: Id.nullable().optional(),
   position: PlanPosition,
   rotationY: z.number().default(0),
+  mounting: PlacementMounting.optional(),
+  elevation: Elevation.optional(),
   params: z.record(z.string(), z.unknown()).default({}),
   name: Name.optional(),
 });
@@ -254,6 +271,8 @@ export const UpdatePlacementBody = z.strictObject({
   roomId: Id.nullable().optional(),
   position: PlanPosition.optional(),
   rotationY: z.number().optional(),
+  mounting: PlacementMounting.optional(),
+  elevation: Elevation.optional(),
   params: z.record(z.string(), z.unknown()).optional(),
 });
 export type UpdatePlacementBody = z.infer<typeof UpdatePlacementBody>;
@@ -396,6 +415,20 @@ export function describeChanges(
     if (deg <= -180) deg += 360;
     const rounded = Math.round(deg);
     if (rounded !== 0) changes.push({ field: 'rotationY', text: `rotated ${rounded}°` });
+  }
+  if (after.mounting !== undefined && (before.mounting ?? 'floor') !== after.mounting) {
+    const text = { floor: 'on the floor', wall: 'on a wall', ceiling: 'under the ceiling' };
+    changes.push({
+      field: 'mounting',
+      text: `mounted ${text[before.mounting ?? 'floor']} → ${text[after.mounting]}`,
+    });
+  }
+  if (after.elevation !== undefined && (before.elevation ?? 0) !== after.elevation) {
+    const delta = after.elevation - (before.elevation ?? 0);
+    changes.push({
+      field: 'elevation',
+      text: `${delta > 0 ? 'raised' : 'lowered'} to ${formatCm(after.elevation)} above the floor`,
+    });
   }
   const keys = [...new Set([...Object.keys(before.params), ...Object.keys(after.params)])];
   const order = type ? Object.keys(type.params) : [];

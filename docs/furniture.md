@@ -22,6 +22,8 @@ The named layouts of earlier versions are gone from the viewer
   "roomId": "souterrain-bedroom",
   "position": { "x": -4.05, "z": 2.06 },
   "rotationY": 0,
+  "mounting": "floor",
+  "elevation": 0,
   "params": { "width": 1.8 },
   "version": 3,
   "createdAt": "2026-11-18T00:00:00.000Z",
@@ -33,6 +35,9 @@ The named layouts of earlier versions are gone from the viewer
 
 - `position` is the centre on the plan in metres (x east, z south, as in the [home model](home-model.md));
   `rotationY` is in radians, counter-clockwise seen from above.
+- `mounting` (`floor`, `wall` or `ceiling`) and `elevation` (the height of the bottom above the level's floor, in
+  metres) say how it hangs ([§ Mounting](#mounting-walls-and-ceilings)); an api from before them answers neither,
+  read as `floor` and 0.
 - `typeId` is a catalogue type ([adding a type](adding-piece-type.md)); `params` holds only its basic-parameter
   overrides (sizes, colour). Invalid or stale ones are ignored when drawing.
 - The server gives the id (`<apartment>-<type>-<n>`, never reused) and, unless one is sent, the name
@@ -99,11 +104,11 @@ $S/screenshot.sh staging --path '/?focus=souterrain-kitchen-window&hints=off'
 ## Editing
 
 The **Furniture** panel (the Furniture tab of the sheet [on a phone](mobile.md)) adds items to the highest
-level shown by the cutaway ("Add to …"), in the selected room. It offers the catalogue types that stand on the
-floor (furniture, kitchen units, the fridge); wall cabinets, the wall shelf, the microwave on the worktop and the
-fixtures (`fixtures` kind: downlights, the radiator) come with wall and ceiling mounting (#63). Placements of
-those types are still drawn and listed (on the floor for now). Click an item to select it, drag it on the floor to
-move it and drag the blue ring to rotate it (in the chosen step, or freely). Touch works the same way;
+level shown by the cutaway ("Add to …"), in the selected room. It offers every furniture and fixture type: on the
+floor (furniture, kitchen units, the fridge, the microwave at its worktop height), on a wall (wall cabinets, the
+wall shelf, the radiator) and under the ceiling (downlights), as [§ Mounting](#mounting-walls-and-ceilings)
+says. Click an item to select it, drag it to move it (a wall piece along its wall) and drag the blue ring to
+rotate it (in the chosen step, or freely). Touch works the same way;
 [on a phone](mobile.md#touch) the ring is wider, the selected item's tools (rotate, duplicate, delete, piece page)
 float next to it, and a long press on an item opens the panel.
 
@@ -126,8 +131,43 @@ float next to it, and a long press on an item opens the panel.
    in (the building footprint on levels without rooms); a move that would leave it slides along the
    boundary.
 
-Items whose footprint overlaps a wall or another item are highlighted in red. Window parapets
-count as walls; doorways do not.
+Items whose footprint overlaps a wall or another item **at the same height** are highlighted in red: a wall
+cabinet above a base cabinet is fine, one lowered into it is not. Window parapets count as walls for what
+stands on the floor; doorways do not. A raised piece bumps into the wall pieces that reach into its lowest
+40 cm (the lintel over a window, not the window).
+
+## Mounting: walls and ceilings
+
+A placement is fixed to the **floor**, a **wall** or the **ceiling** (`mounting`), at an `elevation`: the height of
+its bottom above the level's floor. A new one gets its type's (`mountingsFor`, `defaultElevation` in
+`packages/shared/src/catalog/mounting.ts`): a wall cabinet hangs on a wall at 1.33 m, the microwave stands on
+the floor at 0.90 m (on the worktop), a downlight hangs under the ceiling. A ceiling piece only hangs under a
+ceiling; every other piece may stand on the floor or hang on a wall.
+
+- **On a wall**: its back (local -z) is against a wall's face. The editor hangs it on the nearest wall within
+  1 m, turned to it (and pulled into a corner within 25 cm), whether or not "Snap to walls" is on; a drag
+  slides it along its wall and moves it to another wall only when that one is clearly nearer; it never leaves a
+  wall. A duplicate goes next to it on the same wall. Switching a piece to **On a wall** hangs it on the
+  nearest wall, or, with none within 1 m, at the first free spot on a wall of its room (else nothing changes).
+- **Under the ceiling**: it hangs at the ceiling over its position: the level's clear height, or a lowered
+  ceiling or a box where the home model has one (`ceilingHeightAt`, [home-model.md](home-model.md)): 2.15 m
+  under the corridor's suspended ceiling, 2.00 m under the box. It has no elevation of its own (always 0).
+- **Height**: the selected item's **Mounting** (floor or wall) and **Height above the floor** in cm are in the
+  panel (Enter or leaving the field saves; one undo step); on a phone the toolbar's **▲ ▼** move it 5 cm. A
+  piece must not reach above the ceiling over it: the editor raises it at most until its top meets the ceiling,
+  a drag stops before a lower ceiling, and the api refuses a create or a change that would (422, unless it
+  already did).
+- **Walking**: pieces on a wall or under the ceiling never block the figure ([walking.md](walking.md)).
+- **Needs attention** (panel and where-used): a wall piece whose back no longer touches a wall ("hangs on no
+  wall (its wall is gone or moved)", e.g. after a git change of the floor plan), a ceiling piece outside every
+  room ("no ceiling over it"), a piece reaching above the ceiling. Nothing is moved by itself.
+- **API and seed**: `POST`/`PATCH /placements` take `mounting` and `elevation` (0 to 10 m); a mounting the type
+  does not allow or an elevation under the ceiling is a 400. The api does **not** check that a wall piece's back
+  touches a wall (agents place it flush themselves, `uses.sh`); one that does not is saved and listed under
+  needs attention ("hangs on no wall"). Both are in the history ("raised to 145.0 cm above
+  the floor", "mounted on a wall → on the floor") and are undone like the position. The seed has them only when
+  not on the floor at 0 ([deployment.md](deployment.md#the-seed-comes-from-git)). Agents: `uses.sh … place|move
+--mount M --elevation-cm CM`.
 
 The logic is plain TypeScript in [`apps/web/src/editor/`](../apps/web/src/editor/) (`item`, `geometry`,
 `floorPlan`, `placement`, `snapping`, `collision`, `history`, `editorState`, `operations`,

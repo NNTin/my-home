@@ -2,8 +2,10 @@ import {
   catalog,
   effectiveParams,
   magneticDeclinationOf,
+  mountingsFor,
   northBearingOf,
   type HomeModel,
+  type PlacementMounting,
   type HomeSummary,
   type PhotoPose,
   type PhotoRequest,
@@ -27,7 +29,7 @@ import {
   type Visibility,
 } from './builder/visibility';
 import { canRedo, canUndo } from './editor/editorState';
-import type { EditorItem } from './editor/item';
+import { elevationOfItem, mountingOfItem, type EditorItem } from './editor/item';
 import {
   collisions,
   createContext,
@@ -36,10 +38,13 @@ import {
   duplicateItem,
   hasIssues,
   issuesOf,
+  mountHeightOf,
   moveItem,
   positionOf,
   relocateItem,
   rotateItem,
+  setElevation,
+  setMounting,
   setRotation,
   typeOf,
   worldFootprint,
@@ -251,15 +256,17 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
 
   const { items } = editor;
 
-  // The figure: blocked by walls, fences and the furniture.
+  // The figure: blocked by walls, fences and the furniture standing on the floor. Pieces on a
+  // wall or under the ceiling (wall cabinets, lights) never block it: it walks under them.
   const world = useMemo(() => {
     const blockers = items.flatMap((item): FurnitureBlocker[] => {
-      return ctx.plans.has(item.levelId)
+      return ctx.plans.has(item.levelId) && mountingOfItem(item) === 'floor'
         ? [
             {
               levelId: item.levelId,
               polygon: worldFootprint(ctx, item),
               height: (typeOf(ctx, item)?.size ?? UNKNOWN_SIZE).height,
+              bottom: elevationOfItem(item),
             },
           ]
         : [];
@@ -411,7 +418,11 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
       return [
         {
           id: item.id,
-          position: [item.position.x, p.elevation, item.position.z] as Vec3,
+          position: [
+            item.position.x,
+            p.elevation + mountHeightOf(ctx, item),
+            item.position.z,
+          ] as Vec3,
           rotationY: item.rotationY,
           size: type?.size ?? UNKNOWN_SIZE,
           parts: type?.parts ?? unknownParts(),
@@ -520,6 +531,23 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
         null,
       );
     },
+    /** Height of the selected item's bottom above the floor, in metres. */
+    elevate(elevation: number) {
+      if (!selectedItem) return;
+      const raised = setElevation(ctx, selectedItem, elevation);
+      edit(
+        'Height',
+        items.map((i) => (i.id === raised.id ? raised : i)),
+      );
+    },
+    mount(mounting: PlacementMounting) {
+      if (!selectedItem) return;
+      const mounted = setMounting(ctx, items, selectedItem, mounting);
+      edit(
+        'Mounting',
+        items.map((i) => (i.id === mounted.id ? mounted : i)),
+      );
+    },
     relocate(id: string) {
       const item = items.find((i) => i.id === id);
       if (!item || !level) return;
@@ -614,6 +642,13 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
       const room = p?.rooms.find((r) => r.id === selectedItem.roomId);
       return room ? `in ${room.name}` : p ? `on ${p.levelName}` : '';
     })(),
+    mounting: mountingOfItem(selectedItem),
+    mountings: (() => {
+      const type = typeOf(ctx, selectedItem)?.type;
+      return type ? mountingsFor(type) : [mountingOfItem(selectedItem)];
+    })(),
+    elevation: elevationOfItem(selectedItem),
+    hangsAt: mountHeightOf(ctx, selectedItem),
     problems: [
       ...(found.get(selectedItem.id)?.wallIds.length ? ['Overlaps a wall'] : []),
       ...(found.get(selectedItem.id)?.itemIds.length
@@ -652,6 +687,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
           ...(issues.missingRoom && !issues.missingLevel
             ? [`room "${item.roomId}" is not in the home model`]
             : []),
+          ...(issues.offWall ? ['hangs on no wall (its wall is gone or moved)'] : []),
+          ...(issues.aboveCeiling ? ['reaches above the ceiling'] : []),
           ...(ignored.length > 0 ? [`ignored: ${ignored.join(', ')}`] : []),
         ],
         canRelocate: issues.missingLevel,
@@ -719,6 +756,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
       onRotate={commands.rotate}
       onDuplicate={commands.duplicate}
       onDelete={commands.remove}
+      onElevation={commands.elevate}
+      onMounting={commands.mount}
       settings={settings}
       onSettings={setSettings}
       flagged={flagged}
@@ -739,6 +778,10 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
           name: nameOf(selectedItem),
           href: piecePageHref(selectedItem.typeId, model.id, selectedItem.id),
           onRotate: commands.rotate,
+          // ▲ ▼ for pieces on a wall or raised (the microwave), so a bed's toolbar stays narrow.
+          ...((mountingOfItem(selectedItem) === 'wall' || elevationOfItem(selectedItem) > 0) && {
+            onRaise: (cm: number) => commands.elevate(elevationOfItem(selectedItem) + cm / 100),
+          }),
           onDuplicate: commands.duplicate,
           onDelete: commands.remove,
           onMore: showFurniture,

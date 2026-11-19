@@ -3,7 +3,6 @@ import {
   effectiveParams,
   isPlacedKind,
   openingFitIssues,
-  standsOnFloor,
   type CatalogType,
   type ParamValues,
   type TypeId,
@@ -318,7 +317,7 @@ function Piece({ type, layout }: { type: CatalogType; layout: ReturnType<typeof 
               onChange={setOverrides}
             />
             <DesignParams type={type} values={scene.values} />
-            {standsOnFloor(type) && state.status === 'ready' && (
+            {isPlacedKind(type) && state.status === 'ready' && (
               <Place type={type} homes={state.homes} params={overrides} defaultHomeId={home.home} />
             )}
             <Uses

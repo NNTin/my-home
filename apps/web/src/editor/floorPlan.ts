@@ -18,10 +18,21 @@ export interface PlanWall {
   end: Vec2;
   thickness: number;
   /**
-   * Rectangles of the wall that furniture bumps into: everything except the space above a
-   * window's sill or a door, so items can stand under windows and doorways stay passable.
+   * Rectangles of the wall that furniture on the floor bumps into: everything except the space
+   * above a window's sill or a door, so items can stand under windows and doorways stay passable.
    */
   solids: Vec2[][];
+  /**
+   * Every solid piece of the wall with its height above the floor, so raised items (a wall
+   * cabinet) bump into the pieces at their height (`findCollisions`). Absent: `solids` only.
+   */
+  spans?: WallSpan[];
+}
+
+export interface WallSpan {
+  polygon: Vec2[];
+  bottom: number;
+  top: number;
 }
 
 export interface FloorPlan {
@@ -37,8 +48,11 @@ export interface FloorPlan {
 
 const toVec2 = (p: Point): Vec2 => [p.x.value, p.z.value];
 
-/** Pieces of a wall that are lower than this count as solid; sills below are obstacles. */
-const FURNITURE_HEIGHT = 0.4;
+/**
+ * Pieces of a wall that reach into an item's lowest 40 cm count as solid for it: for an item
+ * on the floor, sills below that are obstacles, a window above it is not.
+ */
+export const FURNITURE_HEIGHT = 0.4;
 
 export function floorPlan(model: HomeModel, levelId: string): FloorPlan | undefined {
   const level = model.levels.find((l) => l.id === levelId);
@@ -64,15 +78,16 @@ export function floorPlan(model: HomeModel, levelId: string): FloorPlan | undefi
           height: o.height.value,
         })),
       );
-      const solids = spans
-        .filter((s) => s.bottom < FURNITURE_HEIGHT)
-        .map((s) =>
-          segmentRectangle(
-            add(start, scale(dir, s.from)),
-            add(start, scale(dir, s.to)),
-            w.thickness.value,
-          ),
-        );
+      const pieces = spans.map((s) => ({
+        polygon: segmentRectangle(
+          add(start, scale(dir, s.from)),
+          add(start, scale(dir, s.to)),
+          w.thickness.value,
+        ),
+        bottom: s.bottom,
+        top: s.top,
+      }));
+      const solids = pieces.filter((s) => s.bottom < FURNITURE_HEIGHT).map((s) => s.polygon);
       return {
         id: w.id,
         kind: w.kind,
@@ -81,6 +96,7 @@ export function floorPlan(model: HomeModel, levelId: string): FloorPlan | undefi
         end,
         thickness: w.thickness.value,
         solids,
+        spans: pieces,
       };
     });
 

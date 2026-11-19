@@ -7,3 +7,4 @@ export * from './ids';
 export * from './params';
 export * from './types';
 export * from './uses';
+export * from './mounting';

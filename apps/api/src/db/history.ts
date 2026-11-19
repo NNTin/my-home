@@ -72,6 +72,8 @@ const SCALAR_FIELDS = [
   'roomId',
   'position',
   'rotationY',
+  'mounting',
+  'elevation',
   'removed',
   'magneticDeclination',
 ] as const;
