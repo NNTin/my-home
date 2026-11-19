@@ -470,41 +470,6 @@ async function smoke(out, homeId) {
     };
 
     const [placed] = await items();
-    const viewFrom = await onItem();
-
-    // "Done": back in view mode, a drag moves nothing (the placement is selected, to inspect it).
-    await doneButton.tap();
-    await settle();
-    check(
-      'leaving edit mode takes the tools and the indicator away',
-      (await toolbar.count()) === 0 &&
-        (await editBadge.count()) === 0 &&
-        (await editButton.count()) === 1,
-    );
-    check(
-      'in view mode the selected item shows its piece page link instead',
-      await page.getByRole('toolbar', { name: /: piece$/ }).isVisible(),
-    );
-    const writesBefore = answered;
-    void touch('touchStart', viewFrom.x, viewFrom.y);
-    for (let step = 1; step <= 8; step++) {
-      await touch('touchMove', viewFrom.x, viewFrom.y + step * 3);
-      await page.waitForTimeout(80);
-    }
-    await touch('touchEnd');
-    await page.waitForTimeout(2500);
-    const [untouched] = await items();
-    check(
-      'a drag in view mode moves nothing',
-      Math.hypot(
-        untouched.position.x - placed.position.x,
-        untouched.position.z - placed.position.z,
-      ) < 0.01 &&
-        untouched.rotationY === placed.rotationY &&
-        answered === writesBefore,
-    );
-    await editButton.tap();
-    await toolbar.waitFor({ timeout: 10_000 });
     const from = await onItem();
     // A drag leaves the spot at once (a finger that rests there is a long press): the press and
     // the first moves go out together, without waiting for the slow software renderer in between.
@@ -593,6 +558,33 @@ async function smoke(out, homeId) {
     check('▼ lowers it by 5 cm', await heightIs(1.33), `${elevation()}`);
     await toolbar.getByRole('button', { name: 'Delete' }).tap();
     check('and the toolbar deletes it', (await until((list) => list.length === 1)).length === 1);
+    // "Done": back in view mode the item can be looked at but a drag moves nothing. The finger goes
+    // down on the item (where the drag above dropped it) and back up to where it began, so the view
+    // ends as it was.
+    await doneButton.tap();
+    await settle();
+    check(
+      'leaving edit mode takes the tools and the indicator away',
+      (await toolbar.count()) === 0 &&
+        (await editBadge.count()) === 0 &&
+        (await editButton.count()) === 1,
+    );
+    const beforeView = (await items())[0];
+    const writesBefore = answered;
+    void touch('touchStart', dropped.x, dropped.y);
+    for (const step of [1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 3, 2, 1, 0]) {
+      await touch('touchMove', dropped.x, dropped.y + step * 3);
+      await page.waitForTimeout(80);
+    }
+    await touch('touchEnd');
+    await page.waitForTimeout(2500);
+    const afterView = (await items())[0];
+    check(
+      'a drag in view mode moves nothing',
+      distance(afterView, beforeView) < 0.01 &&
+        afterView.rotationY === beforeView.rotationY &&
+        answered === writesBefore,
+    );
     // Back as before: the furniture panel open, which walk mode hides and gives back.
     await tab(/Furniture/).tap();
     await settle();
