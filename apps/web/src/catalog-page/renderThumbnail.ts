@@ -63,7 +63,8 @@ function partMesh(part: Part): Mesh {
       : new CylinderGeometry(sx / 2, sx / 2, sy, CYLINDER_SEGMENTS);
   const mesh = new Mesh(geometry, new MeshStandardMaterial({ color: part.color, ...settings }));
   mesh.position.set(...part.center);
-  mesh.rotation.set(0, part.rotationY, 0);
+  // The tilt about the part's own x first, then the turn about y (as PartsMesh).
+  mesh.rotation.set(part.rotationX ?? 0, part.rotationY, 0, 'YXZ');
   if (part.shape === 'cylinder') mesh.scale.set(1, 1, sz / sx);
   return mesh;
 }

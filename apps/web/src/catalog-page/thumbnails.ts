@@ -13,9 +13,14 @@ import { renderThumbnail } from './renderThumbnail';
 
 export const THUMBNAIL_CACHE = 'my-home-thumbnails';
 
-/** A short hash (FNV-1a, 32 bits, hex) of the parts as JSON. */
+/**
+ * A short hash (FNV-1a, 32 bits, hex) of the parts as JSON. Tilted parts (`rotationX`) hash with
+ * the renderer that first drew their tilt, so thumbnails rendered before it was drawn are not
+ * reused; every other key is unchanged.
+ */
 export function hashParts(parts: readonly Part[]): string {
-  const text = JSON.stringify(parts);
+  const tilted = parts.some((p) => p.rotationX !== undefined);
+  const text = JSON.stringify(tilted ? { renderer: 2, parts } : parts);
   let h = 0x811c9dc5;
   for (let i = 0; i < text.length; i++) {
     h ^= text.charCodeAt(i);
