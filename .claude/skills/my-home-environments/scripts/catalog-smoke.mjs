@@ -26,6 +26,31 @@ const check = (name, ok, detail = '') => {
   if (!ok) failures.push(name);
 };
 
+/**
+ * The kitchen, corridor and fixture types (#62): each must be on /catalog (under its kind), and its
+ * piece page must say how it is mounted. Wall and ceiling pieces have no Place before #63.
+ */
+const MOUNTED_TYPES = {
+  'kitchen.base-cabinet': { kind: 'furniture', mounting: /^Stands on the floor\.$/, place: true },
+  'kitchen.wall-cabinet': { kind: 'furniture', mounting: /^Hangs on a wall, its bottom 133\.0 cm/ },
+  'kitchen.wall-shelf': { kind: 'furniture', mounting: /^Hangs on a wall, its bottom 152\.0 cm/ },
+  'kitchen.tall-cabinet': { kind: 'furniture', mounting: /^Stands on the floor\.$/, place: true },
+  'appliance.fridge-freezer': {
+    kind: 'furniture',
+    mounting: /^Stands on the floor\.$/,
+    place: true,
+  },
+  'appliance.microwave': { kind: 'furniture', mounting: /^Stands on a worktop, 90\.0 cm/ },
+  'furniture.shoe-cabinet': { kind: 'furniture', mounting: /^Stands on the floor\.$/, place: true },
+  'furniture.storage-shelf': {
+    kind: 'furniture',
+    mounting: /^Stands on the floor\.$/,
+    place: true,
+  },
+  'fixture.downlight': { kind: 'fixtures', mounting: /^Fixed to the ceiling\.$/ },
+  'fixture.radiator': { kind: 'fixtures', mounting: /^Hangs on a wall, its bottom 10\.0 cm/ },
+};
+
 /** Smallest comfortable touch target, in CSS pixels. */
 const TOUCH = 44;
 const PIECE = '/catalog/furniture/furniture.bed';
@@ -188,6 +213,39 @@ async function smoke(out, homeId) {
       }
       const cards = page.locator('a[data-type-id]');
       const total = await cards.count();
+      // #62: the fixtures are a section of their own (a build before #62 has none: skipped).
+      const listed = new Set(
+        await cards.evaluateAll((links) => links.map((a) => a.dataset.typeId)),
+      );
+      const mountedListed = Object.keys(MOUNTED_TYPES).filter((id) => listed.has(id));
+      if (mountedListed.length === 0) {
+        console.log(`skip  ${label}: this build has no kitchen or fixture types (before #62)`);
+      } else {
+        check(
+          `${label}: every kitchen, corridor and fixture type is listed`,
+          mountedListed.length === Object.keys(MOUNTED_TYPES).length,
+          Object.keys(MOUNTED_TYPES)
+            .filter((id) => !listed.has(id))
+            .join(', ') || `${mountedListed.length} types`,
+        );
+        const fixtures = page.getByRole('region', { name: 'Fixtures' });
+        const groups = await fixtures
+          .getByRole('heading', { level: 3 })
+          .allTextContents()
+          .catch(() => []);
+        const fixtureCards = await fixtures
+          .locator('a[data-type-id]')
+          .evaluateAll((links) => links.map((a) => a.dataset.typeId))
+          .catch(() => []);
+        check(
+          `${label}: "Fixtures" is its own section, by category`,
+          (await page.getByRole('heading', { level: 2, name: 'Fixtures' }).isVisible()) &&
+            groups.join(',') === 'Heating,Lighting' &&
+            fixtureCards.every((id) => id.startsWith('fixture.')) &&
+            fixtureCards.length === 2,
+          `${groups.join(', ')}; ${fixtureCards.join(', ')}`,
+        );
+      }
       check(`${label}: cards are listed`, total >= 10, `${total}`);
       await page
         .waitForFunction(() => !document.body.textContent.includes('…'), null, { timeout: 20_000 })
@@ -435,6 +493,42 @@ async function smoke(out, homeId) {
             listed.every((t) => cm.test(t.trim())),
           `${canvas ? 'canvas' : 'no canvas'}; ${labels.join(', ')}`,
         );
+        const mounted = MOUNTED_TYPES[id];
+        if (mounted) {
+          const text =
+            (await p
+              .locator('.piece-mounting')
+              .textContent()
+              .catch(() => '')) ?? '';
+          const kindLine =
+            (await p
+              .locator('.piece-kind')
+              .textContent()
+              .catch(() => '')) ?? '';
+          check(
+            `${label}: ${id} is under /catalog/${mounted.kind}/ and says how it is mounted`,
+            href === `/catalog/${mounted.kind}/${id}` &&
+              mounted.mounting.test(text.trim()) &&
+              kindLine.startsWith(mounted.kind === 'fixtures' ? 'Fixtures' : 'Furniture'),
+            `${href}; ${kindLine}; ${text}`,
+          );
+          // Place is shown once the where-used has loaded, for floor-standing types only.
+          await p
+            .getByText(/uses? in this environment/)
+            .first()
+            .waitFor({ timeout: 20_000 })
+            .catch(() => {});
+          const place = await p.getByRole('button', { name: 'Place…' }).count();
+          check(
+            `${label}: ${id} ${mounted.place ? 'offers' : 'has no'} Place`,
+            place === (mounted.place ? 1 : 0),
+            `${place} Place buttons`,
+          );
+          if (!device.hasTouch) {
+            await p.waitForTimeout(500);
+            await p.screenshot({ path: shot(id.replace('.', '-')) });
+          }
+        }
         if (id.startsWith('window.') || id.startsWith('door.') || id.startsWith('gate.')) {
           if (!device.hasTouch && id === 'window.casement')
             await p.screenshot({ path: shot('window') });

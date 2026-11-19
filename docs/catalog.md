@@ -10,7 +10,7 @@ reached with the browser's back and forward buttons.
 | `/catalog/<kind>/<typeId>` | one piece type, e.g. `/catalog/furniture/furniture.bed` |
 | anything else              | "Page not found", with a link home                      |
 
-`<kind>` is a `CatalogKind` (`openings`, `furniture`) and `<typeId>` a known type of that kind
+`<kind>` is a `CatalogKind` (`openings`, `furniture`, `fixtures`) and `<typeId>` a known type of that kind
 (`packages/shared/src/catalog`); a type under the wrong kind is not found. The piece page is described
 [below](#the-piece-page), its uses [after it](#uses-on-the-piece-page).
 
@@ -36,8 +36,8 @@ All of these are real links (`<a href>`): a long press, open in a new tab and co
 
 - A header (sticky on scroll) with **← Home**, the title and a search field. The search matches the name,
   description, type id and furniture category, in any case, as you type.
-- A section per kind: "Windows & doors" (windows, doors and gates in catalogue order) and "Furniture" (by
-  category, then by name, as the furniture panel).
+- A section per kind: "Windows & doors" (windows, doors and gates in catalogue order), "Furniture" and
+  "Fixtures" (lights, the radiator), the last two by category, then by name, as the furniture panel.
 - Each card shows the thumbnail, name, short description and **N uses**, from `GET /api/catalog/usage`: the uses
   in this environment over all its homes. While they load the card says "…"; if the api fails, the counts are
   hidden with a short notice and the page still works.
@@ -51,13 +51,17 @@ All of these are real links (`<a href>`): a long press, open in a new tab and co
 own. The preview and the **playground save nothing**: they send no request but GETs, whatever is changed.
 What the page writes is in [its uses](#uses-on-the-piece-page), below the playground.
 
-- **Header**: **← Catalogue**, the name, the kind and family (and the furniture category); the description below.
+- **Header**: **← Catalogue**, the name, the kind and family (and the category); the description below, and for
+  furniture and fixtures how the piece is mounted ("Hangs on a wall, its bottom 133.0 cm above the floor by
+  default.").
 - **Layout**: on a desktop the preview on the left (about 60 %) and the panel on the right; on a phone held
   upright the preview on top (40 % of the height) and the panel below as one scrolling page; on a phone held
   across (844×390) side by side again, the preview as high as the screen allows. Controls are at least 44 px.
 - **3D inspector** (`Inspector.tsx`): an R3F canvas of `pieces.get(id).parts(values, ctx)` with the
   [preview context](#thumbnails). An opening stands in a short wall stub (`wallStub`: wall beside, over and
-  under the hole, down to the floor), furniture and gates on the ground. Orbit and zoom (with damping), framed
+  under the hole, down to the floor), gates on the ground, furniture and fixtures by their mounting: on the floor,
+  on a worktop block at their elevation (the microwave), on a wall stub behind them with the floor at their
+  elevation, or under a ceiling slab seen from below (with a light from below). Orbit and zoom (with damping), framed
   to fit whenever the parameters change (keeping the direction), **Reset view**, and frames drawn on demand
   only. Wall openings get their preview `sill` in `ctx` (`PieceContext.sill`).
 - **Dimensions**: the piece module's `dimensions(values, ctx)` as lines with end ticks and labels in cm with
@@ -88,7 +92,8 @@ What the page writes is in [its uses](#uses-on-the-piece-page), below the playgr
 Below the playground and the design parameters, the page acts on **this environment's** data (#45; APIs in
 [userdata.md](userdata.md) and [photos.md](photos.md)). Agents may use all of it; photos are never deleted here.
 
-- **Place** (furniture types): **Place…** opens a form, home → level → room (only levels with rooms; defaults:
+- **Place** (furniture and fixture types that stand on the floor; wall and ceiling pieces wait for #63):
+  **Place…** opens a form, home → level → room (only levels with rooms; defaults:
   the `?home=` home, its first level with rooms, that level's first room). It finds a free spot in the room with
   the editor's `createItem` against the home's current placements, `POST`s the placement with the playground's
   values as `params`, and opens `/?home=<id>&focus=<newId>&panel=furniture` to move and turn it in the viewer.
@@ -146,7 +151,8 @@ git. `apps/web/src/catalog-page/thumbnails.ts`:
   and shows the type's icon until it is ready, or for good where WebGL is missing.
 - **Cached.** Each image is kept in the Cache Storage API (cache `my-home-thumbnails`) under
   `thumb:<typeId>:<hash>` (stored as a request to `/__thumbnails/<key>`, never fetched), where `hash` is a short
-  hash (FNV-1a) of `JSON.stringify(parts)`. A design change gives new parts and so a new key: the old image is
+  hash (FNV-1a) of `JSON.stringify(parts)`. A ceiling piece is drawn turned over (`thumbnailParts`), so the camera
+  from above sees its room side. A design change gives new parts and so a new key: the old image is
   never shown again, and is deleted when the new one is stored. An unchanged design is never drawn twice. Where
   the Cache Storage API is missing (not a secure context), thumbnails are kept for the page only.
 - **Pruned.** Once per page load, the cached thumbnails of types no longer in the catalogue are deleted.
@@ -226,3 +232,25 @@ opening (but at least 3 cm under the ceiling: `headroom`), reaching 25 cm past i
 privacy film (seen on several souterrain windows) are not modelled. Per-window values are DB data
 (overrides, `uses.sh set`), never in `data/homes/*.json`. Both types share every parameter, so a git
 change from one to the other keeps a use's overrides.
+
+## Kitchen, corridor and fixture types (#62)
+
+From the corridor survey (#60): the souterrain kitchen and corridor. Sizes are defaults (basic parameters with
+limits); each placement sets its own (#64). The kitchen soffit is geometry, not a type.
+
+| Type                       | Mounting                     | Defaults                                                              | Basic besides colours and sizes                                                                                                      |
+| -------------------------- | ---------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `kitchen.base-cabinet`     | floor                        | run 240 cm, depth 60, worktop at 90 (4 cm thick), plinth 10, units 60 | fronts (drawer over door, doors, 3 drawers); sink, hob (induction, downdraft), built-in oven, each at its distance from the left end |
+| `kitchen.wall-cabinet`     | wall, bottom at 133 cm       | 68 × 68 × 35 cm, concrete-look front, white carcass                   | doors (1–4), front style (push to open, bar handles)                                                                                 |
+| `kitchen.wall-shelf`       | wall, bottom at 152 cm       | 300 × 25 cm, 3 cm dark wood                                           | rail with hooks 12 cm below                                                                                                          |
+| `kitchen.tall-cabinet`     | floor                        | 50 × 199 × 48 cm, white carcass                                       | door (smoked glass, solid)                                                                                                           |
+| `appliance.fridge-freezer` | floor                        | 60 × 185 × 65 cm, steel, freezer door 70 cm                           |                                                                                                                                      |
+| `appliance.microwave`      | floor, on a worktop at 90 cm | 48 × 28 × 38 cm, black                                                |                                                                                                                                      |
+| `furniture.shoe-cabinet`   | floor                        | 60 × 90 × 35 cm, white, open shelf at 15 cm                           | doors (1–3)                                                                                                                          |
+| `furniture.storage-shelf`  | floor                        | 99 × 94 × 44 cm, pine frame                                           | columns (1–4), rows (1–5) of bins                                                                                                    |
+| `fixture.downlight`        | ceiling                      | 8.5 cm round, white trim, 7 cm housing                                | light colour (2700 K, 4000 K, 6500 K)                                                                                                |
+| `fixture.radiator`         | wall, bottom at 10 cm        | 75 × 60 cm, 14 cm from the wall (4 cm brackets: two panels)           | valve side                                                                                                                           |
+
+The kitchen and appliance types are kind `furniture` (category "Kitchen"); the fixtures are kind `fixtures`
+(categories "Lighting" and "Heating"), placed like furniture, each with its own stable placement id
+([userdata.md](userdata.md#ids-and-names-of-new-furniture-and-fixtures)).

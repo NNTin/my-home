@@ -1,7 +1,9 @@
 import {
   catalog,
   effectiveParams,
+  isPlacedKind,
   LEGACY_FURNITURE_TYPE_IDS,
+  standsOnFloor,
   type CatalogType,
   type ParamValues,
 } from '@my-home/shared';
@@ -13,9 +15,9 @@ import { sizeOf } from './furniture/size';
 import type { Part, PieceModule } from './types';
 
 /**
- * Furniture as the editor and the viewer use it: catalogue types of kind `furniture` with their
- * piece modules, keyed by the type id (`furniture.bed`). The legacy item ids of the old named
- * layouts (`bed`, see `LEGACY_FURNITURE_TYPE_IDS`) resolve too.
+ * Furniture as the editor and the viewer use it: catalogue types placed in rooms (kinds
+ * `furniture` and `fixtures`) with their piece modules, keyed by the type id (`furniture.bed`).
+ * The legacy item ids of the old named layouts (`bed`, see `LEGACY_FURNITURE_TYPE_IDS`) resolve too.
  */
 
 /** Size of a piece of furniture in metres: `width` along local x, `depth` along z, `height` up. */
@@ -36,8 +38,8 @@ export type WallSnap = 'back' | 'any' | 'none';
 /** A furniture type as the catalogue panel lists it; `id` (the type id) is what a new item stores. */
 export interface FurnitureType {
   id: string;
-  /** The id the old named layouts stored, e.g. `bed`. */
-  legacyId: string;
+  /** The id the old named layouts stored, e.g. `bed` (only the first six types have one). */
+  legacyId?: string;
   type: CatalogType;
   piece: PieceModule;
   name: string;
@@ -62,7 +64,10 @@ export interface FurnitureCategory {
 }
 
 export interface FurnitureRegistry {
-  /** Grouped by category, then sorted by name (category order alphabetical). */
+  /**
+   * What the "Add" panel offers: the types standing on the floor (`standsOnFloor`; wall and ceiling
+   * mounting come with #63), grouped by category, then sorted by name (category order alphabetical).
+   */
   categories: FurnitureCategory[];
   /** By type id or legacy id. */
   get(id: string): FurnitureType | undefined;
@@ -87,15 +92,13 @@ export function createFurniture(types: readonly CatalogType[] = catalog.types): 
   const legacyOf = new Map(Object.entries(LEGACY_FURNITURE_TYPE_IDS).map(([k, v]) => [v, k]));
   const byId = new Map<string, FurnitureType>();
   for (const type of types) {
-    if (type.kind !== 'furniture') continue;
+    if (!isPlacedKind(type)) continue;
     const piece = pieces.get(type.id);
+    if (!piece) throw new Error(`Furniture type ${type.id} needs a piece`);
     const legacyId = legacyOf.get(type.id);
-    if (!piece || !legacyId) {
-      throw new Error(`Furniture type ${type.id} needs a piece and a legacy id`);
-    }
     byId.set(type.id, {
       id: type.id,
-      legacyId,
+      ...(legacyId && { legacyId }),
       type,
       piece,
       name: type.name,
@@ -105,9 +108,9 @@ export function createFurniture(types: readonly CatalogType[] = catalog.types): 
       snapping: type.snapping?.wall ?? 'none',
     });
   }
-  const sorted = [...byId.values()].sort(
-    (a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name),
-  );
+  const sorted = [...byId.values()]
+    .filter((t) => standsOnFloor(t.type))
+    .sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
   const categories: FurnitureCategory[] = [];
   for (const type of sorted) {
     const last = categories.at(-1);

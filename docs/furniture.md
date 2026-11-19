@@ -97,7 +97,10 @@ $S/screenshot.sh staging --path '/?focus=souterrain-kitchen-window&hints=off'
 ## Editing
 
 The **Furniture** panel (the Furniture tab of the sheet [on a phone](mobile.md)) adds items to the highest
-level shown by the cutaway ("Add to …"), in the selected room. Click an item to select it, drag it on the floor to
+level shown by the cutaway ("Add to …"), in the selected room. It offers the catalogue types that stand on the
+floor (furniture, kitchen units, the fridge); wall cabinets, the wall shelf, the microwave on the worktop and the
+fixtures (`fixtures` kind: downlights, the radiator) come with wall and ceiling mounting (#63). Placements of
+those types are still drawn and listed (on the floor for now). Click an item to select it, drag it on the floor to
 move it and drag the blue ring to rotate it (in the chosen step, or freely). Touch works the same way;
 [on a phone](mobile.md#touch) the ring is wider, the selected item's tools (rotate, duplicate, delete, piece page)
 float next to it, and a long press on an item opens the panel.

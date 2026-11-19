@@ -112,19 +112,24 @@ nothing (the same params, name or position again) writes nothing: no new version
 | `GET /api/homes/:homeId/uses/:useId/history`       | newest first, with `changes` texts, `undoneById` and `canUndo`                        |
 | `POST …/uses/:useId/history/:entryId/undo`         | `{ entry, use }`                                                                      |
 
-- **Placements**: the type must be a furniture type and the level must exist; params are validated with the
+- **Placements**: the type must be a furniture or fixture type (kinds `furniture` and `fixtures`: lights,
+  the radiator) and the level must exist; params are validated with the
   type's limits (400 with path-based issues). The server derives the room from the position (`roomAt`) and
   assigns the id and the name. A size change that pushes a footprint that fitted its room out of it is a 422;
   pieces already reaching outside are not rejected.
 - **Opening overrides**: the use must be in the current model (404). Params are validated against the use's
   **current** type, and counted parts (sashes, leaves) must fit its hole (422).
 
-### Ids and names of new furniture
+### Ids and names of new furniture and fixtures
 
 - **Id** `<apartment>-<type>-<n>`, e.g. `souterrain-bed-1`: the apartment of the room at the position without its
   `apt-` prefix (outside any apartment: the level id), the type id's variant, and 1 + the highest `n` of that
   prefix in `issued_ids`. Ids that clash with a home-model id are skipped; ids stay within 64 characters. The id
   never changes and is **never reused**, not after a purge nor after the piece moves to another apartment.
+- That makes the id the **stable handle of a fixture**: each placed downlight is its own placement
+  (`souterrain-downlight-3`), kept through moves, edits, renames and the trash, so a smart-home link (#62) can
+  refer to it by id. Replacing a light by removing it and placing a new one gives the new one a new id; to keep
+  the link, move or edit the existing placement instead. Type ids never change once used, either.
 - **Name** `<Room> · <Type>` ("Bedroom · Bed"), outside any room `<Level> · <Type>`; when the name is taken in the
   home, the next free number is appended ("Bedroom · Bed 2"). Names can be changed at any time.
 

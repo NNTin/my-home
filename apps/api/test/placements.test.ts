@@ -77,6 +77,36 @@ describe('placements', () => {
       expect((await place()).id).toBe('souterrain-bed-8');
     });
 
+    it('places fixtures with stable ids: one per light, kept through moves and the trash', async () => {
+      const light = (x: number) =>
+        place({
+          typeId: 'fixture.downlight',
+          position: { x, z: -2 },
+          params: { light: 'neutral' },
+        });
+      const first = await light(3);
+      expect(first).toMatchObject({
+        id: 'souterrain-downlight-1',
+        typeId: 'fixture.downlight',
+        name: 'Kitchen · Downlight',
+        params: { light: 'neutral' },
+      });
+      const second = await light(3.5);
+      expect(second).toMatchObject({ id: 'souterrain-downlight-2', name: 'Kitchen · Downlight 2' });
+      const moved = await inject('PATCH', `${url}/${first.id}`, {
+        version: 1,
+        position: { x: 3.2, z: -2.2 },
+      });
+      expect(Placement.parse(moved.json()).id).toBe(first.id);
+      await inject('DELETE', `${url}/${second.id}?version=1`);
+      // A removed light's id is never handed to the next one.
+      expect((await light(4)).id).toBe('souterrain-downlight-3');
+      const uses = await inject('GET', '/api/homes/mock-home/uses?typeId=fixture.downlight');
+      expect(
+        uses.json().items.map((u: { id: string; kind: string }) => [u.id, u.kind]),
+      ).toContainEqual([first.id, 'fixtures']);
+    });
+
     it('rejects unknown and non-furniture types, unknown levels and invalid params', async () => {
       const post = (body: object) =>
         inject('POST', url, {
@@ -86,7 +116,9 @@ describe('placements', () => {
           ...body,
         });
       expect((await post({ typeId: 'furniture.unicorn' })).statusCode).toBe(400);
-      expect((await post({ typeId: 'window.casement' })).json().message).toMatch(/not a furniture/);
+      expect((await post({ typeId: 'window.casement' })).json().message).toMatch(
+        /not a furniture or fixture/,
+      );
       expect((await post({ levelId: 'cellar' })).statusCode).toBe(404);
       const bad = await post({ params: { width: 5, height: 1 } });
       expect(bad.statusCode).toBe(400);

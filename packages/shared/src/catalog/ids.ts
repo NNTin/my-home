@@ -8,8 +8,11 @@ export const TypeId = z
   .meta({ id: 'TypeId', description: 'A piece type in the catalogue, e.g. "window.casement".' });
 export type TypeId = z.infer<typeof TypeId>;
 
-/** The catalogue's top-level groups (later: `outdoor`, `fixtures`). */
-export const CatalogKind = z.enum(['openings', 'furniture']);
+/**
+ * The catalogue's top-level groups (later: `outdoor`). `furniture` and `fixtures` (lights, the
+ * radiator) are placed in rooms as database placements; `openings` are uses in the home model.
+ */
+export const CatalogKind = z.enum(['openings', 'furniture', 'fixtures']);
 export type CatalogKind = z.infer<typeof CatalogKind>;
 
 /** A colour as `#rrggbb`; input is lower-cased, so it is stored lower case. */

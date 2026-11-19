@@ -9,9 +9,11 @@ import {
   formatCm,
   formatIssues,
   furnitureFitIssues,
+  isPlacedKind,
   LEGACY_FURNITURE_TYPE_IDS,
   openingFitIssues,
   parseCm,
+  standsOnFloor,
   type CatalogType,
 } from '../index';
 
@@ -25,7 +27,7 @@ const outline = (points: [number, number][]): Polygon =>
   points.map(([x, z]) => ({ x: { value: x, source: 'mock' }, z: { value: z, source: 'mock' } }));
 
 describe('catalog', () => {
-  it('declares the 14 first-wave types', () => {
+  it('declares the first-wave types, then the kitchen, corridor and fixture types (#62)', () => {
     expect(catalog.types.map((t) => t.id)).toEqual([
       'window.casement',
       'window.tilt-turn',
@@ -41,6 +43,16 @@ describe('catalog', () => {
       'furniture.chair',
       'furniture.wardrobe',
       'furniture.desk',
+      'furniture.shoe-cabinet',
+      'furniture.storage-shelf',
+      'kitchen.base-cabinet',
+      'kitchen.wall-cabinet',
+      'kitchen.wall-shelf',
+      'kitchen.tall-cabinet',
+      'appliance.fridge-freezer',
+      'appliance.microwave',
+      'fixture.downlight',
+      'fixture.radiator',
     ]);
     expect(catalog.get('furniture.bed')?.category).toBe('Bed room');
     expect(catalog.get('window.fixed')).toBeUndefined();
@@ -53,8 +65,14 @@ describe('catalog', () => {
   it('keeps every id, kind and placement consistent', () => {
     for (const t of catalog.types) {
       expect(t.id.startsWith(`${t.family}.`), t.id).toBe(true);
-      expect(t.kind, t.id).toBe(t.family === 'furniture' ? 'furniture' : 'openings');
-      expect(t.placement === 'floor', t.id).toBe(t.kind === 'furniture');
+      const kind = ['window', 'door', 'gate'].includes(t.family)
+        ? 'openings'
+        : t.family === 'fixture'
+          ? 'fixtures'
+          : 'furniture';
+      expect(t.kind, t.id).toBe(kind);
+      expect(t.placement === 'floor', t.id).toBe(isPlacedKind(t));
+      expect(t.mounting !== undefined, t.id).toBe(isPlacedKind(t));
       expect(t.openingTypes !== undefined, t.id).toBe(t.placement === 'wall');
     }
   });
@@ -105,6 +123,54 @@ describe('catalog', () => {
       'furniture.chair': ['color'],
       'furniture.wardrobe': ['color', 'width', 'height'],
       'furniture.desk': ['color', 'width', 'depth'],
+      'furniture.shoe-cabinet': ['color', 'width', 'height', 'depth', 'doors'],
+      'furniture.storage-shelf': [
+        'color',
+        'binColor',
+        'width',
+        'height',
+        'depth',
+        'columns',
+        'rows',
+      ],
+      'kitchen.base-cabinet': [
+        'frontColor',
+        'worktopColor',
+        'width',
+        'depth',
+        'height',
+        'unitWidth',
+        'fronts',
+        'sink',
+        'sinkAt',
+        'hob',
+        'hobAt',
+        'oven',
+        'ovenAt',
+      ],
+      'kitchen.wall-cabinet': [
+        'frontColor',
+        'carcassColor',
+        'width',
+        'height',
+        'depth',
+        'doors',
+        'frontStyle',
+      ],
+      'kitchen.wall-shelf': ['color', 'width', 'depth', 'height', 'rail'],
+      'kitchen.tall-cabinet': [
+        'carcassColor',
+        'door',
+        'glassColor',
+        'frontColor',
+        'width',
+        'height',
+        'depth',
+      ],
+      'appliance.fridge-freezer': ['color', 'width', 'height', 'depth'],
+      'appliance.microwave': ['color', 'width', 'height', 'depth'],
+      'fixture.downlight': ['trimColor', 'diameter', 'light'],
+      'fixture.radiator': ['color', 'width', 'height', 'depth', 'valveSide'],
     });
     expect(type('furniture.bed').params.width).toEqual({
       type: 'length',
@@ -115,6 +181,43 @@ describe('catalog', () => {
       max: 2.2,
       step: 0.001,
     });
+  });
+
+  it('declares where each placed type is mounted, and what the editor can place today', () => {
+    const mounted = Object.fromEntries(
+      catalog.types
+        .filter(isPlacedKind)
+        .filter((t) => t.mounting !== 'floor' || t.elevation !== undefined)
+        .map((t) => [t.id, [t.mounting, t.elevation]]),
+    );
+    expect(mounted).toEqual({
+      'kitchen.wall-cabinet': ['wall', 1.33],
+      'kitchen.wall-shelf': ['wall', 1.52],
+      'appliance.microwave': ['floor', 0.9],
+      'fixture.downlight': ['ceiling', undefined],
+      'fixture.radiator': ['wall', 0.1],
+    });
+    expect(standsOnFloor(type('furniture.shoe-cabinet'))).toBe(true);
+    expect(standsOnFloor(type('kitchen.base-cabinet'))).toBe(true);
+    expect(standsOnFloor(type('appliance.microwave'))).toBe(false);
+    expect(standsOnFloor(type('fixture.downlight'))).toBe(false);
+    expect(standsOnFloor(type('door.interior'))).toBe(false);
+    expect(LEGACY_FURNITURE_TYPE_IDS['shoe-cabinet']).toBeUndefined();
+  });
+
+  it('rejects a mounting outside a room and an elevation on the ceiling', () => {
+    const door = type('door.interior');
+    const light = type('fixture.downlight');
+    expect(() => createCatalog([{ ...door, mounting: 'floor' }])).toThrow(
+      /only furniture and fixtures have a mounting/,
+    );
+    expect(() => createCatalog([{ ...light, placement: 'wall' }])).toThrow(/go in a room/);
+    expect(() => createCatalog([{ ...light, elevation: 2 }])).toThrow(
+      /ceiling piece has no elevation/,
+    );
+    expect(() => createCatalog([{ ...type('fixture.radiator'), elevation: -1 }])).toThrow(
+      /must not be negative/,
+    );
   });
 
   it('throws on duplicate ids, min above max and defaults outside their limits', () => {

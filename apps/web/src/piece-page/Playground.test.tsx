@@ -51,19 +51,17 @@ describe('Playground controls, generated from the specs', () => {
             (spec.default * 100).toFixed(1),
           );
           expect(
-            playground().getByText(
+            playground().getAllByText(
               `${(spec.min * 100).toFixed(1)}–${(spec.max * 100).toFixed(1)} cm`,
-            ),
-          ).toBeInTheDocument();
+            ).length,
+          ).toBeGreaterThan(0);
           controls += 2;
         } else if (spec.type === 'count') {
           const group = within(playground().getByRole('group', { name: spec.label }));
-          expect(
-            group.getByRole('button', { name: `Fewer ${spec.label.toLowerCase()}` }),
-          ).toBeDisabled();
-          expect(
-            group.getByRole('button', { name: `More ${spec.label.toLowerCase()}` }),
-          ).toBeEnabled();
+          const fewer = group.getByRole('button', { name: `Fewer ${spec.label.toLowerCase()}` });
+          const more = group.getByRole('button', { name: `More ${spec.label.toLowerCase()}` });
+          expect(fewer.hasAttribute('disabled')).toBe(spec.default === spec.min);
+          expect(more.hasAttribute('disabled')).toBe(spec.default === spec.max);
           controls += 2;
         } else if (spec.type === 'fraction') {
           expect(playground().getByRole('slider', { name: spec.label })).toHaveValue(

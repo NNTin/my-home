@@ -2,6 +2,7 @@ import {
   effectiveParams,
   formatCm,
   formatPercent,
+  isPlacedKind,
   modelUses,
   type CatalogType,
   type HomeModel,
@@ -163,7 +164,7 @@ export function contextOfUse(
   useId: string,
 ): PieceContext {
   const preview = previewContext(type, values);
-  if (type.kind === 'furniture' || !model) return preview;
+  if (isPlacedKind(type) || !model) return preview;
   const opening = model.openings.find((o) => o.id === useId);
   if (opening) {
     const wall = model.walls.find((w) => w.id === opening.wallId);

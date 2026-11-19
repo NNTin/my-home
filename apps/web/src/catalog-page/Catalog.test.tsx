@@ -25,17 +25,34 @@ afterEach(() => {
 });
 
 describe('catalogSections', () => {
-  it('groups by kind, openings in catalogue order and furniture by category, then name', () => {
+  it('groups by kind, openings in catalogue order, furniture and fixtures by category, then name', () => {
     const sections = catalogSections(catalog.types);
-    expect(sections.map((s) => s.title)).toEqual(['Windows & doors', 'Furniture']);
+    expect(sections.map((s) => s.title)).toEqual(['Windows & doors', 'Furniture', 'Fixtures']);
     expect(sections[0]!.groups.map((g) => g.types.map((t) => t.id))).toEqual([
       catalog.types.filter((t) => t.kind === 'openings').map((t) => t.id),
     ]);
     expect(sections[1]!.groups.map((g) => [g.name, g.types.map((t) => t.name)])).toEqual([
       ['Bed room', ['Bed', 'Wardrobe']],
+      ['Corridor', ['Shoe cabinet']],
       ['Dining', ['Chair', 'Round table']],
+      [
+        'Kitchen',
+        [
+          'Base cabinet run',
+          'Fridge-freezer',
+          'Microwave',
+          'Storage shelf with bins',
+          'Tall cabinet',
+          'Wall cabinet',
+          'Wall shelf',
+        ],
+      ],
       ['Living room', ['Sofa']],
       ['Work room', ['Desk']],
+    ]);
+    expect(sections[2]!.groups.map((g) => [g.name, g.types.map((t) => t.id)])).toEqual([
+      ['Heating', ['fixture.radiator']],
+      ['Lighting', ['fixture.downlight']],
     ]);
   });
 
@@ -87,7 +104,17 @@ describe('CatalogPage', () => {
       section('Furniture')
         .getAllByRole('heading', { level: 3 })
         .map((h) => h.textContent),
-    ).toEqual(['Bed room', 'Dining', 'Living room', 'Work room']);
+    ).toEqual(['Bed room', 'Corridor', 'Dining', 'Kitchen', 'Living room', 'Work room']);
+    // Fixtures are a section of their own.
+    expect(section('Fixtures').getByRole('link', { name: 'Downlight, 0 uses' })).toHaveAttribute(
+      'href',
+      '/catalog/fixtures/fixture.downlight?home=mock-home',
+    );
+    expect(
+      section('Fixtures')
+        .getAllByRole('heading', { level: 3 })
+        .map((h) => h.textContent),
+    ).toEqual(['Heating', 'Lighting']);
   });
 
   it('filters as you type', async () => {
