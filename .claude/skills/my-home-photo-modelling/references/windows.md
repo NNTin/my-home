@@ -45,6 +45,23 @@ is the same for every wall window. What differs per window is a **basic paramete
 Fabric roller blinds, pleated blinds (Plissee) and privacy film are **not** modelled (neither shutter nor
 curtain). Mention them in the PR or in the use's note.
 
+### Setting the values (#47 phase C)
+
+- **Pairs of windows** (two openings with a pier, one curtain rod over both, as in the living room): each window
+  gets its outer panel. `curtain: left` goes on the window that is on the left as seen from the room, `right` on the
+  other. The handles of a pair face the pier, so the window on the right as seen from the room gets
+  `handleSide: left`. Work out left and right from the heading: facing south from inside, east is on the left.
+- **Colours from indoor photos** read too dark and too warm (lamp light, auto exposure). Average a patch:
+  `convert in.webp -crop WxH+X+Y +repage -resize 1x1\! -format '%[hex:p{0,0}]' info:`. Then scale it by a surface of
+  known colour in the same light: the kitchen's marble board sampled `#b6b2b0` against the design's `#ebe8e1`, so ≈0.77.
+  Say in the issue that the colour is an estimate.
+- **Check the render, not only the values:** "View from here" at each photo pose after setting them. The curtain rod
+  hangs 15 cm over the opening but never higher than 3 cm under the ceiling (`headroom` from the level's clear
+  height). Souterrain windows sit about 10 cm under the ceiling.
+- **Staging, then production, with one script** of `uses.sh <env> set <useId> --param k=v … --allow-write` lines, so
+  both get the same values. Read back with `uses.sh <env> list` and compare `overrides` and `version`. Every set is in
+  the use's history and can be undone.
+
 ## Doors
 
 - **Interior doors:**

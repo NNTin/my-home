@@ -99,6 +99,31 @@ describe('windowParts', () => {
     expect(zs(inside!)[0]).toBeGreaterThan(0.06);
   });
 
+  it('keeps the curtain rod under the ceiling when there is little room above the hole', () => {
+    const rod = (headroom?: number) =>
+      of(
+        windowParts(ID, values({ curtain: 'both' }), {
+          ...ctx(),
+          ...(headroom !== undefined && { headroom }),
+        }),
+        'curtain',
+      ).find((p) => p.size[1] < 0.05)!;
+    const top = (p: Part) => p.center[1] + p.size[1] / 2;
+    // Room to spare: 15 cm over the hole, as designed.
+    expect(rod().center[1]).toBeCloseTo(0.5 + 0.15, 9);
+    expect(rod(0.6).center[1]).toBeCloseTo(0.5 + 0.15, 9);
+    // The living room: head 2.25, ceiling 2.35, so 10 cm. The rod's top stays 3 cm under the ceiling.
+    expect(top(rod(0.1))).toBeCloseTo(0.5 + 0.1 - 0.03, 9);
+    // The panels hang from the rod.
+    const panels = of(
+      windowParts(ID, values({ curtain: 'both' }), { ...ctx(), headroom: 0.1 }),
+      'curtain',
+    ).filter((p) => p.size[1] > 0.5);
+    for (const p of panels) expect(top(p)).toBeLessThan(0.5 + 0.1);
+    // No room at all: the rod sits on the hole's top instead of above it.
+    expect(rod(0).center[1]).toBeCloseTo(0.5 + 0.011, 9);
+  });
+
   it('hangs a curtain from a rod to the floor; closing widens the panels', () => {
     const panels = (over: ParamValues) =>
       of(windowParts(ID, values(over), ctx()), 'curtain').filter((p) => p.size[1] > 0.5);

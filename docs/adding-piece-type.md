@@ -83,7 +83,8 @@ export default definePiece({
 - **Local frame.** Openings: centred on the hole, width along x, height along y, the wall's depth
   along z; `ctx` is the hole (`width`, `height`, `wallDepth`), the `sill` height and `outside` (which
   way local z points to the outdoors: the builder derives it from the footprint; the catalogue and
-  piece pages show the room side, `-1`). Doors use [`openings/frame.ts`](../apps/web/src/catalog/openings/frame.ts),
+  piece pages show the room side, `-1`) and, in the house, `headroom` (from the hole's top to its level's
+  ceiling). Doors use [`openings/frame.ts`](../apps/web/src/catalog/openings/frame.ts),
   the wall windows [`openings/window.ts`](../apps/web/src/catalog/openings/window.ts). Furniture: origin on the floor at
   the centre of the footprint, the front faces **+z** (a headboard or backrest sits at `-depth / 2`).
   The builder or the editor places the piece, so a module never sees world coordinates.
