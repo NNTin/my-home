@@ -106,7 +106,7 @@ jobs:
           curl -fsS http://localhost:8080/api/homes | jq -e '.items | map(.id) == ["home"]'
           curl -fsS http://localhost:8080/api/homes/home \
             | jq -e '.schemaVersion == 1 and (.levels | length) == 3 and (.apartments | length) == 3
-                and .building.roof.type == "gable" and (.outdoorAreas | length) == 11'
+                and .building.roof.type == "gable" and (.outdoorAreas | length) == 33'
           curl -fsS http://localhost:8080/api/homes/home/export | jq -e '.id == "home"'
           curl -fsS http://localhost:8080/ | grep -q '<div id="root">'
           # Deep links to the app's pages get index.html (the SPA fallback), revalidated on every
