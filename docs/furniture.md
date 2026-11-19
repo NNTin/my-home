@@ -101,9 +101,27 @@ S=.claude/skills/my-home-environments/scripts
 $S/screenshot.sh staging --path '/?focus=souterrain-kitchen-window&hints=off'
 ```
 
+## View mode and edit mode
+
+Every visit starts in **view mode**, so a stray click, drag or touch cannot change anything. There an item (or a
+window, door or gate) can still be selected to inspect it (name, type, link to its piece page, photos), the camera,
+walk mode and the photo tools work as always, but nothing is dragged, rotated, placed, removed or changed: the
+Furniture panel offers no "Add to …", Undo, Redo, rotate, duplicate, delete, height or mounting, the keyboard
+shortcuts below do nothing (except `Escape`), the phone has no floating tools, and the piece page (see
+[the catalogue](catalog.md)) has no editor, Place, Remove, Restore or Undo.
+
+**Edit** (the button in the control panel on a desktop, in the top bar on a phone, and in the header of a piece
+page) turns **edit mode** on; it becomes **Done**. While it is on, an amber frame and an "Edit mode" badge
+say so, and everything below works as it always did. **Done** leaves it (a drag in progress is put back).
+
+The mode is not stored: a reload or a new visit starts in view mode again. Moving around inside the app
+(viewer, catalogue, a piece page and back, which are no reload) keeps it. It is a UI safety, not authorization:
+the api is unchanged. The state is `editMode/editMode.ts`; the scene's `editable` prop and the viewer's
+`editing` gate dragging, and every editing command checks it as well.
+
 ## Editing
 
-The **Furniture** panel (the Furniture tab of the sheet [on a phone](mobile.md)) adds items to the highest
+In [edit mode](#view-mode-and-edit-mode), the **Furniture** panel (the Furniture tab of the sheet [on a phone](mobile.md)) adds items to the highest
 level shown by the cutaway ("Add to …"), in the selected room. It offers every furniture and fixture type: on the
 floor (furniture, kitchen units, the fridge, the microwave at its worktop height), on a wall (wall cabinets, the
 wall shelf, the radiator) and under the ceiling (downlights), as [§ Mounting](#mounting-walls-and-ceilings)

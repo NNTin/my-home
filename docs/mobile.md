@@ -20,6 +20,8 @@ screen while the page is open (turning the phone, resizing a window), and what w
 ## Top bar
 
 - The home: its name, or a selector when there are several.
+- **✏️ Edit** turns [edit mode](furniture.md#view-mode-and-edit-mode) on (and becomes **✔ Done**); the viewer starts in
+  view mode. An "Edit mode" badge and an amber frame show while it is on.
 - **🚶 Walk** starts [walking](walking.md); **📷 Photos (n)** opens the gallery in the sheet, with a badge for
   open photo requests.
 - **📚 Catalogue** opens the [catalogue](catalog.md) (a link, keeping `?home=`). Below 440 px of width, where
@@ -58,7 +60,8 @@ Walking takes the whole screen: the top bar and the sheet are gone until **Exit*
 - **The 3D view**: one finger turns it, a pinch zooms, two fingers move it. The page itself never zooms or
   scrolls under these (`touch-action`), and **⟲ Reset view** at the foot of the view puts the camera back where
   it started, fitted to the view as it is now. It is hidden while looking from a photo ("View from here").
-- **Furniture**: tap an item to select it and drag it to move it. The rotate ring is wide enough for a finger.
+- **Furniture**: in view mode a tap selects an item and shows its name and piece page link, nothing moves. In
+  [edit mode](furniture.md#view-mode-and-edit-mode) tap an item to select it and drag it to move it. The rotate ring is wide enough for a finger.
   The selected item's tools float next to it: rotate left and right, **▲ ▼** (raise or lower it by 5 cm; for a
   piece on a wall or raised), duplicate, delete, and **⋯** for the furniture panel (its mounting and height in cm). A **long press** on an item (0.45 s without moving) opens that panel too.
 - **Photos**: camera markers have a tap target larger than the camera they show.
@@ -189,6 +192,6 @@ $S/screenshot.sh staging --viewport 390x844 --touch --path '/?panel=furniture&sh
 $S/screenshot.sh staging --viewport 844x390 --touch --path '/?panel=view'
 ```
 
-`mobile-smoke.sh` places, drags, rotates, duplicates and deletes a furniture item with real touch events. Every
+`mobile-smoke.sh` checks that a fresh visit is in view mode and that a drag there moves nothing, then taps Edit, places, drags, rotates, duplicates and deletes a furniture item with real touch events. Every
 placement write is answered inside the browser (route interception), so it changes nothing on the environment. Headless Chromium says nothing
 about how smooth the view is on a real phone, or about notches and browser bars: those need the phone.

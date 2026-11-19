@@ -2016,3 +2016,36 @@ body {
   max-width: 72rem;
   margin: 0 auto;
 }
+
+/* Edit mode (editMode/): the toggle is amber while it is on, a badge and a frame say so. */
+.edit-toggle[aria-pressed='true'] {
+  border-color: #ffcc80;
+  background: rgb(120 80 10 / 0.85);
+  color: #fff3e0;
+}
+
+.edit-badge {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  z-index: 6;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid #ffcc80;
+  border-radius: 1rem;
+  background: rgb(120 80 10 / 0.9);
+  color: #fff3e0;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.page-header .edit-badge {
+  position: static;
+  transform: none;
+}
+
+.viewer.editing .stage {
+  box-shadow: inset 0 0 0 3px #ffcc80;
+}

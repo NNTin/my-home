@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import type { SceneProps } from './scene/Scene';
 import { fakeApi } from './test/fakeApi';
+import { enterEditMode } from './test/editMode';
 import { testPlacement } from './test/fixtures';
 
 // jsdom has no WebGL: the canvas is replaced by a stub exposing the furniture and its handlers.
@@ -23,6 +24,7 @@ const key = (k: string, mods: Partial<KeyboardEventInit> = {}) =>
   fireEvent.keyDown(window, { key: k, ...mods });
 
 async function renderApp() {
+  enterEditMode();
   render(<App />);
   await screen.findByTestId('scene');
   await vi.waitFor(() => expect(status()).not.toBe('Loading furniture…'));

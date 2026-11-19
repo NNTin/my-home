@@ -77,6 +77,7 @@ export function History({
   useId,
   refreshKey,
   onUndone,
+  canUndo = true,
 }: {
   homeId: string;
   useId: string;
@@ -84,6 +85,8 @@ export function History({
   refreshKey: string;
   /** After an undo: the home's uses are loaded again. */
   onUndone(): Promise<unknown>;
+  /** Edit mode: without it the history is read-only. */
+  canUndo?: boolean;
 }) {
   const [entries, setEntries] = useState<HistoryEntry[]>();
   const [error, setError] = useState<string>();
@@ -166,7 +169,7 @@ export function History({
                       ` by ${isSeedChange(undoneBy) ? 'the seed from git' : BY[undoneBy.actor]} at ${exactTime(undoneBy.at)}`}
                   </span>
                 )}
-                {entry.canUndo && (
+                {entry.canUndo && canUndo && (
                   <button
                     type="button"
                     className="button history-undo"

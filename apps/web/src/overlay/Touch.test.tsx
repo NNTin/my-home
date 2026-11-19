@@ -5,6 +5,7 @@ import { toolbarInView, toolbarPosition } from '../scene/FurnitureLayer';
 import { markerScale, markerTapRadius } from '../scene/PhotoMarkers';
 import type { SceneProps } from '../scene/Scene';
 import { fakeApi } from '../test/fakeApi';
+import { enterEditMode } from '../test/editMode';
 import { testPhoto, testPlacement } from '../test/fixtures';
 import { stubScreen } from '../test/screen';
 import { FurnitureToolbar } from './FurnitureToolbar';
@@ -41,6 +42,7 @@ const bed = testPlacement({ id: 'bed-1', name: 'Bed' });
 
 /** Opens the app with one bed placed and waits until the scene shows it. */
 async function openWithBed(mode: Parameters<typeof stubScreen>[0]) {
+  enterEditMode();
   const result = await open(mode, { placements: [bed] });
   await vi.waitFor(() => expect(furniture()).toHaveLength(1));
   return result;
@@ -92,6 +94,7 @@ describe('furniture by touch', () => {
   });
 
   it('raises and lowers a wall cabinet by 5 cm and drags it along its wall (#63)', async () => {
+    enterEditMode();
     const cabinet = testPlacement({
       id: 'cab-1',
       name: 'Kitchen · Wall cabinet',

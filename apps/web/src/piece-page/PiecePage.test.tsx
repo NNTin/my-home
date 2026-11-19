@@ -1,3 +1,4 @@
+import { enterEditMode } from '../test/editMode';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
@@ -78,6 +79,7 @@ describe('the piece page', () => {
   });
 
   it('shows a ceiling fixture from below, under a ceiling, with Place (#63)', async () => {
+    enterEditMode();
     open('/catalog/fixtures/fixture.downlight?home=mock-home');
     await screen.findByRole('heading', { level: 1, name: /Downlight/ });
     expect(screen.getByText('Fixtures · Lighting')).toBeInTheDocument();
@@ -109,6 +111,7 @@ describe('the piece page', () => {
   });
 
   it('stands the microwave on a worktop, and offers Place for it and floor pieces', async () => {
+    enterEditMode();
     open('/catalog/furniture/appliance.microwave');
     await screen.findByRole('heading', { level: 1, name: /Microwave/ });
     expect(screen.getByText('Furniture · Appliance · Kitchen')).toBeInTheDocument();

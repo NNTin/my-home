@@ -5,6 +5,7 @@ import { href, Link } from '../routing';
 import { History } from './History';
 import { Notes } from './Notes';
 import { UsePhotos } from './Photos';
+import { useEditMode } from '../editMode/editMode';
 import { UseEditor } from './UseEditor';
 import {
   overrideSummary,
@@ -38,9 +39,11 @@ interface RowProps {
 
 function UseItem({ type, row, data, attention, open, onOpen, draft, onDraft, reload }: RowProps) {
   const { use, homeId, orphan } = row;
+  const [editing] = useEditMode();
   const [error, setError] = useState<string>();
   const isOpen = open?.homeId === homeId && open.useId === use.id;
-  const panel = isOpen ? open.panel : undefined;
+  // Without edit mode the editor is not offered: a use opened for editing shows its history.
+  const panel = isOpen ? (open.panel === 'edit' && !editing ? 'history' : open.panel) : undefined;
   const toggle = (next: OpenUse['panel']) =>
     onOpen(panel === next ? undefined : { homeId, useId: use.id, panel: next });
   const photos = photosOfUse(data.photos, use.id);
@@ -101,7 +104,7 @@ function UseItem({ type, row, data, attention, open, onOpen, draft, onDraft, rel
             Show in model
           </Link>
         )}
-        {!orphan && (
+        {!orphan && editing && (
           <button
             type="button"
             className="button"
@@ -121,7 +124,7 @@ function UseItem({ type, row, data, attention, open, onOpen, draft, onDraft, rel
         >
           {attention ? 'Show history' : 'History'}
         </button>
-        {attention && placement && (
+        {attention && placement && editing && (
           <button
             type="button"
             className="button"
@@ -156,6 +159,7 @@ function UseItem({ type, row, data, attention, open, onOpen, draft, onDraft, rel
               useId={use.id}
               refreshKey={`${use.version}:${use.updatedAt ?? ''}`}
               onUndone={() => reload(homeId)}
+              canUndo={editing}
             />
           )}
           <UsePhotos
@@ -185,6 +189,7 @@ function Trash({
   trash: Placement[];
   reload(homeId: string): Promise<boolean>;
 }) {
+  const [editing] = useEditMode();
   const [error, setError] = useState<string>();
   const restore = async (p: Placement) => {
     try {
@@ -201,14 +206,16 @@ function Trash({
         {trash.map((p) => (
           <li key={p.id}>
             {p.name} <span className="piece-note">until {until(p.purgeAt)}</span>{' '}
-            <button
-              type="button"
-              className="button"
-              aria-label={`Restore ${p.name}`}
-              onClick={() => void restore(p)}
-            >
-              Restore
-            </button>
+            {editing && (
+              <button
+                type="button"
+                className="button"
+                aria-label={`Restore ${p.name}`}
+                onClick={() => void restore(p)}
+              >
+                Restore
+              </button>
+            )}
           </li>
         ))}
       </ul>
