@@ -3961,8 +3961,8 @@
       },
       "width": {
         "value": 1.0,
-        "source": "estimated-from-photo",
-        "note": "Frame outer width ≈1.03 (eea54171), 1.04 (width to height in 0ab48d98, frame 2.05 high); the frame fills the opening"
+        "source": "measured",
+        "note": "Wall opening 1.00 (the owner's measurement); the frame fills it (≈1.03 seen outside, eea54171, 0ab48d98)"
       },
       "height": {
         "value": 2.05,
@@ -4054,14 +4054,14 @@
       "wallId": "souterrain-wall-stair-hall-corridor",
       "type": "door",
       "offset": {
-        "value": 0.2375,
+        "value": 0.2675,
         "source": "estimated-from-photo",
         "note": "Centred between the corridor walls (#60 survey: ≈0.11 from each wall face, frame ≈0.98 × 2.07). Hinged on the south jamb, handle on the north; no hinges on the corridor side, so it opens into the Stair hall (9b3a5f3f, 84a05d56)"
       },
       "width": {
-        "value": 0.88,
-        "source": "estimated-from-photo",
-        "note": "Opening of a standard 0.86 leaf (≈0.88 × 2.0 seen, frame ≈0.95–0.98 outside); corridor survey #60"
+        "value": 0.82,
+        "source": "measured",
+        "note": "Wall opening 0.82 (the owner's measurement for the souterrain's interior doors); centred where the 0.88 opening was"
       },
       "height": {
         "value": 2.0,
@@ -4079,14 +4079,14 @@
       "wallId": "souterrain-wall-work-room-corridor",
       "type": "door",
       "offset": {
-        "value": 1.42,
+        "value": 1.45,
         "source": "estimated-from-photo",
         "note": "Frame outer x ≈4.10–5.05 (±0.2): the #60 survey (east casing ≈2.2 m west of the Bath room door's west casing, 8576e27c, 3f24cf70) re-anchored on the #78 layout (+0.15). Hinge side not seen"
       },
       "width": {
-        "value": 0.88,
-        "source": "estimated-from-photo",
-        "note": "Opening of a standard 0.86 leaf (≈0.88 × 2.0 seen, frame ≈0.95–0.98 outside); corridor survey #60"
+        "value": 0.82,
+        "source": "measured",
+        "note": "Wall opening 0.82 (the owner's measurement for the souterrain's interior doors); centred where the 0.88 opening was"
       },
       "height": {
         "value": 2.0,
@@ -4104,14 +4104,14 @@
       "wallId": "souterrain-wall-bath-room-corridor",
       "type": "door",
       "offset": {
-        "value": 0.835,
+        "value": 0.865,
         "source": "estimated-from-photo",
         "note": "Frame outer x ≈7.25–8.20 (±0.15): its east casing is flush with the box's west face, 1.36 west of the end of the corridor's north wall (#60 survey, b25c9288, 8576e27c, 3f24cf70, re-anchored on 9.56). Opens into the Bath room (84132853)"
       },
       "width": {
-        "value": 0.88,
-        "source": "estimated-from-photo",
-        "note": "Opening of a standard 0.86 leaf (≈0.88 × 2.0 seen, frame ≈0.95–0.98 outside); corridor survey #60"
+        "value": 0.82,
+        "source": "measured",
+        "note": "Wall opening 0.82 (the owner's measurement for the souterrain's interior doors); centred where the 0.88 opening was"
       },
       "height": {
         "value": 2.0,
@@ -4129,14 +4129,14 @@
       "wallId": "souterrain-wall-corridor-living-room",
       "type": "door",
       "offset": {
-        "value": 1.37,
+        "value": 1.4,
         "source": "estimated-from-photo",
         "note": "Frame outer x ≈4.05–5.00 (±0.2): the #60 survey (east jamb seen from both ends, 8576e27c, 3f24cf70) re-anchored on the #78 layout (+0.15). Opens into the Living room (3f24cf70)"
       },
       "width": {
-        "value": 0.88,
-        "source": "estimated-from-photo",
-        "note": "Opening of a standard 0.86 leaf (≈0.88 × 2.0 seen, frame ≈0.95–0.98 outside); corridor survey #60"
+        "value": 0.82,
+        "source": "measured",
+        "note": "Wall opening 0.82 (the owner's measurement for the souterrain's interior doors); centred where the 0.88 opening was"
       },
       "height": {
         "value": 2.0,
@@ -4154,14 +4154,14 @@
       "wallId": "souterrain-wall-corridor-boiler-room",
       "type": "door",
       "offset": {
-        "value": 1.22,
+        "value": 1.25,
         "source": "estimated-from-photo",
         "note": "Frame outer x ≈7.20–8.20 (±0.15): a light-wood leaf at the back of a ≈0.35–0.4 deep reveal with aluminium corner trim, the reveal's east edge flush with the box's west face (#60 survey, 25c54ef2, b25c9288, 9b3a5f3f, re-anchored on 9.56). No hinges on the corridor side: it opens into the Boiler room"
       },
       "width": {
-        "value": 0.88,
-        "source": "estimated-from-photo",
-        "note": "Opening of a standard 0.86 leaf (≈0.88 × 2.0 seen, frame ≈0.95–0.98 outside); corridor survey #60"
+        "value": 0.82,
+        "source": "measured",
+        "note": "Wall opening 0.82 (the owner's measurement for the souterrain's interior doors); centred where the 0.88 opening was"
       },
       "height": {
         "value": 2.0,
@@ -4179,14 +4179,14 @@
       "wallId": "souterrain-wall-corridor-bed-room",
       "type": "door",
       "offset": {
-        "value": 1.265,
+        "value": 1.295,
         "source": "estimated-from-photo",
         "note": "Frame outer x ≈10.16–11.11 (±0.15): chained from the east wall's inner face (Trofast 0.99, radiator) in the #60 survey (a9586a63, 429b67a4, f690114a), re-anchored on 12.94. Opens into the Bed room, hinged on the west jamb"
       },
       "width": {
-        "value": 0.88,
-        "source": "estimated-from-photo",
-        "note": "Opening of a standard 0.86 leaf (≈0.88 × 2.0 seen, frame ≈0.95–0.98 outside); corridor survey #60"
+        "value": 0.82,
+        "source": "measured",
+        "note": "Wall opening 0.82 (the owner's measurement for the souterrain's interior doors); centred where the 0.88 opening was"
       },
       "height": {
         "value": 2.0,
