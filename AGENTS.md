@@ -45,14 +45,16 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 ## House model
 
 - **The exterior is fixed**: footprint, exterior walls (position, thickness, height) and roof come from surveyed
-  geodata (#13). Never move, resize or re-angle them.
-- **Refinements change only the inside**: rooms, interior walls, doors, openings, stairs, ceilings, floor levels.
-  An interior wall change rescales the rooms beside it, never an exterior wall; if one seems needed, ask the owner in
-  an issue.
+  geodata. Never move, resize or re-angle them.
+- **The floor plan and room plan are fixed too**: room outlines and sizes, interior wall positions and thicknesses,
+  exterior wall thickness. They are refined; never move, resize or re-angle them. If a change seems needed, ask the
+  owner in an issue.
+- **Still approximate, improve when photos allow**: window positions and sizes (along their walls), doors, stairs,
+  ceilings, floor levels, and the furniture and fixtures (catalogue types and placements).
 - **Only the souterrain apartment is modelled inside.** The ground-floor and attic interiors are out of scope: keep
   their geometry (floors and windows as seen from outside) and never request photos inside them; photos of their
   windows only from the owner's garden, patio or the street.
-- **New furniture and fixtures are catalogue types in git** (reviewed by PR, #26). Placements and basic params
+- **New furniture and fixtures are catalogue types in git** (reviewed by PR). Placements and basic params
   (colour, sizes) are DB data per environment, set via the app or the uses/placements API, never in
   `data/homes/*.json`.
 - **Refinement photos stay in the photo store**: reference them by photo id in issues and PRs; never upload them to GitHub
@@ -68,7 +70,7 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - **Changing the house = a PR to `data/homes`** (`PUT /api/homes` and import are replaced on the next deploy;
   `docs/deployment.md` § Homes come from git).
 - Both are behind authentik SSO: exchange the nntin-bot GitHub token for a site token with the
-  `my-home-environments` skill (`.claude/skills/`), instruction sheet in #9. `GET /api/health/live` is public.
+  `my-home-environments` skill (`.claude/skills/`). `GET /api/health/live` is public.
 - Raise an issue in NNTin/my-home (or comment on the open one) only if the deployed commit hasn't caught up 1 hour
   after its image was published, or the site stays down: `env-status.sh`, then `raise-env-issue.sh`.
 
