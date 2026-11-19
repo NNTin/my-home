@@ -39,6 +39,18 @@
       }
     },
     {
+      "id": "souterrain-bench-1",
+      "typeId": "garden.bench",
+      "name": "Patio · bench",
+      "levelId": "souterrain",
+      "position": {
+        "x": 13.72,
+        "z": -9.9
+      },
+      "rotationY": 1.5707963267948966,
+      "params": {}
+    },
+    {
       "id": "souterrain-bird-house-1",
       "typeId": "garden.bird-house",
       "name": "Garden · bird house",
