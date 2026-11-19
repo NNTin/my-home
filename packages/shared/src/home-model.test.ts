@@ -327,6 +327,8 @@ describe('the souterrain apartment of the real home', () => {
       'door-souterrain-work-room-corridor',
     ]);
     const corridor = room('souterrain-corridor');
+    // The patio door sits on the east wall's centre line, half its thickness outside the corridor.
+    const east = corridor.x1 + wall('souterrain-wall-east').thickness.value / 2;
     for (const door of doors) {
       expect(door.type).toBe('door');
       const s = span(door.id);
@@ -335,7 +337,7 @@ describe('the souterrain apartment of the real home', () => {
         [corridor.z0, corridor.z1].some(
           (z) => Math.abs(s.z0 - z) < 1e-6 && s.x0 >= corridor.x0 && s.x1 <= corridor.x1,
         ) ||
-        [corridor.x0, corridor.x1 + 0.18].some(
+        [corridor.x0, east].some(
           (x) => Math.abs(s.x0 - x) < 1e-6 && s.z0 >= corridor.z0 && s.z1 <= corridor.z1,
         );
       expect([door.id, onEdge]).toEqual([door.id, true]);
@@ -360,7 +362,8 @@ describe('the souterrain apartment of the real home', () => {
         w.levelId === 'souterrain' &&
         b.z0 === b.z1 &&
         Math.abs(b.z0 - kitchen.z1) < 0.2 &&
-        b.x1 > kitchen.x0 + 0.1
+        // The bath room's corridor wall reaches half its thickness past the corner, no further.
+        b.x1 > kitchen.x0 + w.thickness.value / 2 + 1e-6
       );
     });
     expect(onBoundary).toEqual([]);

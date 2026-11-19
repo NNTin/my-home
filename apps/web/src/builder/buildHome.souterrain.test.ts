@@ -54,9 +54,9 @@ describe('the souterrain rooms', () => {
       expect(floor.apartmentId).toBe('apt-souterrain');
     }
     const corridor = floors.find((r) => r.roomId === 'souterrain-corridor')!;
-    expect(corridor.labelAt[0]).toBeCloseTo((3.45 + 13.06) / 2);
+    expect(corridor.labelAt[0]).toBeCloseTo((2.715 + 12.94) / 2);
     expect(corridor.labelAt[1]).toBe(corridor.y);
-    expect(corridor.labelAt[2]).toBeCloseTo(-6);
+    expect(corridor.labelAt[2]).toBeCloseTo((-7.265 - 5.91) / 2);
   });
 
   it('finds the centroid of an L-shaped room, not the mean of its corners', () => {
@@ -79,9 +79,9 @@ describe('the souterrain rooms', () => {
     expect(new Set(interior.map((w) => w.wallId)).size).toBe(12);
     for (const w of interior) {
       expect(w.center[1] + w.size[1] / 2).toBeLessThanOrEqual(-0.25 + 1e-9);
-      expect(w.size[2]).toBe(0.12);
+      expect(w.size[2]).toBe(0.24);
     }
-    // The bed room wall runs east from x = 8.55 along z = -5.4; its door is 1.8 m in, 0.85 wide.
+    // The bed room wall runs east from x = 8.93 along z = -5.91; its door is 1.8 m in, 0.85 wide.
     const parts = interior.filter((w) => w.wallId === 'souterrain-wall-corridor-bed-room');
     expect(parts.map((w) => w.id.split(':').slice(1).join(':'))).toEqual([
       '0:full',
@@ -89,20 +89,20 @@ describe('the souterrain rooms', () => {
       '2:full',
     ]);
     expect(parts[0]!.size[0]).toBeCloseTo(1.8);
-    expect(parts[1]!.center[0]).toBeCloseTo(8.55 + 1.8 + 0.425);
+    expect(parts[1]!.center[0]).toBeCloseTo(8.93 + 1.8 + 0.425);
     expect(parts[1]!.size[1]).toBeCloseTo(2.35 - 2);
     const door = scene.openings.find((o) => o.id === 'door-souterrain-corridor-bed-room')!;
-    expect(door).toMatchObject({ type: 'door', levelId: 'souterrain', size: [0.85, 2, 0.12] });
+    expect(door).toMatchObject({ type: 'door', levelId: 'souterrain', size: [0.85, 2, 0.24] });
     expect(door.center).toEqual([
-      expect.closeTo(10.775),
+      expect.closeTo(11.155),
       expect.closeTo(-2.6 + 1),
-      expect.closeTo(-5.4),
+      expect.closeTo(-5.91),
     ]);
   });
 
   it('have a doorway from the corridor into every room except the open kitchen', () => {
     const doors = scene.openings.filter(
-      (o) => o.type === 'door' && o.levelId === 'souterrain' && o.size[2] === 0.12,
+      (o) => o.type === 'door' && o.levelId === 'souterrain' && o.size[2] === 0.24,
     );
     expect(doors.map((o) => o.id).sort()).toEqual([
       'door-souterrain-corridor-bath-room',
@@ -115,21 +115,23 @@ describe('the souterrain rooms', () => {
   });
 
   it('leave the kitchen open to the corridor: no wall segment on their boundary', () => {
-    // The boundary is z = -6.6 from the bath room wall (x = 9.35) to the east wall (x = 13.06).
+    // The boundary is z = -7.265 from the bath room wall (x = 9.44, faces 9.32 to 9.56) to the
+    // east wall (inner face x = 12.94).
     const crossing = scene.walls.filter((w) => {
       const [x0, x1, z0, z1] = planBounds(w);
-      return w.levelId === 'souterrain' && x1 > 9.5 && x0 < 13 && z0 < -6.5 && z1 > -6.7;
+      return w.levelId === 'souterrain' && x1 > 9.6 && x0 < 12.9 && z0 < -7.165 && z1 > -7.365;
     });
     expect(crossing).toEqual([]);
     // The same line west of it is walled: the bath room's corridor wall ends at the kitchen.
     const bath = scene.walls.filter((w) => w.wallId === 'souterrain-wall-bath-room-corridor');
-    expect(Math.max(...bath.map((w) => planBounds(w)[1]))).toBeCloseTo(9.41);
+    expect(Math.max(...bath.map((w) => planBounds(w)[1]))).toBeCloseTo(9.56);
   });
 
   it('put the patio door at the east end of the corridor and the east window in the bed room', () => {
     const door = scene.openings.find((o) => o.id === 'door-souterrain-corridor-patio')!;
-    expect(door.center[0]).toBeCloseTo(13.24);
-    expect(door.center[2]).toBeCloseTo(-6);
+    // On the east wall's centre line, centred on the corridor (clear z -7.145 to -6.03).
+    expect(door.center[0]).toBeCloseTo(13.18);
+    expect(door.center[2]).toBeCloseTo(-6.59);
     const entry = scene.terrain.find((t) => t.id === 'terrain-entry')!;
     expect(entry.top).toBe(-2.6);
     const zs = entry.outline.map((p) => p[1]);
@@ -267,8 +269,8 @@ describe('stairs', () => {
       expect(x0).toBeGreaterThanOrEqual(Math.min(...xs));
       expect(x1).toBeLessThanOrEqual(Math.max(...xs));
       expect(z0).toBeGreaterThanOrEqual(Math.min(...zs));
-      // The door from the corridor is at the south end of the hall (z > -6.6).
-      expect(z1).toBeLessThan(-6.6 - 1);
+      // The door from the corridor is at the south end of the hall (z > -7.12).
+      expect(z1).toBeLessThan(-7.12 - 1);
     }
   });
 
@@ -283,9 +285,12 @@ describe('stairs', () => {
     ).toBeUndefined();
     const xs = stair.well.map((p) => p[0]);
     const zs = stair.well.map((p) => p[1]);
-    expect([Math.min(...xs), Math.max(...xs)]).toEqual([expect.closeTo(0.4), expect.closeTo(3.35)]);
+    expect([Math.min(...xs), Math.max(...xs)]).toEqual([
+      expect.closeTo(0.485),
+      expect.closeTo(2.59),
+    ]);
     expect([Math.min(...zs), Math.max(...zs)]).toEqual([
-      expect.closeTo(-10.55),
+      expect.closeTo(-10.47),
       expect.closeTo(-8.43),
     ]);
   });

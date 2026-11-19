@@ -170,7 +170,7 @@ describe('Minimap', () => {
     const roomOf = (f: Footing) =>
       f.levelId === undefined ? undefined : roomAt(plans.get(f.levelId)!, [f.x, f.z])?.id;
     // The walking line up the stair (see world.test.ts), in small moves like a held pad.
-    let at = placeAt(world, [2.85, -7.8], -2.6)!;
+    let at = placeAt(world, [2.09, -7.8], -2.6)!;
     const { rerender } = render(
       <Minimap
         figure={figureAt(at)}
@@ -186,11 +186,11 @@ describe('Minimap', () => {
     expect(svg().querySelector('.map-stair')!.getAttribute('d')).not.toBe('');
     const seen = new Set<string>();
     for (const [x, z] of [
-      [2.85, -8.43],
-      [2.85, -10.05],
-      [0.9, -10.05],
-      [0.9, -8.43],
-      [0.9, -7.6],
+      [2.09, -8.43],
+      [2.09, -9.97],
+      [0.985, -9.97],
+      [0.985, -8.43],
+      [0.985, -7.6],
     ] as Vec2[]) {
       for (let i = 0; i < 400 && Math.hypot(x - at.x, z - at.z) > 0.02; i++) {
         const d = Math.hypot(x - at.x, z - at.z);
