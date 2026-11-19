@@ -238,7 +238,7 @@ jobs:
           grep -q "release: home \"home\" seed applied: .*moved to the trash 1 ($id)" release.log
           curl -fsS "$home" | jq -e '.building.magneticDeclination.value == 2.5'
           curl -fsS "$home/uses/$id/history" | jq -e '.items | length == 4
-            and .[0].actor == "seed" and .[0].action == "remove" and .[0].canUndo'
+            and .[0].actor == "system" and .[0].actorName == "seed" and .[0].action == "remove" and .[0].canUndo'
           # A fresh database plus the seed equals the export, byte for byte.
           curl -fsS "$home/seed" | diff - data/homes/home.seed.json
           # A production deploy: no reset, sync only home.json; nothing changes.

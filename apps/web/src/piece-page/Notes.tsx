@@ -2,12 +2,7 @@ import { MAX_NOTE_LENGTH, type Note, type Subject } from '@my-home/shared';
 import { useEffect, useId, useState } from 'react';
 import { notesApi } from '../api';
 
-const BY = {
-  owner: 'you',
-  agent: 'an agent',
-  system: 'the system',
-  seed: 'the seed from git',
-} as const;
+const BY = { owner: 'you', agent: 'an agent', system: 'the system' } as const;
 
 const when = (iso: string) =>
   new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });

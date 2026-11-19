@@ -22,7 +22,7 @@ export interface ReleaseLog {
  * 3. migrate `public`, `media` and `userdata`;
  * 4. sync the homes from git in one transaction (`syncHomes`). Nothing is deleted;
  *    then make each home's placements, opening overrides and notes match its seed, in one
- *    transaction (`syncSeeds`, history by `seed`); a home without a seed file is left alone;
+ *    transaction (`syncSeeds`, history by `system` named `seed`); a home without a seed file is left alone;
  * 5. purge the homes named in `PURGE_HOMES` (a home that left git, e.g. the staging mock home):
  *    the stored home and its `userdata`, logged; photos are only listed, never deleted;
  * 6. import the named layouts once into the placement sets (`importLayouts`, #44).

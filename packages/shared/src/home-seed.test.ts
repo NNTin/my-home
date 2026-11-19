@@ -6,6 +6,7 @@ import {
   emptySeed,
   formatSeed,
   HomeSeed,
+  isSeedChange,
   normalizeSeed,
   seedIssues,
   type SeedPlacement,
@@ -145,5 +146,14 @@ describe('canonicalSeed', () => {
       placements: [{ ...bed, params: { color: '#AABBCC' } }],
     });
     expect(s.placements[0]!.params).toEqual({ color: '#aabbcc' });
+  });
+});
+
+describe('isSeedChange', () => {
+  it('is a system change named seed (a deploy) or seed import by … (an import)', () => {
+    expect(isSeedChange({ actor: 'system', actorName: 'seed' })).toBe(true);
+    expect(isSeedChange({ actor: 'system', actorName: 'seed import by nntin-bot' })).toBe(true);
+    expect(isSeedChange({ actor: 'system', actorName: null })).toBe(false);
+    expect(isSeedChange({ actor: 'agent', actorName: 'seed' })).toBe(false);
   });
 });

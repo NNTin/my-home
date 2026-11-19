@@ -5,7 +5,9 @@ import {
   formatIssues,
   HomeSeed,
   normalizeSeed,
+  modelUses,
   roomAt,
+  SEED_ACTOR_NAME,
   SEED_SCHEMA_VERSION,
   seedIssues,
   type HomeModel,
@@ -31,8 +33,15 @@ import {
   type NoteRow,
 } from './userdata-schema';
 
-/** The actor of every change the release job's seed sync makes. */
-export const SEED_ACTOR: HistoryActor = { actor: 'seed', source: 'default', username: null };
+/**
+ * The actor of every change the release job's seed sync makes: `system` named `seed`, values the
+ * previous api version can read (no new `Actor` value).
+ */
+export const SEED_ACTOR: HistoryActor = {
+  actor: 'system',
+  source: 'default',
+  username: SEED_ACTOR_NAME,
+};
 
 /** `home.json` → `home.seed.json`: a home's seed lives next to its home file. */
 export const seedFileOf = (homeFile: string) => homeFile.replace(/\.json$/, '.seed.json');
@@ -78,11 +87,21 @@ const toSeedNote = (row: NoteRow): SeedNote => ({
 });
 
 /**
+ * The use ids whose notes the seed holds: the uses in the home model and the given (active or
+ * seed) placements. Notes on anything else (a placement in the trash, a use that left the model)
+ * are outside the seed: never exported, never changed by a sync, so they come back with a restore.
+ */
+const noteScope = (model: HomeModel, placementIds: Iterable<string>) =>
+  new Set([...modelUses(model).map((u) => u.id), ...placementIds]);
+
+/**
  * The environment's state of a home in seed form (canonical): its active placements, its
  * overrides with params (an emptied override row is the same as none), the active notes on its
- * uses and the active type notes (environment-wide).
+ * model uses and active placements (`noteScope`) and the active type notes (environment-wide).
+ * It always passes `seedIssues` for the same model, as far as the stored data is valid.
  */
-export async function exportSeed(db: Db | Tx, homeId: string): Promise<HomeSeed> {
+export async function exportSeed(db: Db | Tx, model: HomeModel): Promise<HomeSeed> {
+  const homeId = model.id;
   const placed = await db
     .select()
     .from(placements)
@@ -101,6 +120,10 @@ export async function exportSeed(db: Db | Tx, homeId: string): Promise<HomeSeed>
     .select()
     .from(notes)
     .where(and(isNull(notes.homeId), isNull(notes.deletedAt)));
+  const inScope = noteScope(
+    model,
+    placed.map((p) => p.id),
+  );
   return canonicalSeed({
     schemaVersion: SEED_SCHEMA_VERSION,
     homeId,
@@ -116,7 +139,10 @@ export async function exportSeed(db: Db | Tx, homeId: string): Promise<HomeSeed>
     openingOverrides: overrides
       .filter((o) => Object.keys(o.params).length > 0)
       .map((o) => ({ useId: o.useId, typeId: o.typeId, params: o.params })),
-    notes: [...useNotes.filter((n) => n.subjectKind === 'use'), ...typeNotes].map(toSeedNote),
+    notes: [
+      ...useNotes.filter((n) => n.subjectKind === 'use' && inScope.has(n.subjectId)),
+      ...typeNotes,
+    ].map(toSeedNote),
   });
 }
 
@@ -288,9 +314,10 @@ async function syncOverrides(
 }
 
 /**
- * Makes the notes in `scope` (one home's use notes, or the type notes) match `wanted`: missing
- * ones are created with the seed's id, author and times, differing ones overwritten (a deleted
- * one comes back), and active ones not in the seed soft-deleted. Notes have no history.
+ * Makes the notes of one home's uses (`homeId`, limited to the subjects in `scope`) or the type
+ * notes (`homeId` null) match `wanted`: missing ones are created with the seed's id, author and
+ * times, differing ones overwritten (a deleted one comes back), and active ones not in the seed
+ * soft-deleted. Notes have no history.
  */
 async function syncNotes(
   tx: Tx,
@@ -298,6 +325,7 @@ async function syncNotes(
   wanted: SeedNote[],
   actor: HistoryActor,
   changes: NoteChanges,
+  scope?: Set<string>,
 ) {
   const ids = new Set(wanted.map((n) => n.id));
   const now = new Date();
@@ -332,7 +360,7 @@ async function syncNotes(
     changes.updated.push(n.id);
   }
   const active = await tx
-    .select({ id: notes.id })
+    .select({ id: notes.id, subjectKind: notes.subjectKind, subjectId: notes.subjectId })
     .from(notes)
     .where(
       and(
@@ -341,8 +369,9 @@ async function syncNotes(
       ),
     )
     .for('update');
-  for (const { id } of active) {
+  for (const { id, subjectKind, subjectId } of active) {
     if (ids.has(id)) continue;
+    if (scope && (subjectKind !== 'use' || !scope.has(subjectId))) continue;
     await tx.update(notes).set({ deletedAt: now, updatedBy: actor.actor }).where(eq(notes.id, id));
     changes.deleted.push(id);
   }
@@ -362,7 +391,7 @@ export interface SeedInput {
  * - opening overrides: set to the seed's params, those not in the seed emptied;
  * - notes on the homes' uses, and the type notes (the union of the seeds' type notes): created,
  *   overwritten or soft-deleted.
- * Every placement and override change writes a history row by `actor` (default: `seed`). An
+ * Every placement and override change writes a history row by `actor` (default: `SEED_ACTOR`, `system` named `seed`). An
  * unchanged seed changes nothing and writes no history. Photos, photo requests, history, the
  * home settings and other homes are not touched. Each synced home's one-time layout import is
  * claimed, so it never adds placements the seed does not have.
@@ -398,7 +427,11 @@ export async function syncSeeds(
       await syncPlacements(tx, model, seed, actor, changes.placements);
       await syncOverrides(tx, model.id, seed, actor, changes.openingOverrides);
       const useNotes = seed.notes.filter((n) => n.subject.kind === 'use');
-      await syncNotes(tx, model.id, useNotes, actor, changes.notes);
+      const scope = noteScope(
+        model,
+        seed.placements.map((p) => p.id),
+      );
+      await syncNotes(tx, model.id, useNotes, actor, changes.notes, scope);
       await tx
         .insert(imports)
         .values({

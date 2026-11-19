@@ -239,7 +239,7 @@ Every deploy's release job makes the environment match the seed of the deployed 
 missing placements are created with the seed's ids (never re-issued), changed ones are updated, a seed placement
 in the trash is restored, and **active placements that are not in the seed go to the trash** (restorable for 30
 days); overrides are set or emptied; notes are created, overwritten or soft-deleted. Every placement and override
-change is in the use's history as actor `seed` and can be undone until the next deploy. An unchanged seed
+change is in the use's history as actor `system` named `seed` and can be undone until the next deploy. An unchanged seed
 changes nothing. Photos and their links survive, as ids are stable.
 
 - `seed.sh <env> export`: the environment's state as a seed file, on stdout. The workflow: **place on staging →
@@ -249,7 +249,7 @@ changes nothing. Photos and their links survive, as ids are stable.
 - `seed.sh <env> diff [--file PATH]`: a unified diff from git's seed (`-`) to the environment (`+`); exit 0 none,
   5 drift. After a deploy it is empty; anything else is an unexported edit (or a deploy of another branch).
 - `seed.sh <env> --allow-write import [--file PATH]`: applies a seed now, as a deploy would (`PUT
-/api/homes/<home>/seed`, history by `seed`, the importer recorded as its source). Only when the owner asks;
+/api/homes/<home>/seed`, history by `system` named `seed import by <who>`). Only when the owner asks;
   the next deploy applies git's seed again.
 
 ### Test data

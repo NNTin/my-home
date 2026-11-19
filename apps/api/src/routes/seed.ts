@@ -3,6 +3,7 @@ import {
   formatSeed,
   HomeSeed,
   normalizeSeed,
+  SEED_ACTOR_NAME,
   SeedParams,
   SeedSyncReport,
   seedIssues,
@@ -22,7 +23,8 @@ export const SEED_REPLACED_ON_DEPLOY =
 /**
  * A home's seed: the placements, opening overrides and notes in the canonical seed format.
  * `GET` exports the environment's state (what `seed.sh <env> export` writes to git); `PUT`
- * imports a seed the way the release job applies git's, with history rows by `seed`.
+ * imports a seed the way the release job applies git's, with history rows by `system` named
+ * `seed import by <who>`.
  */
 export const seedRoutes =
   (db: Db, config: Pick<Config, 'agentUsernames'>): FastifyPluginAsyncZod =>
@@ -36,8 +38,7 @@ export const seedRoutes =
 
     // Text, so the file in git is byte for byte what the api answers.
     app.get('/homes/:homeId/seed', { schema: { params: SeedParams } }, async (request, reply) => {
-      await model(request.params.homeId);
-      const seed = await exportSeed(db, request.params.homeId);
+      const seed = await exportSeed(db, await model(request.params.homeId));
       return reply.type('application/json; charset=utf-8').send(formatSeed(seed));
     });
 
@@ -59,9 +60,9 @@ export const seedRoutes =
         const who = resolveActor(request.headers, config);
         const seed = normalizeSeed(request.body);
         const report = await syncSeeds(db, [{ model: m, seed }], {
-          actor: 'seed',
-          source: who.source,
-          username: who.username,
+          actor: 'system',
+          source: 'default',
+          username: `${SEED_ACTOR_NAME} import by ${who.username ?? who.actor}`,
         });
         return reply.header('warning', SEED_REPLACED_ON_DEPLOY).send(report);
       },

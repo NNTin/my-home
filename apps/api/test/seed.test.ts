@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { formatSeed, HomeSeed, SeedSyncReport, type HomeModel } from '@my-home/shared';
+import { formatSeed, HomeSeed, SeedSyncReport, seedIssues, type HomeModel } from '@my-home/shared';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { runRelease, type ReleaseLog } from '../src/db/release';
@@ -63,7 +63,12 @@ describe('the seed (data/homes/<home>.seed.json)', () => {
     expect(lines.info).toContain('release: 1 seed file(s) valid: home');
     const rows = await historyRows();
     expect(rows.length).toBe(gitSeed.placements.length + gitSeed.openingOverrides.length);
-    expect(rows.every((r) => r.actor === 'seed' && r.actorSource === 'default')).toBe(true);
+    // An actor the previous api can read: `system`, named `seed`.
+    expect(
+      rows.every(
+        (r) => r.actor === 'system' && r.actorSource === 'default' && r.actorName === 'seed',
+      ),
+    ).toBe(true);
   });
 
   it('is idempotent: an unchanged seed changes nothing and writes no history', async () => {
@@ -166,7 +171,8 @@ describe('the seed (data/homes/<home>.seed.json)', () => {
     // Each change is the newest history entry of its use, by `seed`, and can be undone.
     for (const id of [first!.id, second!.id, extra.json().id, window.useId]) {
       const entries = (await inject('GET', `/api/homes/home/uses/${id}/history`)).json().items;
-      expect(entries[0].actor, id).toBe('seed');
+      expect(entries[0].actor, id).toBe('system');
+      expect(entries[0].actorName, id).toBe('seed');
       expect(entries[0].canUndo, id).toBe(true);
     }
     const [trashed] = await ctx.database.db
@@ -179,7 +185,7 @@ describe('the seed (data/homes/<home>.seed.json)', () => {
       .from(notes)
       .where(eq(notes.id, note.json().id));
     expect(deleted!.deletedAt).not.toBeNull();
-    expect(deleted!.updatedBy).toBe('seed');
+    expect(deleted!.updatedBy).toBe('system');
   });
 
   it('leaves a home without a seed file alone, with a warning', async () => {
@@ -323,10 +329,58 @@ describe('the seed (data/homes/<home>.seed.json)', () => {
         await inject('GET', `/api/homes/mock-home/uses/${bed.json().id}/history`)
       ).json().items;
       expect(entries[0]).toMatchObject({
-        actor: 'seed',
-        actorSource: 'declared',
+        actor: 'system',
+        actorSource: 'default',
+        actorName: 'seed import by agent',
         action: 'create',
       });
+    });
+
+    it('a note on a placement in the trash is outside the seed: not exported, kept by a sync', async () => {
+      const bed = await inject(
+        'POST',
+        '/api/homes/mock-home/placements',
+        { typeId: 'furniture.bed', levelId: 'souterrain', position: { x: -3, z: 2.5 } },
+        agent,
+      );
+      expect(bed.statusCode, bed.body).toBe(201);
+      const note = await inject(
+        'POST',
+        '/api/notes',
+        { subject: { kind: 'use', id: bed.json().id }, homeId: 'mock-home', body: 'Guest bed' },
+        agent,
+      );
+      expect(note.statusCode, note.body).toBe(201);
+      const trashed = await inject(
+        'DELETE',
+        `/api/homes/mock-home/placements/${bed.json().id}?version=1`,
+        undefined,
+        agent,
+      );
+      expect(trashed.statusCode, trashed.body).toBe(200);
+
+      const first = await exported('mock-home');
+      const seed = HomeSeed.parse(JSON.parse(first));
+      expect(seed.placements).toEqual([]);
+      expect(seed.notes).toEqual([]);
+      expect(seedIssues(seed, mockHome)).toEqual([]);
+      // Export → import → export: valid, identical, and the note survives (it is not in scope).
+      const imported = await inject('PUT', '/api/homes/mock-home/seed', seed, agent);
+      expect(imported.statusCode, imported.body).toBe(200);
+      expect(SeedSyncReport.parse(imported.json()).homes[0]!.notes.deleted).toEqual([]);
+      expect(await exported('mock-home')).toBe(first);
+      const [kept] = await ctx.database.db.select().from(notes).where(eq(notes.id, note.json().id));
+      expect(kept!.deletedAt).toBeNull();
+      // Restored, the bed and its note are exported again.
+      await inject(
+        'POST',
+        `/api/homes/mock-home/placements/${bed.json().id}/restore`,
+        undefined,
+        agent,
+      );
+      const restored = HomeSeed.parse(JSON.parse(await exported('mock-home')));
+      expect(restored.notes.map((n) => n.id)).toEqual([note.json().id]);
+      expect(seedIssues(restored, mockHome)).toEqual([]);
     });
 
     it('normalises params the way the api stores them', async () => {

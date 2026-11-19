@@ -87,7 +87,7 @@
 
 Staging is shared and every deploy (any branch) makes it match that branch's seed: export right after placing, and
 rebase before exporting, so your seed does not drop what another merged PR placed. A placement a deploy removed is
-in the trash (`uses.sh staging list --include removed`, `restore`), with a `seed` entry in its history.
+in the trash (`uses.sh staging list --include removed`, `restore`), with a `seed` entry (actor `system`, name `seed`) in its history.
 
 Ids are permanent (`docs/home-model.md` § Naming). Give every new use a human name that says where it is
 ("Kitchen · microwave", "Corridor · downlight 3").

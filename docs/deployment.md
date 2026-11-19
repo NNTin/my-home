@@ -108,7 +108,7 @@ until it is exported into a pull request; a deploy overwrites unexported edits.*
   - opening overrides: set to the seed's params; one not in the seed is emptied (the row and its history stay);
   - notes: created with the seed's id, overwritten, or soft-deleted. Type notes are environment-wide: the union of
     the synced seeds' type notes.
-  - Every placement and override change is a history row by actor **`seed`**, so it shows in the use's history and
+  - Every placement and override change is a history row by actor `system` named **`seed`** (`actorName`; an existing actor, so the previous api version reads it), so it shows in the use's history and
     can be undone until the next deploy (notes have no history; the release log names them). The log reads
     `release: home "home" seed applied: placements created 1 (…); moved to the trash 1 (…)`.
 - **Idempotent:** an unchanged seed changes nothing and writes no history (`release: home "home" seed unchanged`).
@@ -122,8 +122,8 @@ until it is exported into a pull request; a deploy overwrites unexported edits.*
 `seed.sh staging export > data/homes/home.seed.json` (skill `my-home-environments`) and open a PR; its staging
 deploy applies the same seed, so `seed.sh staging diff` stays empty. The merge deploys it to production.
 `GET /api/homes/:homeId/seed` is the export (the file's exact text), `PUT /api/homes/:homeId/seed` an import (as a
-deploy would, history by `seed` with the importer as source, a `Warning` header: the next deploy applies git's
-seed). A rollback deploys the older commit's seed too.
+deploy would, history by `system` named `seed import by <who>`, a `Warning` header: the next deploy applies git's
+seed). A rollback deploys the older commit's seed too (§ Roll back production).
 
 ## What runs on staging
 
@@ -159,6 +159,12 @@ reads them.
 A rollback deploys the older commit's `data/homes` too: its release job syncs those files. A rollback to a release
 from **before the release job** (before #41, when production ran only `dist/migrate.js`) keeps the newer home
 document, which that release may not parse (its `GET /api/homes/:id` then fails). Re-deploy forward instead.
+
+A rollback to a release from **before the seed** (before `data/homes/home.seed.json`) has no seed sync: its release
+job leaves placements, overrides and notes exactly as the last seeded deploy left them, and they stay that way
+(edits there persist again) until a release with the seed deploys and makes them match its seed. The seed's
+history rows use the existing actor `system` (named `seed`), so that older api still lists and undoes them. A
+rollback to a release **with** the seed applies that older commit's seed.
 
 ## Databases and backups
 

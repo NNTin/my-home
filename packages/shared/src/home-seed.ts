@@ -21,6 +21,19 @@ import { Actor, MAX_NOTE_LENGTH } from './userdata';
 
 export const SEED_SCHEMA_VERSION = 1;
 
+/**
+ * How history marks the seed's changes: actor `system` (an existing value, so an api from before
+ * the seed still reads them during a rollout and after a rollback) with this `actorName`; an
+ * import through the api appends who sent it: `seed import by nntin-bot`.
+ */
+export const SEED_ACTOR_NAME = 'seed';
+
+/** Whether a history entry is a change the seed made (a deploy's sync or a seed import). */
+export const isSeedChange = (entry: { actor: string; actorName: string | null }) =>
+  entry.actor === 'system' &&
+  (entry.actorName === SEED_ACTOR_NAME ||
+    !!entry.actorName?.startsWith(`${SEED_ACTOR_NAME} import`));
+
 const Timestamp = z.iso.datetime({ offset: true });
 
 /** An active placement: what the viewer draws. Its room follows from the position. */

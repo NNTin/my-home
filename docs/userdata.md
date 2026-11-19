@@ -21,7 +21,7 @@ the shapes in `packages/shared/src/userdata.ts`, and the agents' script is `uses
 
 Placements, overrides and notes are **versioned in git** as the home's seed (`data/homes/home.seed.json`,
 [deployment.md](deployment.md#the-seed-comes-from-git)): every deploy makes the database match it, with history
-rows by actor `seed`. What the owner and agents change on an environment is a draft until it is exported
+rows by actor `system` named `seed`. What the owner and agents change on an environment is a draft until it is exported
 (`seed.sh <env> export`) into a pull request.
 
 A use stores only the **basic** parameters it changes; the type's defaults fill in the rest
@@ -58,7 +58,7 @@ overrides and notes are made to match the deployed commit's seed (§ What lives 
 `database.migrate()` runs the `public`, `media` and `userdata` migrations, in that order, and the homes are synced
 from git (`docs/deployment.md` § Homes come from git). `apps/api/test/userdata-persistence.test.ts` and
 `release.test.ts` cover the reset and the sync, and the CI docker job runs the real `dist/release.js` with a
-placement and a declination in place (the seed sync trashes the placement, a `seed` history entry, and keeps the
+placement and a declination in place (the seed sync trashes the placement, a history entry by `system` named `seed`, and keeps the
 declination); `seed.test.ts` covers the seed sync, its idempotency and the export → import → export round trip.
 Nothing deletes user data except the trash purge below (the seed sync only trashes and soft-deletes).
 
@@ -89,8 +89,8 @@ follow-up of #39 adds `userdata` ([deployment.md](deployment.md#databases-and-ba
 
 ## Actor
 
-Every change records **who** made it: `owner`, `agent`, `system` (the release job's imports) or `seed` (the seed
-from git that every deploy applies, and seed imports), with the source of that knowledge (`apps/api/src/actor.ts`):
+Every change records **who** made it: `owner`, `agent` or `system` (the release job and imports; the seed's changes
+are `system` with the name `seed`, or `seed import by <who>` for an import), with the source of that knowledge (`apps/api/src/actor.ts`):
 
 1. `identity`: on the deployed hosts Traefik's forwardAuth sets `X-Authentik-Username` (and replaces any copy a
    client sent); nginx passes it on to the api. A username listed in `AGENT_USERNAMES` (comma-separated, default
