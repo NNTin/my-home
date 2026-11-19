@@ -87,18 +87,18 @@ describe('the souterrain rooms', () => {
       expect(w.center[1] + w.size[1] / 2).toBeLessThanOrEqual(-0.25 + 1e-9);
       expect(w.size[2]).toBe(0.24);
     }
-    // The bed room wall runs east from x = 8.93 along z = -5.91; its door is 1.265 m in, 0.88 wide (#61).
+    // The bed room wall runs east from x = 8.93 along z = -5.91; its door is 1.295 m in, 0.82 wide (the owner's wall opening).
     const parts = interior.filter((w) => w.wallId === 'souterrain-wall-corridor-bed-room');
     expect(parts.map((w) => w.id.split(':').slice(1).join(':'))).toEqual([
       '0:full',
       '1:above',
       '2:full',
     ]);
-    expect(parts[0]!.size[0]).toBeCloseTo(1.265);
-    expect(parts[1]!.center[0]).toBeCloseTo(8.93 + 1.265 + 0.44);
+    expect(parts[0]!.size[0]).toBeCloseTo(1.295);
+    expect(parts[1]!.center[0]).toBeCloseTo(8.93 + 1.295 + 0.41);
     expect(parts[1]!.size[1]).toBeCloseTo(2.35 - 2);
     const door = scene.openings.find((o) => o.id === 'door-souterrain-corridor-bed-room')!;
-    expect(door).toMatchObject({ type: 'door', levelId: 'souterrain', size: [0.88, 2, 0.24] });
+    expect(door).toMatchObject({ type: 'door', levelId: 'souterrain', size: [0.82, 2, 0.24] });
     expect(door.center).toEqual([
       expect.closeTo(10.635),
       expect.closeTo(-2.6 + 1),
@@ -135,13 +135,13 @@ describe('the souterrain rooms', () => {
 
   it('put the patio door at the east end of the corridor and the east window in the bed room', () => {
     const door = scene.openings.find((o) => o.id === 'door-souterrain-corridor-patio')!;
-    // On the east wall's centre line, centred on the corridor (clear z -7.145 to -6.03).
+    // On the east wall's centre line, where the corridor's open end meets the kitchen (from photos).
     expect(door.center[0]).toBeCloseTo(13.18);
-    expect(door.center[2]).toBeCloseTo(-6.59);
+    expect(door.center[2]).toBeCloseTo(-7.4);
     const entry = scene.terrain.find((t) => t.id === 'terrain-entry')!;
     expect(entry.top).toBe(-2.6);
     const zs = entry.outline.map((p) => p[1]);
-    expect([Math.min(...zs), Math.max(...zs)]).toEqual([-7.2, -4.8]);
+    expect([Math.min(...zs), Math.max(...zs)]).toEqual([-8.1, -6.7]);
     const window = scene.openings.find((o) => o.id === 'window-souterrain-bed-room-east')!;
     expect(window.center[2]).toBeCloseTo(-3.9);
   });

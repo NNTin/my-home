@@ -256,7 +256,8 @@ module of its type (`apps/web/src/catalog/`, see [adding-piece-type.md](adding-p
 Interior or exterior follows the wall's `kind`. **The wall windows of the real home are all
 `window.casement` placeholders** until photos show which are casement and which tilt-and-turn (both
 are drawn the same). `modelUses(model)` lists every use with its type, name, level and the rooms it
-touches.
+touches: those along whose outline at least a quarter of its width runs, so a door where two rooms
+meet without a wall (the patio door at the corridor's open east end) touches both.
 
 ### Outbuildings
 
@@ -396,6 +397,9 @@ level. Everything is axis-aligned and the terrain is simplified to levelled area
   **compost** (`compost-ground-floor-garden`) stand on its lawn.
 - **Lower level** (-1.65): the souterrain apartment's garden on the north side and its patio on the
   east side.
+- The **sunken entry** at the souterrain patio door: a paved landing at the souterrain floor, then
+  seven irregular natural-stone steps up east to the patio, between rubble side walls (sloped terrain
+  patches, drawn as embankments, falling from the patio to the landing and each step).
 - The **garden divider wall** (`garden-divider`, kind `embankment`): a short, steep bank at the
   south-east corner that separates the ground-floor garden (south level) from the souterrain patio
   and garden (lower level). It is a dividing element, not a way in.
@@ -428,23 +432,23 @@ level. Everything is axis-aligned and the terrain is simplified to levelled area
             south
 ```
 
-| Room id                  | Name        | Connected to                                      |
-| ------------------------ | ----------- | ------------------------------------------------- |
-| `souterrain-stair-hall`  | Stair hall  | corridor (door), ground floor (stair)             |
-| `souterrain-work-room`   | Work room   | corridor (door)                                   |
-| `souterrain-bath-room`   | Bath room   | corridor (door)                                   |
-| `souterrain-kitchen`     | Kitchen     | corridor (open, no wall)                          |
-| `souterrain-corridor`    | Corridor    | every other room, and the souterrain patio (door) |
-| `souterrain-living-room` | Living room | corridor (door)                                   |
-| `souterrain-boiler-room` | Boiler room | corridor (door)                                   |
-| `souterrain-bed-room`    | Bed room    | corridor (door)                                   |
+| Room id                  | Name        | Connected to                                          |
+| ------------------------ | ----------- | ----------------------------------------------------- |
+| `souterrain-stair-hall`  | Stair hall  | corridor (door), ground floor (stair)                 |
+| `souterrain-work-room`   | Work room   | corridor (door)                                       |
+| `souterrain-bath-room`   | Bath room   | corridor (door)                                       |
+| `souterrain-kitchen`     | Kitchen     | corridor (open, no wall), the patio door's north part |
+| `souterrain-corridor`    | Corridor    | every other room, and the souterrain patio (door)     |
+| `souterrain-living-room` | Living room | corridor (door)                                       |
+| `souterrain-boiler-room` | Boiler room | corridor (door)                                       |
+| `souterrain-bed-room`    | Bed room    | corridor (door)                                       |
 
 There are exactly **two ways into the apartment** (`apartments[].entrances`):
 
-| Entrance id                      | Name                | Route                                                                                                                                                                                       |
-| -------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `entrance-souterrain-stair-hall` | Stair hall entrance | the house's entrance on the ground floor, then down `stair-souterrain-stair-hall-ground-floor` into the stair hall, then `door-souterrain-corridor-stair-hall`                              |
-| `entrance-souterrain-patio`      | Patio entrance      | from the lane through `gate-souterrain-patio-lane` (north end of the patio) onto the souterrain patio, down the sunken entry steps, then `door-souterrain-corridor-patio` into the corridor |
+| Entrance id                      | Name                | Route                                                                                                                                                                                                                              |
+| -------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `entrance-souterrain-stair-hall` | Stair hall entrance | the house's entrance on the ground floor, then down `stair-souterrain-stair-hall-ground-floor` into the stair hall, then `door-souterrain-corridor-stair-hall`                                                                     |
+| `entrance-souterrain-patio`      | Patio entrance      | from the lane through `gate-souterrain-patio-lane` (north end of the patio), west down the straight flight of the sunken entry (seven stone steps) and across its landing, then `door-souterrain-corridor-patio` into the corridor |
 
 The stair in the stair hall climbs counter-clockwise (north along the east side, west across the
 north end, south along the west side). The ground floor and the attic are not laid out yet: each has

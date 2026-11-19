@@ -205,10 +205,11 @@ describe('the stair between the souterrain and the ground floor', () => {
 });
 
 describe('walking outside', () => {
-  it('leaves by the patio door, up the steps onto the patio', () => {
-    const steps = [stand(12.5, -6.6)];
-    for (const x of [14, 14.75, 15.05, 16.5]) steps.push(go(steps.at(-1)!, [[x, -6.6]]));
-    expect(steps.map((s) => s.y)).toEqual([SOUTERRAIN, SOUTERRAIN, -2.28, -1.96, PATIO]);
+  it('leaves by the patio door, across the landing and up the steps onto the patio', () => {
+    // From the corridor through the door's middle, east along the flight of seven rises.
+    const steps = [stand(12.5, -7.4)];
+    for (const x of [14, 16.2, 16.95, 18.5]) steps.push(go(steps.at(-1)!, [[x, -7.4]]));
+    expect(steps.map((s) => s.y)).toEqual([SOUTERRAIN, SOUTERRAIN, -2.464, -2.057, PATIO]);
     expect(steps.map((s) => s.levelId)).toEqual([
       'souterrain',
       undefined,
@@ -216,18 +217,25 @@ describe('walking outside', () => {
       undefined,
       undefined,
     ]);
-    expect(steps.at(-1)!.x).toBeCloseTo(16.5, 1);
+    expect(steps.at(-1)!.x).toBeCloseTo(18.5, 1);
     // And back in.
-    expect(go(steps.at(-1)!, [[12.5, -6.6]])).toMatchObject({
+    expect(go(steps.at(-1)!, [[12.5, -7.4]])).toMatchObject({
       y: SOUTERRAIN,
       levelId: 'souterrain',
     });
   });
 
   it('cannot climb out of the sunken entry at its sides', () => {
-    const pit = go(stand(12.5, -6.6), [[14, -6.6]]);
-    expect(go(pit, [[14, -8.5]]).z).toBeGreaterThan(-7.2);
-    expect(go(pit, [[14, -3.5]]).z).toBeLessThan(-4.8);
+    const pit = go(stand(12.5, -7.4), [[14, -7.4]]);
+    // The retaining walls are the entry's sides, z -8.1 and -6.7: the figure stays on the landing.
+    for (const [z, side] of [
+      [-9.5, -8.1],
+      [-5.5, -6.7],
+    ] as const) {
+      const stopped = go(pit, [[14, z]]);
+      expect(stopped.y).toBe(SOUTERRAIN);
+      expect(Math.abs(stopped.z - -7.4)).toBeLessThanOrEqual(Math.abs(side - -7.4) + 1e-9);
+    }
   });
 
   it('passes the gate to the lane and is stopped by the fence beside it', () => {
@@ -258,7 +266,8 @@ describe('start pose', () => {
   it('starts just inside the patio door of the real home, facing into the corridor', () => {
     const start = startPose(home, world)!;
     expect(start).toMatchObject({ y: SOUTERRAIN, levelId: 'souterrain' });
-    expect(start.z).toBeCloseTo(-6.59, 1);
+    // In front of the door's corridor part (z -6.9 to -7.265; its north part opens into the kitchen).
+    expect(start.z).toBeCloseTo(-7.08, 1);
     expect(start.x).toBeGreaterThan(12);
     expect(start.x).toBeLessThan(13);
     expect(roomOf(start)).toBe('souterrain-corridor');
