@@ -516,8 +516,13 @@ async function smoke(out, homeId) {
             .first()
             .waitFor({ timeout: 20_000 })
             .catch(() => {});
+          // Placing is edit mode's: a visit starts in view mode, where there is no Place.
+          const viewPlace = await p.getByRole('button', { name: 'Place…' }).count();
+          check(`${label}: ${id} offers no Place in view mode`, viewPlace === 0, `${viewPlace}`);
+          await press(p.getByRole('button', { name: 'Edit', exact: true }));
           const place = await p.getByRole('button', { name: 'Place…' }).count();
-          check(`${label}: ${id} offers Place`, place === 1, `${place} Place buttons`);
+          check(`${label}: ${id} offers Place in edit mode`, place === 1, `${place} Place buttons`);
+          await press(p.getByRole('button', { name: 'Done', exact: true }));
           if (!device.hasTouch) {
             await p.waitForTimeout(500);
             await p.screenshot({ path: shot(id.replace('.', '-')) });
@@ -793,6 +798,21 @@ async function usesStep({ label, device, open, press, base, homeId, shot }) {
       );
       const row = page.locator(`[id="use-${facts.home}-${picked.id}"]`);
       const editor = page.getByRole('region', { name: `Edit ${picked.name}` });
+      // View mode (the default): the use shows its history, with no editor and nothing to undo.
+      check(
+        `${label}: in view mode #use= opens the history, with no editor, Edit or Undo`,
+        (await row
+          .getByRole('region', { name: 'History' })
+          .waitFor({ timeout: 30_000 })
+          .then(
+            () => true,
+            () => false,
+          )) &&
+          (await editor.count()) === 0 &&
+          (await row.getByRole('button', { name: `Edit ${picked.name}` }).count()) === 0 &&
+          (await row.getByRole('button', { name: /^Undo/ }).count()) === 0,
+      );
+      await press(page.getByRole('button', { name: 'Edit', exact: true }));
       check(
         `${label}: #use= opens the use's editor`,
         await editor.waitFor({ timeout: 30_000 }).then(
@@ -872,6 +892,16 @@ async function usesStep({ label, device, open, press, base, homeId, shot }) {
     const { context, page } = await open({ fake });
     const p = `/catalog/furniture/furniture.bed?home=${encodeURIComponent(placeHome)}&p=${Buffer.from(JSON.stringify({ width: 1.8 })).toString('base64url')}`;
     await page.goto(url(p), { waitUntil: 'networkidle', timeout: 60_000 });
+    await page
+      .getByText(/uses? in this environment/)
+      .first()
+      .waitFor({ timeout: 20_000 })
+      .catch(() => {});
+    check(
+      `${label}: the bed's page offers no Place in view mode`,
+      (await page.getByRole('button', { name: 'Place…' }).count()) === 0,
+    );
+    await press(page.getByRole('button', { name: 'Edit', exact: true }));
     const placeButton = page.getByRole('button', { name: 'Place…' });
     await placeButton.waitFor({ timeout: 30_000 }).catch(() => {});
     if ((await placeButton.count()) === 1) {

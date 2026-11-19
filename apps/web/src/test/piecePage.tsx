@@ -1,13 +1,20 @@
 import { render, screen, within } from '@testing-library/react';
 import { App } from '../App';
 import { fakeApi, type FakeApiOptions } from './fakeApi';
+import { enterEditMode } from './editMode';
 
 /**
  * Opens a piece page at `path` (with its query and `#use=` anchor) on the fake api. The test file
  * must mock `../piece-page/Inspector` (no WebGL in jsdom), and `../scene/Scene` if it goes on to
  * the viewer.
  */
-export function openPiece(path: string, options: FakeApiOptions = {}) {
+export function openPiece(
+  path: string,
+  options: FakeApiOptions = {},
+  { editing = true }: { editing?: boolean } = {},
+) {
+  // The piece page edits only in edit mode: most tests start in it (a visit starts in view mode).
+  if (editing) enterEditMode();
   window.history.replaceState(null, '', path);
   const api = fakeApi(options);
   render(<App />);

@@ -365,6 +365,22 @@ async function smoke(out, homeId) {
       (await page.locator('.room-label').count()) > 0,
     );
 
+    // View mode is the default: nothing can be changed until "Edit" is pressed (and "Done" leaves it).
+    const editButton = page.getByRole('button', { name: 'Edit', exact: true });
+    const doneButton = page.getByRole('button', { name: 'Done', exact: true });
+    const editBadge = page.getByRole('status', { name: 'Edit mode' });
+    check(
+      'a fresh visit is in view mode: the top bar offers "Edit"',
+      (await editButton.count()) === 1 && (await doneButton.count()) === 0,
+    );
+    check('no edit-mode indicator shows in view mode', (await editBadge.count()) === 0);
+    const editBox = await editButton.boundingBox();
+    check(
+      `the Edit button is at least ${TOUCH} px high`,
+      editBox.height >= TOUCH,
+      `${Math.round(editBox.height)} px`,
+    );
+
     // Furniture: the home's one placement set, with no layout manager.
     await tab(/Furniture/).tap();
     await settle();
@@ -378,6 +394,17 @@ async function smoke(out, homeId) {
     );
     const saved = () => furniture.getByRole('status').filter({ hasText: 'All changes saved' });
     await saved().waitFor({ timeout: 20_000 });
+    check(
+      'in view mode the panel offers nothing to place, undo or delete',
+      (await furniture.locator('.catalog-item').count()) === 0 &&
+        (await furniture.getByRole('button', { name: /^(Undo|Redo|Delete)$/ }).count()) === 0,
+    );
+    await editButton.tap();
+    await settle();
+    check(
+      '"Edit" turns edit mode on: it becomes "Done" and an indicator shows',
+      (await doneButton.count()) === 1 && (await editBadge.isVisible()),
+    );
     const created = page.waitForResponse(
       (response) =>
         response.request().method() === 'POST' &&
@@ -402,7 +429,8 @@ async function smoke(out, homeId) {
     // Editing by touch with the panel closed: the item's tools float next to it.
     await page.getByRole('button', { name: 'Close the panel' }).tap();
     await settle();
-    const toolbar = page.locator('.item-toolbar');
+    // The edit toolbar; in view mode the selected item shows the piece bar instead (same class).
+    const toolbar = page.getByRole('toolbar', { name: /: edit$/ });
     await toolbar.waitFor({ timeout: 10_000 });
     const view = await box('canvas');
     const tools = await toolbar.boundingBox();
@@ -442,6 +470,41 @@ async function smoke(out, homeId) {
     };
 
     const [placed] = await items();
+    const viewFrom = await onItem();
+
+    // "Done": back in view mode, a drag moves nothing (the placement is selected, to inspect it).
+    await doneButton.tap();
+    await settle();
+    check(
+      'leaving edit mode takes the tools and the indicator away',
+      (await toolbar.count()) === 0 &&
+        (await editBadge.count()) === 0 &&
+        (await editButton.count()) === 1,
+    );
+    check(
+      'in view mode the selected item shows its piece page link instead',
+      await page.getByRole('toolbar', { name: /: piece$/ }).isVisible(),
+    );
+    const writesBefore = answered;
+    void touch('touchStart', viewFrom.x, viewFrom.y);
+    for (let step = 1; step <= 8; step++) {
+      await touch('touchMove', viewFrom.x, viewFrom.y + step * 3);
+      await page.waitForTimeout(80);
+    }
+    await touch('touchEnd');
+    await page.waitForTimeout(2500);
+    const [untouched] = await items();
+    check(
+      'a drag in view mode moves nothing',
+      Math.hypot(
+        untouched.position.x - placed.position.x,
+        untouched.position.z - placed.position.z,
+      ) < 0.01 &&
+        untouched.rotationY === placed.rotationY &&
+        answered === writesBefore,
+    );
+    await editButton.tap();
+    await toolbar.waitFor({ timeout: 10_000 });
     const from = await onItem();
     // A drag leaves the spot at once (a finger that rests there is a long press): the press and
     // the first moves go out together, without waiting for the slow software renderer in between.

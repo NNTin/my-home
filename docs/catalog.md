@@ -92,6 +92,9 @@ What the page writes is in [its uses](#uses-on-the-piece-page), below the playgr
 Below the playground and the design parameters, the page acts on **this environment's** data (#45; APIs in
 [userdata.md](userdata.md) and [photos.md](photos.md)). Agents may use all of it; photos are never deleted here.
 
+- **View mode and edit mode** ([docs/furniture.md](furniture.md#view-mode-and-edit-mode)): the page's header has
+  **Edit** / **Done**. Without edit mode there is no **Place**, no per-use editor (`#use=` opens the history
+  instead), no **Remove** or **Restore**, and no **Undo**; the history is read-only.
 - **Place** (furniture and fixture types, on the floor, a wall or the ceiling as the type says):
   **Place…** opens a form, home → level → room (only levels with rooms; defaults:
   the `?home=` home, its first level with rooms, that level's first room). It finds a free spot in the room with

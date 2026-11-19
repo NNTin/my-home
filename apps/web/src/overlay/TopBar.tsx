@@ -2,6 +2,7 @@ import type { HomeSummary } from '@my-home/shared';
 import type { KeyboardEvent } from 'react';
 import type { HomeScene } from '../builder/buildHome';
 import { roofIndex, showUpTo, type Visibility } from '../builder/visibility';
+import { EditToggle } from '../editMode/EditToggle';
 import { href, keptQuery, Link } from '../routing';
 
 interface Props {
@@ -88,6 +89,7 @@ export function TopBar({
         ) : (
           <span className="topbar-home">{homes.find((h) => h.id === homeId)?.name}</span>
         )}
+        <EditToggle />
         <button type="button" aria-label="Walk and take photos" onClick={onWalk}>
           <span aria-hidden="true">🚶</span> Walk
         </button>

@@ -190,11 +190,13 @@ function FurnitureItem({
   handlers,
   touch,
   toolbar,
+  editable,
 }: {
   item: FurnitureView;
   handlers: FurnitureHandlers;
   touch: boolean;
   toolbar: FurnitureToolbarProps | undefined;
+  editable: boolean;
 }) {
   const { start, move, end } = useDrag(item, handlers);
   const { size } = item;
@@ -204,14 +206,25 @@ function FurnitureItem({
   return (
     <group position={item.position} rotation={[0, item.rotationY, 0]}>
       <group
-        onPointerDown={start('move')}
-        onPointerMove={move}
-        onPointerUp={end}
-        onPointerCancel={end}
+        {...(editable
+          ? {
+              onPointerDown: start('move'),
+              onPointerMove: move,
+              onPointerUp: end,
+              onPointerCancel: end,
+            }
+          : {
+              // View mode: a tap selects (to inspect), nothing drags, the orbit controls stay free.
+              onClick: (e: ThreeEvent<MouseEvent>) => {
+                if (e.button !== 0 || !onCanvas(e.nativeEvent)) return;
+                e.stopPropagation();
+                handlers.onSelect(item.id);
+              },
+            })}
       >
         <PartsMesh parts={item.parts} state={state} />
       </group>
-      {item.selected && (
+      {editable && item.selected && (
         // Rotate handle: a flat ring on the floor around the item.
         <mesh
           rotation={[-Math.PI / 2, 0, 0]}
@@ -225,7 +238,7 @@ function FurnitureItem({
           <meshBasicMaterial color={SELECTION_COLOR} side={DoubleSide} transparent opacity={0.8} />
         </mesh>
       )}
-      {item.selected && toolbar && (
+      {editable && item.selected && toolbar && (
         // Above the item's top; the room names (z-index up to 5) stay below it.
         <Html
           position={[0, size.height, 0]}
@@ -245,6 +258,7 @@ export function FurnitureLayer({
   handlers,
   touch = false,
   toolbar,
+  editable = true,
 }: {
   items: FurnitureView[];
   handlers: FurnitureHandlers;
@@ -252,6 +266,8 @@ export function FurnitureLayer({
   touch?: boolean;
   /** The floating toolbar of the selected item; none on a desktop screen. */
   toolbar?: FurnitureToolbarProps | undefined;
+  /** Edit mode: items can be dragged and rotated. Off, they can only be selected. */
+  editable?: boolean;
 }) {
   return (
     <group>
@@ -262,6 +278,7 @@ export function FurnitureLayer({
           handlers={handlers}
           touch={touch}
           toolbar={toolbar}
+          editable={editable}
         />
       ))}
     </group>
