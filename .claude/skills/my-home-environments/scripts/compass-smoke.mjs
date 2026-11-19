@@ -35,6 +35,8 @@ const deg = (radians) => (radians * 180) / Math.PI;
 /** Smallest difference between two angles in degrees. */
 const apart = (a, b) => Math.abs(((((a - b) % 360) + 540) % 360) - 180);
 const errors = [];
+/** sessionStorage key of the pose the mocked phone holds over a reload (see `hold`). */
+const HELD_KEY = 'compass-smoke.held';
 
 async function open(browser, initScript) {
   const context = await browser.newContext({
@@ -58,6 +60,16 @@ async function open(browser, initScript) {
       value: undefined,
     });
   });
+  // A phone held still keeps reporting its orientation, from the first moment of every page load:
+  // `hold()` stores the pose for this tab, and each page sends it as an Android phone does.
+  await context.addInitScript((key) => {
+    const init = JSON.parse(window.sessionStorage.getItem(key) ?? 'null');
+    if (!init) return;
+    window.__held = window.setInterval(
+      () => window.dispatchEvent(new DeviceOrientationEvent('deviceorientationabsolute', init)),
+      50,
+    );
+  }, HELD_KEY);
   await context.addInitScript(initScript);
   const page = await context.newPage();
   page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`));
@@ -109,13 +121,25 @@ async function open(browser, initScript) {
       [type, init],
     );
   /** Android: the phone upright in portrait, its camera facing `bearing`, tilted to `beta`. */
-  const face = (bearing, beta = 90) =>
-    send('deviceorientationabsolute', {
-      alpha: (360 - bearing) % 360,
-      beta,
-      gamma: 0,
-      absolute: true,
-    });
+  const pose = (bearing, beta = 90) => ({
+    alpha: (360 - bearing) % 360,
+    beta,
+    gamma: 0,
+    absolute: true,
+  });
+  const face = (bearing, beta) => send('deviceorientationabsolute', pose(bearing, beta));
+  /** The phone held still facing `bearing`: it keeps reporting, also through a reload. */
+  const hold = (bearing, beta) =>
+    page.evaluate(
+      ([key, init]) => window.sessionStorage.setItem(key, JSON.stringify(init)),
+      [HELD_KEY, pose(bearing, beta)],
+    );
+  /** The held phone stops reporting. */
+  const release = () =>
+    page.evaluate((key) => {
+      window.clearInterval(window.__held);
+      window.sessionStorage.removeItem(key);
+    }, HELD_KEY);
   const screenAngle = (angle) =>
     page.evaluate((angle) => {
       Object.defineProperty(screen.orientation, 'angle', { configurable: true, get: () => angle });
@@ -129,7 +153,21 @@ async function open(browser, initScript) {
     await page.mouse.move(195 + dx, 420 + dy, { steps: 5 });
     await page.mouse.up();
   };
-  return { page, context, hud, read, settle, send, face, screenAngle, button, mode, drag };
+  return {
+    page,
+    context,
+    hud,
+    read,
+    settle,
+    send,
+    face,
+    hold,
+    release,
+    screenAngle,
+    button,
+    mode,
+    drag,
+  };
 }
 
 async function android(browser, home) {
@@ -381,17 +419,14 @@ async function android(browser, home) {
   await s.page.screenshot({ path: out, timeout: 120_000 });
 
   // The mode is kept over a reload, and comes back on by itself where no permission is asked.
+  // The phone keeps reporting its orientation through the reload, as a real one does, from the
+  // first moment of the new page: without any data Sensor mode falls back to Manual after 2 s,
+  // and a deployed page is often still loading 2 s after Sensor mode is back (#86).
+  await s.hold(90);
   await s.page.reload({ waitUntil: 'networkidle', timeout: 60_000 });
   await s.hud.waitFor({ timeout: 60_000 });
-  // The phone keeps reporting its orientation, as a real one does: without any data Sensor mode
-  // falls back to Manual after 2 s, so a read that comes late must not find it silent.
-  let restored = await s.read();
-  for (const deadline = Date.now() + 15_000; Date.now() < deadline;) {
-    await s.face(90);
-    restored = await s.read();
-    if (restored.mode === 'sensors' && apart(restored.heading, plan(90)) < 3) break;
-    await s.page.waitForTimeout(250);
-  }
+  const restored = await s.settle((v) => v.mode === 'sensors' && apart(v.heading, plan(90)) < 3);
+  await s.release();
   check(
     'after a reload Sensor mode is back on and follows the phone',
     restored.mode === 'sensors' && apart(restored.heading, plan(90)) < 3,
