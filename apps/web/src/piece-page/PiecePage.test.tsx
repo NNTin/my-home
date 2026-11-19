@@ -43,7 +43,8 @@ describe('the piece page', () => {
     open('/catalog/openings/window.casement?home=mock-home');
     const heading = await screen.findByRole('heading', { level: 1, name: /Casement window/ });
     expect(heading).toBeInTheDocument();
-    expect(document.title).toBe('Casement window · my-home');
+    // The title is set in an effect, which may run a moment after the lazy page is shown.
+    await waitFor(() => expect(document.title).toBe('Casement window · my-home'));
     expect(screen.getByText('Windows & doors · Window')).toBeInTheDocument();
     expect(screen.getByText(/sashes swing open on side hinges/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '← Catalogue' })).toHaveAttribute(

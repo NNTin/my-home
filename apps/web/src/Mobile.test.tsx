@@ -37,6 +37,7 @@ async function open(
   const api = fakeApi(options);
   render(<App />);
   await screen.findByTestId('scene');
+  await turn.listening();
   return { turn, api };
 }
 

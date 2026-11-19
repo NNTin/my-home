@@ -1,12 +1,12 @@
-import { act } from '@testing-library/react';
+import { act, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 import { LANDSCAPE_QUERY, MOBILE_QUERY, type LayoutMode } from '../overlay/useLayoutMode';
 
 /**
  * jsdom has no `matchMedia` (the app then uses the desktop layout). This stubs it so the media
  * queries of `useLayoutMode` answer for the given kind of screen, and returns a function that
- * changes the screen and tells the listeners, like turning the phone or resizing the window.
- * Undo it with `vi.unstubAllGlobals()`.
+ * changes the screen and tells the listeners, like turning the phone or resizing the window
+ * (await its `listening()` first). Undo it with `vi.unstubAllGlobals()`.
  */
 export function stubScreen(initial: LayoutMode) {
   let mode = initial;
@@ -25,11 +25,25 @@ export function stubScreen(initial: LayoutMode) {
     addEventListener: (_type: string, listener: () => void) => listeners.add(listener),
     removeEventListener: (_type: string, listener: () => void) => listeners.delete(listener),
   }));
-  return (next: LayoutMode) =>
+  const turn = (next: LayoutMode) => {
+    // A turn nobody hears would leave the page as it was: fail here, not at the next assertion.
+    if (listeners.size === 0)
+      throw new Error('Nothing listens to the screen yet: await turn.listening()');
     act(() => {
       mode = next;
       for (const listener of listeners) listener();
     });
+  };
+  /**
+   * Resolves once the page listens to the screen. `useSyncExternalStore` subscribes in an effect,
+   * and after a render outside `act` (one that `findBy…` waited for) React may run that effect a
+   * little after the page is in the DOM: on a busy machine, after the test has moved on.
+   */
+  const listening = () =>
+    waitFor(() => {
+      if (listeners.size === 0) throw new Error('Nothing listens to the screen yet');
+    });
+  return Object.assign(turn, { listening });
 }
 
 /** jsdom has no PointerEvent: a MouseEvent with a pointer id is what the handlers need. */
