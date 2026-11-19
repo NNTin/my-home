@@ -12,8 +12,12 @@ import type { ResolvedActor } from '../actor';
 import type { Db } from './client';
 import { history, type HistoryRow } from './userdata-schema';
 
-/** Who a history row is recorded for; `system` is the release job and imports. */
-export type HistoryActor = ResolvedActor | { actor: 'system'; source: 'default'; username: null };
+/**
+ * Who a history row is recorded for; `system` is the release job and imports (the seed's changes:
+ * `system` with the name `seed`, see `SEED_ACTOR_NAME`).
+ */
+export type HistoryActor =
+  ResolvedActor | { actor: 'system'; source: 'default'; username: string | null };
 
 /** A transaction or the database: history rows are written in the same transaction as the change. */
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];

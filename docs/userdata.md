@@ -8,16 +8,21 @@ the shapes in `packages/shared/src/userdata.ts`, and the agents' script is `uses
 
 ## What lives where
 
-| What                                                         | Where                                  | Changed by                     |
-| ------------------------------------------------------------ | -------------------------------------- | ------------------------------ |
-| Piece designs (types, parameters, limits, geometry)          | git: `packages/shared`, `apps/web`     | pull requests                  |
-| House structure, incl. every opening with its id, type, name | git: `data/homes/*.json`               | pull requests                  |
-| Furniture placements (one set per home)                      | database: `userdata.placements`        | the owner and agents, per env. |
-| Basic-parameter overrides of the openings (colour, sashes …) | database: `userdata.opening_overrides` | the owner and agents, per env. |
-| The history of every change, with its actor                  | database: `userdata.history`           | written with every change      |
-| Every furniture id ever issued                               | database: `userdata.issued_ids`        | written with every placement   |
-| Notes on types and uses (§ Notes)                            | database: `userdata.notes`             | the owner and agents, per env. |
-| Home settings: the magnetic declination (§ Home settings)    | database: `userdata.home_settings`     | the owner and agents, per env. |
+| What                                                         | Where                                  | Changed by                       |
+| ------------------------------------------------------------ | -------------------------------------- | -------------------------------- |
+| Piece designs (types, parameters, limits, geometry)          | git: `packages/shared`, `apps/web`     | pull requests                    |
+| House structure, incl. every opening with its id, type, name | git: `data/homes/*.json`               | pull requests                    |
+| Furniture placements (one set per home)                      | database: `userdata.placements`        | the seed in git; drafts per env. |
+| Basic-parameter overrides of the openings (colour, sashes …) | database: `userdata.opening_overrides` | the seed in git; drafts per env. |
+| The history of every change, with its actor                  | database: `userdata.history`           | written with every change        |
+| Every furniture id ever issued                               | database: `userdata.issued_ids`        | written with every placement     |
+| Notes on types and uses (§ Notes)                            | database: `userdata.notes`             | the seed in git; drafts per env. |
+| Home settings: the magnetic declination (§ Home settings)    | database: `userdata.home_settings`     | the owner and agents, per env.   |
+
+Placements, overrides and notes are **versioned in git** as the home's seed (`data/homes/home.seed.json`,
+[deployment.md](deployment.md#the-seed-comes-from-git)): every deploy makes the database match it, with history
+rows by actor `system` named `seed`. What the owner and agents change on an environment is a draft until it is exported
+(`seed.sh <env> export`) into a pull request.
 
 A use stores only the **basic** parameters it changes; the type's defaults fill in the rest
 (`effectiveParams`). Design parameters cannot be overridden per use. Staging and production have separate
@@ -46,14 +51,16 @@ constraints: enum values (actions, actors) are validated by the api, so adding o
 
 ## Persistence
 
-**User data survives every deploy of every branch**, like photos. Every deploy runs the release job
+**History, issued ids and home settings survive every deploy of every branch**, like photos; placements,
+overrides and notes are made to match the deployed commit's seed (§ What lives where). Every deploy runs the release job
 ([`apps/api/src/db/release.ts`](../apps/api/src/db/release.ts), `dist/release.js`): on staging the reset
 ([`apps/api/src/db/reset.ts`](../apps/api/src/db/reset.ts)) drops only `public` and `drizzle`; then
 `database.migrate()` runs the `public`, `media` and `userdata` migrations, in that order, and the homes are synced
 from git (`docs/deployment.md` § Homes come from git). `apps/api/test/userdata-persistence.test.ts` and
 `release.test.ts` cover the reset and the sync, and the CI docker job runs the real `dist/release.js` with a
-placement and a declination in place. Nothing deletes user data except the trash purge
-below.
+placement and a declination in place (the seed sync trashes the placement, a history entry by `system` named `seed`, and keeps the
+declination); `seed.test.ts` covers the seed sync, its idempotency and the export → import → export round trip.
+Nothing deletes user data except the trash purge below (the seed sync only trashes and soft-deletes).
 
 ### Migrations: expand-only
 
@@ -82,8 +89,8 @@ follow-up of #39 adds `userdata` ([deployment.md](deployment.md#databases-and-ba
 
 ## Actor
 
-Every change records **who** made it: `owner`, `agent` or `system` (the release job and imports), with the source
-of that knowledge (`apps/api/src/actor.ts`):
+Every change records **who** made it: `owner`, `agent` or `system` (the release job and imports; the seed's changes
+are `system` with the name `seed`, or `seed import by <who>` for an import), with the source of that knowledge (`apps/api/src/actor.ts`):
 
 1. `identity`: on the deployed hosts Traefik's forwardAuth sets `X-Authentik-Username` (and replaces any copy a
    client sent); nginx passes it on to the api. A username listed in `AGENT_USERNAMES` (comma-separated, default
@@ -201,4 +208,5 @@ sticks"). Type notes are environment-wide (`homeId` null); use notes belong to o
 
 Agents write to a deployed environment only for a change the owner asked for (`uses.sh --allow-write`, see the
 skill). There is no test home there and no smoke writes (they intercept writes in the browser); API write tests
-run on a throwaway database in CI. Notes are the owner's data.
+run on a throwaway database in CI. Notes are the owner's data. A write is a draft until it is exported into the
+seed (`seed.sh <env> export`, a pull request); the next deploy replaces it otherwise.

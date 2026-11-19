@@ -1,4 +1,4 @@
-import { UseConflict, type HistoryEntry } from '@my-home/shared';
+import { isSeedChange, UseConflict, type HistoryEntry } from '@my-home/shared';
 import { useEffect, useState } from 'react';
 import { ApiRequestError, usesApi } from '../api';
 
@@ -37,6 +37,14 @@ const exactTime = (iso: string) =>
   new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'medium' });
 
 function Who({ entry }: { entry: HistoryEntry }) {
+  // A deploy's seed sync (or a seed import): the release job, not a person.
+  if (isSeedChange(entry)) {
+    return (
+      <span className="history-who" title={entry.actorName ?? undefined}>
+        Seed from git
+      </span>
+    );
+  }
   return (
     <span className="history-who">
       {ACTORS[entry.actor]}
@@ -154,7 +162,8 @@ export function History({
                   <span className="history-undone">
                     {' '}
                     undone
-                    {undoneBy && ` by ${BY[undoneBy.actor]} at ${exactTime(undoneBy.at)}`}
+                    {undoneBy &&
+                      ` by ${isSeedChange(undoneBy) ? 'the seed from git' : BY[undoneBy.actor]} at ${exactTime(undoneBy.at)}`}
                   </span>
                 )}
                 {entry.canUndo && (

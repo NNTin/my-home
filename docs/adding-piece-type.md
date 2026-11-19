@@ -12,8 +12,8 @@ The registry ([`catalog/registry.ts`](../apps/web/src/catalog/registry.ts)) find
 `import.meta.glob` and checks it against the shared catalogue: exactly one module per type, the
 folder `window/casement` for the id `window.casement`. There is no other list to update: the viewer,
 the editor and the furniture catalogue panel pick the new type up. Openings refer to their type by
-`typeId` in the home model ([home-model.md](home-model.md)); furniture and fixtures are placed per environment
-(database placements, [userdata.md](userdata.md)).
+`typeId` in the home model ([home-model.md](home-model.md)); furniture and fixtures are placements, versioned in
+the home's seed (`data/homes/home.seed.json`, [userdata.md](userdata.md)).
 
 | Kind        | Families                                                                            | Placed                               |
 | ----------- | ----------------------------------------------------------------------------------- | ------------------------------------ |

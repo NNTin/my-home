@@ -10,8 +10,8 @@ description: >-
 
 | Environment | Base URL                         | Deployed from                                         | Data                                                                                          |
 | ----------- | -------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| staging     | `https://home-staging.nntin.xyz` | same-repo PR pushes, `v*` tags, dispatch; latest wins | home synced from git (`home.json`, "Our home"); placements, colours, notes and photos persist |
-| production  | `https://home.nntin.xyz`         | every push to `main`                                  | homes synced from git (`home.json`) on every deploy; change only when asked to                |
+| staging     | `https://home-staging.nntin.xyz` | same-repo PR pushes, `v*` tags, dispatch; latest wins | home and seed synced from git (`home.json`, `home.seed.json`) on every deploy; photos persist |
+| production  | `https://home.nntin.xyz`         | every push to `main`                                  | home and seed synced from git on every deploy; change only when asked to                      |
 
 Both are behind authentik SSO. Agents exchange the **nntin-bot** GitHub token (`GH_TOKEN`, `GITHUB_TOKEN` or
 `gh auth token`) at `POST <base>/agent-auth/token` for a per-host site token valid for 1 hour, sent as
@@ -22,7 +22,9 @@ error table are in [issue #9](https://github.com/NNTin/my-home/issues/9); deploy
 **Homes come from git**: every deploy replaces the stored homes with the deployed commit's `data/homes` (the release
 job's log names the uses that need attention afterwards). **Changing the house = a PR to `data/homes`**;
 `PUT /api/homes/:id` and `POST /api/homes/import` are staging experiments, lost on the next deploy (`Warning`
-header). The magnetic declination is a home setting that deploys keep:
+header). **The seed comes from git too**: placements with their params, opening overrides and notes are
+`data/homes/<home>.seed.json`, and every deploy makes the environment match the deployed commit's seed (§ The seed).
+The magnetic declination is a home setting that deploys keep:
 `site-curl.sh <env> /api/homes/<home>/settings` (GET, or `-X PUT --json '{"version":N,"magneticDeclination":…|null}'`).
 
 The scripts below do all of this. Dependencies: `bash`, `curl`, `jq`, `gh`. Run them from the repository root.
@@ -55,6 +57,8 @@ $S/photos.sh staging list --room souterrain-kitchen      # the owner's photos wi
 $S/photo-requests.sh staging create --room souterrain-kitchen --reason "Which wall has the window?"
 $S/uses.sh staging whoami                                # the actor recorded for the agent token: agent
 $S/uses.sh staging list --status needs-attention   # where-used, with problems
+$S/seed.sh staging export > data/homes/home.seed.json  # staging's placements, overrides, notes → git (a PR)
+$S/seed.sh staging diff                                # drift between git's seed and staging (exit 5 on drift)
 ```
 
 - `site-curl.sh <env> <path> [curl args...]`: checks once that the GitHub token is nntin-bot's, caches the site
@@ -186,8 +190,10 @@ survive staging redeploys, so anything you upload stays until it is deleted.
 A **use** is one piece in a home: an opening, roof window or gate from git (`data/homes/`), or a furniture
 **placement** stored in the database (`docs/userdata.md`). Uses keep the basic parameters they change (colours,
 some sizes, within the type's limits), and every change is recorded in the use's history with its actor and can
-be undone. Agents may edit them on **both** environments; **production only when asked**. Placements and
-overrides are **not** reset by staging deploys.
+be undone. Placements, overrides and notes come from the **seed in git** (§ The seed): an edit on an environment is
+a **draft** until it is exported into a pull request, and the next deploy (of any branch, on staging) overwrites
+it. So agents edit them on **staging** and export; production follows on the merge's deploy (edit production only
+when asked, and export that too).
 
 The viewer's furniture **is** the home's placement set (one per home, no named layouts; `docs/furniture.md`), and
 opening overrides render in the house: a change made here shows up in the viewer (when its tab becomes visible
@@ -221,6 +227,30 @@ Notes (free text, `docs/userdata.md` § Notes; ids with a `.` are types, others 
 - `uses.sh <env> notes <useId|typeId>`: oldest first. Type notes are environment-wide.
 - `uses.sh <env> note-add <useId|typeId> TEXT`, `note-edit <noteId> TEXT`, `note-delete <noteId>` (soft). Notes have
   no history or undo. Notes are the owner's: write one only when asked. `note-delete` deletes notes only, **never photos**.
+
+### The seed
+
+`data/homes/<home>.seed.json` (`home.seed.json` for "Our home") holds the home's active placements with their
+basic params, the opening overrides and the notes (on its uses and on types), in a canonical format: sorted by
+id, fixed key order, so a diff shows only what changed. CI validates it against the catalogue and the home's
+opening ids. Not in it: history, issued ids, photos, photo requests and the home settings (the declination).
+
+Every deploy's release job makes the environment match the seed of the deployed commit, in one transaction:
+missing placements are created with the seed's ids (never re-issued), changed ones are updated, a seed placement
+in the trash is restored, and **active placements that are not in the seed go to the trash** (restorable for 30
+days); overrides are set or emptied; notes are created, overwritten or soft-deleted. Every placement and override
+change is in the use's history as actor `system` named `seed` and can be undone until the next deploy. An unchanged seed
+changes nothing. Photos and their links survive, as ids are stable.
+
+- `seed.sh <env> export`: the environment's state as a seed file, on stdout. The workflow: **place on staging →
+  `seed.sh staging export > data/homes/home.seed.json` → PR → merge → production follows on its deploy.** Export
+  right after placing: staging is shared, and a deploy of another branch replaces unexported edits with that
+  branch's seed. Rebase first, so the export does not undo another merged PR's seed (review the diff).
+- `seed.sh <env> diff [--file PATH]`: a unified diff from git's seed (`-`) to the environment (`+`); exit 0 none,
+  5 drift. After a deploy it is empty; anything else is an unexported edit (or a deploy of another branch).
+- `seed.sh <env> --allow-write import [--file PATH]`: applies a seed now, as a deploy would (`PUT
+/api/homes/<home>/seed`, history by `system` named `seed import by <who>`). Only when the owner asks;
+  the next deploy applies git's seed again.
 
 ### Test data
 
@@ -274,9 +304,9 @@ of creating a duplicate.
 
 - Never print, log, commit or paste the GitHub token or the site token, including in issues, PR comments and
   test output. Never send either to any host other than api.github.com and the environment itself.
-- Prefer staging for tests and experiments. Homes are reset on every deploy, so keep nothing there
-  you need later; photos, photo requests, placements, overrides and history are **not** reset, so write only what
-  the task asks for: no test photos, uses or notes.
+- Prefer staging for tests and experiments. Homes, placements, overrides and notes are replaced from git on every
+  deploy, so keep nothing there you need later without exporting it; photos, photo requests and history are **not**
+  reset, so write only what the task asks for: no test photos, uses or notes.
   Change production only when the task asks for it.
 - Never use the browser login flow on auth.nntin.xyz. The token exchange is the only supported way for agents.
 - Reuse the cached site token; exchanging per request hits the rate limit (30 per minute).

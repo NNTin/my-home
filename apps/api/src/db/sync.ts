@@ -8,18 +8,22 @@ import { sameJson } from './history';
 import { homeStore } from './homes';
 import { homes } from './schema';
 import { readHomeFile } from './seed';
+import { isSeedFile } from './seed-sync';
 import { useStore } from './uses';
 
 /**
  * The home files a release syncs: `names` (resolved against `folder` unless absolute) when given,
- * otherwise every `*.json` in `folder`, `home.json` first (the viewer opens the oldest home).
+ * otherwise every `*.json` in `folder` but the seeds (`*.seed.json`), `home.json` first (the
+ * viewer opens the oldest home).
  */
 export async function homeFiles(
   names: string[] | undefined,
   folder: string = homesFolder,
 ): Promise<string[]> {
   if (names) return names.map((name) => (isAbsolute(name) ? name : join(folder, name)));
-  const found = (await readdir(folder)).filter((name) => name.endsWith('.json')).sort();
+  const found = (await readdir(folder))
+    .filter((name) => name.endsWith('.json') && !isSeedFile(name))
+    .sort();
   const ordered = [
     ...found.filter((name) => name === 'home.json'),
     ...found.filter((name) => name !== 'home.json'),
