@@ -28,6 +28,8 @@ const PORTRAIT = { width: 390, height: 844 };
 const LANDSCAPE = { width: 844, height: 390 };
 /** Smallest comfortable touch target, in CSS pixels. */
 const TOUCH = 44;
+/** The widest the collapsed side sheet may be (it is 72 px plus the safe area), in CSS pixels. */
+const RAIL_MAX = 96;
 
 /** Whether two boxes share any area (a pixel of rounding is not an overlap). */
 const overlap = (a, b) =>
@@ -471,18 +473,19 @@ async function smoke(out, homeId) {
 
     const [placed] = await items();
     const from = await onItem();
-    // A drag leaves the spot at once (a finger that rests there is a long press): the press and
-    // the first moves go out together, without waiting for the slow software renderer in between.
+    // A drag leaves the spot at once: the app takes a finger that stays within 10 px of where it
+    // went down for 450 ms as a long press, and the slow software renderer can make small first
+    // moves arrive after that. So the first move already travels well beyond the 10 px, and goes
+    // out together with the press, without waiting for the renderer in between.
     void touch('touchStart', from.x, from.y);
     // A shorter drag towards the camera, which ends clear of the walls: the long press below must
     // land on the item, and a drag that ends against a wall leaves the item hidden behind it.
-    const dragStep = { x: 0, y: 3 };
-    const dragSteps = 8;
+    const dragPath = [14, 16, 18, 20, 22, 24];
     /** Where the finger let go: the item followed it there. */
-    const dropped = { x: from.x + dragSteps * dragStep.x, y: from.y + dragSteps * dragStep.y };
-    void touch('touchMove', from.x + dragStep.x, from.y + dragStep.y);
-    for (let step = 2; step <= dragSteps; step++) {
-      await touch('touchMove', from.x + step * dragStep.x, from.y + step * dragStep.y);
+    const dropped = { x: from.x, y: from.y + dragPath.at(-1) };
+    void touch('touchMove', from.x, from.y + dragPath[0]);
+    for (const dy of dragPath.slice(1)) {
+      await touch('touchMove', from.x, from.y + dy);
       await page.waitForTimeout(80);
     }
     await touch('touchEnd');
@@ -619,11 +622,19 @@ async function smoke(out, homeId) {
       `${Math.round(wide.width)} of ${LANDSCAPE.width} px`,
     );
     await page.getByRole('button', { name: 'Close the panel' }).tap();
-    await settle();
+    // The width eases over 0.2 s, and the slow software renderer can hold that up for longer than
+    // any fixed wait: wait for the rail itself. A sheet that never narrows fails the check below.
+    await page
+      .waitForFunction(
+        (limit) => document.querySelector('.sheet')?.getBoundingClientRect().width <= limit,
+        RAIL_MAX,
+        { timeout: 20_000 },
+      )
+      .catch(() => undefined);
     const rail = await box('.sheet');
     check(
       'collapsed, the side sheet is a narrow rail',
-      rail.width <= 96,
+      rail.width <= RAIL_MAX,
       `${Math.round(rail.width)} px`,
     );
     await page.screenshot({ path: out.replace(/\.png$/, '-landscape.png') });
