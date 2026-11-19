@@ -1,6 +1,9 @@
+import { appliances } from './definitions/appliances';
 import { doors } from './definitions/doors';
+import { fixtures } from './definitions/fixtures';
 import { furniture } from './definitions/furniture';
 import { gates } from './definitions/gates';
+import { kitchen } from './definitions/kitchen';
 import { windows } from './definitions/windows';
 import { HexColor, TypeId } from './ids';
 import type { ParamSpec } from './params';
@@ -56,6 +59,16 @@ export function createCatalog(types: readonly CatalogType[]): Catalog {
     };
     if (!TypeId.safeParse(type.id).success) fail('the id must look like "family.name"');
     if (byId.has(type.id)) fail('duplicate id');
+    const placed = type.kind === 'furniture' || type.kind === 'fixtures';
+    if (placed !== (type.placement === 'floor'))
+      fail('furniture and fixtures, and only they, go in a room');
+    if (!placed && (type.mounting !== undefined || type.elevation !== undefined)) {
+      fail('only furniture and fixtures have a mounting or an elevation');
+    }
+    if (type.elevation !== undefined) {
+      if (!(type.elevation >= 0)) fail(`elevation ${type.elevation} must not be negative`);
+      if (type.mounting === 'ceiling') fail('a ceiling piece has no elevation');
+    }
     for (const [key, spec] of Object.entries(type.params)) {
       const problem = specProblem(spec);
       if (problem) fail(`parameter "${key}": ${problem}`);
@@ -65,5 +78,13 @@ export function createCatalog(types: readonly CatalogType[]): Catalog {
   return { types: [...byId.values()], get: (id) => byId.get(id) };
 }
 
-/** Every piece type, in catalogue order (windows, doors, gates, furniture). */
-export const catalog = createCatalog([...windows, ...doors, ...gates, ...furniture]);
+/** Every piece type, in catalogue order (windows, doors, gates, furniture, kitchen, fixtures). */
+export const catalog = createCatalog([
+  ...windows,
+  ...doors,
+  ...gates,
+  ...furniture,
+  ...kitchen,
+  ...appliances,
+  ...fixtures,
+]);

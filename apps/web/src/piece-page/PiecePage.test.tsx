@@ -77,6 +77,54 @@ describe('the piece page', () => {
     expect(dimensions()).toEqual(['Diameter110.0 cm', 'Height75.0 cm']);
   });
 
+  it('shows a ceiling fixture from below, under a ceiling, without Place (#63)', async () => {
+    open('/catalog/fixtures/fixture.downlight?home=mock-home');
+    await screen.findByRole('heading', { level: 1, name: /Downlight/ });
+    expect(screen.getByText('Fixtures · Lighting')).toBeInTheDocument();
+    expect(screen.getByText('Fixed to the ceiling.')).toBeInTheDocument();
+    expect(inspector!.ground).toBeUndefined();
+    expect(inspector!.from).toBe('below');
+    expect(inspector!.context).toHaveLength(1);
+    expect(inspector!.context![0]!.center[1]).toBeGreaterThan(0);
+    expect(dimensions()).toEqual(['Diameter8.5 cm', 'Housing depth7.0 cm']);
+    // Its uses are loaded like furniture's (placements), but it is not placed from here yet.
+    await screen.findByText(/uses? in this environment/);
+    expect(screen.queryByRole('button', { name: 'Place…' })).not.toBeInTheDocument();
+  });
+
+  it('hangs a wall piece on a wall stub, its floor at its elevation', async () => {
+    open('/catalog/furniture/kitchen.wall-cabinet');
+    await screen.findByRole('heading', { level: 1, name: /Wall cabinet/ });
+    expect(screen.getByText('Furniture · Kitchen')).toBeInTheDocument();
+    expect(
+      screen.getByText('Hangs on a wall, its bottom 133.0 cm above the floor by default.'),
+    ).toBeInTheDocument();
+    expect(inspector!.ground).toBeCloseTo(-1.33);
+    expect(inspector!.from).toBe('above');
+    const [wall] = inspector!.context!;
+    // Behind the cabinet (its back is at -depth / 2), from the floor to above its top.
+    expect(wall!.center[2]).toBeLessThan(-0.35 / 2);
+    expect(wall!.center[1] - wall!.size[1] / 2).toBeCloseTo(-1.33);
+    expect(screen.queryByRole('button', { name: 'Section' })).not.toBeInTheDocument();
+  });
+
+  it('stands the microwave on a worktop, and offers Place for floor pieces only', async () => {
+    open('/catalog/furniture/appliance.microwave');
+    await screen.findByRole('heading', { level: 1, name: /Microwave/ });
+    expect(screen.getByText('Furniture · Appliance · Kitchen')).toBeInTheDocument();
+    expect(inspector!.ground).toBeCloseTo(-0.9);
+    expect(inspector!.context).toHaveLength(1);
+    await screen.findByText(/uses? in this environment/);
+    expect(screen.queryByRole('button', { name: 'Place…' })).not.toBeInTheDocument();
+    cleanup();
+    open('/catalog/furniture/kitchen.base-cabinet');
+    await screen.findByRole('heading', { level: 1, name: /Base cabinet run/ });
+    expect(screen.getByText('Stands on the floor.')).toBeInTheDocument();
+    expect(inspector!.ground).toBe(0);
+    expect(inspector!.context).toEqual([]);
+    expect(await screen.findByRole('button', { name: 'Place…' })).toBeInTheDocument();
+  });
+
   it('is not found for an unknown type', async () => {
     open('/catalog/openings/window.porthole');
     expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeInTheDocument();

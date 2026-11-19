@@ -1,7 +1,9 @@
 import {
   catalog,
   effectiveParams,
+  isPlacedKind,
   openingFitIssues,
+  standsOnFloor,
   type CatalogType,
   type ParamValues,
   type TypeId,
@@ -17,6 +19,7 @@ import { PhotoList } from './Photos';
 import { Place } from './Place';
 import { decodeOverrides, encodeOverrides } from './playground';
 import { DesignParams, Playground } from './Playground';
+import { mountingStage, mountingText } from './mounting';
 import { floorOf, sectionLabels, sectionOf, wallStub } from './section';
 import { SectionView } from './SectionView';
 import { savableOverrides } from './UseEditor';
@@ -25,20 +28,27 @@ import { contextOfUse, hashedUseId, hashOfUse, photosOfType, rowId, type HomeDat
 import { useWhereUsed, type WhereUsedState } from './useWhereUsed';
 import './piece.css';
 
-const KIND_NAMES = { openings: 'Windows & doors', furniture: 'Furniture' } as const;
+const KIND_NAMES = {
+  openings: 'Windows & doors',
+  furniture: 'Furniture',
+  fixtures: 'Fixtures',
+} as const;
 const FAMILY_NAMES = {
   window: 'Window',
   door: 'Door',
   gate: 'Gate',
   furniture: 'Furniture',
+  kitchen: 'Kitchen',
+  appliance: 'Appliance',
+  fixture: 'Fixtures',
 } as const;
 
-/** "Windows & doors · Window", "Furniture · Bed room". */
+/** "Windows & doors · Window", "Furniture · Bed room", "Furniture · Appliance · Kitchen". */
 const kindLine = (type: CatalogType) =>
   [
     KIND_NAMES[type.kind],
     FAMILY_NAMES[type.family] === KIND_NAMES[type.kind] ? undefined : FAMILY_NAMES[type.family],
-    type.category,
+    type.category === FAMILY_NAMES[type.family] ? undefined : type.category,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -115,7 +125,7 @@ const isTouch = () => window.matchMedia?.('(pointer: coarse)').matches ?? false;
 /**
  * `/catalog/<kind>/<typeId>`: one piece type in 3D (and, for openings, in section), its
  * dimensions in cm and a playground for its basic parameters (nothing there is saved). Below:
- * Place (furniture), where-used with each use's editor, history, photos and notes, and the type's
+ * Place (furniture and fixtures standing on the floor), where-used with each use's editor, history, photos and notes, and the type's
  * own photos and notes. `#use=<useId>` opens a use.
  */
 export default function PiecePage({ typeId }: { typeId: TypeId }) {
@@ -176,7 +186,8 @@ function Piece({ type, layout }: { type: CatalogType; layout: ReturnType<typeof 
   }, [openHome, openId, state]);
 
   const opening = type.kind === 'openings';
-  const stub = type.placement === 'wall' ? 'wall' : 'none';
+  const placed = isPlacedKind(type);
+  const stub = opening && type.placement === 'wall' ? 'wall' : 'none';
   const scene = useMemo(() => {
     const values = effectiveParams(
       type,
@@ -186,6 +197,7 @@ function Piece({ type, layout }: { type: CatalogType; layout: ReturnType<typeof 
       ? contextOfUse(type, values, shown.data.model, shown.use.id)
       : previewContext(type, values);
     const parts = piece.parts(values, ctx);
+    const mounted = placed ? mountingStage(type, ctx) : undefined;
     const section = opening
       ? sectionOf(parts, ctx, { stub, own: piece.section?.(values, ctx) })
       : [];
@@ -194,15 +206,24 @@ function Piece({ type, layout }: { type: CatalogType; layout: ReturnType<typeof 
       ctx,
       parts,
       lines: piece.dimensions(values, ctx),
-      context: stub === 'wall' ? wallStub(ctx) : [],
+      context: stub === 'wall' ? wallStub(ctx) : (mounted?.context ?? []),
+      mounted,
       section,
       sectionLabels: opening ? sectionLabels(section, ctx, { stub }) : [],
       issues: opening ? openingFitIssues(type, values, ctx) : [],
     };
-  }, [type, piece, overrides, opening, stub, shown, draft]);
+  }, [type, piece, overrides, opening, placed, stub, shown, draft]);
 
-  // Wall openings stand on the floor under the sill, furniture and gates on the ground at 0.
-  const ground = stub === 'wall' ? floorOf(scene.ctx) : type.placement === 'roof' ? undefined : 0;
+  // Wall openings stand on the floor under the sill, gates on the ground at 0, furniture and
+  // fixtures on the floor at their elevation (a ceiling piece on none).
+  const ground =
+    stub === 'wall'
+      ? floorOf(scene.ctx)
+      : scene.mounted
+        ? scene.mounted.ground
+        : type.placement === 'roof'
+          ? undefined
+          : 0;
   const home = keptQuery();
   const phone = layout !== 'desktop';
 
@@ -219,6 +240,7 @@ function Piece({ type, layout }: { type: CatalogType; layout: ReturnType<typeof 
       </header>
       <main className="page-main">
         <p className="piece-description">{type.description}</p>
+        {placed && <p className="piece-mounting">{mountingText(type)}</p>}
         <div className="piece-layout">
           <section className="piece-stage" aria-label="Preview">
             {opening && (
@@ -256,6 +278,7 @@ function Piece({ type, layout }: { type: CatalogType; layout: ReturnType<typeof 
                   lines={scene.lines}
                   showDimensions={showDimensions}
                   ground={ground}
+                  from={scene.mounted?.from}
                   touch={isTouch()}
                   resetRef={resetRef}
                 />
@@ -295,7 +318,7 @@ function Piece({ type, layout }: { type: CatalogType; layout: ReturnType<typeof 
               onChange={setOverrides}
             />
             <DesignParams type={type} values={scene.values} />
-            {type.kind === 'furniture' && state.status === 'ready' && (
+            {standsOnFloor(type) && state.status === 'ready' && (
               <Place type={type} homes={state.homes} params={overrides} defaultHomeId={home.home} />
             )}
             <Uses

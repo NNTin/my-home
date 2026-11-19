@@ -112,22 +112,50 @@ describe('furniture types', () => {
   it('lists every furniture type by category then name; legacy ids resolve too', () => {
     expect(furniture.categories.map((c) => c.name)).toEqual([
       'Bed room',
+      'Corridor',
       'Dining',
+      'Kitchen',
       'Living room',
       'Work room',
     ]);
     const types = furniture.categories.flatMap((c) => c.types);
-    expect(types.map((t) => t.legacyId)).toEqual([
+    expect(types.map((t) => t.legacyId ?? t.id)).toEqual([
       'bed',
       'wardrobe',
+      'furniture.shoe-cabinet',
       'chair',
       'table',
+      'kitchen.base-cabinet',
+      'appliance.fridge-freezer',
+      'furniture.storage-shelf',
+      'kitchen.tall-cabinet',
       'sofa',
       'desk',
     ]);
-    for (const t of types) expect(LEGACY_FURNITURE_TYPE_IDS[t.legacyId]).toBe(t.id);
+    for (const t of types) {
+      if (t.legacyId) expect(LEGACY_FURNITURE_TYPE_IDS[t.legacyId]).toBe(t.id);
+    }
     expect(furniture.get('furniture.bed')?.snapping).toBe('back');
     expect(furniture.get('bed')).toBe(furniture.get('furniture.bed'));
+  });
+
+  it('resolves wall, ceiling and worktop pieces too, but offers only floor-standing ones (#63)', () => {
+    const offered = new Set(furniture.categories.flatMap((c) => c.types.map((t) => t.id)));
+    for (const id of [
+      'kitchen.wall-cabinet',
+      'kitchen.wall-shelf',
+      'appliance.microwave',
+      'fixture.downlight',
+      'fixture.radiator',
+    ]) {
+      expect(offered.has(id), id).toBe(false);
+      expect(furniture.resolve(id)?.parts.length, id).toBeGreaterThan(0);
+    }
+    expect(furniture.resolve('fixture.downlight')!.size).toEqual({
+      width: 0.085,
+      depth: 0.085,
+      height: 0.07,
+    });
   });
 
   it('sizes an item from its props and derives the footprint from that size', () => {

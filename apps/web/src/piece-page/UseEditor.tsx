@@ -72,7 +72,8 @@ export function UseEditor({ type, homeId, use, model, draft, onDraft, onReload }
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<Failure>();
   const [name, setName] = useState(use.name);
-  const furniture = type.kind === 'furniture';
+  // A placement (furniture or a fixture): PATCH, rename and remove; a git use: its override.
+  const placed = use.source === 'db';
   const hole = contextOfUse(type, values, model, use.id);
   const issues =
     type.kind === 'openings' && type.placement !== 'fence'
@@ -106,7 +107,7 @@ export function UseEditor({ type, homeId, use, model, draft, onDraft, onReload }
   const save = () =>
     write(
       () =>
-        furniture
+        placed
           ? placementsApi.update(homeId, use.id, { version: use.version, params: current })
           : openingOverridesApi.put(homeId, use.id, { version: use.version, params: current }),
       () => onDraft(undefined),
@@ -209,7 +210,7 @@ export function UseEditor({ type, homeId, use, model, draft, onDraft, onReload }
           Discard changes
         </button>
       </div>
-      {furniture && (
+      {placed && (
         <div className="use-furniture">
           <label className="field">
             Name

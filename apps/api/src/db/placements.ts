@@ -4,6 +4,7 @@ import {
   effectiveParams,
   formatIssues,
   furnitureFitIssues,
+  isPlacedKind,
   roomAt,
   type CatalogType,
   type HomeModel,
@@ -90,7 +91,9 @@ export function validOverrides(type: CatalogType, params: unknown): ParamValues 
 const furnitureType = (typeId: string): CatalogType => {
   const type = catalog.get(typeId);
   if (!type) throw problem(400, `Unknown type "${typeId}"`);
-  if (type.kind !== 'furniture') throw problem(400, `Type "${typeId}" is not a furniture type`);
+  if (!isPlacedKind(type)) {
+    throw problem(400, `Type "${typeId}" is not a furniture or fixture type`);
+  }
   return type;
 };
 

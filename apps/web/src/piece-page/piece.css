@@ -317,6 +317,13 @@ svg.section rect {
   font-variant-numeric: tabular-nums;
 }
 
+/* A choice is as wide as its longest option ("Warm white (2700 K)"), within the row. */
+select.playground-field {
+  width: auto;
+  min-width: 6.5rem;
+  max-width: 100%;
+}
+
 .playground-field[aria-invalid='true'] {
   border-color: #ff8a80;
 }

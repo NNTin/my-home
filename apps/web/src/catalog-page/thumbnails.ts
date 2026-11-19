@@ -1,7 +1,7 @@
 import { catalog, type CatalogType } from '@my-home/shared';
 import { useEffect, useState } from 'react';
 import type { Part } from '../catalog/types';
-import { previewParts } from './preview';
+import { thumbnailParts } from './preview';
 import { renderThumbnail } from './renderThumbnail';
 
 /**
@@ -145,7 +145,7 @@ export function useThumbnail(type: CatalogType, element: Element | null): string
     let live = true;
     const start = () =>
       thumbnailer()
-        .get(type.id, previewParts(type))
+        .get(type.id, thumbnailParts(type))
         .then((u) => live && setUrl(u))
         .catch(() => undefined);
     if (typeof IntersectionObserver === 'undefined') {

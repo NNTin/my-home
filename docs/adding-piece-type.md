@@ -1,9 +1,9 @@
 # Adding a piece type
 
-Every window, door, roof window, gate and furniture type is a **piece type** in two parts:
+Every window, door, roof window, gate, furniture and fixture type is a **piece type** in two parts:
 
 1. a **shared definition** in [`packages/shared/src/catalog/definitions/`](../packages/shared/src/catalog/definitions/):
-   its id, name, icon, description, placement and **parameters** (colours and sizes, `basic` or
+   its id, kind, family, name, icon, description, placement (and, placed in a room, its mounting) and **parameters** (colours and sizes, `basic` or
    `design`, with limits). Both the api and the web app read it from `@my-home/shared` `catalog`.
 2. a **piece module** in [`apps/web/src/catalog/<family>/<variant>/index.ts`](../apps/web/src/catalog/):
    how the type is drawn, as plain data (boxes and cylinders), from its parameter values.
@@ -12,7 +12,14 @@ The registry ([`catalog/registry.ts`](../apps/web/src/catalog/registry.ts)) find
 `import.meta.glob` and checks it against the shared catalogue: exactly one module per type, the
 folder `window/casement` for the id `window.casement`. There is no other list to update: the viewer,
 the editor and the furniture catalogue panel pick the new type up. Openings refer to their type by
-`typeId` in the home model ([home-model.md](home-model.md)); furniture is placed from the panel.
+`typeId` in the home model ([home-model.md](home-model.md)); furniture and fixtures are placed per environment
+(database placements, [userdata.md](userdata.md)).
+
+| Kind        | Families                                                                            | Placed                               |
+| ----------- | ----------------------------------------------------------------------------------- | ------------------------------------ |
+| `openings`  | `window`, `door`, `gate` (`definitions/windows.ts`, `doors.ts`, `gates.ts`)         | in the home model: wall, roof, fence |
+| `furniture` | `furniture`, `kitchen`, `appliance` (`furniture.ts`, `kitchen.ts`, `appliances.ts`) | in a room (`placement: 'floor'`)     |
+| `fixtures`  | `fixture` (`fixtures.ts`): lights, the radiator                                     | in a room (`placement: 'floor'`)     |
 
 ## 1. Define the type
 
@@ -28,7 +35,8 @@ export const lamp = defineType({
   description: 'Shown as the catalogue tooltip.',
   icon: '💡',
   category: 'Lighting', // furniture: catalogue group, spelled like rooms ("Bed room")
-  placement: 'floor',
+  placement: 'floor', // furniture and fixtures: in a room
+  mounting: 'floor', // 'floor' | 'wall' | 'ceiling'; with `elevation`: the default bottom height
   params: {
     color: color('Colour', '#e8d9a8'), // basic: a use may change it
     diameter: length('Diameter', 0.4, 0.3, 0.6), // basic, with limits, metres
@@ -49,8 +57,13 @@ export const lamp = defineType({
 closed', 0)`: 0 to 1 in 5 % steps, shown in %) and **choices** (`choice('Curtain', { none: 'None',
 both: 'Both sides' })`: one of a fixed list, the first the default). Both are basic; the playground
   and the per-use editor give them a slider and a drop-down list.
-- Furniture also needs its id without the family in `LEGACY_FURNITURE_TYPE_IDS` (the old named
-  layouts stored `lamp`; the one-time import maps it); that list is derived from `furniture` in `furniture.ts`.
+- **Mounting** (furniture and fixtures): `floor` (the default), `wall` (a wall cabinet, the shelf, the radiator)
+  or `ceiling` (a downlight), and an optional `elevation`: the default height of the piece's bottom above the
+  floor (a wall cabinet 1.33, the microwave on the worktop 0.90). A ceiling piece has none. Wall and ceiling
+  mounting in the house is #63: until then the furniture panel and **Place** offer only floor-standing types
+  (`standsOnFloor`), and the others are shown on their piece page.
+- Only the first six furniture types have a legacy id (`LEGACY_FURNITURE_TYPE_IDS`: the old named layouts
+  stored `bed`; the one-time import maps it). New types need none.
 
 ## 2. Draw it
 
@@ -87,6 +100,9 @@ export default definePiece({
   ceiling). Doors use [`openings/frame.ts`](../apps/web/src/catalog/openings/frame.ts),
   the wall windows [`openings/window.ts`](../apps/web/src/catalog/openings/window.ts). Furniture: origin on the floor at
   the centre of the footprint, the front faces **+z** (a headboard or backrest sits at `-depth / 2`).
+  A wall piece uses the same frame: its back (-z) against the wall, the origin at its bottom (the mounting
+  height is the placement's). A ceiling piece's origin is on the ceiling's surface, +y up into it: what shows
+  hangs below 0 (a downlight's trim), what is hidden sits above (its housing).
   The builder or the editor places the piece, so a module never sees world coordinates.
 - A `Part` is a `box` or a `cylinder` (`size` = `[diameter, height, diameter]`) with a colour, a
   `role` (`frame`, `glass`, `body`, …) and optional `material` settings (transparency, metalness,

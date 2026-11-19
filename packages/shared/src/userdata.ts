@@ -194,12 +194,14 @@ const ParamSpecSummary = z.looseObject({
 export const CatalogTypeSummary = z.object({
   id: TypeId,
   kind: CatalogKind,
-  family: z.enum(['window', 'door', 'gate', 'furniture']),
+  family: z.enum(['window', 'door', 'gate', 'furniture', 'kitchen', 'appliance', 'fixture']),
   name: z.string(),
   description: z.string(),
   icon: z.string(),
   category: z.string().optional(),
   placement: z.enum(['wall', 'roof', 'fence', 'floor']),
+  mounting: z.enum(['floor', 'wall', 'ceiling']).optional(),
+  elevation: z.number().optional(),
   openingTypes: z.array(z.string()).optional(),
   params: z.record(z.string(), ParamSpecSummary),
   snapping: z.object({ wall: z.enum(['back', 'any', 'none']) }).optional(),
@@ -230,7 +232,7 @@ export const ListPlacementsResponse = z.object({ items: z.array(Placement) });
 export type ListPlacementsResponse = z.infer<typeof ListPlacementsResponse>;
 
 /**
- * A new piece of furniture. The server assigns `id` and, unless given, `name`; it derives `roomId`
+ * A new piece of furniture or a fixture. The server assigns `id` and, unless given, `name`; it derives `roomId`
  * from the position (a sent `roomId` is ignored). `params` are basic overrides of the type.
  */
 export const CreatePlacementBody = z.strictObject({

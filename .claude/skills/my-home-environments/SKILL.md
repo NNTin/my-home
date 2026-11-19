@@ -111,6 +111,10 @@ $S/uses.sh staging list --status needs-attention   # where-used, with problems
   playground changes the bed's colour and width live (and refuses 500 cm), and on the phone the inspector takes
   40 % of the height upright and stays usable across. In the viewer, `/?focus=<a window of the home>` selects it
   (the chip shows its name and links its piece page) and an unknown id says "Not found in this home".
+  The kitchen, corridor and fixture types (#62) are all listed, **Fixtures** is a section of its own (Heating,
+  Lighting), and each of their piece pages is under its kind, says how the piece is mounted and offers **Place**
+  only when it stands on the floor; a desktop screenshot of each (`<out>-<family>-<variant>.png`). A build before
+  #62 skips these checks.
   The piece page's uses: where-used of `door.interior` in the first home (the count equals the catalogue's, every
   use links to `?focus=`); a casement window's editor opens through `#use=` (on the desktop its **Save** sends the
   edit, which the browser answers with an error: nothing is stored) and its history opens read-only; and

@@ -2,7 +2,7 @@ import { Blob as NodeBlob } from 'node:buffer';
 import { catalog, defaultParams } from '@my-home/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { box } from '../catalog/parts';
-import { previewParts } from './preview';
+import { previewParts, thumbnailParts } from './preview';
 import {
   cacheStorageStore,
   createThumbnailer,
@@ -116,5 +116,21 @@ describe('cacheStorageStore', () => {
       '/__thumbnails/thumb:window.casement:00000004',
     ]);
     expect((await store.get('thumb:furniture.bed:00000002'))?.size).toBe(3);
+  });
+});
+
+describe('thumbnail parts', () => {
+  it('are the preview, a ceiling piece turned over to show its room side to the camera above', () => {
+    expect(thumbnailParts(bed)).toEqual(previewParts(bed));
+    const light = catalog.get('fixture.downlight')!;
+    const [housing, trim, lens] = previewParts(light);
+    const [housingUp, trimUp, lensUp] = thumbnailParts(light);
+    // In the house the housing is above the ceiling (y > 0) and the lens below it.
+    expect(housing!.center[1]).toBeGreaterThan(0);
+    expect(lens!.center[1]).toBeLessThan(0);
+    expect(housingUp!.center[1]).toBeCloseTo(-housing!.center[1]);
+    expect(lensUp!.center[1]).toBeGreaterThan(trimUp!.center[1]);
+    expect(lensUp!.size).toEqual(lens!.size);
+    expect(trimUp!.center[1]).toBeCloseTo(-trim!.center[1]);
   });
 });

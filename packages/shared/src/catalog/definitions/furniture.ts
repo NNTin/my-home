@@ -1,5 +1,5 @@
 import { defineType } from '../types';
-import { color, fixedLength, length } from './specs';
+import { color, count, fixedLength, length } from './specs';
 
 // Drawn by the piece modules in apps/web/src/catalog/furniture/<name>/index.ts.
 
@@ -12,6 +12,7 @@ export const bed = defineType({
   icon: '🛏️',
   category: 'Bed room',
   placement: 'floor',
+  mounting: 'floor',
   params: {
     color: color('Colour', '#8a6a4a'),
     width: length('Width', 1.6, 0.8, 2.2),
@@ -33,6 +34,7 @@ export const sofa = defineType({
   icon: '🛋️',
   category: 'Living room',
   placement: 'floor',
+  mounting: 'floor',
   params: {
     color: color('Colour', '#5b7a99'),
     width: length('Width', 2.0, 1.2, 3.2),
@@ -52,6 +54,7 @@ export const table = defineType({
   icon: '⭕',
   category: 'Dining',
   placement: 'floor',
+  mounting: 'floor',
   params: {
     color: color('Colour', '#b08a5e'),
     diameter: length('Diameter', 1.1, 0.6, 1.6),
@@ -70,6 +73,7 @@ export const chair = defineType({
   icon: '🪑',
   category: 'Dining',
   placement: 'floor',
+  mounting: 'floor',
   params: {
     color: color('Colour', '#9c7148'),
     width: fixedLength('Width', 0.45),
@@ -89,6 +93,7 @@ export const wardrobe = defineType({
   icon: '🚪',
   category: 'Bed room',
   placement: 'floor',
+  mounting: 'floor',
   params: {
     color: color('Colour', '#d9cbb3'),
     width: length('Width', 1.2, 0.5, 3.0),
@@ -108,6 +113,7 @@ export const desk = defineType({
   icon: '🖥️',
   category: 'Work room',
   placement: 'floor',
+  mounting: 'floor',
   params: {
     color: color('Colour', '#c9b18f'),
     width: length('Width', 1.4, 0.8, 2.2),
@@ -118,9 +124,58 @@ export const desk = defineType({
   footprint: 'rectangle',
 });
 
-export const furniture = [bed, sofa, table, chair, wardrobe, desk];
+export const shoeCabinet = defineType({
+  id: 'furniture.shoe-cabinet',
+  kind: 'furniture',
+  family: 'furniture',
+  name: 'Shoe cabinet',
+  description: 'Low cabinet with doors over an open shelf; stands with its back to a wall.',
+  icon: '👟',
+  category: 'Corridor',
+  placement: 'floor',
+  mounting: 'floor',
+  params: {
+    color: color('Colour', '#f1f1ee'),
+    width: length('Width', 0.6, 0.4, 1.2),
+    height: length('Height', 0.9, 0.5, 1.4),
+    depth: length('Depth', 0.35, 0.2, 0.45),
+    doors: count('Doors', 2, 1, 3),
+    shelf: fixedLength('Open shelf height', 0.15),
+    handleColor: color('Handle colour', '#9a9a9a', 'design'),
+  },
+  snapping: { wall: 'back' },
+  footprint: 'rectangle',
+});
+
+export const storageShelf = defineType({
+  id: 'furniture.storage-shelf',
+  kind: 'furniture',
+  family: 'furniture',
+  name: 'Storage shelf with bins',
+  description: 'Open wooden frame holding rows and columns of pull-out bins.',
+  icon: '🧺',
+  category: 'Kitchen',
+  placement: 'floor',
+  mounting: 'floor',
+  params: {
+    color: color('Frame colour', '#d6b98c'),
+    binColor: color('Bin colour', '#f3f3f0'),
+    width: length('Width', 0.99, 0.45, 1.5),
+    height: length('Height', 0.94, 0.5, 1.5),
+    depth: length('Depth', 0.44, 0.3, 0.5),
+    columns: count('Columns', 3, 1, 4),
+    rows: count('Rows', 3, 1, 5),
+  },
+  snapping: { wall: 'back' },
+  footprint: 'rectangle',
+});
+
+/** The six types the old named layouts knew (by their id without `furniture.`). */
+const legacy = [bed, sofa, table, chair, wardrobe, desk];
+
+export const furniture = [...legacy, shoeCabinet, storageShelf];
 
 /** Today's furniture item ids (stored in layouts as `typeId`) and their catalogue types. */
 export const LEGACY_FURNITURE_TYPE_IDS: Readonly<Record<string, string>> = Object.fromEntries(
-  furniture.map((t) => [t.id.slice('furniture.'.length), t.id]),
+  legacy.map((t) => [t.id.slice('furniture.'.length), t.id]),
 );

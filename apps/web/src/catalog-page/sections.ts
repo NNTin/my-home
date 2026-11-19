@@ -4,10 +4,11 @@ import type { CatalogKind, CatalogType } from '@my-home/shared';
 export const KIND_TITLES: Record<CatalogKind, string> = {
   openings: 'Windows & doors',
   furniture: 'Furniture',
+  fixtures: 'Fixtures',
 };
 
 export interface CatalogGroup {
-  /** Furniture: the category ("Bed room", "Dining", …); openings have one unnamed group. */
+  /** Furniture and fixtures: the category ("Bed room", "Lighting", …); openings have one unnamed group. */
   name?: string;
   types: CatalogType[];
 }
@@ -29,7 +30,7 @@ export function matches(type: CatalogType, query: string): boolean {
 
 /**
  * The catalogue as the page lists it: a section per kind; openings in catalogue order (windows,
- * doors, gates), furniture by category and then by name, as the furniture panel does. Sections
+ * doors, gates), furniture and fixtures by category and then by name, as the furniture panel does. Sections
  * and groups without a match are left out.
  */
 export function catalogSections(types: readonly CatalogType[], query = ''): CatalogSection[] {
@@ -37,7 +38,7 @@ export function catalogSections(types: readonly CatalogType[], query = ''): Cata
   return (Object.keys(KIND_TITLES) as CatalogKind[]).flatMap((kind): CatalogSection[] => {
     const ofKind = found.filter((t) => t.kind === kind);
     if (ofKind.length === 0) return [];
-    if (kind !== 'furniture')
+    if (kind === 'openings')
       return [{ kind, title: KIND_TITLES[kind], groups: [{ types: ofKind }] }];
     const sorted = [...ofKind].sort(
       (a, b) =>

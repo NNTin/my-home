@@ -1,4 +1,4 @@
-import type { CatalogType, HomeSummary } from '@my-home/shared';
+import { isPlacedKind, type CatalogType, type HomeSummary } from '@my-home/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchHome, fetchHomes, photosApi, placementsApi, usesApi } from '../api';
 import type { HomeData } from './uses';
@@ -16,7 +16,7 @@ async function loadHome(type: CatalogType, home: HomeSummary, signal?: AbortSign
     const [model, uses, placements, photos, requests] = await Promise.all([
       fetchHome(home.id, signal),
       usesApi.list(home.id, type.id, signal),
-      type.kind === 'furniture' ? placementsApi.list(home.id, signal) : { items: [] },
+      isPlacedKind(type) ? placementsApi.list(home.id, signal) : { items: [] },
       photosApi.list(home.id, signal),
       photosApi.requests(home.id, signal),
     ]);

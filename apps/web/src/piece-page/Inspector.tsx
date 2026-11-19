@@ -20,6 +20,8 @@ import type { DimensionLine, Part } from '../catalog/types';
 export const MAX_LABELS = 8;
 /** Where "Reset view" looks from, from the piece's centre: front right, a little above. */
 const VIEW_FROM = new Vector3(0.9, 0.6, 1.8).normalize();
+/** A ceiling piece is seen from front right, a little below. */
+const VIEW_FROM_BELOW = new Vector3(0.9, -0.6, 1.8).normalize();
 const FOV = 35;
 const DIMENSION_COLOR = '#1f4e8c';
 const TICK = 0.03;
@@ -69,9 +71,11 @@ interface Controls {
 /** Frames the bounds on every change (keeping the direction), and provides "Reset view". */
 function Framer({
   bounds,
+  view,
   resetRef,
 }: {
   bounds: Bounds;
+  view: Vector3;
   resetRef: RefObject<(() => void) | undefined>;
 }) {
   const get = useThree((s) => s.get);
@@ -89,7 +93,7 @@ function Framer({
         from ??
         (controls && placed.current
           ? camera.position.clone().sub(controls.target).normalize()
-          : VIEW_FROM.clone());
+          : view.clone());
       if (controls) placed.current = true;
       if (controls) {
         // Spend any damping left from a swipe first, or it turns the view away again.
@@ -108,13 +112,13 @@ function Framer({
       invalidate();
     };
     frame();
-    resetRef.current = () => frame(VIEW_FROM.clone());
+    resetRef.current = () => frame(view.clone());
     return () => {
       resetRef.current = undefined;
     };
     // The key stands for the bounds' values.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, controls, get, resetRef]);
+  }, [key, controls, get, resetRef, view]);
   return null;
 }
 
@@ -197,6 +201,8 @@ export interface InspectorProps {
   showDimensions: boolean;
   /** The floor or ground height, when the piece stands on one. */
   ground?: number | undefined;
+  /** Where the first view and "Reset view" look from: above (default) or below (a ceiling piece). */
+  from?: 'above' | 'below' | undefined;
   touch: boolean;
   /** Filled with "Reset view". */
   resetRef: RefObject<(() => void) | undefined>;
@@ -208,9 +214,11 @@ export function Inspector({
   lines,
   showDimensions,
   ground,
+  from = 'above',
   touch,
   resetRef,
 }: InspectorProps) {
+  const view = from === 'below' ? VIEW_FROM_BELOW : VIEW_FROM;
   const bounds = useMemo(() => boundsOf(parts, lines), [parts, lines]);
   const groundSize = Math.max(...bounds.max.map((v, i) => v - bounds.min[i]!)) * 4 + 2;
   const layerRef = useRef<HTMLDivElement>(null);
@@ -218,7 +226,7 @@ export function Inspector({
     <>
       <Canvas
         className="inspector-canvas"
-        camera={{ position: VIEW_FROM.clone().multiplyScalar(4).toArray(), fov: FOV }}
+        camera={{ position: view.clone().multiplyScalar(4).toArray(), fov: FOV }}
         dpr={touch ? [1, 1.5] : [1, 2]}
         frameloop="demand"
         style={{ touchAction: 'none' }}
@@ -227,12 +235,13 @@ export function Inspector({
         <hemisphereLight args={['#ffffff', '#5b5040', 1.1]} />
         <directionalLight position={[3, 5, 4]} intensity={1.8} />
         <directionalLight position={[-3, 2, -4]} intensity={0.5} />
+        {from === 'below' && <directionalLight position={[3, -5, 4]} intensity={1.8} />}
         <PartsMesh parts={context} />
         <PartsMesh parts={parts} />
         {ground !== undefined && <Ground y={ground} size={groundSize} />}
         {showDimensions && <DimensionLines lines={lines} />}
         <OrbitControls makeDefault enableDamping />
-        <Framer bounds={bounds} resetRef={resetRef} />
+        <Framer bounds={bounds} view={view} resetRef={resetRef} />
         <DimensionLabelTracker lines={lines} layerRef={layerRef} />
       </Canvas>
       <div className="dimension-labels" ref={layerRef} hidden={!showDimensions}>
