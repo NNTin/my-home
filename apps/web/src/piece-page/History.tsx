@@ -2,9 +2,14 @@ import { UseConflict, type HistoryEntry } from '@my-home/shared';
 import { useEffect, useState } from 'react';
 import { ApiRequestError, usesApi } from '../api';
 
-const ACTORS = { owner: 'You', agent: 'Agent', system: 'System' } as const;
+const ACTORS = { owner: 'You', agent: 'Agent', system: 'System', seed: 'Seed from git' } as const;
 /** The same, inside a sentence: "undone by you at …". */
-const BY = { owner: 'you', agent: 'an agent', system: 'the system' } as const;
+const BY = {
+  owner: 'you',
+  agent: 'an agent',
+  system: 'the system',
+  seed: 'the seed from git',
+} as const;
 const ACTIONS = {
   create: 'placed',
   update: 'changed',
@@ -40,7 +45,8 @@ function Who({ entry }: { entry: HistoryEntry }) {
   return (
     <span className="history-who">
       {ACTORS[entry.actor]}
-      {entry.actorSource !== 'identity' && (
+      {/* The release job and the seed are not people: no sign-on to speak of. */}
+      {entry.actorSource !== 'identity' && entry.actor !== 'system' && entry.actor !== 'seed' && (
         <span
           className="declared"
           title={

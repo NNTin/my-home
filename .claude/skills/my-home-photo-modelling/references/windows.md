@@ -28,8 +28,9 @@ From #47 (souterrain windows) and #60 (corridor). Catalogue types: `window.tilt-
 ### From the photos to the window design (`window.tilt-turn` / `window.casement` parameters)
 
 The design (frame and sash profile, handle, hinges, window board, outside sill; `docs/catalog.md` § Wall windows)
-is the same for every wall window. What differs per window is a **basic parameter**, set as a DB override
-(`uses.sh <env> set <useId> --param shutter=outside --param shutterClosed=0.4`), never in `home.json`:
+is the same for every wall window. What differs per window is a **basic parameter**, an override in the seed
+(`data/homes/home.seed.json`): set it on staging (`uses.sh staging set <useId> --param shutter=outside
+--param shutterClosed=0.4`), then export it into your PR (`seed.sh staging export`); never in `home.json`:
 
 | Parameter       | Read it from            | Notes                                                                                                                                                                                      |
 | --------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -58,9 +59,10 @@ curtain). Mention them in the PR or in the use's note.
 - **Check the render, not only the values:** "View from here" at each photo pose after setting them. The curtain rod
   hangs 15 cm over the opening but never higher than 3 cm under the ceiling (`headroom` from the level's clear
   height). Souterrain windows sit about 10 cm under the ceiling.
-- **Staging, then production, with one script** of `uses.sh <env> set <useId> --param k=v … --allow-write` lines, so
-  both get the same values. Read back with `uses.sh <env> list` and compare `overrides` and `version`. Every set is in
-  the use's history and can be undone.
+- **Staging, then the seed:** set the values on staging with `uses.sh staging set <useId> --param k=v … --allow-write`,
+  check the render, then `seed.sh staging export > data/homes/home.seed.json` and commit it. Production gets the same
+  values from the merge's deploy; never set them there by hand. Every set (and every deploy's change) is in the
+  use's history and can be undone.
 
 ## Doors
 

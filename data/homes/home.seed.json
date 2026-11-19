@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "homeId": "home",
+  "placements": [
+    {
+      "id": "souterrain-base-cabinet-1",
+      "typeId": "kitchen.base-cabinet",
+      "name": "Stair hall · Base cabinet run",
+      "levelId": "souterrain",
+      "position": {
+        "x": 10.759999999999998,
+        "z": -10.17
+      },
+      "rotationY": 0,
+      "params": {}
+    },
+    {
+      "id": "souterrain-fridge-freezer-1",
+      "typeId": "appliance.fridge-freezer",
+      "name": "Stair hall · Fridge-freezer",
+      "levelId": "souterrain",
+      "position": {
+        "x": 12.615,
+        "z": -8.5
+      },
+      "rotationY": -1.5707963267948966,
+      "params": {}
+    },
+    {
+      "id": "souterrain-tall-cabinet-1",
+      "typeId": "kitchen.tall-cabinet",
+      "name": "Stair hall · Tall cabinet",
+      "levelId": "souterrain",
+      "position": {
+        "x": 9.799999999999999,
+        "z": -7.635
+      },
+      "rotationY": 1.5707963267948966,
+      "params": {}
+    }
+  ],
+  "openingOverrides": [
+    {
+      "useId": "window-souterrain-bath-room-north",
+      "typeId": "window.tilt-turn",
+      "params": {
+        "boardColor": "#c3c1c2"
+      }
+    },
+    {
+      "useId": "window-souterrain-living-room-south",
+      "typeId": "window.tilt-turn",
+      "params": {
+        "curtain": "right",
+        "curtainColor": "#7d8274",
+        "handleSide": "left"
+      }
+    },
+    {
+      "useId": "window-souterrain-living-room-south-east",
+      "typeId": "window.tilt-turn",
+      "params": {
+        "curtain": "left",
+        "curtainColor": "#7d8274"
+      }
+    },
+    {
+      "useId": "window-souterrain-work-room-north",
+      "typeId": "window.tilt-turn",
+      "params": {
+        "handleSide": "left"
+      }
+    }
+  ],
+  "notes": []
+}

@@ -22,8 +22,11 @@ import { Subject, SubjectQuery } from './subjects';
 const Timestamp = z.iso.datetime({ offset: true });
 const Name = z.string().trim().min(1).max(200);
 
-/** Who made a change: the owner (a browser session), an agent, or the system (release job, imports). */
-export const Actor = z.enum(['owner', 'agent', 'system']);
+/**
+ * Who made a change: the owner (a browser session), an agent, the system (release job, imports), or
+ * the seed from git that every deploy applies (`data/homes/<home>.seed.json`).
+ */
+export const Actor = z.enum(['owner', 'agent', 'system', 'seed']);
 export type Actor = z.infer<typeof Actor>;
 
 /**

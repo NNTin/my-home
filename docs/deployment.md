@@ -3,10 +3,10 @@
 my-home runs on the home Kubernetes cluster (RKE2 on the NUC, Flux GitOps in
 [NNTin/lair.nntin.xyz](https://github.com/NNTin/lair.nntin.xyz)). Every green build is deployed automatically:
 
-| Environment | URL                            | Deployed from                                             | Database                                                                                                                                                  |
-| ----------- | ------------------------------ | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| production  | https://home.nntin.xyz         | every push to `main`                                      | persistent, backed up daily; homes synced from git (`home.json`) on every deploy                                                                          |
-| staging     | https://home-staging.nntin.xyz | same-repo pull request pushes, `v*` tags, manual dispatch | `public` reset and `home.json` synced from git on every deploy, the retired `mock-home` purged; photos, placements, overrides, notes and settings persist |
+| Environment | URL                            | Deployed from                                             | Database                                                                                                                                       |
+| ----------- | ------------------------------ | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| production  | https://home.nntin.xyz         | every push to `main`                                      | persistent, backed up daily; homes and their seeds synced from git (`home.json`, `home.seed.json`) on every deploy                             |
+| staging     | https://home-staging.nntin.xyz | same-repo pull request pushes, `v*` tags, manual dispatch | `public` reset, `home.json` and its seed synced from git on every deploy, the retired `mock-home` purged; photos, settings and history persist |
 
 Staging is one shared environment: the latest deploy replaces whatever ran there before. Both hosts are behind
 Authentik single sign-on (`auth.nntin.xyz`); only `GET /api/health/live` is public, so CI can see which commit runs.
@@ -35,18 +35,22 @@ flowchart LR
      one replaces it.
 3. Flux follows each chart channel and upgrades the release. Before any new pod receives traffic, the chart's
    pre-deploy hook runs `node dist/release.js` on both environments:
-   1. it reads and validates every home file it is going to sync; an invalid one fails the job **before anything
-      is written**, Helm aborts the upgrade and the old pods keep serving;
+   1. it reads and validates every home file it is going to sync and its seed (`<home>.seed.json`, against the
+      home and the catalogue); an invalid one fails the job **before anything is written**, Helm aborts the
+      upgrade and the old pods keep serving;
    2. staging only (`RESET_PUBLIC=true`, guarded by `ALLOW_DATABASE_RESET=true`): it drops the `public` and
       `drizzle` schemas (homes, layouts and their migration journal);
    3. it migrates `public`, `media` and `userdata`;
    4. it syncs the homes from git (see [Homes come from git](#homes-come-from-git)) and logs one line per home;
-   5. it imports the named layouts of a home without placements into its placement set, once per home
-      ([furniture.md](furniture.md#the-one-time-import)): `release: home "home": imported layout "Default layout" (7 items)`.
+   5. it makes each home's placements, opening overrides and notes match its seed (see
+      [The seed comes from git](#the-seed-comes-from-git)): `release: home "home" seed unchanged`;
+   6. it imports the named layouts of a home without placements and without a seed into its placement set, once
+      per home ([furniture.md](furniture.md#the-one-time-import)).
 
-   It never touches the `media` and `userdata` schemas: **photos, photo requests, furniture placements, opening
-   overrides, notes, home settings and their history survive every deploy**, whichever branch is deployed
-   ([photos.md](photos.md#persistence), [userdata.md](userdata.md#persistence)).
+   It never touches the `media` schema and, in `userdata`, only what the seed holds: **photos, photo requests,
+   home settings, history and issued ids survive every deploy**, whichever branch is deployed
+   ([photos.md](photos.md#persistence), [userdata.md](userdata.md#persistence)); placements, overrides and notes
+   are what the deployed commit's seed says.
 
 4. `deploy` waits until `https://<host>/api/health/live` reports the commit. Then GitHub marks the deployment
    successful and the previous deployment of that environment inactive.
@@ -70,15 +74,56 @@ deploy (the api says so in a `Warning` header).
   retired test home; production to nothing): its stored home and its `userdata` rows (placements, overrides, notes,
   history, settings, imports) go in one transaction, with the row counts in the log, and it refuses a home that is
   in the synced files. Photos and photo requests are never deleted: the log only lists them.
-- **What survives:** everything in `userdata` and `media`: furniture placements, opening overrides (colours,
-  sizes), notes, photos and photo requests, and the home settings (`userdata.home_settings`: the magnetic
-  declination entered in walk mode, an overlay on git's value with history and undo, [userdata.md](userdata.md)).
+- **What survives:** everything in `media` (photos and photo requests) and the home settings
+  (`userdata.home_settings`: the magnetic declination entered in walk mode, an overlay on git's value with history
+  and undo, [userdata.md](userdata.md)). Placements, opening overrides and notes follow the seed (next section).
 - **A use whose opening disappears from git** (an override on a removed window) is never deleted. It shows as
   `needs-attention` ("not in the home model") in where-used, and the release log counts and names it. Its notes and
   photo links stay and resolve as `missing`.
 - **Photos are untouched**: a photo whose room disappears shows the room as no longer in the model.
 - House-data pull requests change the golden render list of `home.json`: run
   `pnpm --filter @my-home/web exec vitest run -u src/catalog/golden.test.tsx` and commit the updated snapshot with the data change.
+
+## The seed comes from git
+
+`data/homes/<home>.seed.json` next to each home file (`home.seed.json`) is the source of how the catalogue is
+used in the home: the furnished default. **Git is authoritative**, on staging and production alike: every deploy
+makes the environment's `userdata` match the deployed commit's seed. **An edit in the app or by an agent is a draft
+until it is exported into a pull request; a deploy overwrites unexported edits.**
+
+- **What is in it:** the active placements (id, type, name, level, position, rotation, basic params; the room
+  follows from the position), the opening overrides (window and door basic params, with the use's type) and the
+  notes on the home's uses and on types (id, subject, text, who and when). The schema is `HomeSeed` in
+  `packages/shared/src/home-seed.ts`; the file is canonical (sorted by id, fixed key order, params by key), so a
+  diff shows only what changed. CI checks it against the catalogue (every type exists and is placeable, params are
+  valid basic params) and the home (every level, opening id and note subject exists), and that it is canonical.
+- **What is not:** history, issued ids, photos, photo requests and their links, the trash, and the home
+  settings. The declination stays a per-environment setting (it is a calibration of one phone's compass, not
+  furniture); to make it the house's value, put it into `home.json`'s `building.magneticDeclination` by PR.
+- **How:** after the homes, in **one transaction** (`apps/api/src/db/seed-sync.ts`):
+  - placements: a missing one is created with the seed's id, a changed one updated, one in the trash restored,
+    and an active placement not in the seed moved to the trash (restorable for 30 days, then purged as usual);
+  - every seed id is added to `issued_ids`, so the app never hands it out again; new placements continue the
+    numbering (`souterrain-tall-cabinet-2`);
+  - opening overrides: set to the seed's params; one not in the seed is emptied (the row and its history stay);
+  - notes: created with the seed's id, overwritten, or soft-deleted. Type notes are environment-wide: the union of
+    the synced seeds' type notes.
+  - Every placement and override change is a history row by actor **`seed`**, so it shows in the use's history and
+    can be undone until the next deploy (notes have no history; the release log names them). The log reads
+    `release: home "home" seed applied: placements created 1 (…); moved to the trash 1 (…)`.
+- **Idempotent:** an unchanged seed changes nothing and writes no history (`release: home "home" seed unchanged`).
+- **Untouched:** photos, photo requests, their links to uses and notes (the ids are stable), history, the home
+  settings, other homes. A home without a seed file keeps its `userdata` as it is (a warning in the log).
+- **Staging is shared:** it follows the seed of whichever branch was deployed last. A branch from before someone
+  else's seed change trashes that change's new placements until a newer branch deploys; nothing is lost (trash
+  and history). Rebase before exporting, and export right after placing.
+
+**Changing the furniture = a pull request to the seed.** Place, move or set on staging (the app or `uses.sh`), then
+`seed.sh staging export > data/homes/home.seed.json` (skill `my-home-environments`) and open a PR; its staging
+deploy applies the same seed, so `seed.sh staging diff` stays empty. The merge deploys it to production.
+`GET /api/homes/:homeId/seed` is the export (the file's exact text), `PUT /api/homes/:homeId/seed` an import (as a
+deploy would, history by `seed` with the importer as source, a `Warning` header: the next deploy applies git's
+seed). A rollback deploys the older commit's seed too.
 
 ## What runs on staging
 

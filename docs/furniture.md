@@ -1,10 +1,12 @@
 # Furniture
 
 Each home has **one set of furniture**: its placements, stored per environment in the database (`userdata.placements`,
-[userdata.md](userdata.md)) and kept across every deploy. The viewer edits that set directly; every change is saved
-per piece of furniture and becomes a history entry with its actor, so agents can read, change and undo it too
-(`uses.sh`, see `SKILL.md`). New furniture and fixtures are catalogue types in git ([adding a
-type](adding-piece-type.md)), reviewed by PR; their placements and basic parameters never go into `data/homes/*.json`.
+[userdata.md](userdata.md)) and **versioned in git as the home's seed** (`data/homes/home.seed.json`,
+[deployment.md](deployment.md#the-seed-comes-from-git)): every deploy makes the set match the seed, so an edit is a
+draft until it is exported (`seed.sh staging export`) into a pull request. The viewer edits that set directly; every
+change is saved per piece of furniture and becomes a history entry with its actor, so agents can read, change and
+undo it too (`uses.sh`, see `SKILL.md`). New furniture and fixtures are catalogue types in git ([adding a
+type](adding-piece-type.md)), reviewed by PR; their placements and basic parameters never go into `home.json`.
 The named layouts of earlier versions are gone from the viewer
 ([§ The one-time import](#the-one-time-import)).
 
@@ -138,7 +140,8 @@ and params, since collision checks and snapping resolve every item on each point
 The named layouts of earlier versions (`public.layouts`) become the placement set once, in the release job
 (`dist/release.js`, after the sync) and on a local start with `MIGRATE_ON_START` (`apps/api/src/db/layout-import.ts`):
 
-- for each home with layouts and no `userdata.imports` row `(home, 'layouts')`;
+- for each home with layouts and no `userdata.imports` row `(home, 'layouts')` (the seed sync writes that row
+  for every home it syncs, so a seeded home never imports layouts);
 - if the home has **no placements at all** (trashed ones included): the most recently updated layout's items become
   placements, with ids and names from the scheme above, `import` history rows by `system`, and the log line
   `release: home "home": imported layout "Default layout" (7 items)`. Legacy type ids map through

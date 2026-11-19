@@ -7,7 +7,8 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - `apps/web`: Vite + React + `@react-three/fiber`/`drei` viewer; dev server proxies `/api`
 - `apps/api`: Fastify + Drizzle (Postgres); schema in `src/db/schema.ts`, migrations in `drizzle/`
 - `packages/shared`: zod schemas and types shared by web and api (ships TS source)
-- `data/homes/`: home model documents (`home.json` is the only home, "Our home"); the test fixture is `packages/shared/test-fixtures/`; model docs in
+- `data/homes/`: home model documents (`home.json` is the only home, "Our home") and their seeds
+  (`home.seed.json`: placements, opening overrides, notes; `docs/deployment.md` § The seed comes from git); the test fixture is `packages/shared/test-fixtures/`; model docs in
   `docs/home-model.md`
 - `apps/web/src/catalog/<family>/<variant>/`: one piece module per catalogue type (windows, doors, gates,
   furniture, kitchen units, appliances, and the `fixtures` kind: lights, the radiator), auto-registered (`docs/adding-piece-type.md`); the furniture (one placement set per home) and its editor in `docs/furniture.md`;
@@ -54,21 +55,24 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - **Only the souterrain apartment is modelled inside.** The ground-floor and attic interiors are out of scope: keep
   their geometry (floors and windows as seen from outside) and never request photos inside them; photos of their
   windows only from the owner's garden, patio or the street.
-- **New furniture and fixtures are catalogue types in git** (reviewed by PR). Placements and basic params
-  (colour, sizes) are DB data per environment, set via the app or the uses/placements API, never in
-  `data/homes/*.json`.
+- **New furniture and fixtures are catalogue types in git** (reviewed by PR). **Placements with their basic params
+  (colour, sizes), the window and door overrides and the notes are the seed in git** (`data/homes/home.seed.json`,
+  never in `home.json`). Every deploy makes each environment match it; an edit in the app or by an agent is a
+  draft until it is exported into a PR, and a deploy overwrites unexported edits. Workflow: place on staging →
+  `seed.sh staging export > data/homes/home.seed.json` → PR → merge → production follows on its deploy.
 - **Refinement photos stay in the photo store**: reference them by photo id in issues and PRs; never upload them to GitHub
   or commit them.
 
 ## Environments
 
-- staging `https://home-staging.nntin.xyz`: `home.json` (the only home) synced from git on every deploy (same-repo PR
-  pushes, `v*` tags; latest wins); placements, colours, notes and photos (the owner's) persist. Use it for tests and
-  experiments.
-- production `https://home.nntin.xyz`: real data, deployed from every push to `main`; homes synced from git
-  (`home.json`) on every deploy. Change it only when asked.
-- **Changing the house = a PR to `data/homes`** (`PUT /api/homes` and import are replaced on the next deploy;
-  `docs/deployment.md` § Homes come from git).
+- staging `https://home-staging.nntin.xyz`: `home.json` (the only home) and its seed synced from git on every deploy
+  (same-repo PR pushes, `v*` tags; latest wins: the deployed branch's seed replaces unexported placements, overrides
+  and notes); photos (the owner's) and history persist. Use it for tests, experiments and drafts to export.
+- production `https://home.nntin.xyz`: real data, deployed from every push to `main`; homes and seeds synced from git
+  on every deploy. Change it only when asked.
+- **Changing the house or its furniture = a PR to `data/homes`** (`PUT /api/homes`, home import and seed import are
+  replaced on the next deploy; `docs/deployment.md` § Homes come from git, § The seed comes from git). Check drift
+  with `seed.sh <env> diff`.
 - Both are behind authentik SSO: exchange the nntin-bot GitHub token for a site token with the
   `my-home-environments` skill (`.claude/skills/`). `GET /api/health/live` is public.
 - Raise an issue in NNTin/my-home (or comment on the open one) only if the deployed commit hasn't caught up 1 hour

@@ -229,8 +229,8 @@ says otherwise): `handleSide` (`right`/`left`, as seen from the room), `boardCol
 slats in the outer reveal; `shutterClosed` 0–100 %; `shutterColor`) and a **curtain** (`curtain`:
 `none`, `both`, `left`, `right`; `curtainClosed` 0–100 %; `curtainColor`) on a black rod 15 cm above the
 opening (but at least 3 cm under the ceiling: `headroom`), reaching 25 cm past it, the panels down to the floor. Fabric roller blinds, pleated blinds and
-privacy film (seen on several souterrain windows) are not modelled. Per-window values are DB data
-(overrides, `uses.sh set`), never in `data/homes/*.json`. Both types share every parameter, so a git
+privacy film (seen on several souterrain windows) are not modelled. Per-window values are overrides in
+the seed (`data/homes/home.seed.json`: set on staging with `uses.sh set`, then exported), never in `home.json`. Both types share every parameter, so a git
 change from one to the other keeps a use's overrides.
 
 ## Kitchen, corridor and fixture types (#62)

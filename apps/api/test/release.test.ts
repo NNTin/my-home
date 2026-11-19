@@ -1,4 +1,4 @@
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { HomeModel } from '@my-home/shared';
@@ -13,6 +13,9 @@ import { mockHomeFile } from './fixtures';
 import { clearMedia, clearUserdata, createTestApp, injector } from './helpers';
 
 const mockHome = await readHomeFile(mockHomeFile);
+const seedPlacements = (
+  JSON.parse(await readFile(join(homesFolder, 'home.seed.json'), 'utf8')) as { placements: [] }
+).placements.length;
 const WINDOW = 'souterrain-kitchen-window';
 
 /** A data/homes folder with the given files. */
@@ -146,9 +149,9 @@ describe('the release job (dist/release.js)', () => {
     const report = await runRelease(ctx.database, config({ homeFiles: [mockHomeFile] }), log);
     expect(report.notInGit).toEqual(['other-home']);
     expect((await stored()).map((h) => h.id).sort()).toEqual(['mock-home', 'other-home']);
-    expect(lines.warn).toEqual([
+    expect(lines.warn).toContain(
       'release: home "other-home" is stored but not in the synced files; left alone',
-    ]);
+    );
   });
 
   it('purges a retired home and its userdata, never photos, and nothing of another home', async () => {
@@ -180,7 +183,11 @@ describe('the release job (dist/release.js)', () => {
       'release: home "mock-home" keeps 0 photo(s) and 1 photo request(s) (never deleted)',
     );
     expect((await stored()).map((h) => h.id)).toEqual(['home']);
-    expect((await inject('GET', '/api/homes/home/placements')).json().items).toHaveLength(1);
+    // "home" keeps its placements: the seed's, and the unexported one in the trash (the seed
+    // sync moved it there).
+    const kept = (await inject('GET', '/api/homes/home/placements?include=removed')).json().items;
+    expect(kept).toHaveLength(seedPlacements + 1);
+    expect(kept.filter((p: { removedAt: string | null }) => p.removedAt !== null)).toHaveLength(1);
     expect((await inject('GET', `/api/photo-requests/${request.json().id}`)).statusCode).toBe(200);
     await clearMedia(ctx);
   });

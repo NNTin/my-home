@@ -231,14 +231,22 @@ jobs:
           # The declination is a setting on top of git's model.
           curl -fsS -X PUT "$home/settings" "${json[@]}" \
             --data '{"version":0,"magneticDeclination":{"value":2.5,"source":"measured"}}' | jq -e '.version == 1'
-          # A staging deploy (the release job) keeps the placement, its history and the declination.
+          # A staging deploy (the release job): git's seed is authoritative, so the unexported
+          # placement goes to the trash (a `seed` change in its history); the declination stays.
           docker compose run --rm --no-deps -e ALLOW_DATABASE_RESET=true -e RESET_PUBLIC=true \
-            -e HOME_FILES=home.json api node dist/release.js
+            -e HOME_FILES=home.json api node dist/release.js | tee release.log
+          grep -q "release: home \"home\" seed applied: .*moved to the trash 1 ($id)" release.log
           curl -fsS "$home" | jq -e '.building.magneticDeclination.value == 2.5'
-          # A production deploy: no reset, sync only home.json.
+          curl -fsS "$home/uses/$id/history" | jq -e '.items | length == 4
+            and .[0].actor == "seed" and .[0].action == "remove" and .[0].canUndo'
+          # A fresh database plus the seed equals the export, byte for byte.
+          curl -fsS "$home/seed" | diff - data/homes/home.seed.json
+          # A production deploy: no reset, sync only home.json; nothing changes.
           docker compose run --rm --no-deps -e HOME_FILES=home.json api node dist/release.js \
             | tee release.log
           grep -q 'release: home "home" unchanged' release.log
+          grep -q 'release: home "home" seed unchanged' release.log
+          curl -fsS "$home/uses/$id/history" | jq -e '.items | length == 4'
           # An invalid home file fails the release before writing anything.
           if docker compose run --rm --no-deps -e HOME_FILES=home.json,missing.json api node dist/release.js; then
             echo 'the release job accepted a missing home file' >&2
@@ -249,10 +257,14 @@ jobs:
           docker compose run --rm --no-deps api node dist/migrate.js
           curl -fsS -X PUT "$home/settings" "${json[@]}" --data '{"version":1,"magneticDeclination":null}' \
             | jq -e '.version == 2'
-          curl -fsS "$home/placements" | jq -e --arg id "$id" 'any(.items[]; .id == $id)'
-          curl -fsS "$home/uses/$id/history" | jq -e '.items | length == 3'
-          curl -fsS -X DELETE "$home/placements/$id?version=3" "${agent[@]}" | jq -e '.removedAt != null'
-          curl -fsS "$home/placements" | jq -e '.items == []'
+          curl -fsS "$home/placements?include=removed" \
+            | jq -e --arg id "$id" 'any(.items[]; .id == $id and .removedAt != null)'
+          # An import (export → import) changes nothing; the seed's placements are there.
+          curl -fsS "$home/seed" -o seed.json
+          curl -fsS -X PUT "$home/seed" "${json[@]}" --data @seed.json \
+            | jq -e '.homes[0].placements.created == [] and .homes[0].openingOverrides.set == []'
+          curl -fsS "$home/placements" | jq -e --slurpfile s data/homes/home.seed.json \
+            '[.items[].id] | sort == ($s[0].placements | map(.id) | sort)'
       - name: Show logs
         if: failure()
         run: docker compose logs

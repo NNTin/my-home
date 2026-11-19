@@ -4,7 +4,8 @@ description: >-
   Turn the owner's photos into model values for my-home: find and download photos by id, compare them with the
   model ("view from here" + overlay), measure positions and sizes from perspective (vanishing points, scale
   references, a calibrated camera), judge German windows and doors, decide when to ask for a photo instead of
-  guessing, and record results with provenance in home.json (inside only) or as DB placements. Use for any
+  guessing, and record results with provenance in home.json (inside only) or in the seed (placements, overrides:
+  place on staging, export, PR). Use for any
   refinement of rooms, walls, doors, windows, furniture or fixtures from photos.
 ---
 
@@ -13,7 +14,8 @@ description: >-
 Builds on [my-home-environments](../my-home-environments/SKILL.md): its `photos.sh`, `photo-requests.sh`,
 `uses.sh` and Playwright install. Follow the [AGENTS.md](../../../AGENTS.md) rules, the **House model** section
 above all: the exterior is fixed, only the souterrain interior is in scope, furniture and fixtures are catalogue
-types, and placements are DB data.
+types, and placements, overrides and notes come from the seed in git (`data/homes/home.seed.json`): what you set on
+staging is a draft until it is exported into a PR, and the next deploy of any branch overwrites it.
 
 ```sh
 P=.claude/skills/my-home-photo-modelling/scripts
@@ -46,7 +48,12 @@ $P/pose.sh staging history <photo-id>               # who changed the pose, when
    ([workflow.md](references/workflow.md#photo-requests)). When the answers arrive, fetch them with
    `-- --since <time>` and read their notes.
 6. **Record** every value as `estimated-from-photo` with an uncertainty and its source photo id, then map it to
-   the right place ([workflow.md](references/workflow.md#where-results-go)).
+   the right place ([workflow.md](references/workflow.md#where-results-go)). Placements, overrides and notes:
+   **place on staging → export → PR → merge → production follows on its deploy**:
+   `uses.sh staging --allow-write place|set|move …`, check the render, then right away
+   `seed.sh staging export > data/homes/home.seed.json` and commit it in your PR (the PR's staging deploy applies it
+   again: `seed.sh staging diff` stays empty). Never write placements or overrides on production: the merge brings
+   them there.
 7. **Clean up:** `rm -rf` every temp dir (photos, grids, overlays). Never delete photos or requests in the store.
 
 ## Rules

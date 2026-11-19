@@ -16,6 +16,7 @@ import { noteRoutes } from './routes/notes';
 import { openingOverrideRoutes } from './routes/opening-overrides';
 import { photoRoutes } from './routes/photos';
 import { placementRoutes } from './routes/placements';
+import { seedRoutes } from './routes/seed';
 import { useRoutes } from './routes/uses';
 
 export function loggerOptions(config: Config): LoggerOptions {
@@ -47,6 +48,7 @@ export async function buildApp(config: Config, database: Database, logger: Logge
       await api.register(placementRoutes(database.db, config));
       await api.register(openingOverrideRoutes(database.db, config));
       await api.register(noteRoutes(database.db, config));
+      await api.register(seedRoutes(database.db, config));
     },
     { prefix: '/api' },
   );
