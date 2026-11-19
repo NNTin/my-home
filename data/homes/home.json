@@ -2835,21 +2835,22 @@
       "wallId": "souterrain-wall-stair-hall-corridor",
       "type": "door",
       "offset": {
-        "value": 0.15,
-        "source": "mock",
-        "note": "Assumed position along the wall"
+        "value": 0.2375,
+        "source": "estimated-from-photo",
+        "note": "Centred between the corridor walls (#60 survey: ≈0.11 from each wall face, frame ≈0.98 × 2.07). Hinged on the south jamb, handle on the north; no hinges on the corridor side, so it opens into the Stair hall (9b3a5f3f, 84a05d56)"
       },
       "width": {
-        "value": 0.9,
-        "source": "mock"
+        "value": 0.88,
+        "source": "estimated-from-photo",
+        "note": "Opening of a standard 0.86 leaf (≈0.88 × 2.0 seen, frame ≈0.95–0.98 outside); corridor survey #60"
       },
       "height": {
         "value": 2.0,
-        "source": "mock"
+        "source": "estimated-from-photo"
       },
       "sill": {
         "value": 0,
-        "source": "mock"
+        "source": "estimated-from-photo"
       }
     },
     {
@@ -2859,21 +2860,22 @@
       "wallId": "souterrain-wall-work-room-corridor",
       "type": "door",
       "offset": {
-        "value": 1.0,
-        "source": "mock",
-        "note": "Assumed position along the wall"
+        "value": 1.42,
+        "source": "estimated-from-photo",
+        "note": "Frame outer x ≈4.10–5.05 (±0.2): the #60 survey (east casing ≈2.2 m west of the Bath room door's west casing, 8576e27c, 3f24cf70) re-anchored on the #78 layout (+0.15). Hinge side not seen"
       },
       "width": {
-        "value": 0.85,
-        "source": "mock"
+        "value": 0.88,
+        "source": "estimated-from-photo",
+        "note": "Opening of a standard 0.86 leaf (≈0.88 × 2.0 seen, frame ≈0.95–0.98 outside); corridor survey #60"
       },
       "height": {
         "value": 2.0,
-        "source": "mock"
+        "source": "estimated-from-photo"
       },
       "sill": {
         "value": 0,
-        "source": "mock"
+        "source": "estimated-from-photo"
       }
     },
     {
@@ -2883,21 +2885,22 @@
       "wallId": "souterrain-wall-bath-room-corridor",
       "type": "door",
       "offset": {
-        "value": 1.2,
-        "source": "mock",
-        "note": "Assumed position along the wall"
+        "value": 0.835,
+        "source": "estimated-from-photo",
+        "note": "Frame outer x ≈7.25–8.20 (±0.15): its east casing is flush with the box's west face, 1.36 west of the end of the corridor's north wall (#60 survey, b25c9288, 8576e27c, 3f24cf70, re-anchored on 9.56). Opens into the Bath room (84132853)"
       },
       "width": {
-        "value": 0.85,
-        "source": "mock"
+        "value": 0.88,
+        "source": "estimated-from-photo",
+        "note": "Opening of a standard 0.86 leaf (≈0.88 × 2.0 seen, frame ≈0.95–0.98 outside); corridor survey #60"
       },
       "height": {
         "value": 2.0,
-        "source": "mock"
+        "source": "estimated-from-photo"
       },
       "sill": {
         "value": 0,
-        "source": "mock"
+        "source": "estimated-from-photo"
       }
     },
     {
@@ -2907,21 +2910,22 @@
       "wallId": "souterrain-wall-corridor-living-room",
       "type": "door",
       "offset": {
-        "value": 0.9,
-        "source": "mock",
-        "note": "Assumed position along the wall"
+        "value": 1.37,
+        "source": "estimated-from-photo",
+        "note": "Frame outer x ≈4.05–5.00 (±0.2): the #60 survey (east jamb seen from both ends, 8576e27c, 3f24cf70) re-anchored on the #78 layout (+0.15). Opens into the Living room (3f24cf70)"
       },
       "width": {
-        "value": 0.85,
-        "source": "mock"
+        "value": 0.88,
+        "source": "estimated-from-photo",
+        "note": "Opening of a standard 0.86 leaf (≈0.88 × 2.0 seen, frame ≈0.95–0.98 outside); corridor survey #60"
       },
       "height": {
         "value": 2.0,
-        "source": "mock"
+        "source": "estimated-from-photo"
       },
       "sill": {
         "value": 0,
-        "source": "mock"
+        "source": "estimated-from-photo"
       }
     },
     {
@@ -2931,21 +2935,22 @@
       "wallId": "souterrain-wall-corridor-boiler-room",
       "type": "door",
       "offset": {
-        "value": 0.8,
-        "source": "mock",
-        "note": "Assumed position along the wall"
+        "value": 1.22,
+        "source": "estimated-from-photo",
+        "note": "Frame outer x ≈7.20–8.20 (±0.15): a light-wood leaf at the back of a ≈0.35–0.4 deep reveal with aluminium corner trim, the reveal's east edge flush with the box's west face (#60 survey, 25c54ef2, b25c9288, 9b3a5f3f, re-anchored on 9.56). No hinges on the corridor side: it opens into the Boiler room"
       },
       "width": {
-        "value": 0.85,
-        "source": "mock"
+        "value": 0.88,
+        "source": "estimated-from-photo",
+        "note": "Opening of a standard 0.86 leaf (≈0.88 × 2.0 seen, frame ≈0.95–0.98 outside); corridor survey #60"
       },
       "height": {
         "value": 2.0,
-        "source": "mock"
+        "source": "estimated-from-photo"
       },
       "sill": {
         "value": 0,
-        "source": "mock"
+        "source": "estimated-from-photo"
       }
     },
     {
@@ -2955,21 +2960,22 @@
       "wallId": "souterrain-wall-corridor-bed-room",
       "type": "door",
       "offset": {
-        "value": 1.8,
-        "source": "mock",
-        "note": "Assumed position along the wall"
+        "value": 1.265,
+        "source": "estimated-from-photo",
+        "note": "Frame outer x ≈10.16–11.11 (±0.15): chained from the east wall's inner face (Trofast 0.99, radiator) in the #60 survey (a9586a63, 429b67a4, f690114a), re-anchored on 12.94. Opens into the Bed room, hinged on the west jamb"
       },
       "width": {
-        "value": 0.85,
-        "source": "mock"
+        "value": 0.88,
+        "source": "estimated-from-photo",
+        "note": "Opening of a standard 0.86 leaf (≈0.88 × 2.0 seen, frame ≈0.95–0.98 outside); corridor survey #60"
       },
       "height": {
         "value": 2.0,
-        "source": "mock"
+        "source": "estimated-from-photo"
       },
       "sill": {
         "value": 0,
-        "source": "mock"
+        "source": "estimated-from-photo"
       }
     },
     {
@@ -4844,6 +4850,136 @@
       "height": {
         "value": 1.0,
         "source": "estimated-from-photo"
+      }
+    }
+  ],
+  "ceilings": [
+    {
+      "id": "souterrain-ceiling-corridor-kitchen",
+      "name": "Corridor and kitchen · suspended ceiling",
+      "levelId": "souterrain",
+      "apartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 2.715,
+            "source": "measured",
+            "note": "The corridor and kitchen outlines (#78)"
+          },
+          "z": {
+            "value": -7.265,
+            "source": "measured"
+          }
+        },
+        {
+          "x": {
+            "value": 9.44,
+            "source": "measured"
+          },
+          "z": {
+            "value": -7.265,
+            "source": "measured"
+          }
+        },
+        {
+          "x": {
+            "value": 9.44,
+            "source": "measured"
+          },
+          "z": {
+            "value": -10.47,
+            "source": "measured"
+          }
+        },
+        {
+          "x": {
+            "value": 12.94,
+            "source": "measured"
+          },
+          "z": {
+            "value": -10.47,
+            "source": "measured"
+          }
+        },
+        {
+          "x": {
+            "value": 12.94,
+            "source": "measured"
+          },
+          "z": {
+            "value": -5.91,
+            "source": "measured"
+          }
+        },
+        {
+          "x": {
+            "value": 2.715,
+            "source": "measured"
+          },
+          "z": {
+            "value": -5.91,
+            "source": "measured"
+          }
+        }
+      ],
+      "height": {
+        "value": 2.15,
+        "source": "estimated-from-photo",
+        "note": "Suspended ceiling with recessed downlights over the corridor and the kitchen, ±0.05 (#60 survey: ba8127e3 calibrated, west wall 2.11–2.16, north wall 2.19; door frame top ÷ ceiling 0.92–0.96 in 8576e27c, 9b3a5f3f). The structural clear height 2.35 stays"
+      }
+    },
+    {
+      "id": "souterrain-ceiling-corridor-box",
+      "name": "Corridor · lowered box",
+      "levelId": "souterrain",
+      "apartmentId": "apt-souterrain",
+      "outline": [
+        {
+          "x": {
+            "value": 8.2,
+            "source": "estimated-from-photo",
+            "note": "West face flush with the east casings of the Bath room door and the Boiler room reveal, east face flush with the end of the corridor's north wall (9.56); ≈1.36 long, ±0.2 (#60 survey: b25c9288, 3d121b8f, 326d2127)"
+          },
+          "z": {
+            "value": -7.265,
+            "source": "measured"
+          }
+        },
+        {
+          "x": {
+            "value": 9.56,
+            "source": "measured"
+          },
+          "z": {
+            "value": -7.265,
+            "source": "measured"
+          }
+        },
+        {
+          "x": {
+            "value": 9.56,
+            "source": "measured"
+          },
+          "z": {
+            "value": -5.91,
+            "source": "measured"
+          }
+        },
+        {
+          "x": {
+            "value": 8.2,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -5.91,
+            "source": "measured"
+          }
+        }
+      ],
+      "height": {
+        "value": 2.0,
+        "source": "estimated-from-photo",
+        "note": "Box (bulkhead) across the full corridor width, underside ≈2.00 ±0.07, 0.10–0.20 below the suspended ceiling (#60 survey: b25c9288, 3d121b8f, 326d2127); no downlights under it"
       }
     }
   ]

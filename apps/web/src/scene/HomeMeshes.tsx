@@ -37,6 +37,7 @@ const colors = {
   exterior: '#d8d2c4',
   interior: '#f1ece2',
   floorSlab: '#a6a29b',
+  ceiling: '#f4f2ec',
   roof: '#7d5f50',
   terrain: '#7c6a4f',
   garden: '#5e9b4c',
@@ -302,6 +303,9 @@ export function HomeMeshes({
             prism={s}
             color={s.kind === 'roof' ? colors.roof : colors.floorSlab}
           />
+        ))}
+        {scene.ceilings.map((c) => (
+          <PrismMesh key={c.id} prism={c} color={colors.ceiling} />
         ))}
         {scene.roomFloors.map((r, i) => (
           <SurfaceMesh key={r.id} surface={r} color={roomColors[i % roomColors.length]!} />

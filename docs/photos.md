@@ -141,7 +141,8 @@ already or the pose has changed since (undo the later change first). Purging a p
   photo laid over it) at once; **Save pose** stores it, **Reset** goes back to the stored pose. The history
   below lists who changed what, with **Undo**.
 - **Agents:** `pose.sh` in the [photo-modelling skill](../.claude/skills/my-home-photo-modelling/SKILL.md)
-  sets yaw, pitch and fovH from a `measure.py` calibration (or by hand) with a required reason, lists the
+  sets yaw, pitch and fovH from a `measure.py` calibration (or by hand), or moves the position on the plan
+  (`--x`/`--z`, e.g. after the layout was refitted), with a required reason, lists the
   history and undoes a change. It never touches the sensor snapshot and never deletes.
 
 The gallery's detail view says where each heading came from ("Heading measured by the phone: true bearing

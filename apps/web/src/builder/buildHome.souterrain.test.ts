@@ -19,7 +19,13 @@ import {
   type Box,
   type Vec2,
 } from './buildHome';
-import { wholeVisibility, roomLabels, visibleScene } from './visibility';
+import {
+  defaultVisibility,
+  roomLabels,
+  showUpTo,
+  visibleScene,
+  wholeVisibility,
+} from './visibility';
 
 const home = () => HomeModel.parse(structuredClone(realHomeJson));
 const dim = (value: number) => ({ value, source: 'mock' as const });
@@ -81,20 +87,20 @@ describe('the souterrain rooms', () => {
       expect(w.center[1] + w.size[1] / 2).toBeLessThanOrEqual(-0.25 + 1e-9);
       expect(w.size[2]).toBe(0.24);
     }
-    // The bed room wall runs east from x = 8.93 along z = -5.91; its door is 1.8 m in, 0.85 wide.
+    // The bed room wall runs east from x = 8.93 along z = -5.91; its door is 1.265 m in, 0.88 wide (#61).
     const parts = interior.filter((w) => w.wallId === 'souterrain-wall-corridor-bed-room');
     expect(parts.map((w) => w.id.split(':').slice(1).join(':'))).toEqual([
       '0:full',
       '1:above',
       '2:full',
     ]);
-    expect(parts[0]!.size[0]).toBeCloseTo(1.8);
-    expect(parts[1]!.center[0]).toBeCloseTo(8.93 + 1.8 + 0.425);
+    expect(parts[0]!.size[0]).toBeCloseTo(1.265);
+    expect(parts[1]!.center[0]).toBeCloseTo(8.93 + 1.265 + 0.44);
     expect(parts[1]!.size[1]).toBeCloseTo(2.35 - 2);
     const door = scene.openings.find((o) => o.id === 'door-souterrain-corridor-bed-room')!;
-    expect(door).toMatchObject({ type: 'door', levelId: 'souterrain', size: [0.85, 2, 0.24] });
+    expect(door).toMatchObject({ type: 'door', levelId: 'souterrain', size: [0.88, 2, 0.24] });
     expect(door.center).toEqual([
-      expect.closeTo(11.155),
+      expect.closeTo(10.635),
       expect.closeTo(-2.6 + 1),
       expect.closeTo(-5.91),
     ]);
@@ -156,6 +162,52 @@ describe('the souterrain rooms', () => {
       expect(roomAt(plan, [item.position.x, item.position.z])?.id).toBe(room.id);
       expect(collisions(ctx, [item]).size).toBe(0);
     }
+  });
+});
+
+describe('lowered ceilings', () => {
+  const scene = buildHome(home());
+  const byId = (id: string) => scene.ceilings.find((c) => c.id === id)!;
+
+  it('hang from the slab above down to their height: the corridor and kitchen, and the box', () => {
+    expect(scene.ceilings.map((c) => c.id)).toEqual([
+      'souterrain-ceiling-corridor-kitchen',
+      'souterrain-ceiling-corridor-box',
+    ]);
+    const suspended = byId('souterrain-ceiling-corridor-kitchen');
+    expect(suspended.bottom).toBeCloseTo(-2.6 + 2.15);
+    expect(suspended.top).toBeCloseTo(-2.6 + 2.35 - SURFACE_OFFSET);
+    const box = byId('souterrain-ceiling-corridor-box');
+    expect(box.bottom).toBeCloseTo(-2.6 + 2.0);
+    // Across the corridor, from the Bath room door's east casing to the end of its north wall.
+    expect(Math.min(...box.outline.map((p) => p[0]))).toBeCloseTo(8.2);
+    expect(Math.max(...box.outline.map((p) => p[0]))).toBeCloseTo(9.56);
+    const bath = scene.openings.find((o) => o.id === 'door-souterrain-corridor-bath-room')!;
+    expect(bath.center[0] + bath.size[0] / 2).toBeLessThan(8.2);
+    // Every door of the souterrain fits under the suspended ceiling.
+    for (const o of scene.openings.filter((o) => o.levelId === 'souterrain' && o.type === 'door'))
+      expect(o.center[1] + o.size[1] / 2).toBeLessThanOrEqual(suspended.bottom + 1e-9);
+  });
+
+  it('show with the level above, so the cutaway still looks into the rooms', () => {
+    expect(visibleScene(scene, defaultVisibility(scene)).ceilings).toEqual([]);
+    const ground = scene.levels.find((l) => l.id === 'ground-floor')!;
+    const upToGround = showUpTo(scene, defaultVisibility(scene), ground.index);
+    expect(visibleScene(scene, upToGround).ceilings).toHaveLength(2);
+    expect(visibleScene(scene, wholeVisibility(scene)).ceilings).toHaveLength(2);
+    expect(
+      visibleScene(scene, { ...wholeVisibility(scene), hiddenLevels: ['souterrain'] }).ceilings,
+    ).toEqual([]);
+    expect(
+      visibleScene(scene, { ...wholeVisibility(scene), hiddenApartments: ['apt-souterrain'] })
+        .ceilings,
+    ).toEqual([]);
+  });
+
+  it('are none when the model has none', () => {
+    const model = home();
+    delete model.ceilings;
+    expect(buildHome(model).ceilings).toEqual([]);
   });
 });
 

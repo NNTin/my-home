@@ -113,6 +113,7 @@ it came from). Nothing else in the model or renderer changes. The only bare numb
 | `outbuildings` | optional garages, carports, sheds, porches and compost bins: a `footprint`, flat roof and edge openings                     |
 | `stairs`       | optional: a walking line from one level up to another                                                                       |
 | `fences`       | optional: fence lines and gates on the ground                                                                               |
+| `ceilings`     | optional: lowered ceilings, an `outline` on a `levelId` with the underside `height` above its floor                         |
 
 Terrain patches are drawn as solid blocks from `bottomElevation` up to their elevation (or their
 slope, below). Leaving the
@@ -179,6 +180,28 @@ points therefore gives the direction of travel: seen from above with north (`-z`
 keeps turning left climbs counter-clockwise. The builder spreads steps of at most 0.19 m over the
 rise between the two levels, shows the stair with `levelId` (and `apartmentId`), and cuts a
 stairwell opening over it in the floor of `toLevelId`.
+
+### Ceilings
+
+```json
+{
+  "id": "souterrain-ceiling-corridor-box",
+  "name": "Corridor · lowered box",
+  "levelId": "souterrain",
+  "apartmentId": "apt-souterrain",
+  "outline": [{ "x": ..., "z": ... }, ...],
+  "height": { "value": 2.0, "source": "estimated-from-photo" }
+}
+```
+
+A level's `height` is its structural clear height, floor to slab. A suspended ceiling, or a box
+(bulkhead) under it, is a `ceilings` entry: the area it covers and the height of its underside
+above the level's floor, below the level's `height`. Where entries overlap the lowest counts:
+`ceilingHeightAt(model, levelId, x, z)` (`packages/shared`) gives the ceiling at a plan point, the
+level's `height` where there is none (for ceiling-mounted fixtures, #63). The builder draws each as a
+solid from its underside up to the slab and shows it with the level above, so the cutaway still
+looks into the rooms from above while walk mode and "view from here" see it. Walls, openings and
+the walk world ignore ceilings: a door must simply fit under the ceiling it stands below.
 
 ### Fences
 
@@ -328,6 +351,7 @@ and the seed script, not in the editor:
   (not a window) or a stair that starts or ends in it
 - a stair leads up to a higher level, turns at right angles and its flights leave room for the
   landings; fence points are distinct
+- a ceiling is on a known level (and apartment) and below that level's clear height
 - every `typeId` is a known piece type that sits where the use is (`wall`, `roof`, `fence`), and a
   wall opening's `type` is one its type carries; a gate has a `typeId`, other fences none
 - names are unique across all uses, ignoring case
@@ -423,7 +447,9 @@ There are exactly **two ways into the apartment** (`apartments[].entrances`):
 
 The stair in the stair hall climbs counter-clockwise (north along the east side, west across the
 north end, south along the west side). The ground floor and the attic are not laid out yet: each has
-one placeholder room covering its floor. Never add the house's address or location (coordinates, map
+one placeholder room covering its floor. The corridor and the kitchen have a suspended ceiling at 2.15
+with a box down to 2.00 at the east end of the corridor's north wall (#61); the level's clear height stays 2.35.
+Never add the house's address or location (coordinates, map
 links, tile IDs, place names) to the repo.
 
 ## The test fixture
@@ -444,7 +470,7 @@ links, tile IDs, place names) to the repo.
 ## Rendering
 
 `apps/web/src/builder/buildHome.ts` turns a model into render descriptors (wall segments, openings,
-slabs, room floors, terrain blocks, outdoor surfaces, roof planes, stair steps, fence posts and
+slabs, lowered ceilings, room floors, terrain blocks, outdoor surfaces, roof planes, stair steps, fence posts and
 panels) without three.js, and
 `visibility.ts` filters them for the cutaway and the visibility toggles. The cutaway's top entry,
 **Roof**, shows the whole building; choosing the highest level hides the roof to look into it, and

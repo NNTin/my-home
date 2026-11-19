@@ -14,7 +14,7 @@ describe('calibration targets', () => {
     const targets = calibrationTargets(
       home,
       'souterrain',
-      [11.155, -4.4],
+      [10.635, -4.4],
       outlineOf('souterrain-bed-room'),
     );
     expect(targets.length).toBeGreaterThan(0);
@@ -22,7 +22,7 @@ describe('calibration targets', () => {
       id: 'door-souterrain-corridor-bed-room',
       label: 'Door: corridor bed room',
     });
-    expect(targets[0]!.x).toBeCloseTo(11.155);
+    expect(targets[0]!.x).toBeCloseTo(10.635);
     expect(targets[0]!.z).toBeCloseTo(-5.91);
     expect(targets.map((t) => t.distance)).toEqual(
       [...targets.map((t) => t.distance)].sort((a, b) => a - b),
@@ -39,7 +39,7 @@ describe('calibration targets', () => {
     const inDoorway = calibrationTargets(
       home,
       'souterrain',
-      [11.155, -5.81],
+      [10.635, -5.81],
       outlineOf('souterrain-bed-room'),
     );
     expect(inDoorway.map((t) => t.id)).not.toContain('door-souterrain-corridor-bed-room');

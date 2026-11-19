@@ -24,6 +24,7 @@ $P/grid.sh <id>.webp crop.png --crop 600x400+900+1200 --zoom 200   # zoom into a
 $P/overlay-shots.sh staging <photo-id>...           # "view from here": <id8>-model.png and <id8>-overlay.png
 python3 -I $P/measure.py spec.json                  # calibrate the camera, cast pixels onto floor/wall planes
 $P/pose.sh staging set <photo-id> --from out.json --reason "measure.py: corridor VP + verticals"   # correct a pose
+$P/pose.sh staging set <photo-id> --x 6.63 --z -6.74 --reason "onto the refitted layout"   # move it (y stays)
 $P/pose.sh staging history <photo-id>               # who changed the pose, when; undo <photo-id> <change-id>
 ```
 

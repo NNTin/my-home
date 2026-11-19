@@ -327,6 +327,12 @@
           "items": {
             "$ref": "#/$defs/Fence"
           }
+        },
+        "ceilings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Ceiling"
+          }
         }
       },
       "required": [
@@ -771,6 +777,33 @@
         }
       },
       "required": ["id", "name", "kind", "path", "elevation", "height"],
+      "additionalProperties": false
+    },
+    "Ceiling": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "levelId": {
+          "$ref": "#/$defs/Id"
+        },
+        "apartmentId": {
+          "$ref": "#/$defs/Id"
+        },
+        "outline": {
+          "$ref": "#/$defs/Polygon"
+        },
+        "height": {
+          "$ref": "#/$defs/PositiveDimension"
+        }
+      },
+      "required": ["id", "name", "levelId", "outline", "height"],
       "additionalProperties": false
     }
   }

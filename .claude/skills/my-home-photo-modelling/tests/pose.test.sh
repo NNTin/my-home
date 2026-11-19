@@ -72,7 +72,7 @@ check "set takes pitch from measure.py" near "$(sent .pose.pitch)" -0.2202 1e-9
 check "set takes fovH from measure.py" near "$(sent .pose.fovH)" 1.0656 1e-9
 check "set keeps the position" test "$(jq -c .pose.position "$STUB_BODY")" = '{"x":1,"y":-1,"z":2}'
 check "set records the reason" test "$(sent .poseReason)" = "measure.py: corridor VP + verticals"
-check "set prints before and after" grep -q "before: heading 85.9° pitch -14.3° fovH 55.1°" <<<"$out"
+check "set prints before and after" grep -q "before: x 1 z 2 heading 85.9° pitch -14.3° fovH 55.1°" <<<"$out"
 check "set names the recorded change" grep -q "recorded change $change as agent" <<<"$out"
 
 # Flags alone, in degrees: heading 90 (east) is yaw -pi/2; only the given fields change.
@@ -87,6 +87,12 @@ check "--pitch-deg" near "$(sent .pose.pitch)" -0.219911 1e-6
 reset
 pose staging set "$id" --from "$work/measure.json" --fovh 1.0614 --reason "fovH recomputed" >/dev/null
 check "flags override --from" near "$(sent .pose.fovH)" 1.0614 1e-9
+pose staging set "$id" --x 3.25 --z -6.5 --reason "refitted layout" >/dev/null
+check "--x/--z move the position, y stays" test "$(jq -c .pose.position "$STUB_BODY")" = '{"x":3.25,"y":-1,"z":-6.5}'
+check "--x/--z keep the angles" near "$(sent .pose.yaw)" -1.5 1e-9
+pose staging set "$id" --z -6.5 --reason "refitted layout" >/dev/null
+check "--z alone keeps x" test "$(jq -c .pose.position "$STUB_BODY")" = '{"x":1,"y":-1,"z":-6.5}'
+check "--x needs a number" bash -c "! '$scripts/pose.sh' staging set $id --x east --reason r 2>/dev/null"
 check "a yaw beyond pi is normalised" bash -c "'$scripts/pose.sh' staging set $id --yaw 4 --reason r >/dev/null &&
   jq -e '.pose.yaw | . > -3.15 and . < -2.28' '$STUB_BODY' >/dev/null"
 
@@ -98,7 +104,7 @@ check "--dry-run prints the body" grep -q '"poseReason":"dry"' <<<"$out"
 
 # History and undo.
 out=$(pose staging history "$id")
-check "history lists the change with its actor" grep -q $'agent\th 85.9 p -14.3 f 55.1 -> h 91.1 p -12.6 f 60.8\ttest\tcan undo' <<<"$out"
+check "history lists the change with its actor" grep -q $'agent\tx 1 z 2 h 85.9 p -14.3 f 55.1 -> x 1 z 2 h 91.1 p -12.6 f 60.8\ttest\tcan undo' <<<"$out"
 reset
 pose staging undo "$id" "$change" >/dev/null
 check "undo POSTs to the change's undo" grep -q "^staging /api/photos/$id/pose-history/$change/undo -X POST" "$STUB_LOG"

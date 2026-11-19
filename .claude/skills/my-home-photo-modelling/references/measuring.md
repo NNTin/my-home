@@ -90,7 +90,9 @@ Write pixel coordinates in **original image pixels** (the grid labels).
 
 Every calibration prints `camera.pose` (yaw, pitch, fovH in radians, the photo pose convention). Store it with
 `pose.sh <env> set <photo-id> --from <measure output> --reason "…"` so the overlay and later measurements start
-from it; the position is not changed (anchor positions on fixed features, below). A fovH alone (for example
+from it; the position is not changed (anchor positions on fixed features, below). When the model's layout is refitted
+(walls moved, #78), move the photo with `--x`/`--z` so it stands where it did relative to the rooms: `pose.sh <env> set <id>
+--x 6.63 --z -6.74 --reason "onto the refitted corridor"`. A fovH alone (for example
 recomputed for a format) is `pose.sh <env> set <id> --fovh 1.0614 --reason "…"`.
 
 ## Scale
