@@ -127,7 +127,7 @@ describe('furniture by touch', () => {
     const moved = furniture().find((f) => f.id === 'cab-1')!;
     expect(moved.position[0]).toBeCloseTo(4);
     expect(moved.position[2]).toBeCloseTo(-3.675);
-    // A light under the ceiling has no ▲ ▼.
+    // A bed on the floor and a light under the ceiling have no ▲ ▼.
     act(() => lastScene!.handlers.onSelect('light-1'));
     expect(lastScene!.toolbar!.onRaise).toBeUndefined();
   });

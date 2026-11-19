@@ -2,7 +2,8 @@
 //   node walk-smoke.mjs <out.png>   (SITE_BASE, SITE_TOKEN from with-site-token.sh)
 // Smoke test of walk mode on a phone-sized screen: the movement pad walks and turns the figure, the
 // overview follows it, the minimap tracks the figure (also up the stair, where it switches level)
-// without covering a control, and nothing logs an error. Playwright is loaded from
+// without covering a control, it walks under wall cabinets and lights (answered in the browser) but
+// not through a cabinet on the floor, and nothing logs an error. Playwright is loaded from
 // MY_HOME_PLAYWRIGHT_DIR. Read-only: moving the figure changes nothing on the environment.
 /* global document */
 import { createRequire } from 'node:module';
@@ -278,6 +279,87 @@ async function smoke(out) {
     await hud.waitFor({ timeout: 30_000 });
     await page.waitForTimeout(3000);
     await exit('a walk restored after a reload');
+
+    // Wall and ceiling pieces never block the figure: a wall cabinet and a downlight right in its
+    // path, answered inside the browser (nothing is written), let it walk on; the same cabinet
+    // standing on the floor stops it (so the pieces were really there).
+    const inPath = async (mounting) => {
+      await open('/?walk=first');
+      const from = await figure();
+      // Forward on the plan for a yaw (as `steer` above): (-sin yaw, -cos yaw).
+      const [dx, dz] = [-Math.sin(from.yaw), -Math.cos(from.yaw)];
+      const at = (d) => ({ x: from.x + dx * d, z: from.z + dz * d });
+      const now = new Date().toISOString();
+      const piece = (id, typeId, position, mount, elevation) => ({
+        id,
+        homeId: '',
+        typeId,
+        name: `Smoke · ${id}`,
+        levelId: from.level,
+        roomId: null,
+        position,
+        // Its front (local +z) along the walk, so its width lies across the path.
+        rotationY: Math.atan2(dx, dz),
+        mounting: mount,
+        elevation,
+        params: {},
+        version: 1,
+        createdAt: now,
+        updatedAt: now,
+        removedAt: null,
+        purgeAt: null,
+      });
+      await page.route(/\/api\/homes\/[^/]+\/placements(\?|$)/, async (route) => {
+        if (route.request().method() !== 'GET') return route.abort();
+        const response = await route.fetch({
+          headers: { ...route.request().headers(), authorization: `Bearer ${token}` },
+        });
+        const body = await response.json();
+        const homeId = new URL(route.request().url()).pathname.split('/')[3];
+        const extra = [
+          piece(
+            'smoke-wall-cabinet',
+            'kitchen.wall-cabinet',
+            at(0.6),
+            mounting,
+            mounting === 'wall' ? 1.33 : 0,
+          ),
+          piece('smoke-downlight', 'fixture.downlight', at(0.8), 'ceiling', 0),
+        ].map((p) => ({ ...p, homeId }));
+        return route.fulfill({ response, json: { items: [...body.items, ...extra] } });
+      });
+      await page.reload({ waitUntil: 'networkidle' });
+      await hud.waitFor({ timeout: 30_000 });
+      await page.waitForTimeout(3000);
+      const restored = await figure();
+      const box = await page.locator('.joystick').boundingBox();
+      const [cx, cy] = [box.x + box.width / 2, box.y + box.height / 2];
+      await page.mouse.move(cx, cy);
+      await page.mouse.down();
+      await page.mouse.move(cx, cy - 44, { steps: 5 });
+      const deadline = Date.now() + 8000;
+      while (Date.now() < deadline && moved(await figure(), restored) < 1.2) {
+        await page.waitForTimeout(250);
+      }
+      await page.mouse.up();
+      await page.waitForTimeout(500);
+      const distance = moved(await figure(), restored);
+      await page.unroute(/\/api\/homes\/[^/]+\/placements(\?|$)/);
+      await exit(`the walk past a ${mounting} cabinet`);
+      return { distance, restored: moved(restored, from) };
+    };
+    const blocked = await inPath('floor');
+    const under = await inPath('wall');
+    check(
+      'a cabinet standing on the floor in its path stops the figure',
+      blocked.distance < 0.3 && blocked.restored < 0.05,
+      `${blocked.distance.toFixed(2)} m`,
+    );
+    check(
+      'the figure walks under a wall cabinet and a downlight in its path',
+      under.distance > 0.9 && under.restored < 0.05,
+      `${under.distance.toFixed(2)} m`,
+    );
     check(
       'no console or page errors',
       errors.length === 0,

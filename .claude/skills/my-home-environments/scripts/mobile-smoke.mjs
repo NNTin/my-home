@@ -114,6 +114,8 @@ async function smoke(out, homeId) {
             roomId: null,
             position: body.position,
             rotationY: body.rotationY ?? 0,
+            mounting: body.mounting ?? 'floor',
+            elevation: body.elevation ?? 0,
             params: body.params ?? {},
             version: 1,
             createdAt: now(),
@@ -490,6 +492,44 @@ async function smoke(out, homeId) {
     await toolbar.getByRole('button', { name: 'Delete' }).tap();
     check('the toolbar deletes the copy', (await until((list) => list.length === 1)).length === 1);
     check('without a selection the toolbar is gone', (await toolbar.count()) === 0);
+
+    // A wall cabinet by touch: placed on a wall at its height, raised and lowered with ▲ ▼.
+    const wallCreated = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        /\/api\/homes\/[^/]+\/placements$/.test(new URL(response.url()).pathname),
+      { timeout: 20_000 },
+    );
+    if ((await snap()) === 'collapsed') await tab(/Furniture/).tap();
+    await furniture.getByRole('button', { name: /Wall cabinet/ }).tap();
+    const wallResponse = await wallCreated;
+    const posted = wallResponse.request().postDataJSON();
+    check(
+      'a wall cabinet is placed on a wall at its height',
+      posted.mounting === 'wall' && posted.elevation === 1.33,
+      `${posted.mounting} ${posted.elevation}`,
+    );
+    const cabinetId = (await wallResponse.json()).id;
+    await saved().waitFor({ timeout: 20_000 });
+    const height = furniture.getByLabel('Height above the floor in cm');
+    check('the panel shows its height in cm', (await height.inputValue()) === '133');
+    await page.getByRole('button', { name: 'Close the panel' }).tap();
+    await settle();
+    await toolbar.waitFor({ timeout: 10_000 });
+    const elevation = () => fake.get(cabinetId)?.elevation;
+    const heightIs = async (value) => {
+      const end = Date.now() + 20_000;
+      while (Date.now() < end && Math.abs((elevation() ?? 0) - value) > 1e-6) {
+        await page.waitForTimeout(500);
+      }
+      return Math.abs((elevation() ?? 0) - value) < 1e-6;
+    };
+    await toolbar.getByRole('button', { name: 'Raise 5 cm' }).tap();
+    check('▲ raises it by 5 cm', await heightIs(1.38), `${elevation()}`);
+    await toolbar.getByRole('button', { name: 'Lower 5 cm' }).tap();
+    check('▼ lowers it by 5 cm', await heightIs(1.33), `${elevation()}`);
+    await toolbar.getByRole('button', { name: 'Delete' }).tap();
+    check('and the toolbar deletes it', (await until((list) => list.length === 1)).length === 1);
 
     // Walk mode takes the whole screen and gives it back.
     await page.getByRole('button', { name: 'Walk and take photos' }).tap();

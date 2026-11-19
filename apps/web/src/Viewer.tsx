@@ -778,7 +778,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
           name: nameOf(selectedItem),
           href: piecePageHref(selectedItem.typeId, model.id, selectedItem.id),
           onRotate: commands.rotate,
-          ...(mountingOfItem(selectedItem) !== 'ceiling' && {
+          // ▲ ▼ for pieces on a wall or raised (the microwave), so a bed's toolbar stays narrow.
+          ...((mountingOfItem(selectedItem) === 'wall' || elevationOfItem(selectedItem) > 0) && {
             onRaise: (cm: number) => commands.elevate(elevationOfItem(selectedItem) + cm / 100),
           }),
           onDuplicate: commands.duplicate,
