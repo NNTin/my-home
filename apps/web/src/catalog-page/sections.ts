@@ -5,6 +5,7 @@ export const KIND_TITLES: Record<CatalogKind, string> = {
   openings: 'Windows & doors',
   furniture: 'Furniture',
   fixtures: 'Fixtures',
+  outdoor: 'Outdoor',
 };
 
 export interface CatalogGroup {

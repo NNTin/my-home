@@ -1,4 +1,4 @@
-import { HomeModel } from '@my-home/shared';
+import { catalog, HomeModel, isOutdoorKind } from '@my-home/shared';
 import { describe, expect, it } from 'vitest';
 import realHomeJson from '../../../../data/homes/home.json';
 import mockHomeJson from '../../../../packages/shared/test-fixtures/mock-home.json';
@@ -24,14 +24,16 @@ const handlers = {
   onDragEnd: noop,
 };
 
-/** Every furniture type at its default size, plain, selected and colliding; then an unknown type. */
-function furnitureViews(): FurnitureView[] {
+/**
+ * The types at their default size, plain, selected and colliding; then an unknown type. By
+ * default every type the "Add" panel offers (furniture and fixtures).
+ */
+function furnitureViews(types = furniture.categories.flatMap((c) => c.types)): FurnitureView[] {
   const states = [
     { selected: false, colliding: false },
     { selected: true, colliding: false },
     { selected: false, colliding: true },
   ];
-  const types = furniture.categories.flatMap((c) => c.types);
   const views = types.flatMap((type, i) =>
     states.map((state, j): FurnitureView => {
       const { size, parts } = furniture.resolve(type.id)!;
@@ -74,5 +76,14 @@ describe('golden render records', () => {
       <FurnitureLayer items={furnitureViews()} handlers={handlers} />,
     );
     await expect(goldenJson(records)).toMatchFileSnapshot('./__golden__/furniture.json');
+  });
+
+  it('draws every outdoor type as recorded', async () => {
+    const outdoor = catalog.types.filter(isOutdoorKind).map((t) => furniture.get(t.id)!);
+    expect(outdoor).toHaveLength(10);
+    const records = await renderRecords(
+      <FurnitureLayer items={furnitureViews(outdoor)} handlers={handlers} />,
+    );
+    await expect(goldenJson(records)).toMatchFileSnapshot('./__golden__/outdoor.json');
   });
 });

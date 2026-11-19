@@ -2,7 +2,7 @@ import { ceilingHeightAt, type HomeModel } from '../home-model';
 import { furnitureSize } from './fit';
 import { formatCm } from './format';
 import type { ParamValues } from './params';
-import { mountingOf, type CatalogType, type Mounting } from './types';
+import { isOutdoorKind, mountingOf, type CatalogType, type Mounting } from './types';
 
 /**
  * How a placement hangs in its room (#63): on the floor, on a wall (its back against the wall's
@@ -118,13 +118,14 @@ export function wallBehind(
  */
 export function heightFitIssues(
   model: Pick<HomeModel, 'levels' | 'ceilings'>,
-  type: Pick<CatalogType, 'name'>,
+  type: Pick<CatalogType, 'name' | 'kind'>,
   values: ParamValues,
   at: Pick<PlacedAt, 'levelId' | 'x' | 'z'>,
   mounting: Mounting,
   elevation: number,
 ): string[] {
-  if (mounting === 'ceiling') return [];
+  // Outdoor pieces have the sky over them, not their level's ceiling.
+  if (mounting === 'ceiling' || isOutdoorKind(type)) return [];
   const ceiling = ceilingHeightAt(model, at.levelId, at.x, at.z);
   if (ceiling === undefined) return [];
   const { height } = furnitureSize(values);

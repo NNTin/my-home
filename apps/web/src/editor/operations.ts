@@ -219,7 +219,7 @@ export function collisions(ctx: EditorContext, items: EditorItem[]): Map<string,
     const plan = ctx.plans.get(levelId);
     if (!plan) continue;
     const found = findCollisions(
-      levelItems.map((i) => placedFootprint(ctx, i)),
+      levelItems.filter((i) => !isOpen(ctx, i)).map((i) => placedFootprint(ctx, i)),
       plan.walls,
     );
     for (const [id, c] of found) result.set(id, c);
@@ -228,6 +228,10 @@ export function collisions(ctx: EditorContext, items: EditorItem[]): Map<string,
 }
 
 const others = (items: EditorItem[], id: string) => items.filter((i) => i.id !== id);
+
+/** An open piece (a pergola, a stepping stone) takes no floor space: it collides with nothing. */
+const isOpen = (ctx: EditorContext, item: EditorItem) => typeOf(ctx, item)?.open ?? false;
+const isOutdoor = (ctx: EditorContext, item: EditorItem) => typeOf(ctx, item)?.outdoor ?? false;
 
 /** Whether `item` at `p` is inside its area and collides with nothing. */
 function fitsAt(
@@ -238,12 +242,13 @@ function fitsAt(
   items: EditorItem[],
 ) {
   const self = placedFootprint(ctx, item, p);
-  if (!isInside(allowedArea(plan, p), self.polygon)) return false;
+  if (!isInside(allowedArea(plan, p, isOutdoor(ctx, item)), self.polygon)) return false;
   if (tooHigh(ctx, item, p)) return false;
+  if (isOpen(ctx, item)) return true;
   const placed = [
     self,
     ...others(items, item.id)
-      .filter((i) => i.levelId === item.levelId)
+      .filter((i) => i.levelId === item.levelId && !isOpen(ctx, i))
       .map((i) => placedFootprint(ctx, i)),
   ];
   return !findCollisions(placed, plan.walls).has(item.id);
@@ -339,8 +344,12 @@ export function moveItem(ctx: EditorContext, item: EditorItem, target: Vec2): Ed
     rotationY = snapped.rotationY;
   }
   const local = localFootprint(ctx, item);
-  const constrained = constrainMove(plan, positionOf(item), p, (q) =>
-    transform(local, q, rotationY),
+  const constrained = constrainMove(
+    plan,
+    positionOf(item),
+    p,
+    (q) => transform(local, q, rotationY),
+    isOutdoor(ctx, item),
   );
   // Sliding along the apartment's edge would take a wall piece off its wall.
   if (onWall && (constrained[0] !== p[0] || constrained[1] !== p[1])) return item;
@@ -443,8 +452,12 @@ export function duplicateItem(
     [x - d, z - d],
   ]);
   const spot = candidates.find((p) => fitsAt(ctx, plan, copy, p, items));
-  const fallback = constrainMove(plan, [x, z], [x + 0.3, z + 0.3], (p) =>
-    worldFootprint(ctx, copy, p),
+  const fallback = constrainMove(
+    plan,
+    [x, z],
+    [x + 0.3, z + 0.3],
+    (p) => worldFootprint(ctx, copy, p),
+    isOutdoor(ctx, copy),
   );
   return withPosition(ctx, copy, spot ?? fallback);
 }

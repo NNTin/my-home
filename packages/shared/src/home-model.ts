@@ -471,6 +471,15 @@ export function insideOutline(x: number, z: number, outline: Polygon): boolean {
   return inside;
 }
 
+/** The outdoor area at a plan point (the first one in document order), if any. */
+export function outdoorAreaAt(
+  model: Pick<HomeModel, 'outdoorAreas'>,
+  x: number,
+  z: number,
+): OutdoorArea | undefined {
+  return model.outdoorAreas.find((a) => insideOutline(x, z, a.outline));
+}
+
 /**
  * The ceiling's height above a level's floor at a plan point: the lowest ceiling over it, else the
  * level's clear height (undefined for an unknown level).

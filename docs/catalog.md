@@ -10,7 +10,7 @@ reached with the browser's back and forward buttons.
 | `/catalog/<kind>/<typeId>` | one piece type, e.g. `/catalog/furniture/furniture.bed` |
 | anything else              | "Page not found", with a link home                      |
 
-`<kind>` is a `CatalogKind` (`openings`, `furniture`, `fixtures`) and `<typeId>` a known type of that kind
+`<kind>` is a `CatalogKind` (`openings`, `furniture`, `fixtures`, `outdoor`) and `<typeId>` a known type of that kind
 (`packages/shared/src/catalog`); a type under the wrong kind is not found. The piece page is described
 [below](#the-piece-page), its uses [after it](#uses-on-the-piece-page).
 
@@ -36,8 +36,9 @@ All of these are real links (`<a href>`): a long press, open in a new tab and co
 
 - A header (sticky on scroll) with **← Home**, the title and a search field. The search matches the name,
   description, type id and furniture category, in any case, as you type.
-- A section per kind: "Windows & doors" (windows, doors and gates in catalogue order), "Furniture" and
-  "Fixtures" (lights, the radiator), the last two by category, then by name, as the furniture panel.
+- A section per kind: "Windows & doors" (windows, doors and gates in catalogue order), "Furniture",
+  "Fixtures" (lights, the radiator) and "Outdoor" (patio and garden pieces), the last three by category, then by
+  name, as the furniture panel.
 - Each card shows the thumbnail, name, short description and **N uses**, from `GET /api/catalog/usage`: the uses
   in this environment over all its homes. While they load the card says "…"; if the api fails, the counts are
   hidden with a short notice and the page still works.
@@ -257,3 +258,22 @@ limits); each placement sets its own (#64). The kitchen soffit is geometry, not 
 The kitchen and appliance types are kind `furniture` (category "Kitchen"); the fixtures are kind `fixtures`
 (categories "Lighting" and "Heating"), placed like furniture, each with its own stable placement id
 ([userdata.md](userdata.md#ids-and-names-of-new-furniture-and-fixtures)).
+
+## Patio and garden types (outdoor)
+
+Identified in the owner's photos of the souterrain patio and garden. Kind `outdoor`, family `garden`: they stand on
+the ground outside ([furniture.md](furniture.md#outdoor-pieces)). Their piece pages say so and offer no **Place**
+(agents place them).
+
+| Type                    | Category     | Defaults                                                            | Basic besides colours and sizes |
+| ----------------------- | ------------ | ------------------------------------------------------------------- | ------------------------------- |
+| `garden.pergola`        | Patio        | lean-to, 320 × 260 cm, 245 cm at the facade, 215 at the posts; open | posts (2–4)                     |
+| `garden.table`          | Patio        | 140 × 80 × 74 cm, dark metal frame, glass top                       |                                 |
+| `garden.chair`          | Patio        | 58 × 62 × 105 cm, seat at 45 cm, mesh seat and back                 |                                 |
+| `garden.planter`        | Plants       | 38 cm across, pot 50 cm, plant 40 cm (zinc pot, lavender)           | shape (round, square)           |
+| `garden.shrub`          | Plants       | 90 cm across, 110 cm high                                           | flowers (none, roses)           |
+| `garden.grass`          | Plants       | 60 cm across, 120 cm high                                           |                                 |
+| `garden.rock-pile`      | Stone & wood | 160 × 80 × 60 cm of dry-laid natural stones                         |                                 |
+| `garden.stepping-stone` | Stone & wood | 45 cm round, 3 cm thick; open                                       |                                 |
+| `garden.log`            | Stone & wood | 80 cm long, 35 cm across, lying                                     |                                 |
+| `garden.bird-house`     | Garden       | 150 cm high on a three-legged stand 60 cm wide, two-tier roof       |                                 |

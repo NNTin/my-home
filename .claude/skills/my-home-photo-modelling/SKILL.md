@@ -6,7 +6,9 @@ description: >-
   references, a calibrated camera), judge German windows and doors, decide when to ask for a photo instead of
   guessing, and record results with provenance in home.json (inside only) or in the seed (placements, overrides:
   place on staging, export, PR). Use for any
-  refinement of rooms, walls, doors, windows, furniture or fixtures from photos.
+  refinement of rooms, walls, doors, windows, furniture or fixtures from photos, and for extending the catalogue
+  from photos (identify objects, reuse or add a catalogue type, place them through the seed), indoors and on the
+  patio and garden.
 ---
 
 # my-home photo modelling
@@ -54,7 +56,10 @@ $P/pose.sh staging history <photo-id>               # who changed the pose, when
    `seed.sh staging export > data/homes/home.seed.json` and commit it in your PR (the PR's staging deploy applies it
    again: `seed.sh staging diff` stays empty). Never write placements or overrides on production: the merge brings
    them there.
-7. **Clean up:** `rm -rf` every temp dir (photos, grids, overlays). Never delete photos or requests in the store.
+7. **New kinds of objects** (a room's furniture, the patio and garden): identify them in the photos, reuse a type or
+   add one in its own PR, then place them through the seed:
+   [catalogue-from-photos.md](references/catalogue-from-photos.md).
+8. **Clean up:** `rm -rf` every temp dir (photos, grids, overlays). Never delete photos or requests in the store.
 
 ## Rules
 
@@ -70,3 +75,5 @@ $P/pose.sh staging history <photo-id>               # who changed the pose, when
 - [measuring.md](references/measuring.md): the camera model, calibration, scale references, accuracy and pitfalls.
 - [windows.md](references/windows.md): German windows and doors: tilt-turn, roller shutters, sills, swing sides.
 - [tools.md](references/tools.md): what is installed where, and how to reproduce it.
+- [catalogue-from-photos.md](references/catalogue-from-photos.md): from objects in photos to catalogue types and
+  their placements (furniture, fixtures, outdoor pieces).

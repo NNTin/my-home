@@ -244,6 +244,24 @@ async function smoke(out, homeId) {
           `${groups.join(', ')}; ${fixtureCards.join(', ')}`,
         );
       }
+      // The outdoor kind (garden and patio pieces) is a section of its own; a build before it has none.
+      const gardenListed = [...listed].filter((id) => id.startsWith('garden.'));
+      if (gardenListed.length === 0) {
+        console.log(`skip  ${label}: this build has no outdoor types`);
+      } else {
+        const outdoor = page.getByRole('region', { name: 'Outdoor' });
+        const outdoorCards = await outdoor
+          .locator('a[data-type-id]')
+          .evaluateAll((links) => links.map((a) => a.dataset.typeId))
+          .catch(() => []);
+        check(
+          `${label}: "Outdoor" is its own section with every garden type`,
+          (await page.getByRole('heading', { level: 2, name: 'Outdoor' }).isVisible()) &&
+            outdoorCards.length === gardenListed.length &&
+            outdoorCards.every((id) => id.startsWith('garden.')),
+          `${outdoorCards.length} of ${gardenListed.length}`,
+        );
+      }
       check(`${label}: cards are listed`, total >= 10, `${total}`);
       await page
         .waitForFunction(() => !document.body.textContent.includes('…'), null, { timeout: 20_000 })
@@ -491,6 +509,38 @@ async function smoke(out, homeId) {
             listed.every((t) => cm.test(t.trim())),
           `${canvas ? 'canvas' : 'no canvas'}; ${labels.join(', ')}`,
         );
+        if (id.startsWith('garden.')) {
+          // Outdoor pieces stand on the ground outside; agents place them (Place adds to a room).
+          const text = (
+            (await p
+              .locator('.piece-mounting')
+              .textContent()
+              .catch(() => '')) ?? ''
+          ).trim();
+          const kindLine =
+            (await p
+              .locator('.piece-kind')
+              .textContent()
+              .catch(() => '')) ?? '';
+          await p
+            .getByText(/uses? in this environment/)
+            .first()
+            .waitFor({ timeout: 20_000 })
+            .catch(() => {});
+          const edit = p.getByRole('button', { name: 'Edit', exact: true });
+          const editable = (await edit.count()) > 0;
+          if (editable) await press(edit);
+          const place = await p.getByRole('button', { name: 'Place…' }).count();
+          if (editable) await press(p.getByRole('button', { name: 'Done', exact: true }));
+          check(
+            `${label}: ${id} is under /catalog/outdoor/, stands on the ground and offers no Place`,
+            href === `/catalog/outdoor/${id}` &&
+              /^Stands on the ground outside/.test(text) &&
+              kindLine.startsWith('Outdoor') &&
+              place === 0,
+            `${href}; ${kindLine}; ${text}; ${place} Place buttons`,
+          );
+        }
         const mounted = MOUNTED_TYPES[id];
         if (mounted) {
           const text =

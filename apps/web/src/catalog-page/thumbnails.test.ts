@@ -28,6 +28,12 @@ describe('thumbnail cache key', () => {
     expect(hashParts(wider)).not.toBe(hashParts(parts));
     const recoloured = parts.map((p, i) => (i === 0 ? { ...p, color: '#000000' } : p));
     expect(hashParts(recoloured)).not.toBe(hashParts(parts));
+    // A tilted part changes the hash, and so does its tilt.
+    const tilted = parts.map((p, k) => (k === 0 ? { ...p, rotationX: 0.2 } : p));
+    expect(hashParts(tilted)).not.toBe(hashParts(parts));
+    expect(hashParts(tilted.map((p, k) => (k === 0 ? { ...p, rotationX: 0.3 } : p)))).not.toBe(
+      hashParts(tilted),
+    );
   });
 
   it('every type has parts to draw', () => {

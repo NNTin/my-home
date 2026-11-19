@@ -118,7 +118,9 @@ $S/seed.sh staging diff                                # drift between git's see
   The kitchen, corridor and fixture types (#62) are all listed, **Fixtures** is a section of its own (Heating,
   Lighting), and each of their piece pages is under its kind, says how the piece is mounted and offers **Place**
   only when it stands on the floor; a desktop screenshot of each (`<out>-<family>-<variant>.png`). A build before
-  #62 skips these checks.
+  #62 skips these checks. The patio and garden types (kind `outdoor`) are a section of their own, **Outdoor**, and
+  each of their piece pages is under `/catalog/outdoor/`, says it stands on the ground outside and offers no
+  **Place**, not even in edit mode; a build without outdoor types skips this.
   The piece page's uses: where-used of `door.interior` in the first home (the count equals the catalogue's, every
   use links to `?focus=`); a casement window's editor opens through `#use=` (on the desktop its **Save** sends the
   edit, which the browser answers with an error: nothing is stored) and its history opens read-only; and

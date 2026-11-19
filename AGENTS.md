@@ -11,7 +11,8 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
   (`home.seed.json`: placements, opening overrides, notes; `docs/deployment.md` § The seed comes from git); the test fixture is `packages/shared/test-fixtures/`; model docs in
   `docs/home-model.md`
 - `apps/web/src/catalog/<family>/<variant>/`: one piece module per catalogue type (windows, doors, gates,
-  furniture, kitchen units, appliances, and the `fixtures` kind: lights, the radiator), auto-registered (`docs/adding-piece-type.md`); the furniture (one placement set per home) and its editor in `docs/furniture.md`;
+  furniture, kitchen units, appliances, the `fixtures` kind: lights, the radiator, and the `outdoor` kind: patio and
+  garden pieces), auto-registered (`docs/adding-piece-type.md`); the furniture (one placement set per home) and its editor in `docs/furniture.md`;
   the phone layout (top bar, sheet) in `docs/mobile.md`
 - `apps/web/src/routing/` (no router library) and `apps/web/src/catalog-page/`: the pages `/catalog` and
   `/catalog/<kind>/<typeId>`, lazy chunks; thumbnails cached in the browser (`docs/catalog.md`)
@@ -60,6 +61,10 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
   never in `home.json`). Every deploy makes each environment match it; an edit in the app or by an agent is a
   draft until it is exported into a PR, and a deploy overwrites unexported edits. Workflow: place on staging →
   `seed.sh staging export > data/homes/home.seed.json` → PR → merge → production follows on its deploy.
+- **Extending the catalogue is recurring:** identify the objects in the owner's photos, reuse a type or add one (its
+  own PR: definition, piece module, tests, docs), then place the uses through the seed (another PR). Patio and
+  garden pieces are kind `outdoor` and stand on the ground. How: `my-home-photo-modelling`,
+  `references/catalogue-from-photos.md`.
 - **Refinement photos stay in the photo store**: reference them by photo id in issues and PRs; never upload them to GitHub
   or commit them.
 

@@ -2,12 +2,13 @@ import { appliances } from './definitions/appliances';
 import { doors } from './definitions/doors';
 import { fixtures } from './definitions/fixtures';
 import { furniture } from './definitions/furniture';
+import { garden } from './definitions/garden';
 import { gates } from './definitions/gates';
 import { kitchen } from './definitions/kitchen';
 import { windows } from './definitions/windows';
 import { HexColor, TypeId } from './ids';
 import type { ParamSpec } from './params';
-import type { CatalogType } from './types';
+import { isPlacedKind, type CatalogType } from './types';
 
 export interface Catalog {
   types: readonly CatalogType[];
@@ -59,11 +60,17 @@ export function createCatalog(types: readonly CatalogType[]): Catalog {
     };
     if (!TypeId.safeParse(type.id).success) fail('the id must look like "family.name"');
     if (byId.has(type.id)) fail('duplicate id');
-    const placed = type.kind === 'furniture' || type.kind === 'fixtures';
+    const placed = isPlacedKind(type);
     if (placed !== (type.placement === 'floor'))
-      fail('furniture and fixtures, and only they, go in a room');
+      fail('furniture, fixtures and outdoor pieces, and only they, are placed');
     if (!placed && (type.mounting !== undefined || type.elevation !== undefined)) {
-      fail('only furniture and fixtures have a mounting or an elevation');
+      fail('only placed pieces have a mounting or an elevation');
+    }
+    if ((type.kind === 'outdoor') !== (type.family === 'garden')) {
+      fail('outdoor pieces, and only they, are in the garden family');
+    }
+    if (type.kind === 'outdoor' && (type.mounting ?? 'floor') !== 'floor') {
+      fail('an outdoor piece stands on the ground');
     }
     if (type.elevation !== undefined) {
       if (!(type.elevation >= 0)) fail(`elevation ${type.elevation} must not be negative`);
@@ -78,7 +85,7 @@ export function createCatalog(types: readonly CatalogType[]): Catalog {
   return { types: [...byId.values()], get: (id) => byId.get(id) };
 }
 
-/** Every piece type, in catalogue order (windows, doors, gates, furniture, kitchen, fixtures). */
+/** Every piece type, in catalogue order (windows, doors, gates, furniture, kitchen, fixtures, garden). */
 export const catalog = createCatalog([
   ...windows,
   ...doors,
@@ -87,4 +94,5 @@ export const catalog = createCatalog([
   ...kitchen,
   ...appliances,
   ...fixtures,
+  ...garden,
 ]);

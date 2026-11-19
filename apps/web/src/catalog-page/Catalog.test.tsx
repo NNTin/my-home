@@ -25,9 +25,14 @@ afterEach(() => {
 });
 
 describe('catalogSections', () => {
-  it('groups by kind, openings in catalogue order, furniture and fixtures by category, then name', () => {
+  it('groups by kind, openings in catalogue order, the placed kinds by category, then name', () => {
     const sections = catalogSections(catalog.types);
-    expect(sections.map((s) => s.title)).toEqual(['Windows & doors', 'Furniture', 'Fixtures']);
+    expect(sections.map((s) => s.title)).toEqual([
+      'Windows & doors',
+      'Furniture',
+      'Fixtures',
+      'Outdoor',
+    ]);
     expect(sections[0]!.groups.map((g) => g.types.map((t) => t.id))).toEqual([
       catalog.types.filter((t) => t.kind === 'openings').map((t) => t.id),
     ]);
@@ -53,6 +58,12 @@ describe('catalogSections', () => {
     expect(sections[2]!.groups.map((g) => [g.name, g.types.map((t) => t.id)])).toEqual([
       ['Heating', ['fixture.radiator']],
       ['Lighting', ['fixture.downlight']],
+    ]);
+    expect(sections[3]!.groups.map((g) => [g.name, g.types.map((t) => t.name)])).toEqual([
+      ['Garden', ['Bird house']],
+      ['Patio', ['Garden chair', 'Garden table', 'Lean-to pergola']],
+      ['Plants', ['Ornamental grass', 'Planter', 'Shrub']],
+      ['Stone & wood', ['Dry-stone pile', 'Log', 'Stepping stone']],
     ]);
   });
 

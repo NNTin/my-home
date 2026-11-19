@@ -49,7 +49,8 @@ export function furnitureSize(values: ParamValues): {
   return {
     width: numberOf(values, 'width') ?? diameter ?? 0,
     depth: numberOf(values, 'depth') ?? numberOf(values, 'length') ?? diameter ?? 0,
-    height: numberOf(values, 'height') ?? 0,
+    // A piece with a diameter and no height (a log lying down) is as high as it is thick.
+    height: numberOf(values, 'height') ?? diameter ?? 0,
   };
 }
 
