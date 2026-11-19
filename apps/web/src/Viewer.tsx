@@ -53,6 +53,8 @@ import {
 import { roomAt } from './editor/placement';
 import { shortcutFor } from './editor/shortcuts';
 import { rotationFromDrag } from './editor/snapping';
+import { EditBadge } from './editMode/EditToggle';
+import { useEditMode } from './editMode/editMode';
 import { ControlPanel } from './overlay/ControlPanel';
 import {
   FurniturePanel,
@@ -251,6 +253,12 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
 
   const placements = usePlacements(model.id, visibleAgain);
   const { editor, dispatch } = placements;
+  // View mode by default: furniture is changed only in edit mode (editMode/editMode.ts).
+  const [editing] = useEditMode();
+  useEffect(() => {
+    // Leaving edit mode ends a drag in progress and puts the item back.
+    if (!editing) dispatch({ type: 'dragCancel' });
+  }, [editing, dispatch]);
   const [settings, setSettings] = useState<EditorSettings>(defaultSettings);
   const ctx = useMemo(() => createContext(model, furnitureTypes, settings), [model, settings]);
 
@@ -497,11 +505,12 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   }
 
   const edit = (label: string, next: EditorItem[], selectedId?: string | null) =>
+    editing &&
     dispatch({ type: 'edit', label, items: next, ...(selectedId !== undefined && { selectedId }) });
 
   const commands = {
     place(typeId: string) {
-      if (!level) return;
+      if (!editing || !level) return;
       const item = createItem(ctx, items, {
         id: newId(),
         typeId,
@@ -611,9 +620,10 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
 
   // Keyboard shortcuts (see editor/shortcuts.ts).
   const onKey = (e: KeyboardEvent) => {
-    // While walking the keys steer the figure; the furniture editor is put away.
+    // While walking the keys steer the figure; the furniture editor is put away. In view mode
+    // only deselecting works.
     const action = walking ? undefined : shortcutFor(e);
-    if (!action) return;
+    if (!action || (!editing && action !== 'deselect')) return;
     if (action === 'undo' || action === 'redo' || action === 'duplicate') e.preventDefault();
     if (action === 'undo') dispatch({ type: 'undo' });
     else if (action === 'redo') dispatch({ type: 'redo' });
@@ -671,6 +681,9 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     href: piecePageHref(selectedPiece.typeId, model.id, selectedPiece.id),
   };
 
+  // What a phone shows of the selection in view mode: its name, type and piece page.
+  const inspected = pieceInfo ?? (!editing && selected ? selected : undefined);
+
   // Needs attention, as where-used (`/uses`) says: an unknown type, a level or room gone, or
   // parameters that are ignored.
   const flagged: FlaggedItem[] = items.flatMap((item) => {
@@ -691,7 +704,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
           ...(issues.aboveCeiling ? ['reaches above the ceiling'] : []),
           ...(ignored.length > 0 ? [`ignored: ${ignored.join(', ')}`] : []),
         ],
-        canRelocate: issues.missingLevel,
+        canRelocate: editing && issues.missingLevel,
       },
     ];
   });
@@ -705,6 +718,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     onRotate: () => {},
     onDragEnd: () => {},
   };
+  // View mode: an item can be selected to inspect it, never dragged or rotated.
+  const inspect: FurnitureHandlers = { ...idle, onSelect: handlers.onSelect };
 
   const controls = {
     homes,
@@ -738,6 +753,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   );
   const furniturePanel = (
     <FurniturePanel
+      editing={editing}
       loading={placements.loading}
       error={placements.error}
       sync={placements.syncState}
@@ -773,7 +789,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   ];
   // The tools of the selected item float next to it on a phone, so they need no panel.
   const toolbar: FurnitureToolbarProps | undefined =
-    mobile && !walking && selectedItem
+    mobile && !walking && editing && selectedItem
       ? {
           name: nameOf(selectedItem),
           href: piecePageHref(selectedItem.typeId, model.id, selectedItem.id),
@@ -798,7 +814,12 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
 
   return (
     <div
-      className={['viewer', mobile && `mobile ${layout}`, walking && 'walking']
+      className={[
+        'viewer',
+        mobile && `mobile ${layout}`,
+        walking && 'walking',
+        editing && 'editing',
+      ]
         .filter(Boolean)
         .join(' ')}
       style={sheetVars ? (sheetVars as CSSProperties) : undefined}
@@ -820,7 +841,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
             scene={shown}
             target={orbitTarget(scene, visibility)}
             furniture={furniture}
-            handlers={walking ? idle : mobile ? touchHandlers : handlers}
+            handlers={walking ? idle : !editing ? inspect : mobile ? touchHandlers : handlers}
+            editable={editing}
             touch={mobile}
             toolbar={toolbar}
             resetViewRef={resetView}
@@ -847,14 +869,17 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
               {toast}
             </p>
           )}
-          {mobile && !walking && pieceInfo && (
+          {mobile && !walking && inspected && (
             <PieceToolbar
-              name={pieceInfo.name}
-              typeName={pieceInfo.typeName}
-              href={pieceInfo.href}
-              onClose={() => setSelectedPieceId(undefined)}
+              name={inspected.name}
+              typeName={inspected.typeName}
+              href={inspected.href}
+              onClose={() =>
+                selectedItem ? dispatch({ type: 'select' }) : setSelectedPieceId(undefined)
+              }
             />
           )}
+          {!walking && <EditBadge />}
           {viewed && overlay.on && (
             <img
               className="photo-overlay"

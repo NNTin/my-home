@@ -4,6 +4,7 @@ import { placementsApi } from '../api';
 import { furniture } from '../catalog/furniture';
 import { createContext, createItem } from '../editor/operations';
 import { toEditorItem } from '../placements/sync';
+import { useEditMode } from '../editMode/editMode';
 import { href, navigate } from '../routing';
 import type { HomeData } from './uses';
 
@@ -17,23 +18,26 @@ const firstLevel = (model: HomeModel | undefined) =>
 const firstRoom = (model: HomeModel | undefined, levelId: string) =>
   model?.rooms.find((r) => r.levelId === levelId)?.id ?? '';
 
-/**
- * "Place" for a furniture type: pick a home, a level and a room; the piece is put on a free spot
- * of that room (as the viewer's furniture panel places it) with the playground's values, then the
- * viewer opens on it to fine-tune the position and rotation.
- */
-export function Place({
-  type,
-  homes,
-  params,
-  defaultHomeId,
-}: {
+interface PlaceProps {
   type: CatalogType;
   homes: HomeData[];
   /** The playground's overrides: the new use starts with them. */
   params: ParamValues;
   defaultHomeId: string | undefined;
-}) {
+}
+
+/** "Place" is offered in edit mode only (the piece page's header turns it on). */
+export function Place(props: PlaceProps) {
+  const [editing] = useEditMode();
+  return editing ? <PlaceForm {...props} /> : null;
+}
+
+/**
+ * "Place" for a furniture type: pick a home, a level and a room; the piece is put on a free spot
+ * of that room (as the viewer's furniture panel places it) with the playground's values, then the
+ * viewer opens on it to fine-tune the position and rotation.
+ */
+function PlaceForm({ type, homes, params, defaultHomeId }: PlaceProps) {
   const id = useId();
   const usable = homes.filter((h) => h.model && levelsWithRooms(h.model).length > 0);
   const start = usable.find((h) => h.home.id === defaultHomeId) ?? usable[0];

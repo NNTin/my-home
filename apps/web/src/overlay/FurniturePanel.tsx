@@ -38,6 +38,8 @@ export interface FlaggedItem {
 }
 
 interface Props {
+  /** Edit mode: without it the panel only shows, nothing in it changes the furniture. */
+  editing: boolean;
   /** The placements are loading, or failed to load. */
   loading: boolean;
   error: string | undefined;
@@ -186,54 +188,67 @@ export function FurniturePanel(props: Props) {
         </p>
       )}
 
-      <fieldset>
-        <legend>Add to {props.levelName}</legend>
-        {props.rooms.length > 0 && (
-          <label className="field">
-            Room{' '}
-            <select value={props.roomId ?? ''} onChange={(e) => props.onRoomChange(e.target.value)}>
-              {props.rooms.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        {props.categories.map((c) => (
-          <div key={c.name} className="catalog-group" role="group" aria-label={c.name}>
-            <h2>{c.name}</h2>
-            {c.types.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                className="catalog-item"
-                title={t.description}
-                onClick={() => props.onPlace(t.id)}
-                disabled={props.loading || props.error !== undefined}
+      {!props.editing && (
+        <p className="note">
+          View mode: furniture cannot be moved or changed. Press Edit to place, move or change it.
+        </p>
+      )}
+
+      {props.editing && (
+        <fieldset>
+          <legend>Add to {props.levelName}</legend>
+          {props.rooms.length > 0 && (
+            <label className="field">
+              Room{' '}
+              <select
+                value={props.roomId ?? ''}
+                onChange={(e) => props.onRoomChange(e.target.value)}
               >
-                <span aria-hidden="true">{t.icon}</span> {t.name}
-              </button>
-            ))}
-          </div>
-        ))}
-      </fieldset>
+                {props.rooms.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {props.categories.map((c) => (
+            <div key={c.name} className="catalog-group" role="group" aria-label={c.name}>
+              <h2>{c.name}</h2>
+              {c.types.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className="catalog-item"
+                  title={t.description}
+                  onClick={() => props.onPlace(t.id)}
+                  disabled={props.loading || props.error !== undefined}
+                >
+                  <span aria-hidden="true">{t.icon}</span> {t.name}
+                </button>
+              ))}
+            </div>
+          ))}
+        </fieldset>
+      )}
 
       <fieldset>
-        <legend>Edit</legend>
-        <div className="buttons">
-          <button type="button" onClick={props.onUndo} disabled={!props.canUndo} title="Ctrl+Z">
-            Undo
-          </button>
-          <button
-            type="button"
-            onClick={props.onRedo}
-            disabled={!props.canRedo}
-            title="Ctrl+Shift+Z"
-          >
-            Redo
-          </button>
-        </div>
+        <legend>{props.editing ? 'Edit' : 'Selection'}</legend>
+        {props.editing && (
+          <div className="buttons">
+            <button type="button" onClick={props.onUndo} disabled={!props.canUndo} title="Ctrl+Z">
+              Undo
+            </button>
+            <button
+              type="button"
+              onClick={props.onRedo}
+              disabled={!props.canRedo}
+              title="Ctrl+Shift+Z"
+            >
+              Redo
+            </button>
+          </div>
+        )}
         {selected ? (
           <div className="selection" aria-label="Selected item">
             <p>
@@ -244,20 +259,24 @@ export function FurniturePanel(props: Props) {
                 {p}
               </p>
             ))}
-            <Mounting selected={selected} props={props} />
+            {props.editing && <Mounting selected={selected} props={props} />}
             <div className="buttons">
-              <button type="button" onClick={() => props.onRotate(1)} title="R">
-                Rotate ⟲
-              </button>
-              <button type="button" onClick={() => props.onRotate(-1)} title="Shift+R">
-                Rotate ⟳
-              </button>
-              <button type="button" onClick={props.onDuplicate} title="Ctrl+D">
-                Duplicate
-              </button>
-              <button type="button" onClick={props.onDelete} title="Delete">
-                Delete
-              </button>
+              {props.editing && (
+                <>
+                  <button type="button" onClick={() => props.onRotate(1)} title="R">
+                    Rotate ⟲
+                  </button>
+                  <button type="button" onClick={() => props.onRotate(-1)} title="Shift+R">
+                    Rotate ⟳
+                  </button>
+                  <button type="button" onClick={props.onDuplicate} title="Ctrl+D">
+                    Duplicate
+                  </button>
+                  <button type="button" onClick={props.onDelete} title="Delete">
+                    Delete
+                  </button>
+                </>
+              )}
               <PieceLink href={selected.href} name={selected.name} />
             </div>
           </div>
@@ -272,39 +291,44 @@ export function FurniturePanel(props: Props) {
           </div>
         ) : (
           <p className="note">
-            Click an item to select it; drag to move (a wall cabinet along its wall), drag the ring
-            to rotate. Click a window, door or gate to open its piece page.
+            {props.editing
+              ? 'Click an item to select it; drag to move (a wall cabinet along its wall), drag the ring to rotate. Click a window, door or gate to open its piece page.'
+              : 'Click an item, window, door or gate to see what it is and open its piece page.'}
           </p>
         )}
-        <label className="toggle">
-          <input
-            type="checkbox"
-            checked={settings.grid}
-            onChange={() => set({ grid: !settings.grid })}
-          />{' '}
-          Snap to {Math.round(settings.gridStep * 100)} cm grid
-        </label>
-        <label className="toggle">
-          <input
-            type="checkbox"
-            checked={settings.wallSnap}
-            onChange={() => set({ wallSnap: !settings.wallSnap })}
-          />{' '}
-          Snap to walls
-        </label>
-        <label className="field">
-          Rotation step{' '}
-          <select
-            value={degrees(settings.rotationStep)}
-            onChange={(e) => set({ rotationStep: (Number(e.target.value) * Math.PI) / 180 })}
-          >
-            {rotationSteps.map((d) => (
-              <option key={d} value={d}>
-                {d === 0 ? 'Free' : `${d}°`}
-              </option>
-            ))}
-          </select>
-        </label>
+        {props.editing && (
+          <>
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={settings.grid}
+                onChange={() => set({ grid: !settings.grid })}
+              />{' '}
+              Snap to {Math.round(settings.gridStep * 100)} cm grid
+            </label>
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={settings.wallSnap}
+                onChange={() => set({ wallSnap: !settings.wallSnap })}
+              />{' '}
+              Snap to walls
+            </label>
+            <label className="field">
+              Rotation step{' '}
+              <select
+                value={degrees(settings.rotationStep)}
+                onChange={(e) => set({ rotationStep: (Number(e.target.value) * Math.PI) / 180 })}
+              >
+                {rotationSteps.map((d) => (
+                  <option key={d} value={d}>
+                    {d === 0 ? 'Free' : `${d}°`}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        )}
       </fieldset>
 
       {props.flagged.length > 0 && (

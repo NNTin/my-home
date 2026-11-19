@@ -1,6 +1,7 @@
 import type { HomeSummary } from '@my-home/shared';
 import type { HomeScene } from '../builder/buildHome';
 import { roofIndex, showUpTo, toggleId, type Visibility } from '../builder/visibility';
+import { EditToggle } from '../editMode/EditToggle';
 import { href, keptQuery, Link } from '../routing';
 
 interface Props {
@@ -70,6 +71,7 @@ export function ControlPanel({
         <p className="home-name">{homes.find((h) => h.id === homeId)?.name}</p>
       )}
       <div className="buttons">
+        <EditToggle />
         <button type="button" onClick={onWalk}>
           🚶 Walk and take photos
         </button>

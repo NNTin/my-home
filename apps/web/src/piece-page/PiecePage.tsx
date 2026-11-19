@@ -15,6 +15,7 @@ import { href, keptQuery, Link, navigate, useDocumentTitle, useRestoredScroll } 
 import { Inspector } from './Inspector';
 import { Notes } from './Notes';
 import { PhotoList } from './Photos';
+import { EditBadge, EditToggle } from '../editMode/EditToggle';
 import { Place } from './Place';
 import { decodeOverrides, encodeOverrides } from './playground';
 import { DesignParams, Playground } from './Playground';
@@ -236,6 +237,8 @@ function Piece({ type, layout }: { type: CatalogType; layout: ReturnType<typeof 
           <span aria-hidden="true">{type.icon}</span> {type.name}
         </h1>
         <p className="piece-kind">{kindLine(type)}</p>
+        <EditToggle className="page-edit" />
+        <EditBadge />
       </header>
       <main className="page-main">
         <p className="piece-description">{type.description}</p>

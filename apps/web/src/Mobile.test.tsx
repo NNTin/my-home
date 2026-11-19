@@ -139,8 +139,9 @@ describe('phone layout', () => {
     fireEvent.keyDown(level('Souterrain'), { key: 'ArrowRight' });
     expect(level('Roof')).toBeChecked();
 
-    // Furniture is added to the level that is looked into.
+    // Furniture is added to the level that is looked into (in edit mode).
     fireEvent.click(level('Souterrain'));
+    fireEvent.click(screen.getByRole('button', { name: /Edit/ }));
     fireEvent.click(tab(/Furniture/));
     expect(screen.getByText('Add to Souterrain')).toBeInTheDocument();
   });

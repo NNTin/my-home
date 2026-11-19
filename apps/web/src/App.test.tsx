@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import { enterEditMode } from './test/editMode';
 import type { SceneProps } from './scene/Scene';
 import { fakeApi, homeSummary } from './test/fakeApi';
 import { mockHome } from './test/fixtures';
@@ -83,6 +84,7 @@ describe('App', () => {
 
   it('cuts away the roof to look into the attic', async () => {
     stubApi();
+    enterEditMode();
     render(<App />);
     const cutaway = within(await screen.findByRole('group', { name: 'Show up to level' }));
     fireEvent.click(cutaway.getByLabelText('Roof'));

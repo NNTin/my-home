@@ -45,6 +45,8 @@ export interface SceneProps {
   viewpoint?: Viewpoint | undefined;
   /** A touch screen: larger handles and tap targets in the 3D view. */
   touch?: boolean;
+  /** Edit mode: furniture can be dragged and rotated. Off (view mode) it can only be selected. */
+  editable?: boolean;
   /** The floating toolbar of the selected furniture item. */
   toolbar?: FurnitureToolbarProps | undefined;
   /** Filled with the action that puts the camera back where it started ("Reset view"). */
@@ -214,6 +216,7 @@ export function Scene({
   requestGhosts = [],
   viewpoint,
   touch = false,
+  editable = true,
   toolbar,
   resetViewRef,
   paused = false,
@@ -255,7 +258,13 @@ export function Scene({
           <orthographicCamera attach="shadow-camera" args={[-30, 30, 30, -30, 1, 100]} />
         </directionalLight>
         <HomeMeshes scene={scene} pieces={pieces} />
-        <FurnitureLayer items={furniture} handlers={handlers} touch={touch} toolbar={toolbar} />
+        <FurnitureLayer
+          items={furniture}
+          handlers={handlers}
+          touch={touch}
+          toolbar={toolbar}
+          editable={editable}
+        />
         <CompassMarkers markers={markers} />
         <RoomLabelTracker labels={labels} layerRef={labelsRef} />
         <OrbitControls

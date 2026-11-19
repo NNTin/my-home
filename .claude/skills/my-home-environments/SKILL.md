@@ -97,7 +97,7 @@ $S/seed.sh staging diff                                # drift between git's see
   the PR on staging (shared: do both in one go and re-shoot if another deploy lands in between).
 - `mobile-smoke.sh <env> [--out file.png] [--home ID]`: the phone layout at 390x844 and 844x390 with touch: the
   3D view is clear of the top bar and the sheet, the first-run hints are dismissed, a tap opens and closes each
-  panel, the level switcher cuts the building away, a furniture item is placed and then dragged, rotated,
+  panel, a fresh visit is in **view mode** (a drag moves nothing) until **Edit** is pressed, the level switcher cuts the building away, a furniture item is placed and then dragged, rotated,
   long-pressed, duplicated and deleted with real touch events, walk mode is entered and left, and held across
   the sheet is at the side. It also counts WebGL draw calls (nothing is drawn while nothing moves, a finger
   or "Reset view" draws again), checks the canvas' pixel ratio (at most 1.5), that every control has a name,
