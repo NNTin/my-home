@@ -530,6 +530,9 @@ async function smoke(out, homeId) {
     check('▼ lowers it by 5 cm', await heightIs(1.33), `${elevation()}`);
     await toolbar.getByRole('button', { name: 'Delete' }).tap();
     check('and the toolbar deletes it', (await until((list) => list.length === 1)).length === 1);
+    // Back as before: the furniture panel open, which walk mode hides and gives back.
+    await tab(/Furniture/).tap();
+    await settle();
 
     // Walk mode takes the whole screen and gives it back.
     await page.getByRole('button', { name: 'Walk and take photos' }).tap();
