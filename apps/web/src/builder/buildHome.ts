@@ -140,6 +140,17 @@ export interface SlabDescriptor extends Prism {
   kind: 'floor' | 'roof';
 }
 
+/**
+ * A lowered ceiling: a solid from its underside up to just below the slab above. It is shown with
+ * the level above it (`visibleScene`), so a cutaway still looks into the rooms from above.
+ */
+export interface CeilingDescriptor extends Prism {
+  id: string;
+  name: string;
+  levelId: string;
+  apartmentId?: string;
+}
+
 /** A flat surface at height `y`, or on `slope` (`y` is then the high edge). */
 export interface Surface {
   outline: Vec2[];
@@ -251,6 +262,7 @@ export interface HomeScene {
   walls: WallSegment[];
   openings: OpeningDescriptor[];
   slabs: SlabDescriptor[];
+  ceilings: CeilingDescriptor[];
   roomFloors: RoomFloorDescriptor[];
   terrain: TerrainDescriptor[];
   outdoorAreas: OutdoorAreaDescriptor[];
@@ -596,6 +608,24 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
     });
   }
 
+  const ceilings: CeilingDescriptor[] = (model.ceilings ?? []).flatMap((c) => {
+    const level = levelById.get(c.levelId);
+    if (!level) return [];
+    return [
+      {
+        id: c.id,
+        name: c.name,
+        levelId: c.levelId,
+        ...(c.apartmentId !== undefined && { apartmentId: c.apartmentId }),
+        outline: toOutline(c.outline),
+        holes: [],
+        bottom: level.elevation.value + c.height.value,
+        // Kept off the slab above and the wall tops, which no one sees from here.
+        top: level.elevation.value + level.height.value - SURFACE_OFFSET,
+      },
+    ];
+  });
+
   const roomFloors: RoomFloorDescriptor[] = model.rooms.map((r) => {
     const outline = toOutline(r.outline);
     const y = elevationOf(r.levelId) + SURFACE_OFFSET;
@@ -655,6 +685,7 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
     walls,
     openings,
     slabs,
+    ceilings,
     roomFloors,
     terrain,
     outdoorAreas,

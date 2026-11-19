@@ -57,7 +57,7 @@ describe('walking through the souterrain apartment', () => {
   });
 
   it('walks from the corridor through the door into the bed room', () => {
-    const end = go(stand(11.15, -6.6), [[11.15, -3.5]]);
+    const end = go(stand(10.635, -6.6), [[10.635, -3.5]]);
     expect(end.z).toBeCloseTo(-3.5, 1);
     expect(roomOf(end)).toBe('souterrain-bed-room');
   });
@@ -78,11 +78,11 @@ describe('walking through the souterrain apartment', () => {
   it('fits through every door of the corridor', () => {
     const through: [string, Vec2, Vec2][] = [
       ['souterrain-stair-hall', [4.5, -6.6], [2.2, -6.6]],
-      ['souterrain-work-room', [4.14, -6.6], [4.14, -8.5]],
-      ['souterrain-bath-room', [8.075, -6.6], [8.075, -8.5]],
-      ['souterrain-living-room', [4.04, -6.6], [4.04, -4]],
-      ['souterrain-boiler-room', [7.265, -6.6], [7.265, -4]],
-      ['souterrain-bed-room', [11.155, -6.6], [11.155, -4]],
+      ['souterrain-work-room', [4.575, -6.6], [4.575, -8.5]],
+      ['souterrain-bath-room', [7.725, -6.6], [7.725, -8.5]],
+      ['souterrain-living-room', [4.525, -6.6], [4.525, -4]],
+      ['souterrain-boiler-room', [7.7, -6.6], [7.7, -4]],
+      ['souterrain-bed-room', [10.635, -6.6], [10.635, -4]],
     ];
     for (const [room, from, to] of through) {
       expect(roomOf(go(stand(...from), [to])), room).toBe(room);

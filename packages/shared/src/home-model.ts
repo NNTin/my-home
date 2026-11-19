@@ -377,6 +377,24 @@ export const Stair = z
   .meta({ id: 'Stair' });
 export type Stair = z.infer<typeof Stair>;
 
+/**
+ * A ceiling below the level's clear height over part of a level: a suspended ceiling, or a box
+ * (bulkhead) under it. `height` is its underside above the level's floor; where ceilings overlap,
+ * the lowest counts (`ceilingHeightAt`). The level's `height` (floor to slab) stays as it is.
+ */
+export const Ceiling = z
+  .strictObject({
+    id: Id,
+    name: Name,
+    levelId: Id,
+    apartmentId: Id.optional(),
+    /** The area it covers on the plan. */
+    outline: Polygon,
+    height: PositiveDimension,
+  })
+  .meta({ id: 'Ceiling' });
+export type Ceiling = z.infer<typeof Ceiling>;
+
 /** `privacy` is a mesh fence with a privacy screen; a `gate` is a framed leaf in a fence line. */
 export const FenceKind = z.enum(['chain-link', 'privacy', 'trellis', 'gate']);
 export type FenceKind = z.infer<typeof FenceKind>;
@@ -419,6 +437,8 @@ const HomeModelShape = z.strictObject({
   stairs: z.array(Stair).optional(),
   /** Omitted means none. */
   fences: z.array(Fence).optional(),
+  /** Lowered ceilings; omitted means every level's ceiling is at its clear height. */
+  ceilings: z.array(Ceiling).optional(),
 });
 
 /** Tolerance for comparing lengths (1 mm). */
@@ -449,6 +469,26 @@ export function insideOutline(x: number, z: number, outline: Polygon): boolean {
     if (az > z !== bz > z && x < ax + ((z - az) / (bz - az)) * (bx - ax)) inside = !inside;
   });
   return inside;
+}
+
+/**
+ * The ceiling's height above a level's floor at a plan point: the lowest ceiling over it, else the
+ * level's clear height (undefined for an unknown level).
+ */
+export function ceilingHeightAt(
+  model: Pick<HomeModel, 'levels' | 'ceilings'>,
+  levelId: string,
+  x: number,
+  z: number,
+): number | undefined {
+  const level = model.levels.find((l) => l.id === levelId);
+  if (!level) return undefined;
+  return Math.min(
+    level.height.value,
+    ...(model.ceilings ?? [])
+      .filter((c) => c.levelId === levelId && insideOutline(x, z, c.outline))
+      .map((c) => c.height.value),
+  );
 }
 
 /**
@@ -508,6 +548,7 @@ function checkSemantics(model: z.infer<typeof HomeModelShape>, ctx: z.Refinement
   });
   model.stairs?.forEach((s, i) => claim(s.id, ['stairs', i, 'id']));
   model.fences?.forEach((f, i) => claim(f.id, ['fences', i, 'id']));
+  model.ceilings?.forEach((c, i) => claim(c.id, ['ceilings', i, 'id']));
   const roof = model.building.roof;
   if (roof?.type === 'gable') {
     roof.windows?.forEach((w, i) => claim(w.id, ['building', 'roof', 'windows', i, 'id']));
@@ -710,6 +751,21 @@ function checkSemantics(model: z.infer<typeof HomeModelShape>, ctx: z.Refinement
       if (Math.abs(dot) > EPS) {
         issue([...path, 'path', j + 1], `Stair "${s.id}" must turn at right angles`);
       }
+    }
+  });
+
+  model.ceilings?.forEach((c, i) => {
+    const path = ['ceilings', i];
+    const level = model.levels.find((l) => l.id === c.levelId);
+    if (!level) issue([...path, 'levelId'], missing('level', c.levelId));
+    else if (c.height.value >= level.height.value - EPS) {
+      issue(
+        [...path, 'height'],
+        `Ceiling "${c.id}" at ${fmt(c.height.value)} is not below level "${level.id}" (${fmt(level.height.value)})`,
+      );
+    }
+    if (c.apartmentId !== undefined && !apartments.has(c.apartmentId)) {
+      issue([...path, 'apartmentId'], missing('apartment', c.apartmentId));
     }
   });
 

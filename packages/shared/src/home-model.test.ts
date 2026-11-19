@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
+  ceilingHeightAt,
   describeIssues,
   formatIssues,
   formatPath,
@@ -435,6 +436,22 @@ describe('the souterrain apartment of the real home', () => {
     expect(gate.z0 + gate.z1).toBeLessThan(door.z0 + door.z1);
   });
 
+  it('lowers the ceiling of the corridor and the kitchen to 2.15, and to 2.00 under the box (#61)', () => {
+    const at = (x: number, z: number) => ceilingHeightAt(model, 'souterrain', x, z);
+    expect(at(5, -6.6)).toBe(2.15);
+    expect(at(11, -8.5)).toBe(2.15);
+    expect(at(8.9, -6.6)).toBe(2.0);
+    // The other rooms keep the level's clear height; an unknown level has none.
+    expect(at(8, -8.5)).toBe(2.35);
+    expect(at(11, -4)).toBe(2.35);
+    expect(ceilingHeightAt(model, 'nowhere', 5, -6.6)).toBeUndefined();
+    // The box spans the corridor from the Bath room door's east casing to the kitchen opening.
+    const box = model.ceilings!.find((c) => c.id === 'souterrain-ceiling-corridor-box')!;
+    expect(box.outline.map((p) => p.x.value)).toEqual([8.2, 9.56, 9.56, 8.2]);
+    expect(span('door-souterrain-corridor-bath-room').x1).toBeLessThan(8.2);
+    expect(span('door-souterrain-corridor-boiler-room').x1).toBeLessThan(8.2);
+  });
+
   it('has a stair in the stair hall up to the ground floor', () => {
     const [stair] = model.stairs!;
     expect(stair).toMatchObject({ levelId: 'souterrain', toLevelId: 'ground-floor' });
@@ -620,6 +637,28 @@ describe('optional structures', () => {
       'stairs[3].path[2]',
       'stairs[4].path[2]',
     ]);
+  });
+
+  it('rejects ceilings on unknown levels or apartments, not below the level, or with a taken id', () => {
+    const home = realHome();
+    const ceiling = home.ceilings![0]!;
+    const high = { ...structuredClone(ceiling), id: 'high', height: d(2.35) };
+    const lost = { ...structuredClone(ceiling), id: 'lost', levelId: 'nowhere' };
+    const stray = { ...structuredClone(ceiling), id: 'stray', apartmentId: 'nobody' };
+    const twin = { ...structuredClone(ceiling), id: 'souterrain-corridor' };
+    home.ceilings!.push(high, lost, stray, twin);
+    expect(issuesOf(home).map((i) => i.path)).toEqual([
+      'ceilings[5].id',
+      'ceilings[2].height',
+      'ceilings[3].levelId',
+      'ceilings[4].apartmentId',
+    ]);
+  });
+
+  it('accepts a home without ceilings', () => {
+    const home = realHome();
+    delete home.ceilings;
+    expect(HomeModel.safeParse(home).success).toBe(true);
   });
 
   it('rejects entrances into a room of another apartment or through nothing', () => {

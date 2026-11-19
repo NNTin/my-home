@@ -6,9 +6,11 @@
 # sensor snapshot is never sent, so it keeps what the phone measured. There is no delete: photos stay.
 #
 #   set <photo-id> [--from FILE] [--yaw RAD | --heading-deg DEG] [--pitch RAD | --pitch-deg DEG]
-#       [--fovh RAD | --fovh-deg DEG] --reason TEXT [--dry-run]
+#       [--fovh RAD | --fovh-deg DEG] [--x X] [--z Z] --reason TEXT [--dry-run]
 #                         --from takes measure.py output (its camera.pose) or a {"yaw","pitch","fovH"} object;
-#                         flags override it. The position stays. --dry-run prints the change and sends nothing.
+#                         flags override it. --x/--z move the position on the plan (metres; the eye height y
+#                         stays), e.g. onto a refitted layout; without them the position stays. --dry-run prints
+#                         the change and sends nothing.
 #   history <photo-id>    the pose changes, newest first: when, who, before -> after, reason, change id
 #   undo <photo-id> <change-id>
 #                         puts the pose back as it was before that change (409 if it changed since)
@@ -18,7 +20,7 @@ skill_scripts=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "${MY_HOME_PHOTOS_LIB:-$skill_scripts/../../my-home-environments/scripts/photos-lib.sh}"
 
 usage() {
-  sed -n '2,15s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,17s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 
@@ -36,12 +38,12 @@ rad() { awk -v d="$1" -v s="${2:-1}" 'BEGIN { printf "%.6f", s * d * atan2(0, -1
 # pose_line <pose JSON>: heading (degrees clockwise from plan north), pitch and fovH in degrees.
 pose_line() {
   jq -r '(1 | atan * 4) as $pi | def d: . * 180 / $pi * 10 | round / 10;
-    "heading \(-.yaw | d | . - 360 * (. / 360 | floor))° pitch \(.pitch | d)° fovH \(if .fovH then (.fovH | d | tostring) + "°" else "-" end)"' <<<"$1"
+    "x \(.position.x * 100 | round / 100) z \(.position.z * 100 | round / 100) heading \(-.yaw | d | . - 360 * (. / 360 | floor))° pitch \(.pitch | d)° fovH \(if .fovH then (.fovH | d | tostring) + "°" else "-" end)"' <<<"$1"
 }
 
 case $command in
   set)
-    from='' yaw='' pitch='' fovh='' reason='' dry=0
+    from='' yaw='' pitch='' fovh='' x='' z='' reason='' dry=0
     while [[ $# -gt 0 ]]; do
       case $1 in
         --from) from=${2:?--from needs a file} && shift 2 ;;
@@ -51,6 +53,8 @@ case $command in
         --pitch-deg) number "$1" "${2:-}" && pitch=$(rad "$2") && shift 2 ;;
         --fovh) number "$1" "${2:-}" && fovh=$2 && shift 2 ;;
         --fovh-deg) number "$1" "${2:-}" && fovh=$(rad "$2") && shift 2 ;;
+        --x) number "$1" "${2:-}" && x=$2 && shift 2 ;;
+        --z) number "$1" "${2:-}" && z=$2 && shift 2 ;;
         --reason) reason=${2:?--reason needs a text} && shift 2 ;;
         --dry-run) dry=1 && shift ;;
         *) usage ;;
@@ -66,10 +70,13 @@ case $command in
     fi
     given=$(jq -c --arg yaw "$yaw" --arg pitch "$pitch" --arg fovh "$fovh" '. +
       ({yaw: $yaw, pitch: $pitch, fovH: $fovh} | with_entries(select(.value != "")) | map_values(tonumber))' <<<"$given")
-    [[ $given != '{}' ]] || die "nothing to set: give --from, --yaw/--heading-deg, --pitch/--pitch-deg or --fovh"
+    [[ $given != '{}' || -n $x || -n $z ]] ||
+      die "nothing to set: give --from, --yaw/--heading-deg, --pitch/--pitch-deg, --fovh, --x or --z"
     photo=$(api "$env" "/api/photos/$id")
     before=$(jq -c '.pose' <<<"$photo")
-    after=$(jq -c --argjson g "$given" '.pose + $g | .yaw |= (atan2(sin; cos))' <<<"$photo")
+    after=$(jq -c --argjson g "$given" --arg x "$x" --arg z "$z" '.pose + $g | .yaw |= (atan2(sin; cos))
+      | if $x != "" then .position.x = ($x | tonumber) else . end
+      | if $z != "" then .position.z = ($z | tonumber) else . end' <<<"$photo")
     jq -e '(.pitch | fabs) <= (1 | atan * 2) and (.fovH == null or (.fovH > 0 and .fovH < (1 | atan * 4)))' \
       <<<"$after" >/dev/null || die "pitch must be within ±π/2 and fovH within (0, π): $after"
     printf '%s\nbefore: %s\nafter:  %s\n' "$id" "$(pose_line "$before")" "$(pose_line "$after")"
@@ -83,7 +90,7 @@ case $command in
     ;;
   history)
     api "$env" "/api/photos/$id/pose-history" | jq -r '(1 | atan * 4) as $pi | def d: . * 180 / $pi * 10 | round / 10;
-      def line: "h \(-.yaw | d | . - 360 * (. / 360 | floor)) p \(.pitch | d) f \(if .fovH then .fovH | d else "-" end)";
+      def line: "x \(.position.x * 100 | round / 100) z \(.position.z * 100 | round / 100) h \(-.yaw | d | . - 360 * (. / 360 | floor)) p \(.pitch | d) f \(if .fovH then .fovH | d else "-" end)";
       .items[] | [.at, .actor, (.before | line) + " -> " + (.after | line), (.reason // (if .undoesId then "undo" else "" end)),
         (if .canUndo then "can undo" else "" end), .id] | @tsv'
     ;;
