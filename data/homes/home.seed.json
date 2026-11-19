@@ -5,19 +5,160 @@
     {
       "id": "souterrain-base-cabinet-1",
       "typeId": "kitchen.base-cabinet",
-      "name": "Stair hall · Base cabinet run",
+      "name": "Kitchen · north counter",
       "levelId": "souterrain",
       "position": {
-        "x": 10.759999999999998,
+        "x": 11.25,
         "z": -10.17
       },
       "rotationY": 0,
+      "params": {
+        "hob": "downdraft",
+        "hobAt": 1.55,
+        "oven": "built-in",
+        "ovenAt": 2.3,
+        "unitWidth": 0.56,
+        "width": 3.38
+      }
+    },
+    {
+      "id": "souterrain-base-cabinet-2",
+      "typeId": "kitchen.base-cabinet",
+      "name": "Kitchen · west counter",
+      "levelId": "souterrain",
+      "position": {
+        "x": 9.86,
+        "z": -8.8225
+      },
+      "rotationY": 1.5707963267948966,
+      "params": {
+        "sink": "single",
+        "sinkAt": 1.7,
+        "unitWidth": 0.53,
+        "width": 2.095
+      }
+    },
+    {
+      "id": "souterrain-downlight-10",
+      "typeId": "fixture.downlight",
+      "name": "Kitchen · downlight 4",
+      "levelId": "souterrain",
+      "position": {
+        "x": 12.05,
+        "z": -7.8
+      },
+      "rotationY": 0,
+      "mounting": "ceiling",
+      "params": {}
+    },
+    {
+      "id": "souterrain-downlight-2",
+      "typeId": "fixture.downlight",
+      "name": "Corridor · downlight 1",
+      "levelId": "souterrain",
+      "position": {
+        "x": 5.45,
+        "z": -6.79
+      },
+      "rotationY": 0,
+      "mounting": "ceiling",
+      "params": {}
+    },
+    {
+      "id": "souterrain-downlight-3",
+      "typeId": "fixture.downlight",
+      "name": "Corridor · downlight 2",
+      "levelId": "souterrain",
+      "position": {
+        "x": 6.18,
+        "z": -6.39
+      },
+      "rotationY": 0,
+      "mounting": "ceiling",
+      "params": {}
+    },
+    {
+      "id": "souterrain-downlight-4",
+      "typeId": "fixture.downlight",
+      "name": "Corridor · downlight 3",
+      "levelId": "souterrain",
+      "position": {
+        "x": 7,
+        "z": -6.79
+      },
+      "rotationY": 0,
+      "mounting": "ceiling",
+      "params": {}
+    },
+    {
+      "id": "souterrain-downlight-5",
+      "typeId": "fixture.downlight",
+      "name": "Corridor · downlight 4",
+      "levelId": "souterrain",
+      "position": {
+        "x": 7.5,
+        "z": -6.39
+      },
+      "rotationY": 0,
+      "mounting": "ceiling",
+      "params": {}
+    },
+    {
+      "id": "souterrain-downlight-6",
+      "typeId": "fixture.downlight",
+      "name": "Corridor · downlight 5",
+      "levelId": "souterrain",
+      "position": {
+        "x": 9.85,
+        "z": -6.85
+      },
+      "rotationY": 0,
+      "mounting": "ceiling",
+      "params": {}
+    },
+    {
+      "id": "souterrain-downlight-7",
+      "typeId": "fixture.downlight",
+      "name": "Kitchen · downlight 1",
+      "levelId": "souterrain",
+      "position": {
+        "x": 10.5,
+        "z": -9.4
+      },
+      "rotationY": 0,
+      "mounting": "ceiling",
+      "params": {}
+    },
+    {
+      "id": "souterrain-downlight-8",
+      "typeId": "fixture.downlight",
+      "name": "Kitchen · downlight 2",
+      "levelId": "souterrain",
+      "position": {
+        "x": 10.5,
+        "z": -7.8
+      },
+      "rotationY": 0,
+      "mounting": "ceiling",
+      "params": {}
+    },
+    {
+      "id": "souterrain-downlight-9",
+      "typeId": "fixture.downlight",
+      "name": "Kitchen · downlight 3",
+      "levelId": "souterrain",
+      "position": {
+        "x": 12.05,
+        "z": -9.4
+      },
+      "rotationY": 0,
+      "mounting": "ceiling",
       "params": {}
     },
     {
       "id": "souterrain-fridge-freezer-1",
       "typeId": "appliance.fridge-freezer",
-      "name": "Stair hall · Fridge-freezer",
+      "name": "Kitchen · fridge-freezer",
       "levelId": "souterrain",
       "position": {
         "x": 12.615,
@@ -27,16 +168,133 @@
       "params": {}
     },
     {
-      "id": "souterrain-tall-cabinet-1",
-      "typeId": "kitchen.tall-cabinet",
-      "name": "Stair hall · Tall cabinet",
+      "id": "souterrain-microwave-1",
+      "typeId": "appliance.microwave",
+      "name": "Kitchen · microwave",
       "levelId": "souterrain",
       "position": {
-        "x": 9.799999999999999,
-        "z": -7.635
+        "x": 9.97,
+        "z": -8.02
+      },
+      "rotationY": 1.5707963267948966,
+      "elevation": 0.9,
+      "params": {
+        "color": "#cfcfcc"
+      }
+    },
+    {
+      "id": "souterrain-radiator-1",
+      "typeId": "fixture.radiator",
+      "name": "Corridor · radiator",
+      "levelId": "souterrain",
+      "position": {
+        "x": 11.525,
+        "z": -6.1
+      },
+      "rotationY": 3.141592653589793,
+      "mounting": "wall",
+      "elevation": 0.1,
+      "params": {}
+    },
+    {
+      "id": "souterrain-shoe-cabinet-1",
+      "typeId": "furniture.shoe-cabinet",
+      "name": "Corridor · shoe cabinet",
+      "levelId": "souterrain",
+      "position": {
+        "x": 7.7,
+        "z": -6.085
+      },
+      "rotationY": 3.141592653589793,
+      "params": {}
+    },
+    {
+      "id": "souterrain-storage-shelf-1",
+      "typeId": "furniture.storage-shelf",
+      "name": "Corridor · storage shelf",
+      "levelId": "souterrain",
+      "position": {
+        "x": 12.445,
+        "z": -6.25
+      },
+      "rotationY": 3.141592653589793,
+      "params": {}
+    },
+    {
+      "id": "souterrain-tall-cabinet-1",
+      "typeId": "kitchen.tall-cabinet",
+      "name": "Kitchen · glass cabinet",
+      "levelId": "souterrain",
+      "position": {
+        "x": 9.8,
+        "z": -7.52
       },
       "rotationY": 1.5707963267948966,
       "params": {}
+    },
+    {
+      "id": "souterrain-wall-cabinet-2",
+      "typeId": "kitchen.wall-cabinet",
+      "name": "Kitchen · wall cabinet left",
+      "levelId": "souterrain",
+      "position": {
+        "x": 9.94,
+        "z": -10.295
+      },
+      "rotationY": 0,
+      "mounting": "wall",
+      "elevation": 1.33,
+      "params": {}
+    },
+    {
+      "id": "souterrain-wall-cabinet-3",
+      "typeId": "kitchen.wall-cabinet",
+      "name": "Kitchen · wall cabinet right",
+      "levelId": "souterrain",
+      "position": {
+        "x": 11.84,
+        "z": -10.295
+      },
+      "rotationY": 0,
+      "mounting": "wall",
+      "elevation": 1.33,
+      "params": {}
+    },
+    {
+      "id": "souterrain-wall-cabinet-4",
+      "typeId": "kitchen.wall-cabinet",
+      "name": "Corridor · wood wall cabinet",
+      "levelId": "souterrain",
+      "position": {
+        "x": 11.9,
+        "z": -6.205
+      },
+      "rotationY": 3.141592653589793,
+      "mounting": "wall",
+      "elevation": 1.5,
+      "params": {
+        "doors": 2,
+        "frontColor": "#5b4130",
+        "height": 0.4,
+        "width": 1.35
+      }
+    },
+    {
+      "id": "souterrain-wall-shelf-1",
+      "typeId": "kitchen.wall-shelf",
+      "name": "Kitchen · wall shelf",
+      "levelId": "souterrain",
+      "position": {
+        "x": 9.685,
+        "z": -8.985
+      },
+      "rotationY": 1.5707963267948966,
+      "mounting": "wall",
+      "elevation": 1.52,
+      "params": {
+        "rail": "hooks",
+        "width": 2.27
+      }
     }
   ],
   "openingOverrides": [
