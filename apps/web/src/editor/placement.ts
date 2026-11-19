@@ -11,9 +11,11 @@ export function roomAt(plan: FloorPlan, point: Vec2): PlanRoom | undefined {
 
 /**
  * The area an item may stand in: the rooms of the apartment it is in (or of any apartment when
- * it is in no room yet). Levels without rooms fall back to the building footprint.
+ * it is in no room yet). Levels without rooms fall back to the building footprint. An outdoor
+ * piece stands in the outdoor areas (not on a road).
  */
-export function allowedArea(plan: FloorPlan, center: Vec2): Vec2[][] {
+export function allowedArea(plan: FloorPlan, center: Vec2, outdoor = false): Vec2[][] {
+  if (outdoor) return plan.outdoor;
   if (plan.rooms.length === 0) return [plan.footprint];
   const room = roomAt(plan, center);
   if (!room) return plan.rooms.map((r) => r.outline);
@@ -40,8 +42,9 @@ export function constrainMove(
   from: Vec2,
   to: Vec2,
   footprintAt: (p: Vec2) => Vec2[],
+  outdoor = false,
 ): Vec2 {
-  const area = allowedArea(plan, from);
+  const area = allowedArea(plan, from, outdoor);
   const ok = (p: Vec2) => isInside(area, footprintAt(p));
   if (ok(to)) return to;
   const slideX: Vec2 = [to[0], from[1]];

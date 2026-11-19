@@ -208,7 +208,16 @@ const ParamSpecSummary = z.looseObject({
 export const CatalogTypeSummary = z.object({
   id: TypeId,
   kind: CatalogKind,
-  family: z.enum(['window', 'door', 'gate', 'furniture', 'kitchen', 'appliance', 'fixture']),
+  family: z.enum([
+    'window',
+    'door',
+    'gate',
+    'furniture',
+    'kitchen',
+    'appliance',
+    'fixture',
+    'garden',
+  ]),
   name: z.string(),
   description: z.string(),
   icon: z.string(),
@@ -219,7 +228,7 @@ export const CatalogTypeSummary = z.object({
   openingTypes: z.array(z.string()).optional(),
   params: z.record(z.string(), ParamSpecSummary),
   snapping: z.object({ wall: z.enum(['back', 'any', 'none']) }).optional(),
-  footprint: z.enum(['rectangle', 'ellipse']).optional(),
+  footprint: z.enum(['rectangle', 'ellipse', 'none']).optional(),
 });
 export type CatalogTypeSummary = z.infer<typeof CatalogTypeSummary>;
 

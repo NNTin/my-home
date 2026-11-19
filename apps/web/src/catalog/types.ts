@@ -66,6 +66,11 @@ export interface Part {
   /** Box: [x, y, z] extents. Cylinder: [diameter, height, diameter]; unequal x/z make it elliptic. */
   size: Vec3;
   rotationY: number;
+  /**
+   * Optional tilt about the part's own x axis, in radians, applied before `rotationY`: a sloping
+   * roof sheet, a leaning backrest, a cylinder lying on its side (π/2). Sections ignore it.
+   */
+  rotationX?: number;
   color: string;
   material?: PartMaterial;
   role: PartRole;

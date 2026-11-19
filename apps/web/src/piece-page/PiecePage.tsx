@@ -1,6 +1,7 @@
 import {
   catalog,
   effectiveParams,
+  isOutdoorKind,
   isPlacedKind,
   openingFitIssues,
   type CatalogType,
@@ -32,6 +33,7 @@ const KIND_NAMES = {
   openings: 'Windows & doors',
   furniture: 'Furniture',
   fixtures: 'Fixtures',
+  outdoor: 'Outdoor',
 } as const;
 const FAMILY_NAMES = {
   window: 'Window',
@@ -41,6 +43,7 @@ const FAMILY_NAMES = {
   kitchen: 'Kitchen',
   appliance: 'Appliance',
   fixture: 'Fixtures',
+  garden: 'Garden',
 } as const;
 
 /** "Windows & doors · Window", "Furniture · Bed room", "Furniture · Appliance · Kitchen". */
@@ -320,7 +323,7 @@ function Piece({ type, layout }: { type: CatalogType; layout: ReturnType<typeof 
               onChange={setOverrides}
             />
             <DesignParams type={type} values={scene.values} />
-            {isPlacedKind(type) && state.status === 'ready' && (
+            {isPlacedKind(type) && !isOutdoorKind(type) && state.status === 'ready' && (
               <Place type={type} homes={state.homes} params={overrides} defaultHomeId={home.home} />
             )}
             <Uses

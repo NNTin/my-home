@@ -77,6 +77,34 @@ describe('placements', () => {
       expect((await place()).id).toBe('souterrain-bed-8');
     });
 
+    it('places outdoor pieces outside the rooms, named after the outdoor area they stand in', async () => {
+      // A 2.45 m pergola: outdoors nothing is too high (the level is 2.5 m, but no ceiling is over it).
+      const pergola = await place({
+        typeId: 'garden.pergola',
+        position: { x: 0, z: -7 },
+        params: { height: 3 },
+      });
+      expect(pergola).toMatchObject({
+        id: 'souterrain-pergola-1',
+        roomId: null,
+        name: 'Souterrain garden · Lean-to pergola',
+        mounting: 'floor',
+        elevation: 0,
+      });
+      const uses = await inject('GET', '/api/homes/mock-home/uses?typeId=garden.pergola');
+      expect(uses.json().items).toEqual([
+        expect.objectContaining({
+          id: 'souterrain-pergola-1',
+          kind: 'outdoor',
+          where: 'Souterrain · Souterrain garden',
+          status: 'ok',
+        }),
+      ]);
+      // Outside every outdoor area: the level's name, as for furniture.
+      const far = await place({ typeId: 'garden.shrub', position: { x: 40, z: 40 } });
+      expect(far.name).toBe('Souterrain · Shrub');
+    });
+
     it('places fixtures with stable ids: one per light, kept through moves and the trash', async () => {
       const light = (x: number) =>
         place({
@@ -117,7 +145,7 @@ describe('placements', () => {
         });
       expect((await post({ typeId: 'furniture.unicorn' })).statusCode).toBe(400);
       expect((await post({ typeId: 'window.casement' })).json().message).toMatch(
-        /not a furniture or fixture/,
+        /not a furniture, fixture or outdoor type/,
       );
       expect((await post({ levelId: 'cellar' })).statusCode).toBe(404);
       const bad = await post({ params: { width: 5, height: 1 } });

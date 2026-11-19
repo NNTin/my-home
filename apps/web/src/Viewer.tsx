@@ -14,6 +14,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { homeSettingsApi, photosApi } from './api';
 import {
   buildHome,
+  groundAt,
   type HomeScene,
   type LevelInfo,
   type Vec2,
@@ -265,19 +266,25 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   const { items } = editor;
 
   // The figure: blocked by walls, fences and the furniture standing on the floor. Pieces on a
-  // wall or under the ceiling (wall cabinets, lights) never block it: it walks under them.
+  // wall or under the ceiling (wall cabinets, lights) never block it: it walks under them, as under
+  // an open piece (a pergola) and over a stepping stone. Outdoor pieces stand on the ground.
   const world = useMemo(() => {
     const blockers = items.flatMap((item): FurnitureBlocker[] => {
-      return ctx.plans.has(item.levelId) && mountingOfItem(item) === 'floor'
-        ? [
-            {
-              levelId: item.levelId,
-              polygon: worldFootprint(ctx, item),
-              height: (typeOf(ctx, item)?.size ?? UNKNOWN_SIZE).height,
-              bottom: elevationOfItem(item),
-            },
-          ]
-        : [];
+      const type = typeOf(ctx, item);
+      const level = ctx.plans.get(item.levelId);
+      if (!level || mountingOfItem(item) !== 'floor' || type?.open) return [];
+      const ground = type?.outdoor
+        ? groundAt(scene.terrain, [item.position.x, item.position.z], level.elevation) -
+          level.elevation
+        : 0;
+      return [
+        {
+          levelId: item.levelId,
+          polygon: worldFootprint(ctx, item),
+          height: (type?.size ?? UNKNOWN_SIZE).height,
+          bottom: ground + elevationOfItem(item),
+        },
+      ];
     });
     return buildWalkWorld(model, scene, blockers);
   }, [model, scene, ctx, items]);
@@ -419,18 +426,19 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     const hiddenApartments = new Set(visibility.hiddenApartments);
     return items.flatMap((item) => {
       const p = ctx.plans.get(item.levelId);
-      if (!p || !levels.has(item.levelId)) return [];
+      const type = typeOf(ctx, item);
+      // Outdoor pieces stand on the ground and show with the terrain, whatever the cutaway.
+      const outdoor = type?.outdoor ?? false;
+      if (!p || (!outdoor && !levels.has(item.levelId))) return [];
       const apartment = p.rooms.find((r) => r.id === item.roomId)?.apartmentId;
       if (apartment !== undefined && hiddenApartments.has(apartment)) return [];
-      const type = typeOf(ctx, item);
+      const base = outdoor
+        ? groundAt(scene.terrain, [item.position.x, item.position.z], p.elevation)
+        : p.elevation;
       return [
         {
           id: item.id,
-          position: [
-            item.position.x,
-            p.elevation + mountHeightOf(ctx, item),
-            item.position.z,
-          ] as Vec3,
+          position: [item.position.x, base + mountHeightOf(ctx, item), item.position.z] as Vec3,
           rotationY: item.rotationY,
           size: type?.size ?? UNKNOWN_SIZE,
           parts: type?.parts ?? unknownParts(),

@@ -7,6 +7,7 @@ import {
   mountIssues,
   modelUses,
   openingFitIssues,
+  outdoorAreaAt,
   type HistoryEntry,
   type HomeSettings,
   type ListUsesQuery,
@@ -158,7 +159,13 @@ function placementUse(model: HomeModel, p: PlacementRow): Use {
     name: p.name,
     levelId: p.levelId,
     roomIds: p.roomId === null ? [] : [p.roomId],
-    where: [level?.name ?? p.levelId, room?.name].filter(Boolean).join(' · '),
+    // Outside every room: the outdoor area it stands in ("Souterrain · Souterrain patio").
+    where: [
+      level?.name ?? p.levelId,
+      room?.name ?? (p.roomId === null ? outdoorAreaAt(model, p.x, p.z)?.name : undefined),
+    ]
+      .filter(Boolean)
+      .join(' · '),
     overrides: p.params,
     effective: effective.values,
     version: p.version,

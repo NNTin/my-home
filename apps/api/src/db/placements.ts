@@ -7,6 +7,7 @@ import {
   furnitureFitIssues,
   heightFitIssues,
   isPlacedKind,
+  outdoorAreaAt,
   mountingIssue,
   mountingsFor,
   roomAt,
@@ -114,7 +115,7 @@ const furnitureType = (typeId: string): CatalogType => {
   const type = catalog.get(typeId);
   if (!type) throw problem(400, `Unknown type "${typeId}"`);
   if (!isPlacedKind(type)) {
-    throw problem(400, `Type "${typeId}" is not a furniture or fixture type`);
+    throw problem(400, `Type "${typeId}" is not a furniture, fixture or outdoor type`);
   }
   return type;
 };
@@ -220,7 +221,10 @@ export function placementStore(db: Db, options: { retentionDays: number }) {
     }
   };
 
-  /** "<Room> · <Type>" (outside a room: the level's name), numbered when the name is taken. */
+  /**
+   * "<Room> · <Type>" (outside a room: the outdoor area's name, else the level's), numbered when the
+   * name is taken.
+   */
   const autoName = async (
     tx: Tx,
     homeId: string,
@@ -307,9 +311,17 @@ export function placementStore(db: Db, options: { retentionDays: number }) {
         ? roomOf(m, input.levelId, input.position)
         : undefined;
       const id = await issueId(tx, homeId, m, input.typeId, input.levelId, room);
+      // Outside every room: the outdoor area it stands in ("Souterrain patio"), else the level.
+      const area = room ? undefined : outdoorAreaAt(m, input.position.x, input.position.z);
       const name =
         input.name ??
-        (await autoName(tx, homeId, m, names.typeName, room?.name ?? names.levelName));
+        (await autoName(
+          tx,
+          homeId,
+          m,
+          names.typeName,
+          room?.name ?? area?.name ?? names.levelName,
+        ));
       const [inserted] = await tx
         .insert(placements)
         .values({

@@ -107,6 +107,25 @@ export function slopeY(slope: PlaneSlope, [x, z]: Vec2): number {
   return slope.high + (slope.low - slope.high) * Math.min(1, Math.max(0, t));
 }
 
+/**
+ * The ground's height at a plan point: the highest terrain patch top over it (on its slope where it
+ * has one), else `fallback`. Outdoor pieces stand on it.
+ */
+export function groundAt(
+  terrain: readonly Pick<Prism, 'outline' | 'holes' | 'top' | 'slope'>[],
+  point: Vec2,
+  fallback: number,
+): number {
+  let best: number | undefined;
+  for (const patch of terrain) {
+    if (!pointInPolygon(point, patch.outline) || patch.holes.some((h) => pointInPolygon(point, h)))
+      continue;
+    const y = patch.slope ? slopeY(patch.slope, point) : patch.top;
+    if (best === undefined || y > best) best = y;
+  }
+  return best ?? fallback;
+}
+
 /** Resolves a model slope against the bounding box of `outline`, offset vertically by `lift`. */
 export function resolveSlope(
   outline: Vec2[],

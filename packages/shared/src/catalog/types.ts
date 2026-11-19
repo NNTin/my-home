@@ -3,8 +3,9 @@ import type { CatalogKind, TypeId } from './ids';
 import type { ParamSpec } from './params';
 
 /**
- * Where a piece sits: in a wall (or an outbuilding edge), a roof plane, a fence line, or in a room
- * (`floor`: a database placement on a level; `mounting` says on what it hangs there).
+ * Where a piece sits: in a wall (or an outbuilding edge), a roof plane, a fence line, or placed
+ * (`floor`: a database placement on a level, in a room or, outdoor pieces, on the ground outside;
+ * `mounting` says on what it hangs there).
  * (Called `Placement` until #39, which gave that name to the stored furniture placement record.)
  */
 export type PlacementKind = 'wall' | 'roof' | 'fence' | 'floor';
@@ -14,7 +15,7 @@ export type Mounting = 'floor' | 'wall' | 'ceiling';
 
 /** The families: the first part of a type id, and the folder of its piece module. */
 export type CatalogFamily =
-  'window' | 'door' | 'gate' | 'furniture' | 'kitchen' | 'appliance' | 'fixture';
+  'window' | 'door' | 'gate' | 'furniture' | 'kitchen' | 'appliance' | 'fixture' | 'garden';
 
 /**
  * A catalogue type: one kind of piece (a casement window, a bed) with its metadata and parameters.
@@ -52,13 +53,23 @@ export interface CatalogType {
   params: Readonly<Record<string, ParamSpec>>;
   /** Furniture: how it snaps to walls. */
   snapping?: { wall: 'back' | 'any' | 'none' };
-  /** Furniture; derived from the effective width/depth (rectangle when omitted). */
-  footprint?: 'rectangle' | 'ellipse';
+  /**
+   * Furniture; derived from the effective width/depth (rectangle when omitted). `none`: the piece
+   * takes no floor space (an open pergola you sit under, a stepping stone you walk over): it
+   * collides with nothing and never blocks the walking figure.
+   */
+  footprint?: 'rectangle' | 'ellipse' | 'none';
 }
 
-/** Kinds placed in rooms as database placements (furniture and fixtures). */
+/** Kinds placed as database placements: furniture and fixtures in rooms, outdoor pieces outside. */
 export const isPlacedKind = (type: Pick<CatalogType, 'kind'>): boolean =>
-  type.kind === 'furniture' || type.kind === 'fixtures';
+  type.kind === 'furniture' || type.kind === 'fixtures' || type.kind === 'outdoor';
+
+/**
+ * Outdoor pieces (the garden family) stand on the ground where they are placed, the terrain's
+ * surface there, not on their level's floor.
+ */
+export const isOutdoorKind = (type: Pick<CatalogType, 'kind'>): boolean => type.kind === 'outdoor';
 
 export const mountingOf = (type: Pick<CatalogType, 'mounting'>): Mounting =>
   type.mounting ?? 'floor';

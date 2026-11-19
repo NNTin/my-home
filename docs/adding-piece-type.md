@@ -20,6 +20,7 @@ the home's seed (`data/homes/home.seed.json`, [userdata.md](userdata.md)).
 | `openings`  | `window`, `door`, `gate` (`definitions/windows.ts`, `doors.ts`, `gates.ts`)         | in the home model: wall, roof, fence |
 | `furniture` | `furniture`, `kitchen`, `appliance` (`furniture.ts`, `kitchen.ts`, `appliances.ts`) | in a room (`placement: 'floor'`)     |
 | `fixtures`  | `fixture` (`fixtures.ts`): lights, the radiator                                     | in a room (`placement: 'floor'`)     |
+| `outdoor`   | `garden` (`garden.ts`): patio and garden pieces                                     | on the ground outside (`'floor'`)    |
 
 ## 1. Define the type
 
@@ -43,7 +44,7 @@ export const lamp = defineType({
     height: fixedLength('Height', 1.6), // design: fixed by the type
   },
   snapping: { wall: 'none' }, // 'back' | 'any' | 'none'
-  footprint: 'ellipse', // or 'rectangle' (default), from the effective width/depth
+  footprint: 'ellipse', // or 'rectangle' (default), from the effective width/depth, or 'none'
 });
 ```
 
@@ -62,6 +63,13 @@ both: 'Both sides' })`: one of a fixed list, the first the default). Both are ba
   floor (a wall cabinet 1.33, the microwave on the worktop 0.90). A ceiling piece has none. A new placement
   gets them (`mountingsFor`, `defaultElevation`); each placement then stores its own
   ([furniture.md](furniture.md#mounting-walls-and-ceilings)).
+- **Footprint** `none`: the piece takes no floor space, so it collides with nothing and never blocks the walking
+  figure: an open pergola you sit under, a stepping stone you walk over. A size without a `height` parameter
+  falls back to the `diameter` (a log lying down).
+- **Outdoor pieces** (kind `outdoor`, family `garden`, mounting `floor`) stand on the ground where they are
+  placed, the terrain's surface there (`groundAt` in the builder), not on their level's floor: the patio, a
+  step of the sunken entry, a slope. They have no ceiling over them, show whatever the cutaway, and move within
+  the outdoor areas (not on the roads) in edit mode ([furniture.md](furniture.md#outdoor-pieces)).
 - Only the first six furniture types have a legacy id (`LEGACY_FURNITURE_TYPE_IDS`: the old named layouts
   stored `bed`; the one-time import maps it). New types need none.
 
@@ -104,7 +112,9 @@ export default definePiece({
   height is the placement's). A ceiling piece's origin is on the ceiling's surface, +y up into it: what shows
   hangs below 0 (a downlight's trim), what is hidden sits above (its housing).
   The builder or the editor places the piece, so a module never sees world coordinates.
-- A `Part` is a `box` or a `cylinder` (`size` = `[diameter, height, diameter]`) with a colour, a
+- A `Part` is a `box` or a `cylinder` (`size` = `[diameter, height, diameter]`), turned by `rotationY` and
+  optionally tilted by `rotationX` (about its own x axis, before the turn: a sloping roof sheet, a leaning
+  backrest, `tilted(cylinder(…), Math.PI / 2)` for a log lying on its side), with a colour, a
   `role` (`frame`, `glass`, `body`, …) and optional `material` settings (transparency, metalness,
   shadows). [`PartsMesh`](../apps/web/src/catalog/PartsMesh.tsx) draws every piece the same way,
   in the order of its parts (keep glass after the frame), and adds the selection and collision

@@ -1,4 +1,4 @@
-import { formatCm, mountingOf, type CatalogType } from '@my-home/shared';
+import { formatCm, isOutdoorKind, mountingOf, type CatalogType } from '@my-home/shared';
 import { box } from '../catalog/parts';
 import type { Part, PieceContext } from '../catalog/types';
 import { STUB_HEAD, STUB_SIDE, WALL_COLOR } from './section';
@@ -73,6 +73,11 @@ export function mountingStage(type: CatalogType, ctx: PieceContext): MountingSta
 
 /** "Stands on the floor", "Hangs on a wall, its bottom 133.0 cm above the floor", … */
 export function mountingText(type: CatalogType): string {
+  if (isOutdoorKind(type)) {
+    return type.footprint === 'none'
+      ? 'Stands on the ground outside; open, so you walk under or over it.'
+      : 'Stands on the ground outside.';
+  }
   const height = type.elevation ? formatCm(type.elevation) : undefined;
   switch (mountingOf(type)) {
     case 'ceiling':

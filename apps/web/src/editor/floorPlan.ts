@@ -44,6 +44,8 @@ export interface FloorPlan {
   walls: PlanWall[];
   /** Building footprint: the allowed area on levels without rooms. */
   footprint: Vec2[];
+  /** The outdoor areas but the roads: where outdoor pieces may stand. */
+  outdoor: Vec2[][];
 }
 
 const toVec2 = (p: Point): Vec2 => [p.x.value, p.z.value];
@@ -114,5 +116,6 @@ export function floorPlan(model: HomeModel, levelId: string): FloorPlan | undefi
       })),
     walls,
     footprint: model.building.footprint.map(toVec2),
+    outdoor: model.outdoorAreas.filter((a) => a.kind !== 'road').map((a) => a.outline.map(toVec2)),
   };
 }

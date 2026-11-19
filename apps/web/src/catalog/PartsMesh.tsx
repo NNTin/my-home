@@ -29,7 +29,8 @@ function PartMesh({ part, state }: { part: Part; state: PartState | undefined })
   return (
     <mesh
       position={part.center}
-      rotation={[0, part.rotationY, 0]}
+      // The tilt (about the part's own x) first, then the turn about y.
+      rotation={[part.rotationX ?? 0, part.rotationY, 0, 'YXZ']}
       {...(part.shape === 'cylinder' && { scale: [1, 1, sz / sx] as const })}
       castShadow={castShadow}
       receiveShadow={receiveShadow}

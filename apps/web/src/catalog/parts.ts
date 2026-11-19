@@ -37,6 +37,9 @@ export const cylinder = (
   role,
 });
 
+/** The part tilted about its own x axis by `angle` radians (see `Part.rotationX`). */
+export const tilted = (part: Part, angle: number): Part => ({ ...part, rotationX: angle });
+
 /** A numeric parameter; effective values always carry every key of their type. */
 export function numberParam(values: ParamValues, key: string): number {
   const value = values[key];

@@ -9,10 +9,11 @@ export const TypeId = z
 export type TypeId = z.infer<typeof TypeId>;
 
 /**
- * The catalogue's top-level groups (later: `outdoor`). `furniture` and `fixtures` (lights, the
- * radiator) are placed in rooms as database placements; `openings` are uses in the home model.
+ * The catalogue's top-level groups. `furniture` and `fixtures` (lights, the radiator) are placed in
+ * rooms, `outdoor` (garden and patio pieces) on the ground outside, as database placements;
+ * `openings` are uses in the home model.
  */
-export const CatalogKind = z.enum(['openings', 'furniture', 'fixtures']);
+export const CatalogKind = z.enum(['openings', 'furniture', 'fixtures', 'outdoor']);
 export type CatalogKind = z.infer<typeof CatalogKind>;
 
 /** A colour as `#rrggbb`; input is lower-cased, so it is stored lower case. */

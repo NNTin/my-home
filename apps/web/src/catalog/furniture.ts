@@ -1,6 +1,7 @@
 import {
   catalog,
   effectiveParams,
+  isOutdoorKind,
   isPlacedKind,
   LEGACY_FURNITURE_TYPE_IDS,
   type CatalogType,
@@ -46,6 +47,13 @@ export interface FurnitureType {
   description: string;
   category: string;
   snapping: WallSnap;
+  /** An outdoor piece: it stands on the ground where it is placed, not on its level's floor. */
+  outdoor: boolean;
+  /**
+   * It takes no floor space (footprint `none`: an open pergola, a stepping stone): it collides with
+   * nothing and never blocks the walking figure.
+   */
+  open: boolean;
 }
 
 /** A layout item's type with its effective values: what it is drawn and collides as. */
@@ -65,7 +73,8 @@ export interface FurnitureCategory {
 export interface FurnitureRegistry {
   /**
    * What the "Add" panel offers: every furniture and fixture type (on the floor, on a wall or under
-   * the ceiling), grouped by category, then sorted by name (category order alphabetical).
+   * the ceiling), grouped by category, then sorted by name (category order alphabetical). Outdoor
+   * pieces are not offered: the panel adds to a room.
    */
   categories: FurnitureCategory[];
   /** By type id or legacy id. */
@@ -105,11 +114,14 @@ export function createFurniture(types: readonly CatalogType[] = catalog.types): 
       description: type.description,
       category: type.category ?? 'Other',
       snapping: type.snapping?.wall ?? 'none',
+      outdoor: isOutdoorKind(type),
+      open: type.footprint === 'none',
     });
   }
-  const sorted = [...byId.values()].sort(
-    (a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name),
-  );
+  // The "Add" panel puts a new piece in a room, so it offers no outdoor pieces (agents place them).
+  const sorted = [...byId.values()]
+    .filter((t) => !t.outdoor)
+    .sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
   const categories: FurnitureCategory[] = [];
   for (const type of sorted) {
     const last = categories.at(-1);

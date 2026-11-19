@@ -48,6 +48,25 @@ The named layouts of earlier versions are gone from the viewer
 
 The API (`/api/homes/:homeId/placements`, history and undo) is in [userdata.md](userdata.md).
 
+## Outdoor pieces
+
+Patio and garden pieces (kind `outdoor`: the pergola, garden table and chairs, planters, shrubs and rose bushes,
+dry-stone piles, stepping stones, …; [adding a type](adding-piece-type.md)) are placements like furniture, outside the
+rooms:
+
+- `levelId` is the level of the apartment whose garden or patio it is (`souterrain` for the souterrain patio);
+  `roomId` is `null`. The server names it after the outdoor area it stands in ("Souterrain patio · Lean-to
+  pergola"; outside every area, the level's name) and gives the usual id (`souterrain-pergola-1`).
+- It **stands on the ground at its position**: the terrain's surface there (the patio, a step of the sunken entry,
+  the slope of a bank), not the level's floor. Its `elevation` lifts it from there. Nothing is too high outdoors:
+  there is no ceiling over it.
+- It shows whatever the cutaway, as the terrain does, blocks the walking figure like furniture (an open piece, a
+  pergola or a stepping stone, does not), and moves within the outdoor areas (not on the roads) in edit mode.
+- The **Add** panel and **Place** on the piece page put a new piece in a room, so they do not offer outdoor types
+  yet: agents place them (`uses.sh staging --allow-write place --type garden.pergola --level souterrain --at X,Z
+--rotation-deg D`) and export the seed, as for any placement.
+- No database change: placements already allowed `roomId: null`.
+
 ## Saving in the web app
 
 `apps/web/src/placements/`: `usePlacements` loads `GET /placements?include=removed` into the editor;

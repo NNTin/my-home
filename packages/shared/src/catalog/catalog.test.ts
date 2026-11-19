@@ -28,7 +28,7 @@ const outline = (points: [number, number][]): Polygon =>
   points.map(([x, z]) => ({ x: { value: x, source: 'mock' }, z: { value: z, source: 'mock' } }));
 
 describe('catalog', () => {
-  it('declares the first-wave types, then the kitchen, corridor and fixture types (#62)', () => {
+  it('declares the first-wave types, then the kitchen, corridor, fixture and garden types', () => {
     expect(catalog.types.map((t) => t.id)).toEqual([
       'window.casement',
       'window.tilt-turn',
@@ -54,6 +54,16 @@ describe('catalog', () => {
       'appliance.microwave',
       'fixture.downlight',
       'fixture.radiator',
+      'garden.pergola',
+      'garden.table',
+      'garden.chair',
+      'garden.planter',
+      'garden.shrub',
+      'garden.grass',
+      'garden.rock-pile',
+      'garden.stepping-stone',
+      'garden.log',
+      'garden.bird-house',
     ]);
     expect(catalog.get('furniture.bed')?.category).toBe('Bed room');
     expect(catalog.get('window.fixed')).toBeUndefined();
@@ -70,7 +80,9 @@ describe('catalog', () => {
         ? 'openings'
         : t.family === 'fixture'
           ? 'fixtures'
-          : 'furniture';
+          : t.family === 'garden'
+            ? 'outdoor'
+            : 'furniture';
       expect(t.kind, t.id).toBe(kind);
       expect(t.placement === 'floor', t.id).toBe(isPlacedKind(t));
       expect(t.mounting !== undefined, t.id).toBe(isPlacedKind(t));
@@ -172,6 +184,24 @@ describe('catalog', () => {
       'appliance.microwave': ['color', 'width', 'height', 'depth'],
       'fixture.downlight': ['trimColor', 'diameter', 'light'],
       'fixture.radiator': ['color', 'width', 'height', 'depth', 'valveSide'],
+      'garden.pergola': [
+        'woodColor',
+        'roofColor',
+        'width',
+        'depth',
+        'height',
+        'frontHeight',
+        'posts',
+      ],
+      'garden.table': ['frameColor', 'topColor', 'width', 'depth', 'height'],
+      'garden.chair': ['color', 'width', 'depth', 'height'],
+      'garden.planter': ['color', 'plantColor', 'diameter', 'height', 'plantHeight', 'shape'],
+      'garden.shrub': ['leafColor', 'flowers', 'flowerColor', 'diameter', 'height'],
+      'garden.grass': ['color', 'diameter', 'height'],
+      'garden.rock-pile': ['color', 'width', 'depth', 'height'],
+      'garden.stepping-stone': ['color', 'diameter'],
+      'garden.log': ['color', 'width', 'diameter'],
+      'garden.bird-house': ['color', 'roofColor', 'height'],
     });
     expect(type('furniture.bed').params.width).toEqual({
       type: 'length',
@@ -210,9 +240,13 @@ describe('catalog', () => {
     const door = type('door.interior');
     const light = type('fixture.downlight');
     expect(() => createCatalog([{ ...door, mounting: 'floor' }])).toThrow(
-      /only furniture and fixtures have a mounting/,
+      /only placed pieces have a mounting/,
     );
-    expect(() => createCatalog([{ ...light, placement: 'wall' }])).toThrow(/go in a room/);
+    expect(() => createCatalog([{ ...light, placement: 'wall' }])).toThrow(/are placed/);
+    // Outdoor pieces are the garden family and stand on the ground.
+    const pergola = type('garden.pergola');
+    expect(() => createCatalog([{ ...pergola, family: 'furniture' }])).toThrow(/garden family/);
+    expect(() => createCatalog([{ ...pergola, mounting: 'wall' }])).toThrow(/on the ground/);
     expect(() => createCatalog([{ ...light, elevation: 2 }])).toThrow(
       /ceiling piece has no elevation/,
     );
