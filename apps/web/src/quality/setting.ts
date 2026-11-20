@@ -52,6 +52,12 @@ function stored(): string | null {
  * and is not remembered; a value chosen in the control is remembered and wins from then on.
  */
 export function useQuality(phone: boolean): [Quality, (quality: Quality) => void] {
+  // Read once: the URL and the storage do not change under a visit, and the device default
+  // follows the layout.
+  const [found] = useState(() => ({
+    url: parseQuality(new URLSearchParams(window.location.search).get('quality')),
+    stored: parseQuality(stored()),
+  }));
   const [chosen, setChosen] = useState<Quality>();
   const choose = useCallback((quality: Quality) => {
     setChosen(quality);
@@ -61,7 +67,5 @@ export function useQuality(phone: boolean): [Quality, (quality: Quality) => void
       // Storage is off: the choice lasts for this visit.
     }
   }, []);
-  const quality =
-    chosen ?? resolveQuality({ search: window.location.search, stored: stored(), phone });
-  return [quality, choose];
+  return [chosen ?? found.url ?? found.stored ?? defaultQuality(phone), choose];
 }

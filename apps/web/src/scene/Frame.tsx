@@ -51,6 +51,8 @@ interface Pending {
   shadow: boolean;
   compile: boolean;
   compiling: boolean;
+  /** Counts the compiles started: see `done` below. */
+  generation: number;
   programs: Set<number>;
 }
 
@@ -80,6 +82,7 @@ export function FrameLoop({
     shadow: true,
     compile: true,
     compiling: false,
+    generation: 0,
     programs: new Set(),
   });
 
@@ -116,7 +119,11 @@ export function FrameLoop({
     if (p.compile) {
       p.compile = false;
       p.compiling = true;
+      // Only the newest compile ends the wait: an older one that reports back, or whose
+      // timeout fires, while a newer one runs must not let a frame through.
+      const generation = ++p.generation;
       const done = () => {
+        if (p.generation !== generation || !p.compiling) return;
         p.compiling = false;
         // Compiled ahead: the frame that uses them compiles nothing.
         for (const id of programIds(gl)) p.programs.add(id);
@@ -128,7 +135,7 @@ export function FrameLoop({
         .catch(() => undefined)
         .then(() => {
           window.clearTimeout(timeout);
-          if (p.compiling) done();
+          done();
         });
     }
     // Compiling ahead: the previous frame stays on screen.
