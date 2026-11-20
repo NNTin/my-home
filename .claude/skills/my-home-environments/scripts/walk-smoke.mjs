@@ -255,7 +255,7 @@ async function smoke(out) {
     const exit = async (label) => {
       const before = errors.length;
       await page.getByRole('button', { name: /Exit/ }).click();
-      await hud.waitFor({ state: 'detached', timeout: 10_000 });
+      await hud.waitFor({ state: 'detached', timeout: 30_000 });
       await page.waitForTimeout(1500);
       check(
         `leaving ${label} logs no error`,
@@ -275,7 +275,7 @@ async function smoke(out) {
     await open('/?walk=third');
     await exit('the overview opened by address');
     await open('/?walk=first');
-    await page.reload({ waitUntil: 'networkidle' });
+    await page.reload({ waitUntil: 'networkidle', timeout: 60_000 });
     await hud.waitFor({ timeout: 30_000 });
     await page.waitForTimeout(3000);
     await exit('a walk restored after a reload');
@@ -328,7 +328,7 @@ async function smoke(out) {
         ].map((p) => ({ ...p, homeId }));
         return route.fulfill({ response, json: { items: [...body.items, ...extra] } });
       });
-      await page.reload({ waitUntil: 'networkidle' });
+      await page.reload({ waitUntil: 'networkidle', timeout: 60_000 });
       await hud.waitFor({ timeout: 30_000 });
       await page.waitForTimeout(3000);
       const restored = await figure();

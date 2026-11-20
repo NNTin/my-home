@@ -106,6 +106,24 @@ async function open(browser, initScript) {
     }
     return state;
   };
+  /**
+   * Like `settle`, but also waits until the sensor smoothing has stopped moving the view: `done` holds
+   * and two consecutive reads agree within 0.1°. A later read (a photo's pose) then matches this one.
+   */
+  const settleStill = async (done) => {
+    const deadline = Date.now() + 15_000;
+    let before = await read();
+    await page.waitForTimeout(250);
+    let state = await read();
+    const still = () =>
+      Math.abs(state.pitch - before.pitch) < 0.1 && apart(state.heading, before.heading) < 0.1;
+    while (!(done(state) && still()) && Date.now() < deadline) {
+      before = state;
+      await page.waitForTimeout(250);
+      state = await read();
+    }
+    return state;
+  };
   /** A mocked sensor event, dispatched as the browser would. */
   const send = (type, init) =>
     page.evaluate(
@@ -159,6 +177,7 @@ async function open(browser, initScript) {
     hud,
     read,
     settle,
+    settleStill,
     send,
     face,
     hold,
@@ -311,7 +330,11 @@ async function android(browser, home) {
 
   // A photo taken now stores the sensor snapshot.
   await s.face(90, 75);
-  const shot = await s.settle((v) => Math.abs(v.pitch + 15) < 3 && apart(v.heading, plan(90)) < 3);
+  // The mocked beta 75 is a pitch of -15°: wait until the smoothing has come to rest there, so the
+  // photo's stored pose, taken a moment later, is the same view.
+  const shot = await s.settleStill(
+    (v) => Math.abs(v.pitch + 15) < 1 && apart(v.heading, plan(90)) < 1,
+  );
   await s.page.locator('.shutter input').setInputFiles(photoFile);
   await s.page.getByLabel('Note').fill('compass-smoke: not stored');
   // The upload never leaves the browser: it is caught here, its `meta` part is read, and the page

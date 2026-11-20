@@ -112,6 +112,12 @@ async function smoke(out, homeId) {
       };
       const press = (locator) => (device.hasTouch ? locator.tap() : locator.click());
       const path = (page) => new URL(page.url()).pathname;
+      /** Whether `locator` shows within a generous budget: a slow software render is not a crash. */
+      const shows = (locator) =>
+        locator.waitFor({ timeout: 60_000 }).then(
+          () => true,
+          () => false,
+        );
       const onHost = (page) => {
         if (new URL(page.url()).host !== host)
           throw new Error('ended on another host (login redirect?)');
@@ -395,11 +401,15 @@ async function smoke(out, homeId) {
 
       // 4. A card opens its page; the back button returns to the catalogue, then to the viewer.
       await press(page.locator('a[data-type-id="furniture.bed"]'));
-      await page.getByRole('heading', { level: 1, name: /Bed/ }).waitFor({ timeout: 15_000 });
-      check(`${label}: a card opens its piece page`, path(page) === PIECE, page.url());
+      const opened = await shows(page.getByRole('heading', { level: 1, name: /Bed/ }));
+      check(`${label}: a card opens its piece page`, opened && path(page) === PIECE, page.url());
       await page.goBack();
-      await heading.waitFor({ timeout: 15_000 });
-      check(`${label}: back returns to /catalog`, path(page) === '/catalog', page.url());
+      const backOnCatalog = await shows(heading);
+      check(
+        `${label}: back returns to /catalog`,
+        backOnCatalog && path(page) === '/catalog',
+        page.url(),
+      );
       await page.goBack();
       const viewerBack = await page
         .waitForSelector('canvas', { timeout: 30_000 })
@@ -446,12 +456,11 @@ async function smoke(out, homeId) {
       );
       check(`${label}: a reload keeps the piece page`, reloaded && path(deep.page) === PIECE);
       await press(deep.page.getByRole('link', { name: '← Catalogue' }));
-      await deep.page
-        .getByRole('heading', { level: 1, name: 'Catalogue' })
-        .waitFor({ timeout: 15_000 });
+      // The URL and the rendered catalogue heading, under load a software render takes its time.
+      const backHome = await shows(deep.page.getByRole('heading', { level: 1, name: 'Catalogue' }));
       check(
         `${label}: "← Catalogue" keeps the home`,
-        new URL(deep.page.url()).search === query,
+        backHome && path(deep.page) === '/catalog' && new URL(deep.page.url()).search === query,
         deep.page.url(),
       );
       await deep.page.reload({ waitUntil: 'networkidle', timeout: 60_000 });
