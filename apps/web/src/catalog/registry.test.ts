@@ -1,4 +1,4 @@
-import { catalog, defaultParams, furnitureSize, LEGACY_FURNITURE_TYPE_IDS } from '@my-home/shared';
+import { catalog, defaultParams, furnitureSize } from '@my-home/shared';
 import { describe, expect, it } from 'vitest';
 import { buildFence, FENCE_BAY } from '../builder/buildHome';
 import { furniture } from './furniture';
@@ -109,7 +109,7 @@ describe('gate piece', () => {
 });
 
 describe('furniture types', () => {
-  it('lists every furniture type by category then name; legacy ids resolve too', () => {
+  it('lists every furniture type by category then name', () => {
     expect(furniture.categories.map((c) => c.name)).toEqual([
       'Bed room',
       'Corridor',
@@ -121,12 +121,12 @@ describe('furniture types', () => {
       'Work room',
     ]);
     const types = furniture.categories.flatMap((c) => c.types);
-    expect(types.map((t) => t.legacyId ?? t.id)).toEqual([
-      'bed',
-      'wardrobe',
+    expect(types.map((t) => t.id)).toEqual([
+      'furniture.bed',
+      'furniture.wardrobe',
       'furniture.shoe-cabinet',
-      'chair',
-      'table',
+      'furniture.chair',
+      'furniture.table',
       'fixture.radiator',
       'kitchen.base-cabinet',
       'appliance.fridge-freezer',
@@ -136,14 +136,11 @@ describe('furniture types', () => {
       'kitchen.wall-cabinet',
       'kitchen.wall-shelf',
       'fixture.downlight',
-      'sofa',
-      'desk',
+      'furniture.sofa',
+      'furniture.desk',
     ]);
-    for (const t of types) {
-      if (t.legacyId) expect(LEGACY_FURNITURE_TYPE_IDS[t.legacyId]).toBe(t.id);
-    }
     expect(furniture.get('furniture.bed')?.snapping).toBe('back');
-    expect(furniture.get('bed')).toBe(furniture.get('furniture.bed'));
+    expect(furniture.get('bed')).toBeUndefined();
   });
 
   it('offers and resolves wall, ceiling and worktop pieces too (#63)', () => {
@@ -166,7 +163,7 @@ describe('furniture types', () => {
   });
 
   it('sizes an item from its props and derives the footprint from that size', () => {
-    const bed = furniture.resolve('bed')!;
+    const bed = furniture.resolve('furniture.bed')!;
     expect(bed.size).toEqual({ width: 1.6, depth: 2, height: 0.5 });
     expect(bed.footprint).toEqual([
       [-0.8, -1],
@@ -174,13 +171,15 @@ describe('furniture types', () => {
       [0.8, 1],
       [-0.8, 1],
     ]);
-    const wide = furniture.resolve('bed', { width: 1.8, color: '#112233' })!;
+    const wide = furniture.resolve('furniture.bed', { width: 1.8, color: '#112233' })!;
     expect(wide.size.width).toBe(1.8);
     expect(Math.max(...wide.footprint.map(([x]) => x))).toBeCloseTo(0.9);
     expect(wide.parts[0]!.color).toBe('#112233');
     // Invalid or design-only props are ignored, never thrown.
-    expect(furniture.resolve('bed', { width: 9, height: 2, legs: [1] })!.size).toEqual(bed.size);
-    const table = furniture.resolve('table', { diameter: 1.4 })!;
+    expect(furniture.resolve('furniture.bed', { width: 9, height: 2, legs: [1] })!.size).toEqual(
+      bed.size,
+    );
+    const table = furniture.resolve('furniture.table', { diameter: 1.4 })!;
     expect(table.footprint).toHaveLength(16);
     expect(Math.max(...table.footprint.map(([x]) => x))).toBeCloseTo(0.7);
     expect(furniture.resolve('lamp')).toBeUndefined();

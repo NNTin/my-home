@@ -7,8 +7,7 @@ draft until it is exported (`seed.sh staging export`) into a pull request. The v
 change is saved per piece of furniture and becomes a history entry with its actor, so agents can read, change and
 undo it too (`uses.sh`, see `SKILL.md`). New furniture and fixtures are catalogue types in git ([adding a
 type](adding-piece-type.md)), reviewed by PR; their placements and basic parameters never go into `home.json`.
-The named layouts of earlier versions are gone from the viewer
-([§ The one-time import](#the-one-time-import)).
+The named layouts of earlier versions are gone ([§ The named layouts](#the-named-layouts-removed)).
 
 ## A placement
 
@@ -212,26 +211,12 @@ The logic is plain TypeScript in [`apps/web/src/editor/`](../apps/web/src/editor
 pointer events into floor-plane coordinates. `furniture.resolve()` (`catalog/furniture.ts`) is cached per type
 and params, since collision checks and snapping resolve every item on each pointer move.
 
-## The one-time import
+## The named layouts (removed)
 
-The named layouts of earlier versions (`public.layouts`) become the placement set once, in the release job
-(`dist/release.js`, after the sync) and on a local start with `MIGRATE_ON_START` (`apps/api/src/db/layout-import.ts`):
-
-- for each home with layouts and no `userdata.imports` row `(home, 'layouts')` (the seed sync writes that row
-  for every home it syncs, so a seeded home never imports layouts);
-- if the home has **no placements at all** (trashed ones included): the most recently updated layout's items become
-  placements, with ids and names from the scheme above, `import` history rows by `system`, and the log line
-  `release: home "home": imported layout "Default layout" (7 items)`. Legacy type ids map through
-  `LEGACY_FURNITURE_TYPE_IDS` (`bed` → `furniture.bed`); an unknown one is kept as `furniture.<id>` (it shows as
-  needs attention); props that are not valid basic parameters are dropped and logged;
-- otherwise nothing is imported (`layouts not imported (placements exist)`);
-- either way the `imports` row is written, so it never runs again for that home.
-
-Layouts are never deleted. Staging resets `public` on every deploy, so it never has any; production had none.
-
-## The deprecated layouts API
-
-`/api/homes/:homeId/layouts`, `/api/layouts/:id` (CRUD, duplicate, export, import) and the `public.layouts` table
-stay for **one release** after the viewer moved to placements, so a rollback to the previous api version still
-finds them. Nothing in the web app uses them; a follow-up issue removes them. Schemas:
-[`packages/shared/src/layouts.ts`](../packages/shared/src/layouts.ts).
+Earlier versions kept named furniture layouts per home (`public.layouts`, `/api/homes/:homeId/layouts`). #44
+replaced them with the one placement set above: the release job imported a home's most recently updated layout
+into its placements once (`import` history rows by `system`) and recorded it in `userdata.imports` as
+`(home, 'layouts')`; the seed sync still writes that row, as skipped, for every home it syncs. #56 removed the
+import and the api: `/api/homes/:homeId/layouts` and `/api/layouts/:id` are the api's 404. The table stays, unused,
+for one release so a rollback still works ([deployment.md](deployment.md#roll-back-production)); a later release
+drops it. `userdata.imports` stays as the record.

@@ -3,7 +3,6 @@ import {
   effectiveParams,
   isOutdoorKind,
   isPlacedKind,
-  LEGACY_FURNITURE_TYPE_IDS,
   type CatalogType,
   type ParamValues,
 } from '@my-home/shared';
@@ -17,7 +16,6 @@ import type { Part, PieceModule } from './types';
 /**
  * Furniture as the editor and the viewer use it: catalogue types placed in rooms (kinds
  * `furniture` and `fixtures`) with their piece modules, keyed by the type id (`furniture.bed`).
- * The legacy item ids of the old named layouts (`bed`, see `LEGACY_FURNITURE_TYPE_IDS`) resolve too.
  */
 
 /** Size of a piece of furniture in metres: `width` along local x, `depth` along z, `height` up. */
@@ -38,8 +36,6 @@ export type WallSnap = 'back' | 'any' | 'none';
 /** A furniture type as the catalogue panel lists it; `id` (the type id) is what a new item stores. */
 export interface FurnitureType {
   id: string;
-  /** The id the old named layouts stored, e.g. `bed` (only the first six types have one). */
-  legacyId?: string;
   type: CatalogType;
   piece: PieceModule;
   name: string;
@@ -56,7 +52,7 @@ export interface FurnitureType {
   open: boolean;
 }
 
-/** A layout item's type with its effective values: what it is drawn and collides as. */
+/** A placement's type with its effective values: what it is drawn and collides as. */
 export interface ResolvedFurniture extends FurnitureType {
   values: ParamValues;
   size: ItemSize;
@@ -77,7 +73,7 @@ export interface FurnitureRegistry {
    * pieces are not offered: the panel adds to a room.
    */
   categories: FurnitureCategory[];
-  /** By type id or legacy id. */
+  /** By type id. */
   get(id: string): FurnitureType | undefined;
   /**
    * The item's type with `props` applied as overrides (invalid ones are ignored). Cached per
@@ -97,16 +93,13 @@ export const unknownParts = (size = UNKNOWN_SIZE, color = UNKNOWN_COLOR): Part[]
 ];
 
 export function createFurniture(types: readonly CatalogType[] = catalog.types): FurnitureRegistry {
-  const legacyOf = new Map(Object.entries(LEGACY_FURNITURE_TYPE_IDS).map(([k, v]) => [v, k]));
   const byId = new Map<string, FurnitureType>();
   for (const type of types) {
     if (!isPlacedKind(type)) continue;
     const piece = pieces.get(type.id);
     if (!piece) throw new Error(`Furniture type ${type.id} needs a piece`);
-    const legacyId = legacyOf.get(type.id);
     byId.set(type.id, {
       id: type.id,
-      ...(legacyId && { legacyId }),
       type,
       piece,
       name: type.name,
@@ -128,7 +121,7 @@ export function createFurniture(types: readonly CatalogType[] = catalog.types): 
     if (last?.name === type.category) last.types.push(type);
     else categories.push({ name: type.category, types: [type] });
   }
-  const get = (id: string) => byId.get(id) ?? byId.get(LEGACY_FURNITURE_TYPE_IDS[id] ?? '');
+  const get = (id: string) => byId.get(id);
   const resolve = (id: string, props: unknown): ResolvedFurniture | undefined => {
     const found = get(id);
     if (!found) return undefined;

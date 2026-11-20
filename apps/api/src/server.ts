@@ -2,7 +2,6 @@ import { pino } from 'pino';
 import { buildApp, loggerOptions } from './app';
 import { loadConfig } from './config';
 import { createDatabase } from './db/client';
-import { describeImports, importLayouts } from './db/layout-import';
 import { photoStore } from './db/photos';
 import { placementStore } from './db/placements';
 import { seedHomes } from './db/seed';
@@ -23,16 +22,6 @@ try {
     for (const result of await seedHomes(database.db, { files })) {
       app.log.info(result, 'seed finished');
     }
-  }
-  if (config.migrateOnStart) {
-    // Local dev: the one-time layout import the release job runs on deployed environments.
-    const imported = await importLayouts(database.db, {
-      retentionDays: config.userdataTrashRetentionDays,
-      warn: (line) => app.log.warn(line),
-    });
-    const { info, warn } = describeImports(imported);
-    info.forEach((line) => app.log.info(line));
-    warn.forEach((line) => app.log.warn(line));
   }
   await app.listen({ host: config.host, port: config.port });
 

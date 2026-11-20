@@ -207,8 +207,6 @@ describe('the release job (dist/release.js)', () => {
   it('with RESET_PUBLIC, resets public and keeps media, userdata and the settings', async () => {
     await clearMedia(ctx);
     await runRelease(ctx.database, config({ homeFiles: [mockHomeFile] }), log);
-    const layout = await inject('POST', '/api/homes/mock-home/layouts', { name: 'L', items: [] });
-    expect(layout.statusCode).toBe(201);
     await inject('PUT', `/api/homes/mock-home/opening-overrides/${WINDOW}`, {
       version: 0,
       params: { frameColor: '#383e42' },
@@ -235,7 +233,6 @@ describe('the release job (dist/release.js)', () => {
       log,
     );
     expect(lines.info).toContain('release: public reset (media and userdata kept)');
-    expect((await inject('GET', '/api/homes/mock-home/layouts')).json().items).toEqual([]);
     const overrides = (await inject('GET', '/api/homes/mock-home/opening-overrides')).json();
     expect(overrides.items.map((o: { useId: string }) => o.useId)).toEqual([WINDOW]);
     expect((await inject('GET', '/api/homes/mock-home/settings')).json()).toMatchObject({

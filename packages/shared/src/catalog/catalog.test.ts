@@ -10,7 +10,6 @@ import {
   formatIssues,
   furnitureFitIssues,
   isPlacedKind,
-  LEGACY_FURNITURE_TYPE_IDS,
   openingFitIssues,
   parseCm,
   mountingsFor,
@@ -68,10 +67,6 @@ describe('catalog', () => {
     ]);
     expect(catalog.get('furniture.bed')?.category).toBe('Bed room');
     expect(catalog.get('window.fixed')).toBeUndefined();
-    expect(LEGACY_FURNITURE_TYPE_IDS).toMatchObject({
-      bed: 'furniture.bed',
-      table: 'furniture.table',
-    });
   });
 
   it('keeps every id, kind and placement consistent', () => {
@@ -235,7 +230,6 @@ describe('catalog', () => {
     expect(mountingsFor(type('fixture.downlight'))).toEqual(['ceiling']);
     expect(defaultElevation(type('appliance.microwave'), 'floor')).toBe(0.9);
     expect(defaultElevation(type('fixture.downlight'), 'ceiling')).toBe(0);
-    expect(LEGACY_FURNITURE_TYPE_IDS['shoe-cabinet']).toBeUndefined();
   });
 
   it('rejects a mounting outside a room and an elevation on the ceiling', () => {

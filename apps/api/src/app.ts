@@ -11,7 +11,6 @@ import { errorHandler } from './errors';
 import { catalogRoutes } from './routes/catalog';
 import { healthRoutes } from './routes/health';
 import { homeRoutes } from './routes/homes';
-import { layoutRoutes } from './routes/layouts';
 import { noteRoutes } from './routes/notes';
 import { openingOverrideRoutes } from './routes/opening-overrides';
 import { photoRoutes } from './routes/photos';
@@ -41,7 +40,6 @@ export async function buildApp(config: Config, database: Database, logger: Logge
     async (api) => {
       await api.register(healthRoutes(database, config));
       await api.register(homeRoutes(database.db, config));
-      await api.register(layoutRoutes(database.db));
       await api.register(photoRoutes(database.db, config));
       await api.register(catalogRoutes(database.db, config));
       await api.register(useRoutes(database.db, config));

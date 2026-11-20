@@ -14,7 +14,7 @@ import {
 
 export interface PurgeReport {
   homeId: string;
-  /** Rows removed per table: the stored home (and its layouts) and the home's `userdata` rows. */
+  /** Rows removed per table: the stored home and the home's `userdata` rows. */
   removed: Record<string, number>;
   /** Photos and photo requests of the home: listed, never deleted (agents never delete photos). */
   photoIds: string[];

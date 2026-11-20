@@ -43,9 +43,7 @@ flowchart LR
    3. it migrates `public`, `media` and `userdata`;
    4. it syncs the homes from git (see [Homes come from git](#homes-come-from-git)) and logs one line per home;
    5. it makes each home's placements, opening overrides and notes match its seed (see
-      [The seed comes from git](#the-seed-comes-from-git)): `release: home "home" seed unchanged`;
-   6. it imports the named layouts of a home without placements and without a seed into its placement set, once
-      per home ([furniture.md](furniture.md#the-one-time-import)).
+      [The seed comes from git](#the-seed-comes-from-git)): `release: home "home" seed unchanged`.
 
    It never touches the `media` schema and, in `userdata`, only what the seed holds: **photos, photo requests,
    home settings, history and issued ids survive every deploy**, whichever branch is deployed
@@ -166,6 +164,12 @@ job leaves placements, overrides and notes exactly as the last seeded deploy lef
 history rows use the existing actor `system` (named `seed`), so that older api still lists and undoes them. A
 rollback to a release **with** the seed applies that older commit's seed.
 
+This release (#56) removed the named-layouts api and the one-time layout import but **keeps `public.layouts`**
+and its migrations, unused: the previous release's job still runs that import (it reads the table; the import has
+run for every home and is recorded in `userdata.imports`, so it does nothing) and serves the layouts routes. A
+rollback to it therefore works unchanged, and placements, overrides, notes, the seed and photos are unaffected. A
+later release drops the table.
+
 ## Databases and backups
 
 Production and staging each have their own PostgreSQL and credentials, in separate namespaces; staging pods cannot
@@ -194,5 +198,5 @@ full dump already includes it; adding it to the staging dump is an infrastructur
 NNTin/lair.nntin.xyz, and until then staging's `userdata` is test data that a database loss would take with it.
 
 A staging backup may leave out `public` and `drizzle`: they are recreated by every deploy. Production's `public`
-holds only what git restores on every deploy (the homes) plus the layouts. The api's memory limit
+holds only what git restores on every deploy (the homes) plus the deprecated layouts (unused since #56). The api's memory limit
 is 512Mi (`charts/my-home/values.yaml`) because it decodes one full-size photo at a time.

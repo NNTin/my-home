@@ -170,12 +170,4 @@ export const storageShelf = defineType({
   footprint: 'rectangle',
 });
 
-/** The six types the old named layouts knew (by their id without `furniture.`). */
-const legacy = [bed, sofa, table, chair, wardrobe, desk];
-
-export const furniture = [...legacy, shoeCabinet, storageShelf];
-
-/** Today's furniture item ids (stored in layouts as `typeId`) and their catalogue types. */
-export const LEGACY_FURNITURE_TYPE_IDS: Readonly<Record<string, string>> = Object.fromEntries(
-  legacy.map((t) => [t.id.slice('furniture.'.length), t.id]),
-);
+export const furniture = [bed, sofa, table, chair, wardrobe, desk, shoeCabinet, storageShelf];

@@ -121,7 +121,7 @@ verified in GitHub Actions (`.github/workflows/ci.yml`):
 
 - `check`: install, lint, format:check, typecheck, test (PGlite), build
 - `test-postgres`: api tests against a `postgres` service container
-- `docker`: build both images, `docker compose up`, smoke-test `/api/health`, `/`, the layouts API
+- `docker`: build both images, `docker compose up`, smoke-test `/api/health`, `/`, the placements
   and the photos API (including a database reset that must keep the photos)
 - `chart`: lint the Helm chart and check its deployment contract (`tools/check-chart.sh`)
 - `publish`: push images to GHCR for `main`, `v*` tags, same-repo pull requests and manual dispatches

@@ -70,8 +70,6 @@ both: 'Both sides' })`: one of a fixed list, the first the default). Both are ba
   placed, the terrain's surface there (`groundAt` in the builder), not on their level's floor: the patio, a
   step of the sunken entry, a slope. They have no ceiling over them, show whatever the cutaway, and move within
   the outdoor areas (not on the roads) in edit mode ([furniture.md](furniture.md#outdoor-pieces)).
-- Only the first six furniture types have a legacy id (`LEGACY_FURNITURE_TYPE_IDS`: the old named layouts
-  stored `bed`; the one-time import maps it). New types need none.
 
 ## 2. Draw it
 
