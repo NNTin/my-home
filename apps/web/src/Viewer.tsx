@@ -20,15 +20,9 @@ import {
   type Vec2,
   type Vec3,
 } from './builder/buildHome';
-import { furniture as furnitureTypes, UNKNOWN_SIZE, unknownParts } from './catalog/furniture';
+import { furniture as furnitureTypes, UNKNOWN_SIZE } from './catalog/furniture';
 import { compassMarkers } from './compass/compass';
-import {
-  defaultVisibility,
-  roofIndex,
-  roomLabels,
-  visibleScene,
-  type Visibility,
-} from './builder/visibility';
+import { defaultVisibility, roofIndex, roomLabels, type Visibility } from './builder/visibility';
 import { canRedo, canUndo } from './editor/editorState';
 import { elevationOfItem, mountingOfItem, type EditorItem } from './editor/item';
 import {
@@ -85,7 +79,8 @@ import { aspectOf, fovHOf, frustumCorners } from './photos/frustum';
 import { PhotosPanel, type OverlaySettings, type PhotosTab } from './photos/PhotosPanel';
 import { openRequests } from './photos/requests';
 import { usePhotos } from './photos/usePhotos';
-import type { FurnitureHandlers, FurnitureView } from './scene/FurnitureLayer';
+import type { FurnitureHandlers } from './scene/FurnitureLayer';
+import { furnitureViews } from './scene/furnitureViews';
 import type { PhotoMarkerView, RequestGhostView, Viewpoint } from './scene/PhotoMarkers';
 import { Scene } from './scene/Scene';
 import { calibrationTargets } from './walk/calibration';
@@ -342,7 +337,6 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     if (viewedPhoto) return walkVisibility(scene, chosenVisibility, 'first', undefined);
     return chosenVisibility;
   }, [scene, chosenVisibility, walkView, figureLevel?.id, viewedPhoto]);
-  const shown = useMemo(() => visibleScene(scene, visibility), [scene, visibility]);
   const labels = useMemo(() => roomLabels(scene, visibility), [scene, visibility]);
 
   // Camera markers: the photos the gallery shows, on the levels that are visible (and outdoors).
@@ -421,33 +415,10 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   const found = useMemo(() => collisions(ctx, items), [ctx, items]);
   const selectedItem = items.find((i) => i.id === editor.selectedId);
 
-  const furniture = useMemo((): FurnitureView[] => {
-    const levels = new Set(shownLevels(scene, visibility).map((l) => l.id));
-    const hiddenApartments = new Set(visibility.hiddenApartments);
-    return items.flatMap((item) => {
-      const p = ctx.plans.get(item.levelId);
-      const type = typeOf(ctx, item);
-      // Outdoor pieces stand on the ground and show with the terrain, whatever the cutaway.
-      const outdoor = type?.outdoor ?? false;
-      if (!p || (!outdoor && !levels.has(item.levelId))) return [];
-      const apartment = p.rooms.find((r) => r.id === item.roomId)?.apartmentId;
-      if (apartment !== undefined && hiddenApartments.has(apartment)) return [];
-      const base = outdoor
-        ? groundAt(scene.terrain, [item.position.x, item.position.z], p.elevation)
-        : p.elevation;
-      return [
-        {
-          id: item.id,
-          position: [item.position.x, base + mountHeightOf(ctx, item), item.position.z] as Vec3,
-          rotationY: item.rotationY,
-          size: type?.size ?? UNKNOWN_SIZE,
-          parts: type?.parts ?? unknownParts(),
-          selected: item.id === editor.selectedId,
-          colliding: found.has(item.id),
-        },
-      ];
-    });
-  }, [ctx, items, found, scene, visibility, editor.selectedId]);
+  const furniture = useMemo(
+    () => furnitureViews(ctx, items, scene, visibility, editor.selectedId, found),
+    [ctx, items, found, scene, visibility, editor.selectedId],
+  );
 
   const typeNameOf = (item: EditorItem) =>
     furnitureTypes.get(item.typeId)?.name ?? `Unknown type "${item.typeId}"`;
@@ -846,7 +817,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
       <div className="viewer-main">
         <div className="stage">
           <Scene
-            scene={shown}
+            scene={scene}
+            visibility={visibility}
             target={orbitTarget(scene, visibility)}
             furniture={furniture}
             handlers={walking ? idle : !editing ? inspect : mobile ? touchHandlers : handlers}

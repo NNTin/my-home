@@ -1,55 +1,49 @@
+import { useEffect, useMemo } from 'react';
+import { IDENTITY, partItems, type DrawGroup } from '../builder/drawList';
+import { batches, batchMaterial, type Batch, type Glow } from '../scene/batches';
 import type { Part, PartState } from './types';
 
 /**
- * The one renderer of piece parts: a mesh per part, in order (the order is the draw order of
- * transparent glass, so keep it). With `state` (furniture) every part glows when the piece is
- * selected or colliding, so every type highlights the same way.
+ * The one renderer of piece parts. The parts are merged into one opaque mesh and at most one
+ * transparent one (docs/design/realistic-render.md §4.2), in the parts' order (the order is the
+ * draw order of transparent glass, so keep it); their colours are vertex colours. A part with its
+ * own roughness, metalness or shadow flags stays a mesh of its own. With `state` (furniture)
+ * the whole piece glows when it is selected or colliding, so every type highlights the same way.
  */
 
 export const COLLISION_COLOR = '#ff2d2d';
 export const SELECTION_COLOR = '#3d8bff';
 
-/** Cylinders are drawn with this many sides. */
-const CYLINDER_SEGMENTS = 24;
-
-function highlight(state: PartState) {
-  return {
-    emissive: state.colliding ? COLLISION_COLOR : state.selected ? SELECTION_COLOR : '#000000',
-    emissiveIntensity: state.colliding ? 0.55 : state.selected ? 0.4 : 0,
-  };
+function glowOf(state: PartState | undefined): Glow | undefined {
+  if (state?.colliding) return { color: COLLISION_COLOR, intensity: 0.55 };
+  if (state?.selected) return { color: SELECTION_COLOR, intensity: 0.4 };
+  return undefined;
 }
 
-function PartMesh({ part, state }: { part: Part; state: PartState | undefined }) {
-  const { castShadow = true, receiveShadow = true, ...material } = part.material ?? {};
-  // Only what the part sets: anything else stays at three.js' default.
-  const settings = Object.fromEntries(
-    Object.entries(material).filter(([, value]) => value !== undefined),
-  );
-  const [sx, sy, sz] = part.size;
-  return (
-    <mesh
-      position={part.center}
-      // The tilt (about the part's own x) first, then the turn about y.
-      rotation={[part.rotationX ?? 0, part.rotationY, 0, 'YXZ']}
-      {...(part.shape === 'cylinder' && { scale: [1, 1, sz / sx] as const })}
-      castShadow={castShadow}
-      receiveShadow={receiveShadow}
-    >
-      {part.shape === 'box' ? (
-        <boxGeometry args={part.size} />
-      ) : (
-        <cylinderGeometry args={[sx / 2, sx / 2, sy, CYLINDER_SEGMENTS]} />
-      )}
-      <meshStandardMaterial color={part.color} {...settings} {...(state && highlight(state))} />
-    </mesh>
-  );
-}
+const NO_GROUP: DrawGroup = { kind: 'placement', id: '' };
 
-export function PartsMesh({ parts, state }: { parts: Part[]; state?: PartState }) {
+/** The meshes of a piece's parts in the piece's own frame. */
+export const partBatches = (parts: readonly Part[]): Batch[] =>
+  batches(partItems(parts, '', NO_GROUP, IDENTITY));
+
+export function PartsMesh({ parts, state }: { parts: readonly Part[]; state?: PartState }) {
+  // Parts are stable while a piece is only moved (the catalogue caches them per type and
+  // parameters), so a drag rebuilds nothing.
+  const meshes = useMemo(() => partBatches(parts), [parts]);
+  useEffect(() => () => meshes.forEach((m) => m.geometry.dispose()), [meshes]);
+  const glow = glowOf(state);
   return (
     <>
-      {parts.map((part, i) => (
-        <PartMesh key={i} part={part} state={state} />
+      {meshes.map((m) => (
+        <mesh
+          key={m.key}
+          geometry={m.geometry}
+          material={batchMaterial(m.material, glow)}
+          castShadow={m.castShadow}
+          receiveShadow={m.receiveShadow}
+          // Shared materials and memoised geometry: disposed above, not by R3F on unmount.
+          dispose={null}
+        />
       ))}
     </>
   );

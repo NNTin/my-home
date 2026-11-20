@@ -3,87 +3,138 @@ import { describe, expect, it } from 'vitest';
 import realHomeJson from '../../../../data/homes/home.json';
 import mockHomeJson from '../../../../packages/shared/test-fixtures/mock-home.json';
 import { buildHome } from '../builder/buildHome';
-import { FurnitureLayer, type FurnitureView } from '../scene/FurnitureLayer';
-import { HomeMeshes } from '../scene/HomeMeshes';
+import { drawList, type DrawItem } from '../builder/drawList';
+import { shapeGeometry } from '../scene/batches';
 import { furniture, unknownParts } from './furniture';
-import { goldenJson, renderRecords } from './renderRecords';
+import furnitureGolden from './__golden__/furniture.json';
+import homeGolden from './__golden__/home.json';
+import mockHomeGolden from './__golden__/mock-home.json';
+import outdoorGolden from './__golden__/outdoor.json';
+import { COLLISION_COLOR, SELECTION_COLOR } from './PartsMesh';
+import { geometryRecord, round, type RenderRecord } from './renderRecords';
 
 /**
- * Golden render records (see `renderRecords`). They were recorded from the renderer before the
- * piece modules existed and must not change unless a PR changes a design on purpose; such a PR
- * updates them (`vitest -u`) and says so. See docs/adding-piece-type.md.
+ * The step from a mesh per solid to merged batches (#110): the golden render records in
+ * `__golden__/` were recorded from the old renderer, one record per mesh. This test derives the
+ * same records from the draw list, one per draw item, and compares them with the unchanged
+ * files: the draw list holds exactly the solids, transforms, colours, material settings and
+ * shadow flags the old renderer drew. The next commit moves the goldens to the draw list itself.
  */
 
-const noop = () => {};
-const handlers = {
-  onSelect: noop,
-  onMoveStart: noop,
-  onMove: noop,
-  onRotateStart: noop,
-  onRotate: noop,
-  onDragEnd: noop,
-};
+type Legacy = Omit<RenderRecord, 'path'>;
 
-/**
- * The types at their default size, plain, selected and colliding; then an unknown type. By
- * default every type the "Add" panel offers (furniture and fixtures).
- */
-function furnitureViews(types = furniture.categories.flatMap((c) => c.types)): FurnitureView[] {
-  const states = [
-    { selected: false, colliding: false },
-    { selected: true, colliding: false },
-    { selected: false, colliding: true },
-  ];
-  const views = types.flatMap((type, i) =>
-    states.map((state, j): FurnitureView => {
-      const { size, parts } = furniture.resolve(type.id)!;
-      return {
+const states = [
+  { emissive: '#000000', emissiveIntensity: 0 },
+  { emissive: SELECTION_COLOR, emissiveIntensity: 0.4 },
+  { emissive: COLLISION_COLOR, emissiveIntensity: 0.55 },
+];
+
+/** The record of the mesh the old renderer drew for this item. */
+function legacyRecord(
+  item: DrawItem,
+  glow = { emissive: '#000000', emissiveIntensity: 1 },
+): Legacy {
+  const m = item.material;
+  return {
+    kind: 'mesh',
+    geometry: geometryRecord(shapeGeometry(item.shape)),
+    matrixWorld: item.matrix.map(round),
+    material: {
+      type: 'MeshStandardMaterial',
+      color: item.tint,
+      ...glow,
+      opacity: m?.opacity ?? 1,
+      transparent: m?.transparent ?? false,
+      depthWrite: m?.depthWrite ?? true,
+      metalness: m?.metalness ?? 0,
+      roughness: m?.roughness ?? 1,
+      side: m?.doubleSided ? 2 : 0,
+    },
+    castShadow: item.castShadow,
+    receiveShadow: item.receiveShadow,
+  };
+}
+
+/** Records as sorted lines: the old order was the order of React elements, not of solids. */
+const sorted = (records: Legacy[]) => records.map((r) => JSON.stringify(sortKeys(r))).sort();
+function sortKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortKeys);
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.keys(record)
+        .filter((k) => k !== 'path')
+        .sort()
+        .map((k) => [k, sortKeys(record[k])]),
+    );
+  }
+  return value;
+}
+
+/** The old furniture goldens: every type plain, selected and colliding, then an unknown type. */
+function furnitureRecords(types = furniture.categories.flatMap((c) => c.types)): Legacy[] {
+  const records = types.flatMap((type, i) =>
+    states.flatMap((glow, j) => {
+      const { parts } = furniture.resolve(type.id)!;
+      const placement = {
         id: `${type.id}-${j}`,
-        position: [i * 3, 0.25 * j, j * 3],
+        position: [i * 3, 0.25 * j, j * 3] as [number, number, number],
         rotationY: 0.3 * j,
-        size,
         parts,
-        ...state,
       };
+      return drawList(emptyScene, [placement]).map((item) => legacyRecord(item, glow));
     }),
   );
   const size = { width: 0.6, depth: 0.6, height: 0.6 };
-  views.push({
-    id: 'unknown',
-    position: [-3, 0, 0],
-    rotationY: 0,
-    size,
-    parts: unknownParts(size, '#8a8a8a'),
-    selected: false,
-    colliding: false,
-  });
-  return views;
+  const unknown = { id: 'unknown', position: [-3, 0, 0] as [number, number, number], rotationY: 0 };
+  return [
+    ...records,
+    ...drawList(emptyScene, [{ ...unknown, parts: unknownParts(size, '#8a8a8a') }]).map((item) =>
+      legacyRecord(item, states[0]),
+    ),
+  ];
 }
 
-describe('golden render records', () => {
+const emptyScene = buildHome(HomeModel.parse(structuredClone(mockHomeJson)));
+Object.assign(emptyScene, {
+  walls: [],
+  openings: [],
+  slabs: [],
+  ceilings: [],
+  roomFloors: [],
+  terrain: [],
+  outdoorAreas: [],
+  roofPlanes: [],
+  roofWindows: [],
+  outbuildings: [],
+  stairs: [],
+  fences: [],
+});
+
+/** The rotate ring of a selected item was in the old records; it is not part of a piece. */
+const withoutRings = (records: Legacy[]) =>
+  records.filter((r) => r.geometry.type !== 'RingGeometry');
+
+describe('the draw list holds what the old renderer drew', () => {
   it.each([
-    ['home', realHomeJson],
-    ['mock-home', mockHomeJson],
-  ])('draws %s as recorded', async (name, json) => {
+    ['home', realHomeJson, homeGolden],
+    ['mock-home', mockHomeJson, mockHomeGolden],
+  ])('%s', (_name, json, golden) => {
     const scene = buildHome(HomeModel.parse(structuredClone(json)));
-    const records = await renderRecords(<HomeMeshes scene={scene} />);
+    const records = drawList(scene).map((item) => legacyRecord(item));
     expect(records.length).toBeGreaterThan(100);
-    await expect(goldenJson(records)).toMatchFileSnapshot(`./__golden__/${name}.json`);
+    expect(sorted(records)).toEqual(sorted(golden as Legacy[]));
   });
 
-  it('draws every furniture type as recorded', async () => {
-    const records = await renderRecords(
-      <FurnitureLayer items={furnitureViews()} handlers={handlers} />,
-    );
-    await expect(goldenJson(records)).toMatchFileSnapshot('./__golden__/furniture.json');
+  it('every furniture type', () => {
+    expect(sorted(furnitureRecords())).toEqual(sorted(withoutRings(furnitureGolden as Legacy[])));
   });
 
-  it('draws every outdoor type as recorded', async () => {
+  it('every outdoor type', () => {
     const outdoor = catalog.types.filter(isOutdoorKind).map((t) => furniture.get(t.id)!);
     expect(outdoor).toHaveLength(11);
-    const records = await renderRecords(
-      <FurnitureLayer items={furnitureViews(outdoor)} handlers={handlers} />,
+    expect(sorted(furnitureRecords(outdoor))).toEqual(
+      sorted(withoutRings(outdoorGolden as Legacy[])),
     );
-    await expect(goldenJson(records)).toMatchFileSnapshot('./__golden__/outdoor.json');
   });
 });

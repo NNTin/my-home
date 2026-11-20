@@ -27,7 +27,7 @@ export interface RenderRecord {
 }
 
 let exact = false;
-const round = (n: number) => {
+export const round = (n: number) => {
   const r = exact ? n : Math.round(n * 1e6) / 1e6;
   return Object.is(r, -0) ? 0 : r;
 };
@@ -50,7 +50,7 @@ function positionHash(geometry: BufferGeometry) {
 
 const PARAMETRIC = new Set(['BoxGeometry', 'CylinderGeometry', 'RingGeometry']);
 
-function geometryRecord(geometry: BufferGeometry): RenderRecord['geometry'] {
+export function geometryRecord(geometry: BufferGeometry): RenderRecord['geometry'] {
   const { type } = geometry;
   if (PARAMETRIC.has(type)) {
     const parameters = (geometry as BufferGeometry & { parameters: Record<string, unknown> })

@@ -8,7 +8,7 @@ import type { Part, PieceContext, SectionRole, SectionShape } from '../catalog/t
  * depth along z), so it is tested without WebGL.
  */
 
-/** The outside wall's colour in the viewer (`HomeMeshes`). */
+/** The outside wall's colour in the viewer (`drawList`). */
 export const WALL_COLOR = '#d8d2c4';
 /** How much wall the stub shows beside and above the hole. */
 export const STUB_SIDE = 0.4;

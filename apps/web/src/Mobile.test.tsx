@@ -5,10 +5,11 @@ import { shortLevelName } from './overlay/TopBar';
 import type { SceneProps } from './scene/Scene';
 import { fakeApi, homeSummary } from './test/fakeApi';
 import { testPhoto, testRequest } from './test/fixtures';
-import { stubScreen } from './test/screen';
+import { shownScene, stubScreen } from './test/screen';
 
 // jsdom has no WebGL, so the R3F canvas is replaced with a stub that exposes what it would draw.
 let lastScene: SceneProps | undefined;
+const shown = () => lastScene && shownScene(lastScene);
 vi.mock('./catalog-page/renderThumbnail', () => ({
   renderThumbnail: () => Promise.reject(new Error('no WebGL in jsdom')),
   THUMBNAIL_SIZE: 256,
@@ -20,7 +21,7 @@ vi.mock('./scene/Scene', () => ({
   },
 }));
 
-const levelsOf = () => new Set(lastScene?.scene.walls.map((w) => w.levelId));
+const levelsOf = () => new Set(shown()?.walls.map((w) => w.levelId));
 const viewer = () => screen.getByTestId('scene').closest('.viewer') as HTMLElement;
 const sheet = () => screen.getByRole('region', { name: 'Panels' });
 const tab = (name: RegExp) => screen.getByRole('tab', { name });
@@ -158,16 +159,16 @@ describe('phone layout', () => {
     expect(panel.getByRole('group', { name: 'Levels' })).not.toHaveAttribute('open');
 
     fireEvent.click(within(outdoor).getByRole('button', { name: 'Hide all' }));
-    expect(lastScene?.scene.outdoorAreas).toEqual([]);
-    expect(lastScene?.scene.terrain).toEqual([]);
+    expect(shown()?.outdoorAreas).toEqual([]);
+    expect(shown()?.terrain).toEqual([]);
     expect(outdoor).toHaveTextContent('0 of 4 shown');
     expect(within(outdoor).getByRole('button', { name: 'Hide all' })).toBeDisabled();
 
     fireEvent.click(within(outdoor).getByLabelText('Driveway'));
-    expect(lastScene?.scene.outdoorAreas.map((a) => a.id)).toEqual(['driveway']);
+    expect(shown()?.outdoorAreas.map((a) => a.id)).toEqual(['driveway']);
     fireEvent.click(within(outdoor).getByRole('button', { name: 'Show all' }));
-    expect(lastScene?.scene.outdoorAreas).toHaveLength(3);
-    expect(lastScene?.scene.terrain).not.toEqual([]);
+    expect(shown()?.outdoorAreas).toHaveLength(3);
+    expect(shown()?.terrain).not.toEqual([]);
 
     const apartments = panel.getByRole('group', { name: 'Apartments' });
     fireEvent.click(within(apartments).getByLabelText('Ground-floor apartment'));

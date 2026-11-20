@@ -6,7 +6,7 @@ import type { Part, PieceContext } from '../types';
 
 /**
  * The renderer before the piece modules (`openingParts` in the builder, with its constants and
- * the colours of `HomeMeshes`), kept verbatim as the reference the modules must reproduce.
+ * the colours of the old `HomeMeshes`), kept verbatim as the reference the modules must reproduce.
  */
 function legacyOpeningParts(type: OpeningType, [w, h, wallDepth]: [number, number, number]) {
   const FRAME_WIDTH = 0.06;

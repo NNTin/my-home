@@ -5,11 +5,12 @@ import { enterEditMode } from './test/editMode';
 import type { SceneProps } from './scene/Scene';
 import { fakeApi, homeSummary } from './test/fakeApi';
 import { mockHome } from './test/fixtures';
-import { stubScreen } from './test/screen';
+import { shownScene, stubScreen } from './test/screen';
 import { WALK_SESSION_KEY } from './walk/walkSession';
 
 // jsdom has no WebGL, so the R3F canvas is replaced with a stub that exposes what it would draw.
 let lastScene: SceneProps | undefined;
+const shown = () => lastScene && shownScene(lastScene);
 vi.mock('./scene/Scene', () => ({
   Scene: (props: SceneProps) => {
     lastScene = props;
@@ -34,7 +35,7 @@ function stubApi(
   return fakeApi({ homes, models }).fetch;
 }
 
-const levelsOf = () => new Set(lastScene?.scene.walls.map((w) => w.levelId));
+const levelsOf = () => new Set(shown()?.walls.map((w) => w.levelId));
 
 describe('App', () => {
   afterEach(() => {
@@ -54,7 +55,7 @@ describe('App', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/homes/mock-home', expect.anything());
     expect(screen.getByText('Mock home')).toBeInTheDocument();
     expect(levelsOf()).toEqual(new Set(['souterrain']));
-    expect(lastScene?.scene.roofPlanes).toEqual([]);
+    expect(shown()?.roofPlanes).toEqual([]);
     const cutaway = within(screen.getByRole('group', { name: 'Show up to level' }));
     expect(cutaway.getByLabelText('Souterrain')).toBeChecked();
     const levels = within(screen.getByRole('group', { name: 'Levels' }));
@@ -63,7 +64,7 @@ describe('App', () => {
     expect(levels.getByLabelText('First floor (attic)')).not.toBeChecked();
     expect(lastScene?.northBearing).toBe(0);
     expect(lastScene?.markers.map((m) => m.label)).toEqual(['N', 'E', 'S', 'W']);
-    expect(lastScene?.scene.outdoorAreas.map((a) => a.name)).toEqual([
+    expect(shown()?.outdoorAreas.map((a) => a.name)).toEqual([
       'Souterrain garden',
       'Ground-floor garden',
       'Driveway',
@@ -77,7 +78,7 @@ describe('App', () => {
 
     fireEvent.click(cutaway.getByLabelText('Souterrain'));
     expect(levelsOf()).toEqual(new Set(['souterrain']));
-    expect(lastScene?.scene.slabs.map((s) => s.id)).toEqual(['souterrain:floor']);
+    expect(shown()?.slabs.map((s) => s.id)).toEqual(['souterrain:floor']);
     // The orbit target moves down into the souterrain (floor at -1.2 m, 2.5 m high).
     expect(lastScene?.target[1]).toBeCloseTo(0.05);
   });
@@ -88,16 +89,16 @@ describe('App', () => {
     render(<App />);
     const cutaway = within(await screen.findByRole('group', { name: 'Show up to level' }));
     fireEvent.click(cutaway.getByLabelText('Roof'));
-    expect(lastScene?.scene.roofPlanes).toHaveLength(2);
+    expect(shown()?.roofPlanes).toHaveLength(2);
     expect(levelsOf()).toEqual(new Set(['souterrain', 'ground-floor', 'first-floor']));
 
     fireEvent.click(cutaway.getByLabelText('First floor (attic)'));
-    expect(lastScene?.scene.roofPlanes).toEqual([]);
+    expect(shown()?.roofPlanes).toEqual([]);
     expect(levelsOf()).toEqual(new Set(['souterrain', 'ground-floor', 'first-floor']));
     expect(screen.getByText(/Add to First floor \(attic\)/)).toBeInTheDocument();
 
     fireEvent.click(cutaway.getByLabelText('Roof'));
-    expect(lastScene?.scene.roofPlanes).toHaveLength(2);
+    expect(shown()?.roofPlanes).toHaveLength(2);
   });
 
   it('toggles apartments, levels and outdoor areas', async () => {
@@ -110,13 +111,13 @@ describe('App', () => {
     const levels = within(screen.getByRole('group', { name: 'Levels' }));
     fireEvent.click(levels.getByLabelText('First floor (attic)'));
     expect(levelsOf()).toEqual(new Set(['souterrain']));
-    expect(lastScene?.scene.roofPlanes).toEqual([]);
+    expect(shown()?.roofPlanes).toEqual([]);
 
     const outdoor = within(screen.getByRole('group', { name: 'Outdoor' }));
     fireEvent.click(outdoor.getByLabelText('Driveway'));
-    expect(lastScene?.scene.outdoorAreas.map((a) => a.id)).not.toContain('driveway');
+    expect(shown()?.outdoorAreas.map((a) => a.id)).not.toContain('driveway');
     fireEvent.click(outdoor.getByLabelText('Terrain'));
-    expect(lastScene?.scene.terrain).toEqual([]);
+    expect(shown()?.terrain).toEqual([]);
   });
 
   it('renders whichever home is selected, with no renderer changes', async () => {
@@ -124,7 +125,7 @@ describe('App', () => {
     stubApi([homeSummary('mock-home', 'Mock home'), homeSummary('tiny', 'Tiny home')], { tiny });
     render(<App />);
     fireEvent.change(await screen.findByLabelText('Home'), { target: { value: 'tiny' } });
-    await vi.waitFor(() => expect(lastScene?.scene.outdoorAreas).toEqual([]));
+    await vi.waitFor(() => expect(shown()?.outdoorAreas).toEqual([]));
     expect(window.location.search).toBe('?home=tiny');
   });
 
@@ -161,7 +162,7 @@ describe('App', () => {
         /· Souterrain$/,
       );
       expect(levelsOf()).toEqual(new Set(['souterrain', 'ground-floor', 'first-floor']));
-      expect(lastScene?.scene.roofPlanes).toHaveLength(2);
+      expect(shown()?.roofPlanes).toHaveLength(2);
       expect(lastScene?.labels).toEqual([]);
     });
 
@@ -173,7 +174,7 @@ describe('App', () => {
 
       expect(lastScene?.walk?.view).toBe('third');
       expect(levelsOf()).toEqual(new Set(['souterrain']));
-      expect(lastScene?.scene.roofPlanes).toHaveLength(0);
+      expect(shown()?.roofPlanes).toHaveLength(0);
       expect(lastScene?.labels.map((l) => l.name)).toContain('Hallway');
     });
 

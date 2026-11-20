@@ -3,14 +3,14 @@ import { Canvas, useThree, type RootState } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, type RefObject } from 'react';
 import type { PerspectiveCamera } from 'three';
 import type { HomeScene, Vec3 } from '../builder/buildHome';
-import type { RoomLabel } from '../builder/visibility';
+import type { RoomLabel, Visibility } from '../builder/visibility';
 import type { CompassMarker } from '../compass/compass';
 import { CompassMarkers, CompassRose, CompassTracker } from '../compass/Compass';
 import type { FurnitureToolbarProps } from '../overlay/FurnitureToolbar';
 import { onCanvas } from './canvasEvent';
 import { FurnitureLayer, type FurnitureHandlers, type FurnitureView } from './FurnitureLayer';
 import type { FrameRequest } from '../placements/focus';
-import { HomeMeshes, type PieceHandlers } from './HomeMeshes';
+import { ShellMeshes, type PieceHandlers } from './ShellMeshes';
 import {
   PhotoMarkers,
   RequestGhosts,
@@ -23,7 +23,10 @@ import { RoomLabels, RoomLabelTracker } from './RoomLabels';
 import { WalkRig, type WalkRigProps } from './WalkRig';
 
 export interface SceneProps {
+  /** The whole home: what is hidden is decided per batch (`visibility`). */
   scene: HomeScene;
+  /** What to show of the home; everything when omitted. */
+  visibility?: Visibility | undefined;
   /** Orbit target; the viewer moves it to the top visible level. */
   target: Vec3;
   furniture: FurnitureView[];
@@ -204,6 +207,7 @@ function FrameView({ frame }: { frame: (FrameRequest & { key: number }) | undefi
 /** Full-size canvas; R3F resizes the renderer and camera with its container. */
 export function Scene({
   scene,
+  visibility,
   target,
   furniture,
   handlers,
@@ -257,7 +261,7 @@ export function Scene({
         >
           <orthographicCamera attach="shadow-camera" args={[-30, 30, 30, -30, 1, 100]} />
         </directionalLight>
-        <HomeMeshes scene={scene} pieces={pieces} />
+        <ShellMeshes scene={scene} visibility={visibility} pieces={pieces} />
         <FurnitureLayer
           items={furniture}
           handlers={handlers}

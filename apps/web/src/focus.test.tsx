@@ -6,8 +6,10 @@ import { buildHome } from './builder/buildHome';
 import type { SceneProps } from './scene/Scene';
 import { fakeApi } from './test/fakeApi';
 import { mockHome, testPlacement } from './test/fixtures';
+import { shownScene } from './test/screen';
 
 let lastScene: SceneProps | undefined;
+const shown = () => lastScene && shownScene(lastScene);
 vi.mock('./scene/Scene', () => ({
   Scene: (props: SceneProps) => {
     lastScene = props;
@@ -42,7 +44,7 @@ describe('?focus=<useId>', () => {
     expect(lastScene!.frame).toMatchObject({ center: piece.center, radius: piece.radius });
     // The view looks at the back wall from outside, from behind the house.
     expect(lastScene!.frame!.from[2]).toBeLessThan(0);
-    expect(lastScene!.scene.openings.every((o) => o.levelId === 'souterrain')).toBe(true);
+    expect(shown()!.openings.every((o) => o.levelId === 'souterrain')).toBe(true);
     expect(lastScene!.pieces?.highlightId).toBe(WINDOW);
     const chip = panel().getByLabelText('Selected piece');
     expect(chip).toHaveTextContent('Kitchen · back window (Casement window)');
