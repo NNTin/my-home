@@ -4,6 +4,7 @@ import type { Group, PerspectiveCamera, Vector3 } from 'three';
 import { turnRose, type RoseTarget } from '../compass/Compass';
 import type { Figure } from '../walk/figure';
 import { EYE_HEIGHT, FIGURE_HEIGHT, FIGURE_RADIUS } from '../walk/world';
+import { useFrameControl } from './Frame';
 
 export interface WalkRigProps {
   figure: RefObject<Figure>;
@@ -43,24 +44,30 @@ export function WalkRig({ figure, view, rose }: Props) {
   const group = useRef<Group>(null);
   const feet = useRef(figure.current.y);
 
-  // Where frames are drawn on demand (a phone), the figure asks for one whenever it has moved.
-  // The walk loop runs outside the canvas and moves it without telling anyone.
-  // Where every frame is drawn anyway (desktop), there is nothing to ask for.
+  // Frames are drawn on demand, and the walk loop runs outside the canvas and moves the figure
+  // without telling anyone: this watches it and asks for a frame whenever it has moved. In the
+  // overview the figure is drawn and casts a shadow, so the sun's map follows it.
   const invalidate = useThree((s) => s.invalidate);
-  const onDemand = useThree((s) => s.frameloop === 'demand');
+  const frame = useFrameControl();
   useEffect(() => {
-    if (!onDemand) return;
     let last: Figure | undefined;
-    let frame = requestAnimationFrame(function watch() {
+    let walking = false;
+    let id = requestAnimationFrame(function watch() {
       const f = figure.current;
-      if (!last || !sameFigure(f, last)) {
+      const moved = !last || !sameFigure(f, last);
+      if (moved) {
         last = f;
+        if (view === 'third') frame?.castersChanged();
         invalidate();
       }
-      frame = requestAnimationFrame(watch);
+      if (moved !== walking) frame?.governor.setMoving('walk', (walking = moved));
+      id = requestAnimationFrame(watch);
     });
-    return () => cancelAnimationFrame(frame);
-  }, [figure, invalidate, onDemand]);
+    return () => {
+      cancelAnimationFrame(id);
+      frame?.governor.setMoving('walk', false);
+    };
+  }, [figure, invalidate, frame, view]);
 
   useEffect(() => {
     const camera = get().camera as PerspectiveCamera;
@@ -88,9 +95,11 @@ export function WalkRig({ figure, view, rose }: Props) {
     const controls = state.controls as OrbitLike | null;
     const f = figure.current;
     feet.current += (f.y - feet.current) * Math.min(1, dt * HEIGHT_EASE);
-    // Still easing towards the figure's height: one more frame.
-    if (Math.abs(f.y - feet.current) > HEIGHT_SETTLED) state.invalidate();
-    else feet.current = f.y;
+    // Still easing towards the figure's height: one more frame, and its shadow with it.
+    if (Math.abs(f.y - feet.current) > HEIGHT_SETTLED) {
+      if (view === 'third') frame?.castersChanged();
+      else state.invalidate();
+    } else feet.current = f.y;
     const y = feet.current;
     group.current?.position.set(f.x, y, f.z);
     if (group.current) group.current.rotation.y = f.yaw;

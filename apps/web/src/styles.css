@@ -2049,3 +2049,35 @@ body {
 .viewer.editing .stage {
   box-shadow: inset 0 0 0 3px #ffcc80;
 }
+
+/* The ?perf=1 readout: numbers over the 3D view, never in the way of a touch. */
+.perf-readout {
+  position: absolute;
+  top: 0.5rem;
+  left: 50%;
+  z-index: 7;
+  margin: 0;
+  padding: 0.4rem 0.6rem;
+  transform: translateX(-50%);
+  border-radius: 0.4rem;
+  background: rgb(20 24 30 / 0.8);
+  color: #f1f3f4;
+  font:
+    0.7rem/1.35 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  pointer-events: none;
+}
+
+.perf-readout div {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.perf-readout dt,
+.perf-readout dd {
+  margin: 0;
+  white-space: nowrap;
+}

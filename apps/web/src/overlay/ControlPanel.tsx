@@ -2,7 +2,9 @@ import type { HomeSummary } from '@my-home/shared';
 import type { HomeScene } from '../builder/buildHome';
 import { roofIndex, showUpTo, toggleId, type Visibility } from '../builder/visibility';
 import { EditToggle } from '../editMode/EditToggle';
+import type { Quality } from '../quality/setting';
 import { href, keptQuery, Link } from '../routing';
+import { QualityControl } from './QualityControl';
 
 interface Props {
   homes: HomeSummary[];
@@ -18,6 +20,8 @@ interface Props {
   openRequests: number;
   photosOpen: boolean;
   onPhotos(): void;
+  quality: Quality;
+  onQuality(quality: Quality): void;
 }
 
 function Toggle({
@@ -48,6 +52,8 @@ export function ControlPanel({
   openRequests,
   photosOpen,
   onPhotos,
+  quality,
+  onQuality,
 }: Props) {
   const set = (patch: Partial<Visibility>) => onChange({ ...visibility, ...patch });
   const levelsTopDown = [...scene.levels].reverse();
@@ -154,6 +160,8 @@ export function ControlPanel({
           onChange={() => set({ showTerrain: !visibility.showTerrain })}
         />
       </fieldset>
+
+      <QualityControl quality={quality} onChange={onQuality} phone={false} />
     </section>
   );
 }

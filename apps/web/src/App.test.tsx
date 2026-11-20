@@ -46,6 +46,26 @@ describe('App', () => {
     window.history.replaceState(null, '', '/');
   });
 
+  it('a desktop draws beautiful by default; ?quality= and the Quality control change it', async () => {
+    stubApi();
+    const first = render(<App />);
+    await screen.findByTestId('scene');
+    expect(lastScene?.quality).toBe('beautiful');
+    first.unmount();
+
+    window.history.replaceState(null, '', '/?quality=fast');
+    render(<App />);
+    await screen.findByTestId('scene');
+    expect(lastScene?.quality).toBe('fast');
+    // The URL is for this visit only.
+    expect(localStorage.getItem('my-home.quality')).toBeNull();
+    const quality = within(screen.getByRole('group', { name: 'Quality' }));
+    expect(quality.getByLabelText('Fast')).toBeChecked();
+    fireEvent.click(quality.getByLabelText('Auto'));
+    expect(lastScene?.quality).toBe('auto');
+    expect(localStorage.getItem('my-home.quality')).toBe('auto');
+  });
+
   it('loads the first home from the API and starts in the souterrain, upper levels unchecked', async () => {
     const fetchMock = stubApi();
     render(<App />);

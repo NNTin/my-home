@@ -8,6 +8,7 @@ import { PartsMesh } from '../catalog/PartsMesh';
 import type { PartState } from '../catalog/types';
 import { batches, batchMaterial } from './batches';
 import { onCanvas } from './canvasEvent';
+import { useFrameControl } from './Frame';
 
 // Thin rendering layer: every shape and position comes from the builder's descriptors, through
 // the draw list. The shell and outdoors are merged into batches (`batches.ts`); windows, doors
@@ -85,6 +86,11 @@ export function ShellMeshes({
   const shell = useMemo(() => batches(shellItems(scene)), [scene]);
   useEffect(() => () => shell.forEach((b) => b.geometry.dispose()), [shell]);
   const pieceDraws = useMemo(() => scenePieceDraws(scene), [scene]);
+  // The home or what is shown of it changed: the sun's shadow is drawn again, and what the new
+  // meshes need is compiled before they are drawn.
+  const frame = useFrameControl();
+  useEffect(() => frame?.materialsChanged(), [frame, shell, pieceDraws]);
+  useEffect(() => frame?.castersChanged(), [frame, shell, pieceDraws, visibility]);
   const shown = (group: PieceDraw['group']) => !visibility || groupShown(group, scene, visibility);
   return (
     <Pieces.Provider value={pieces}>

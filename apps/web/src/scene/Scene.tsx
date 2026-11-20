@@ -1,13 +1,17 @@
 import { OrbitControls } from '@react-three/drei';
 import { Canvas, useThree, type RootState } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, type RefObject } from 'react';
-import type { PerspectiveCamera } from 'three';
+import { PCFShadowMap, type PerspectiveCamera } from 'three';
 import type { HomeScene, Vec3 } from '../builder/buildHome';
 import type { RoomLabel, Visibility } from '../builder/visibility';
 import type { CompassMarker } from '../compass/compass';
 import { CompassMarkers, CompassRose, CompassTracker } from '../compass/Compass';
 import type { FurnitureToolbarProps } from '../overlay/FurnitureToolbar';
+import { FrameGovernor } from '../quality/governor';
+import { PerfReadout, perfRequested } from '../quality/PerfReadout';
+import type { Quality } from '../quality/setting';
 import { onCanvas } from './canvasEvent';
+import { DPR, FrameLoop, PHONE_DPR } from './Frame';
 import { FurnitureLayer, type FurnitureHandlers, type FurnitureView } from './FurnitureLayer';
 import type { FrameRequest } from '../placements/focus';
 import { ShellMeshes, type PieceHandlers } from './ShellMeshes';
@@ -60,6 +64,8 @@ export interface SceneProps {
   pieces?: PieceHandlers | undefined;
   /** Turns the orbit camera to frame a use (`?focus=`); a new `key` frames again. */
   frame?: (FrameRequest & { key: number }) | undefined;
+  /** The quality setting (`quality/setting.ts`); the frame governor picks each frame's tier from it. */
+  quality?: Quality;
 }
 
 /** Stops the frame loop while `paused`, and puts back whichever loop ran before. */
@@ -74,12 +80,10 @@ function PauseFrames({ paused }: { paused: boolean }) {
   return null;
 }
 
-/** Device pixel ratio the canvas renders at, as [min, max]; lower on a phone. */
-const DPR: [number, number] = [1, 2];
-export const PHONE_DPR: [number, number] = [1, 1.5];
-/** Size of the sun's shadow map; a quarter of the texels on a phone. */
-const SHADOW_MAP: [number, number] = [2048, 2048];
-const PHONE_SHADOW_MAP: [number, number] = [1024, 1024];
+export { PHONE_DPR };
+
+/** The sky: today's flat blue. The output pass draws it behind the scene (`output.ts`). */
+const BACKDROP = '#cfdde8';
 
 /**
  * Initial camera: south-east of the building, far enough to see the whole plot. `aspect` is the
@@ -181,7 +185,7 @@ function applyFrame(state: RootState, frame: FrameRequest) {
     frame.center,
   );
   invalidate();
-  // On demand (a phone), only what asks draws a frame: a few more let overlays that follow the
+  // Frames are drawn on demand, so only what asks draws one: a few more let overlays that follow the
   // camera, such as the selected item's toolbar, find their place.
   for (const ms of [100, 400, 1000]) setTimeout(() => invalidate(), ms);
 }
@@ -226,70 +230,96 @@ export function Scene({
   paused = false,
   pieces,
   frame,
+  quality = 'fast',
 }: SceneProps) {
   const roseRef = useRef<HTMLButtonElement>(null);
   const labelsRef = useRef<HTMLDivElement>(null);
   const northUpRef = useRef<() => void>(undefined);
   const rose = useMemo(() => ({ ref: roseRef, northBearing }), [northBearing]);
+  const governor = useMemo(() => new FrameGovernor(), []);
+  useEffect(() => () => governor.dispose(), [governor]);
+  useEffect(() => governor.setSetting(quality), [governor, quality]);
+  // A furniture drag moves the view's content like the orbit controls move the camera.
+  const dragHandlers = useMemo(
+    (): FurnitureHandlers => ({
+      ...handlers,
+      onMoveStart(id) {
+        governor.setMoving('drag', true);
+        handlers.onMoveStart(id);
+      },
+      onRotateStart(id) {
+        governor.setMoving('drag', true);
+        handlers.onRotateStart(id);
+      },
+      onDragEnd() {
+        governor.setMoving('drag', false);
+        handlers.onDragEnd();
+      },
+    }),
+    [handlers, governor],
+  );
   return (
     <>
       <Canvas
         camera={{ position: initialCamera(scene.bounds), fov: 45, near: 0.1, far: 500 }}
-        // A phone has more pixels per inch than it can fill at a steady rate, and a battery: a
-        // capped pixel ratio, and a new frame only when something changed (docs/mobile.md).
+        // A phone has more pixels per inch than it can fill at a steady rate: a capped pixel ratio.
         dpr={touch ? PHONE_DPR : DPR}
-        frameloop={touch ? 'demand' : 'always'}
-        shadows
+        // On every device a new frame is drawn only when something changed (docs/mobile.md).
+        frameloop="demand"
+        // Anti-aliasing belongs to the frame's offscreen target (`output.ts`), not to the canvas.
+        gl={{ antialias: false }}
+        // three r187 has no soft PCF any more: ask for the type it would fall back to.
+        shadows={{ type: PCFShadowMap }}
         // The camera is placed before the view is measured: stand back if it is a narrow one.
-        onCreated={({ camera, size }) =>
-          camera.position.set(...initialCamera(scene.bounds, size.width / size.height))
-        }
+        onCreated={({ camera, size, gl }) => {
+          camera.position.set(...initialCamera(scene.bounds, size.width / size.height));
+          // A frame is several render calls (the scene, the passes): counted together, per frame.
+          gl.info.autoReset = false;
+        }}
         // Clicking empty space clears the selection.
         onPointerMissed={(e) => onCanvas(e) && handlers.onSelect(undefined)}
         style={{ touchAction: 'none' }}
       >
         <PauseFrames paused={paused} />
-        <color attach="background" args={['#cfdde8']} />
         <hemisphereLight args={['#ffffff', '#5b5040', 0.8]} />
-        <directionalLight
-          position={[20, 30, 15]}
-          intensity={1.6}
-          castShadow
-          shadow-mapSize={touch ? PHONE_SHADOW_MAP : SHADOW_MAP}
-          shadow-bias={-0.0005}
-          shadow-normalBias={0.03}
-        >
-          <orthographicCamera attach="shadow-camera" args={[-30, 30, 30, -30, 1, 100]} />
-        </directionalLight>
-        <ShellMeshes scene={scene} visibility={visibility} pieces={pieces} />
-        <FurnitureLayer
-          items={furniture}
-          handlers={handlers}
-          touch={touch}
-          toolbar={toolbar}
-          editable={editable}
-        />
-        <CompassMarkers markers={markers} />
-        <RoomLabelTracker labels={labels} layerRef={labelsRef} />
-        <OrbitControls
-          makeDefault
-          target={target}
-          maxPolarAngle={Math.PI * 0.95}
-          // In first person the camera is the figure's eyes; dragging looks around instead.
-          enabled={walk?.view !== 'first' && !viewpoint}
-        />
-        {walk && <WalkRig figure={walk.figure} view={walk.view} rose={rose} />}
-        {viewpoint && <ViewpointRig viewpoint={viewpoint} rose={rose} />}
-        <PhotoMarkers markers={photoMarkers} touch={touch} onSelect={(id) => onSelectPhoto?.(id)} />
-        {resetViewRef && (
-          <ViewReset bounds={scene.bounds} target={target} resetRef={resetViewRef} />
-        )}
-        <FrameView frame={frame} />
-        <RequestGhosts ghosts={requestGhosts} />
-        <CompassTracker northBearing={northBearing} roseRef={roseRef} northUpRef={northUpRef} />
+        <FrameLoop governor={governor} phone={touch} backdrop={BACKDROP}>
+          <ShellMeshes scene={scene} visibility={visibility} pieces={pieces} />
+          <FurnitureLayer
+            items={furniture}
+            handlers={dragHandlers}
+            touch={touch}
+            toolbar={toolbar}
+            editable={editable}
+          />
+          <CompassMarkers markers={markers} />
+          <RoomLabelTracker labels={labels} layerRef={labelsRef} />
+          <OrbitControls
+            makeDefault
+            target={target}
+            maxPolarAngle={Math.PI * 0.95}
+            // In first person the camera is the figure's eyes; dragging looks around instead.
+            enabled={walk?.view !== 'first' && !viewpoint}
+            onStart={() => governor.setMoving('orbit', true)}
+            onEnd={() => governor.setMoving('orbit', false)}
+          />
+          {walk && <WalkRig figure={walk.figure} view={walk.view} rose={rose} />}
+          {viewpoint && <ViewpointRig viewpoint={viewpoint} rose={rose} />}
+          <PhotoMarkers
+            markers={photoMarkers}
+            touch={touch}
+            onSelect={(id) => onSelectPhoto?.(id)}
+          />
+          {resetViewRef && (
+            <ViewReset bounds={scene.bounds} target={target} resetRef={resetViewRef} />
+          )}
+          <FrameView frame={frame} />
+          <RequestGhosts ghosts={requestGhosts} />
+          <CompassTracker northBearing={northBearing} roseRef={roseRef} northUpRef={northUpRef} />
+        </FrameLoop>
       </Canvas>
       <RoomLabels labels={labels} layerRef={labelsRef} />
       <CompassRose roseRef={roseRef} onNorthUp={() => northUpRef.current?.()} />
+      {perfRequested() && <PerfReadout governor={governor} />}
     </>
   );
 }
