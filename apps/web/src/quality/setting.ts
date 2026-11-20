@@ -3,8 +3,8 @@ import { useCallback, useState } from 'react';
 /**
  * The quality setting (docs/design/realistic-render.md §3.2): which tier is drawn when. `fast`
  * always draws fast frames, `auto` fast frames while the view moves and one beautiful frame at
- * rest, `beautiful` beautiful frames always. Until the beautiful tier exists (#111) every value
- * draws the fast tier.
+ * rest, `beautiful` beautiful frames always. The frame governor (`governor.ts`) picks each
+ * frame's tier from it, and may step down on a slow device.
  */
 export const QUALITIES = ['fast', 'auto', 'beautiful'] as const;
 export type Quality = (typeof QUALITIES)[number];

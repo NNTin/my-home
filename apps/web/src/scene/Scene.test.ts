@@ -2,6 +2,7 @@ import { PerspectiveCamera } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { describe, expect, it } from 'vitest';
 import { pointerEvent } from '../test/screen';
+import { endDamping } from './Frame';
 import { initialCamera, resetOrbit } from './Scene';
 
 const bounds = { min: [-10, 0, -6], max: [10, 8, 6] } as Parameters<typeof initialCamera>[0];
@@ -36,6 +37,9 @@ describe('resetOrbit', () => {
     camera.position.set(0, 5, 10);
     const element = document.createElement('div');
     Object.assign(element, { setPointerCapture() {}, releasePointerCapture() {} });
+    // jsdom lays nothing out: without a size the controls would turn by a share of nothing.
+    Object.defineProperty(element, 'clientWidth', { value: 800 });
+    Object.defineProperty(element, 'clientHeight', { value: 600 });
     document.body.append(element);
     const controls = new OrbitControls(camera, element);
     controls.enableDamping = true;
@@ -56,6 +60,18 @@ describe('resetOrbit', () => {
     let frames = 0;
     while (controls.update() && frames < 1000) frames++;
     expect(frames).toBeGreaterThan(30);
+  });
+
+  it('ending the damping leaves nothing that a later frame would move (the refined frame)', () => {
+    const { camera, controls } = swiped();
+    // The swipe's inertia runs out: below a threshold the controls ask for no more frames,
+    // with a remainder still left that each later frame would apply a part of.
+    for (let i = 0; i < 1000 && controls.update(); i++);
+    endDamping(controls);
+    expect(controls.enableDamping).toBe(true);
+    const at = camera.position.clone();
+    for (let i = 0; i < 50; i++) expect(controls.update()).toBe(false);
+    expect(camera.position.equals(at)).toBe(true);
   });
 
   it('puts the camera exactly back, and nothing moves afterwards', () => {

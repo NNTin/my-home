@@ -68,6 +68,8 @@ export interface SceneProps {
   frame?: (FrameRequest & { key: number }) | undefined;
   /** The quality setting (`quality/setting.ts`); the frame governor picks each frame's tier from it. */
   quality?: Quality;
+  /** Shows a short message: the viewer stepped down to a faster view, or could not load a part. */
+  onNotice?(message: string): void;
 }
 
 /** Stops the frame loop while `paused`, and puts back whichever loop ran before. */
@@ -230,6 +232,7 @@ export function Scene({
   pieces,
   frame,
   quality = 'fast',
+  onNotice,
 }: SceneProps) {
   const roseRef = useRef<HTMLButtonElement>(null);
   const labelsRef = useRef<HTMLDivElement>(null);
@@ -244,7 +247,14 @@ export function Scene({
   }, [eye]);
   const rooms = useMemo(() => lampRooms(scene), [scene]);
   const emitters = useMemo(() => sceneEmitters(furniture, rooms), [furniture, rooms]);
-  const governor = useMemo(() => new FrameGovernor(), []);
+  // `?stepdown=off`: for captures under software rendering, where every frame is slow (§3.4).
+  const governor = useMemo(
+    () =>
+      new FrameGovernor(undefined, {
+        stepDown: new URLSearchParams(window.location.search).get('stepdown') !== 'off',
+      }),
+    [],
+  );
   useEffect(() => () => governor.dispose(), [governor]);
   useEffect(() => governor.setSetting(quality), [governor, quality]);
   // A furniture drag moves the view's content like the orbit controls move the camera.
@@ -296,6 +306,8 @@ export function Scene({
           emitters={emitters}
           rooms={rooms}
           eye={eye}
+          beautiful={quality !== 'fast'}
+          onNotice={onNotice}
         >
           <ShellMeshes scene={scene} visibility={visibility} pieces={pieces} />
           <FurnitureLayer

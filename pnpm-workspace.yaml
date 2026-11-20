@@ -5,3 +5,11 @@ allowBuilds:
   esbuild: true
 minimumReleaseAgeExclude:
   - lint-staged@17.6.1
+# n8ao (the ambient occlusion of the beautiful tier) names `postprocessing` as a peer for a second
+# pass class we do not use. That package pins three below 0.188 (docs/design/realistic-render.md,
+# D10): it is not installed, and apps/web/vite.config.ts resolves its one import to a stub.
+packageExtensions:
+  n8ao@*:
+    peerDependenciesMeta:
+      postprocessing:
+        optional: true

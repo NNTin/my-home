@@ -59,6 +59,15 @@ async function smoke(out) {
     page.on('console', (message) => {
       if (message.type() === 'error') errors.push(`console: ${message.text()}`);
     });
+    // Names the request behind a "Failed to load resource" (its path only: a query may hold an id).
+    // A request the page itself gave up (a navigation, a newer fetch) is not a failure.
+    page.on('requestfailed', (request) => {
+      const reason = request.failure()?.errorText ?? '';
+      if (reason.includes('ERR_ABORTED')) return;
+      console.log(
+        `note  request failed: ${request.method()} ${new URL(request.url()).pathname} (${reason})`,
+      );
+    });
 
     await page.goto(new URL('/?walk=first', base).href, {
       waitUntil: 'networkidle',
@@ -369,6 +378,51 @@ async function smoke(out) {
       under.distance > 0.9 && under.restored < 0.05,
       `${under.distance.toFixed(2)} m`,
     );
+    // The tiers while walking (docs/design/realistic-render.md §3.3): in `auto`, a phone's default,
+    // frames are fast while the figure walks and one beautiful frame follows when it stops. Stepping
+    // down is off: a software renderer is slow, and the refined frame must be drawn every time.
+    // Nothing in flight: a request cut off by the navigation would log an error.
+    await page.waitForLoadState('networkidle').catch(() => undefined);
+    await page.goto(new URL('/?walk=first&quality=auto&stepdown=off&hints=off', base).href, {
+      waitUntil: 'networkidle',
+      timeout: 60_000,
+    });
+    await hud.waitFor({ timeout: 30_000 });
+    const mark = () =>
+      page
+        .locator('canvas')
+        .first()
+        .evaluate((c) => `${c.dataset.frame}/${c.dataset.tier}`);
+    const refined = () =>
+      page
+        .waitForSelector('canvas[data-frame="settled"][data-tier="beautiful"]', {
+          timeout: 240_000,
+        })
+        .then(
+          () => true,
+          () => false,
+        );
+    if ((await mark()).endsWith('/undefined')) {
+      console.log('skip  the tiers while walking: a build before #110 (no data-tier)');
+    } else if (!(await refined())) {
+      // A build before #111 draws the fast tier in every setting and never refines.
+      console.log('skip  the tiers while walking: a build before #111 (no beautiful tier)');
+    } else {
+      const from = await figure();
+      const marks = [];
+      await pad(0, -44, async () => {
+        marks.push(await mark());
+        return moved(await figure(), from) > 0.8;
+      });
+      // From the first fast frame on, until the figure stops, no frame is a beautiful one.
+      const walking = marks.slice(Math.max(0, marks.indexOf('moving/fast')));
+      check(
+        'walking draws fast frames',
+        walking[0] === 'moving/fast' && walking.every((m) => m === 'moving/fast'),
+        [...new Set(marks)].join(', '),
+      );
+      check('and one beautiful frame refines the view when the figure stops', await refined());
+    }
     check(
       'no console or page errors',
       errors.length === 0,

@@ -1,4 +1,7 @@
 import {
+  DepthFormat,
+  DepthTexture,
+  UnsignedIntType,
   BufferAttribute,
   BufferGeometry,
   Color,
@@ -14,9 +17,10 @@ import {
   WebGLRenderTarget,
   type Camera,
   type Material,
-  type Object3D,
+  type Scene,
   type WebGLRenderer,
 } from 'three';
+import type { AmbientOcclusion } from '../beautiful/render-beautiful';
 import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 import type { Tier } from '../quality/governor';
 
@@ -34,9 +38,12 @@ import type { Tier } from '../quality/governor';
  *
  * Anti-aliasing is a property of the target, not of the programs: a desktop's fast target has 4
  * samples. A phone's has none; its frames get a fixed FXAA step after the output pass instead.
+ * The beautiful tier's target has 4 samples on every device, and a depth texture: its frames get
+ * ambient occlusion between the scene and the output pass, from the lazy chunk
+ * (`beautiful/render-beautiful.ts`). Nothing else differs between the tiers.
  */
 
-/** MSAA samples of a tier's target. The beautiful tier (#111) has 4 on every device. */
+/** MSAA samples of a tier's target. The beautiful tier has 4 on every device. */
 export const targetSamples = (tier: Tier, phone: boolean): number =>
   tier === 'fast' && phone ? 0 : 4;
 
@@ -75,6 +82,37 @@ const OUTPUT_FRAGMENT = /* glsl */ `
     gl_FragColor = vec4(mix(backdrop, color, coverage), 1.0);
   }`;
 
+/** How often `gpuIdle` looks. */
+const GPU_POLL_MS = 25;
+/** How long the warm-up waits for the GPU; the frame loop's own timeout ends the wait sooner. */
+const WARM_UP_WAIT_MS = 10_000;
+
+/**
+ * Resolves when the GPU has done everything asked of it so far, without holding the page: a
+ * fence is put behind the work and looked at now and then, for `maxMs` at most. A WebGL 1 context
+ * has no fences and resolves at once.
+ */
+export function gpuIdle(
+  gl: WebGLRenderingContext | WebGL2RenderingContext,
+  maxMs: number,
+): Promise<void> {
+  if (!('fenceSync' in gl)) return Promise.resolve();
+  const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+  if (!sync) return Promise.resolve();
+  gl.flush();
+  const started = performance.now();
+  return new Promise((resolve) => {
+    const look = () => {
+      const status = gl.clientWaitSync(sync, 0, 0);
+      const waiting = status === gl.TIMEOUT_EXPIRED && performance.now() - started < maxMs;
+      if (waiting) return void window.setTimeout(look, GPU_POLL_MS);
+      gl.deleteSync(sync);
+      resolve();
+    };
+    look();
+  });
+}
+
 /** One triangle that covers the view: a pass draws it with its material. */
 function fullScreenTriangle(material: Material): Mesh {
   const geometry = new BufferGeometry();
@@ -92,6 +130,11 @@ export class FrameOutput {
   private readonly targets = new Map<Tier, WebGLRenderTarget>();
   /** The tone-mapped frame before FXAA: 8 bits, as the canvas holds it. */
   private resolved: WebGLRenderTarget | undefined;
+  /** A beautiful frame with its ambient occlusion, before the output pass. */
+  private shaded: WebGLRenderTarget | undefined;
+  private occlusion: AmbientOcclusion | undefined;
+  /** Whether the occlusion pass has run once, so that its programs are compiled. */
+  private occlusionWarm = false;
   private readonly camera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
   private readonly outputMaterial = new RawShaderMaterial({
     name: 'my-home output',
@@ -145,6 +188,11 @@ export class FrameOutput {
         samples: targetSamples(tier, this.phone),
         depthBuffer: true,
       });
+      // The occlusion pass reads the frame's depth.
+      if (tier === 'beautiful') {
+        target.depthTexture = new DepthTexture(width, height, UnsignedIntType);
+        target.depthTexture.format = DepthFormat;
+      }
       this.targets.set(tier, target);
     } else if (target.width !== width || target.height !== height) {
       target.setSize(width, height);
@@ -167,6 +215,31 @@ export class FrameOutput {
     return this.resolved;
   }
 
+  private shadedTarget(): WebGLRenderTarget {
+    const { width, height } = this.renderer.getDrawingBufferSize(this.size);
+    if (!this.shaded) {
+      this.shaded = new WebGLRenderTarget(width, height, {
+        type: this.targetType,
+        depthBuffer: false,
+      });
+    } else if (this.shaded.width !== width || this.shaded.height !== height) {
+      this.shaded.setSize(width, height);
+    }
+    return this.shaded;
+  }
+
+  /** Whether beautiful frames can be drawn: the lazy chunk's occlusion pass is here and compiled. */
+  get beautiful(): boolean {
+    return this.occlusion !== undefined && this.occlusionWarm;
+  }
+
+  /** Hands in the occlusion pass of the lazy chunk; beautiful frames need it. */
+  setAmbientOcclusion(occlusion: AmbientOcclusion) {
+    this.occlusion?.dispose();
+    this.occlusion = occlusion;
+    this.occlusionWarm = false;
+  }
+
   /** The tone-mapping exposure, from the light rig. */
   setExposure(exposure: number) {
     this.outputMaterial.uniforms.toneMappingExposure!.value = exposure;
@@ -183,16 +256,32 @@ export class FrameOutput {
     set('backdropBottom', bottom);
   }
 
-  /** Draws `scene` into the tier's target, then the output pass (and FXAA) onto the canvas. */
-  render(scene: Object3D, camera: Camera, tier: Tier) {
-    const { renderer } = this;
-    const target = this.target(tier);
+  /**
+   * Draws `scene` into a tier's target and returns the frame in linear light: for a beautiful
+   * frame, with its ambient occlusion. Without the occlusion pass a beautiful frame is drawn as
+   * a fast one.
+   */
+  private draw(scene: Scene, camera: Camera, tier: Tier): { frame: WebGLRenderTarget; tier: Tier } {
+    const { renderer, occlusion } = this;
+    const drawn: Tier = tier === 'beautiful' && occlusion ? 'beautiful' : 'fast';
+    const target = this.target(drawn);
     // Transparent where nothing is drawn: the output pass shows the backdrop there.
     renderer.setClearColor(0x000000, 0);
     renderer.setRenderTarget(target);
     renderer.render(scene, camera);
+    if (drawn === 'fast' || !occlusion) return { frame: target, tier: drawn };
+    const shaded = this.shadedTarget();
+    occlusion.render(renderer, scene, camera, target, shaded);
+    return { frame: shaded, tier: drawn };
+  }
 
-    this.outputMaterial.uniforms.tDiffuse!.value = target.texture;
+  /** Draws `scene` in a tier, then the output pass (and FXAA) onto the canvas. */
+  render(scene: Scene, camera: Camera, tier: Tier) {
+    const { renderer } = this;
+    const { frame, tier: drawn } = this.draw(scene, camera, tier);
+    tier = drawn;
+
+    this.outputMaterial.uniforms.tDiffuse!.value = frame.texture;
     if (usesFxaa(tier, this.phone)) {
       const resolved = this.resolvedTarget();
       renderer.setRenderTarget(resolved);
@@ -211,26 +300,43 @@ export class FrameOutput {
   }
 
   /**
-   * Compiles ahead what the tier's frames need: the scene's materials as they are drawn into the
-   * target, and the passes. Resolves when a frame can be drawn without stalling on a shader.
+   * Compiles ahead what the frames of every tier need: the scene's materials as they are drawn
+   * into a target, the output pass onto the canvas and into the FXAA step's target, and, once the
+   * lazy chunk is here, the occlusion pass's own programs. Resolves when a frame of either tier
+   * can be drawn without stalling on a shader. Both tiers draw the scene with the same programs
+   * (§4.5): the targets differ in their samples only.
    */
-  async compile(scene: Object3D, camera: Camera, tier: Tier): Promise<void> {
+  async compile(scene: Scene, camera: Camera): Promise<void> {
     const { renderer } = this;
     // Programs depend on where a material is drawn (no tone mapping into a target).
-    renderer.setRenderTarget(this.target(tier));
+    renderer.setRenderTarget(this.target('fast'));
     const sceneReady = renderer.compileAsync(scene, camera);
-    renderer.setRenderTarget(usesFxaa(tier, this.phone) ? this.resolvedTarget() : null);
-    const outputReady = renderer.compileAsync(this.outputQuad, this.camera);
+    const ready: Promise<unknown>[] = [sceneReady];
+    if (usesFxaa('fast', this.phone)) {
+      renderer.setRenderTarget(this.resolvedTarget());
+      ready.push(renderer.compileAsync(this.outputQuad, this.camera));
+      renderer.setRenderTarget(null);
+      ready.push(renderer.compileAsync(this.fxaaQuad, this.camera));
+    }
     renderer.setRenderTarget(null);
-    const fxaaReady = usesFxaa(tier, this.phone)
-      ? renderer.compileAsync(this.fxaaQuad, this.camera)
-      : undefined;
-    await Promise.all([sceneReady, outputReady, fxaaReady]);
+    ready.push(renderer.compileAsync(this.outputQuad, this.camera));
+    await Promise.all(ready);
+    if (this.occlusion && !this.occlusionWarm) {
+      // The pass compiles its programs when it first runs: one frame that is not shown, once.
+      this.occlusionWarm = true;
+      this.draw(scene, camera, 'beautiful');
+      renderer.setRenderTarget(null);
+      // Not ready before the GPU has drawn it: the first frame that is shown, and timed, must
+      // not wait for this one.
+      await gpuIdle(renderer.getContext(), WARM_UP_WAIT_MS);
+    }
   }
 
   dispose() {
     for (const target of this.targets.values()) target.dispose();
     this.resolved?.dispose();
+    this.shaded?.dispose();
+    this.occlusion?.dispose();
     this.outputMaterial.dispose();
     this.fxaaMaterial.dispose();
     this.outputQuad.geometry.dispose();

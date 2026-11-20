@@ -258,6 +258,10 @@ ceiling. A room without a lamp is lit by the **head lamp**, a soft light at the 
 wherever the room has a lamp of its own. Through the windows the backdrop is a vertical gradient. Walking from
 room to room moves pool lights only from lamps of rooms the figure is not in, and compiles no shader.
 
+**Tiers.** Walking moves the view, so in "Automatic" (a phone's default) its frames are fast ones; when the
+figure stops, one beautiful frame refines the view (`docs/mobile.md` § Battery and heat). `walk-smoke.sh` checks
+both.
+
 ## Testing on an environment
 
 ```sh

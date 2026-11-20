@@ -1,6 +1,7 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useLayoutEffect,
@@ -15,7 +16,7 @@ import { roomAt, type Emitter, type LampRoom } from '../lighting/lamps';
 import { backdropColors, environmentIntensity, type LightRig } from '../lighting/rig';
 import { SceneLights } from '../lighting/sceneLights';
 import type { FrameGovernor } from '../quality/governor';
-import { FrameOutput } from './output';
+import { FrameOutput, gpuIdle } from './output';
 import { casterBounds } from './sunShadow';
 
 /**
@@ -51,6 +52,32 @@ const programIds = (gl: WebGLRenderer) => (gl.info.programs ?? []).map((p) => p.
 
 const vec3 = (v: Vector3): Vec3 => [v.x, v.y, v.z];
 
+/** What the frame loop needs of the orbit controls. */
+interface Damped {
+  enableDamping?: boolean;
+  update?(): unknown;
+}
+
+/**
+ * Ends what is left of the orbit controls' damping. It is applied a step per frame drawn, and
+ * below a threshold asks for no frame: a remainder would move the view with the refined frame
+ * and so ask for more frames after it (§3.3: exactly one refined frame).
+ */
+export function endDamping(controls: Damped | null) {
+  if (!controls?.enableDamping || !controls.update) return;
+  controls.enableDamping = false;
+  // The first update applies what is left; one more finds the view at rest.
+  for (let i = 0; i < 3 && controls.update(); i++);
+  controls.enableDamping = true;
+}
+
+/** The toasts of §3.4 and §4.4. */
+const STEPPED_DOWN = 'Showing a faster view on this device';
+const CHUNK_FAILED = 'The beautiful view could not be loaded';
+
+/** How long a settle waits for the GPU at most: a software renderer takes many seconds a frame. */
+const DRAWN_TIMEOUT_MS = 120_000;
+
 interface Pending {
   shadow: boolean;
   /** The lamps' shadow maps wait for the view to stop moving: they are not drawn per frame. */
@@ -69,6 +96,8 @@ export function FrameLoop({
   emitters,
   rooms,
   eye,
+  beautiful,
+  onNotice,
   children,
 }: {
   governor: FrameGovernor;
@@ -80,6 +109,10 @@ export function FrameLoop({
   rooms: readonly LampRoom[];
   /** The view is from inside a room, under its ceiling: walking in first person, "view from here". */
   eye: boolean;
+  /** The setting may draw beautiful frames (`auto`, `beautiful`): the lazy chunk is asked for. */
+  beautiful: boolean;
+  /** Something the person should know: the viewer stepped down, or the chunk did not load. */
+  onNotice?: ((message: string) => void) | undefined;
   children: ReactNode;
 }) {
   const gl = useThree((s) => s.gl);
@@ -99,6 +132,13 @@ export function FrameLoop({
       environment.dispose();
     };
   }, [gl, get]);
+  const notice = useRef(onNotice);
+  useEffect(() => {
+    notice.current = onNotice;
+  }, [onNotice]);
+  /** Whether a frame has been drawn, and whether this output is still the one in use. */
+  const drawn = useRef(false);
+  const current = useRef(true);
   const pending = useRef<Pending>({
     shadow: true,
     lampShadows: false,
@@ -126,18 +166,60 @@ export function FrameLoop({
 
   useLayoutEffect(() => {
     const canvas = gl.domElement;
+    // The tier is that of the frame on screen: `auto` shows `beautiful` once it has refined.
     const mark = () => {
       canvas.setAttribute('data-frame', governor.state);
-      canvas.setAttribute('data-tier', governor.tier());
+      canvas.setAttribute('data-tier', governor.shownTier);
     };
     mark();
     return governor.attach({
       onChange: mark,
       framePending: () => get().internal.frames > 0,
+      requestFrame: () => invalidate(),
+      beforeRefine: () => endDamping(get().controls as Damped | null),
       // The lamps' shadows of what moved are drawn once it rests.
       onStill: () => pending.current.lampShadows && invalidate(),
+      onStepDown: () => notice.current?.(STEPPED_DOWN),
+      whenDrawn: (done) => void gpuIdle(gl.getContext(), DRAWN_TIMEOUT_MS).then(done),
     });
   }, [gl, governor, get, invalidate]);
+
+  // The lazy chunk of the beautiful tier (§4.4): asked for once the first fast frame is on screen
+  // and the setting can use it. Until it has arrived and is compiled, every frame is a fast one;
+  // if it does not arrive, the viewer stays fast and says so once.
+  const chunk = useRef<'idle' | 'loading' | 'here'>('idle');
+  const wanted = useRef(beautiful);
+  const loadBeautiful = useCallback(() => {
+    if (chunk.current !== 'idle' || !wanted.current || !drawn.current) return;
+    chunk.current = 'loading';
+    import('../beautiful/render-beautiful').then(
+      ({ createAmbientOcclusion }) => {
+        if (!current.current) return;
+        chunk.current = 'here';
+        const { scene, camera } = get();
+        output.setAmbientOcclusion(createAmbientOcclusion(scene, camera, phone));
+        // Its programs are compiled ahead, then frames may be beautiful.
+        pending.current.compile = true;
+        invalidate();
+      },
+      () => {
+        if (current.current) notice.current?.(CHUNK_FAILED);
+      },
+    );
+  }, [get, output, phone, invalidate]);
+  useEffect(() => {
+    // A new output (the device class changed) starts without the pass.
+    current.current = true;
+    chunk.current = 'idle';
+    return () => {
+      current.current = false;
+      governor.setBeautifulReady(false);
+    };
+  }, [output, governor]);
+  useEffect(() => {
+    wanted.current = beautiful;
+    loadBeautiful();
+  }, [beautiful, loadBeautiful]);
 
   // The rig: the sun (its shadow follows), the exposure and the backdrop.
   useLayoutEffect(() => {
@@ -156,7 +238,6 @@ export function FrameLoop({
   // Priority 1: this draws the frame instead of R3F.
   useFrame(({ scene, camera }) => {
     const p = pending.current;
-    const tier = governor.tier();
     if (p.compile) {
       p.compile = false;
       p.compiling = true;
@@ -168,11 +249,13 @@ export function FrameLoop({
         p.compiling = false;
         // Compiled ahead: the frame that uses them compiles nothing.
         for (const id of programIds(gl)) p.programs.add(id);
+        // With the occlusion pass compiled too, frames may be beautiful from now on.
+        if (output.beautiful) governor.setBeautifulReady(true);
         invalidate();
       };
       const timeout = window.setTimeout(done, COMPILE_TIMEOUT_MS);
       void output
-        .compile(scene, camera, tier)
+        .compile(scene, camera)
         .catch(() => undefined)
         .then(() => {
           window.clearTimeout(timeout);
@@ -182,7 +265,7 @@ export function FrameLoop({
     // Compiling ahead: the previous frame stays on screen.
     if (p.compiling) return;
 
-    governor.frameStarted();
+    const tier = governor.frameStarted();
     // The pool gathers around the orbit target, or around the eye in a view from inside.
     const at = vec3(camera.position);
     const target = (get().controls as { target?: Vector3 } | null)?.target;
@@ -201,6 +284,8 @@ export function FrameLoop({
       p.lampShadows = false;
       lights.redrawLampShadows();
     }
+    // The tiers share the sun's shadow map; a beautiful frame filters it wider (§6.2).
+    lights.setShadowFilter(tier === 'beautiful');
     gl.info.reset();
     output.render(scene, camera, tier);
 
@@ -225,6 +310,10 @@ export function FrameLoop({
       litLamps: lamps.lit,
       lampChanges: lampChanges.current,
     });
+    if (!drawn.current) {
+      drawn.current = true;
+      loadBeautiful();
+    }
   }, 1);
 
   return (

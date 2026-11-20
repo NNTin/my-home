@@ -15,6 +15,9 @@ import type { LightRig } from './rig';
 /** Size of the sun's shadow map; a quarter of the texels on a phone. */
 const SUN_SHADOW_MAP = 2048;
 const PHONE_SUN_SHADOW_MAP = 1024;
+/** The filter radius of the sun's shadow, in texels of its map: a fast frame's, a beautiful one's. */
+const SUN_SHADOW_RADIUS = 1;
+const SUN_SHADOW_RADIUS_BEAUTIFUL = 3;
 /** Size of one face of a lamp's shadow map. */
 const LAMP_SHADOW_MAP = 512;
 /** How far from the scene's origin the sun stands. The shadow camera is fitted to the casters. */
@@ -160,6 +163,14 @@ export class SceneLights {
   fitSunShadow(bounds: Box3) {
     fitShadowCamera(this.sun, bounds);
     this.sun.shadow.needsUpdate = true;
+  }
+
+  /**
+   * How wide the sun's shadow is filtered: wider in a beautiful frame. The map is the same; the
+   * radius is a uniform, so the tiers share their programs.
+   */
+  setShadowFilter(wide: boolean) {
+    this.sun.shadow.radius = wide ? SUN_SHADOW_RADIUS_BEAUTIFUL : SUN_SHADOW_RADIUS;
   }
 
   /** What casts shadows changed: the maps of the lit lamps are drawn again. */
