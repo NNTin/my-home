@@ -79,8 +79,8 @@ deploy (the api says so in a `Warning` header).
   `needs-attention` ("not in the home model") in where-used, and the release log counts and names it. Its notes and
   photo links stay and resolve as `missing`.
 - **Photos are untouched**: a photo whose room disappears shows the room as no longer in the model.
-- House-data pull requests change the golden render list of `home.json`: run
-  `pnpm --filter @my-home/web exec vitest run -u src/catalog/golden.test.tsx` and commit the updated snapshot with the data change.
+- House-data pull requests change the golden draw list of `home.json`: run
+  `pnpm --filter @my-home/web exec vitest run -u src/catalog/golden.test.ts` and commit the updated snapshot with the data change.
 
 ## The seed comes from git
 
