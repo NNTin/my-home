@@ -41,6 +41,8 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      # The main chunk's growth and the lazy chunks against apps/web/bundle-budget.json.
+      - run: pnpm check:bundle
 
   test-postgres:
     runs-on: ubuntu-latest

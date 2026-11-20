@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "pnpm --parallel --filter @my-home/api --filter @my-home/web dev",
     "build": "pnpm -r --workspace-concurrency=1 build",
+    "check:bundle": "node tools/check-bundle.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
