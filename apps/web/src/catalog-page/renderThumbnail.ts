@@ -48,7 +48,10 @@ function getRenderer(): WebGLRenderer {
   return created;
 }
 
-/** A mesh per part, as `PartsMesh` draws it. */
+/**
+ * A mesh per part, with the part's own colour and transform. The viewer merges a piece's parts
+ * (`PartsMesh`); a thumbnail is drawn once and cached, so it keeps the simple way.
+ */
 function partMesh(part: Part): Mesh {
   // No shadows here: only the material settings the part sets.
   const settings = Object.fromEntries(
@@ -63,7 +66,7 @@ function partMesh(part: Part): Mesh {
       : new CylinderGeometry(sx / 2, sx / 2, sy, CYLINDER_SEGMENTS);
   const mesh = new Mesh(geometry, new MeshStandardMaterial({ color: part.color, ...settings }));
   mesh.position.set(...part.center);
-  // The tilt about the part's own x first, then the turn about y (as PartsMesh).
+  // The tilt about the part's own x first, then the turn about y (as the draw list's `transform`).
   mesh.rotation.set(part.rotationX ?? 0, part.rotationY, 0, 'YXZ');
   if (part.shape === 'cylinder') mesh.scale.set(1, 1, sz / sx);
   return mesh;
