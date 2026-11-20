@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { FrameGovernor, SETTLE_MS, type FrameReport, type GovernorClock } from './governor';
+import {
+  FrameGovernor,
+  RECENT_MS,
+  SETTLE_MS,
+  type FrameReport,
+  type GovernorClock,
+} from './governor';
 
 /** A clock that only moves when the test says so. */
 function fakeClock() {
@@ -154,15 +160,32 @@ describe('the frame governor', () => {
     expect(perf.compiles).toBe(7);
   });
 
-  it('counts the draw calls since the view settled: none while it rests', () => {
+  it('counts the draw calls of the last 3 seconds, whatever the state', () => {
     const { governor, advance, frame } = setup();
     frame(0);
     frame(16);
-    expect(governor.perf().drawCallsSinceSettled).toBe(280);
+    expect(governor.perf()).toMatchObject({ recentDrawCalls: 280, recentFrames: 2 });
+    // Settled, but drawn less than 3 seconds ago: still counted.
     advance(SETTLE_MS);
-    expect(governor.perf()).toMatchObject({ state: 'settled', drawCallsSinceSettled: 0 });
-    advance(5000);
-    expect(governor.perf().drawCallsSinceSettled).toBe(0);
+    expect(governor.perf()).toMatchObject({ state: 'settled', recentDrawCalls: 280 });
+    advance(RECENT_MS);
+    expect(governor.perf()).toMatchObject({ recentDrawCalls: 0, recentFrames: 0 });
+  });
+
+  it('a frame drawn while the view should rest shows in the number', () => {
+    const { governor, advance, frame } = setup();
+    frame(0);
+    advance(SETTLE_MS + RECENT_MS);
+    expect(governor.perf()).toMatchObject({ state: 'settled', recentDrawCalls: 0 });
+    // Something asks for a frame every second with nothing moving: a stray loop.
+    for (let i = 0; i < 5; i++) frame(1000);
+    advance(SETTLE_MS);
+    // The view counts as settled between those frames, and the number still shows them.
+    expect(governor.perf()).toMatchObject({
+      state: 'settled',
+      recentDrawCalls: 3 * 140,
+      recentFrames: 3,
+    });
   });
 
   it('has no frame times before two frames were drawn, and no refined frame yet', () => {

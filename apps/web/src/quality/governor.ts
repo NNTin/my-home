@@ -15,6 +15,9 @@ export type FrameState = 'moving' | 'settled';
 /** How long after the last frame, with nothing moving, the view counts as settled (§3.3). */
 export const SETTLE_MS = 200;
 
+/** The window of `recentDrawCalls`: long enough to read, short enough to wait for. */
+export const RECENT_MS = 3000;
+
 /** Frame times kept for the median and the 95th percentile. */
 const SAMPLES = 240;
 
@@ -40,8 +43,12 @@ export interface PerfData extends FrameReport {
   state: FrameState;
   /** Frames drawn since the page loaded. */
   frames: number;
-  /** Draw calls since the view last settled: 0 while it rests. */
-  drawCallsSinceSettled: number;
+  /**
+   * Draw calls and frames of the last `RECENT_MS`, whatever the state: both are 0 only when
+   * nothing at all was drawn for that long, which is what "resting" must mean.
+   */
+  recentDrawCalls: number;
+  recentFrames: number;
   /** Time from one moving frame to the next; undefined before two were drawn. */
   medianFrameMs: number | undefined;
   p95FrameMs: number | undefined;
@@ -75,7 +82,8 @@ export class FrameGovernor {
   private lastCounted = false;
   private readonly times: number[] = [];
   private frames = 0;
-  private sinceSettled = 0;
+  /** When each recent frame was drawn, and its draw calls. */
+  private recent: { at: number; drawCalls: number }[] = [];
   private last: FrameReport = {
     drawCalls: 0,
     triangles: 0,
@@ -149,7 +157,8 @@ export class FrameGovernor {
     this.lastFrameAt = now;
     this.lastCounted = true;
     this.frames += 1;
-    this.sinceSettled += report.drawCalls;
+    this.recent = this.recent.filter((f) => now - f.at < RECENT_MS);
+    this.recent.push({ at: now, drawCalls: report.drawCalls });
     this.last = report;
     this.armSettle();
   }
@@ -172,20 +181,22 @@ export class FrameGovernor {
       this.frameState = 'settled';
       // The next frame starts a new run: the pause before it is not a frame time.
       this.lastCounted = false;
-      this.sinceSettled = 0;
       this.onChange?.('settled', this.tier());
     }, SETTLE_MS);
   }
 
   perf(): PerfData {
     const sorted = [...this.times].sort((a, b) => a - b);
+    const now = this.clock.now();
+    const recent = this.recent.filter((f) => now - f.at < RECENT_MS);
     return {
       ...this.last,
       setting: this.setting,
       tier: this.tier(),
       state: this.frameState,
       frames: this.frames,
-      drawCallsSinceSettled: this.sinceSettled,
+      recentDrawCalls: recent.reduce((sum, f) => sum + f.drawCalls, 0),
+      recentFrames: recent.length,
       medianFrameMs: percentile(sorted, 0.5),
       p95FrameMs: percentile(sorted, 0.95),
       refinedFrameMs: undefined,

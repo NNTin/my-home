@@ -34,10 +34,8 @@ export function PerfReadout({ governor }: { governor: FrameGovernor }) {
     ['Tier', data.tier],
     ['View', data.state === 'settled' ? 'resting' : 'moving'],
     ['Draw calls, last frame', String(data.drawCalls)],
-    [
-      'Draw calls while resting',
-      data.state === 'settled' ? String(data.drawCallsSinceSettled) : '–',
-    ],
+    // Whatever the state: 0 only when nothing at all was drawn in the last 3 seconds.
+    ['Draw calls, last 3 s', `${data.recentDrawCalls} (${data.recentFrames} frames)`],
     ['Triangles', String(data.triangles)],
     ['Textures', String(data.textures)],
     ['Lit lamps', String(data.litLamps)],
