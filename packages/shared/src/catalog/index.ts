@@ -1,5 +1,4 @@
 export * from './catalog';
-export { LEGACY_FURNITURE_TYPE_IDS } from './definitions/furniture';
 export * from './effective';
 export * from './fit';
 export * from './format';

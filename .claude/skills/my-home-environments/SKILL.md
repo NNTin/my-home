@@ -206,8 +206,8 @@ The **piece page** of a type (`/catalog/<kind>/<typeId>`, `docs/catalog.md`) lis
 with its overrides, history (with one-click Undo), photos, notes and photo requests, and edits each use's basic
 parameters. To point the owner at one use in an issue or PR, link its row:
 `https://home-staging.nntin.xyz/catalog/openings/window.casement#use=souterrain-kitchen-window`
-(`#use=<useId>` opens and scrolls to it; `?home=` picks the home when ids repeat). The old layouts API
-(`/api/homes/<id>/layouts`) is deprecated and will be removed: don't use it.
+(`#use=<useId>` opens and scrolls to it; `?home=` picks the home when ids repeat). The old layouts API is gone
+(`/api/homes/<id>/layouts` is a 404): furniture is placements (`docs/furniture.md`).
 
 - `uses.sh <env> whoami`: the actor the api records for this token (`agent`, source `identity` on deployed hosts).
 - `uses.sh <env> types`: the catalogue types with their parameters (tier `basic` = changeable per use, limits).

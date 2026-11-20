@@ -1,4 +1,4 @@
-import type { HomeModel, LayoutItem } from '@my-home/shared';
+import type { HomeModel } from '@my-home/shared';
 import { index, integer, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 
 const timestamps = {
@@ -21,9 +21,9 @@ export const homes = pgTable('homes', {
 export type HomeRow = typeof homes.$inferSelect;
 
 /**
- * Named furniture layouts of a home, stored apart from the home model. Items reference levels and
- * rooms by id only, so replacing or re-seeding a home never touches its layouts; deleting the
- * home deletes them. `version` implements optimistic concurrency for updates.
+ * The deprecated named furniture layouts (#56): nothing in this api reads or writes them any more.
+ * The table stays for one release so a rollback to the previous api version (its release job's
+ * one-time import and its layouts routes) still finds it; a later release drops it.
  */
 export const layouts = pgTable(
   'layouts',
@@ -35,10 +35,8 @@ export const layouts = pgTable(
     name: text('name').notNull(),
     schemaVersion: integer('schema_version').notNull(),
     version: integer('version').notNull().default(1),
-    items: jsonb('items').$type<LayoutItem[]>().notNull(),
+    items: jsonb('items').$type<unknown[]>().notNull(),
     ...timestamps,
   },
   (t) => [index('layouts_home_id_idx').on(t.homeId)],
 );
-
-export type LayoutRow = typeof layouts.$inferSelect;

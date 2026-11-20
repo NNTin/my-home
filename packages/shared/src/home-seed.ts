@@ -12,9 +12,8 @@ import { openingFitIssues } from './catalog/fit';
 import { effectiveParams } from './catalog/effective';
 import { modelUses } from './catalog/uses';
 import { Id, type HomeModel } from './home-model';
-import { PlanPosition } from './layouts';
 import { Subject } from './subjects';
-import { Actor, Elevation, MAX_NOTE_LENGTH, PlacementMounting } from './userdata';
+import { Actor, Elevation, MAX_NOTE_LENGTH, PlacementMounting, PlanPosition } from './userdata';
 
 /**
  * A home's seed (`data/homes/<home>.seed.json`, docs/deployment.md § The seed comes from git): how

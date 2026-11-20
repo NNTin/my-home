@@ -15,12 +15,6 @@ describe('resetDatabase', () => {
   it('drops all data so the next migration starts from an empty database', async () => {
     const { db } = ctx.database;
     await seed(db, { file: mockHomeFile });
-    const layout = await ctx.app.inject({
-      method: 'POST',
-      url: '/api/homes/mock-home/layouts',
-      payload: { name: 'Before reset', items: [] },
-    });
-    expect(layout.statusCode).toBe(201);
 
     await resetDatabase(db);
     // Both drivers return `{ rows }`; the shared Db type leaves the result untyped.
@@ -31,7 +25,7 @@ describe('resetDatabase', () => {
 
     await ctx.database.migrate();
     expect((await seed(db, { file: mockHomeFile })).status).toBe('inserted');
-    const layouts = await ctx.app.inject({ method: 'GET', url: '/api/homes/mock-home/layouts' });
-    expect(layouts.json().items).toHaveLength(0);
+    const home = await ctx.app.inject({ method: 'GET', url: '/api/homes/mock-home' });
+    expect(home.statusCode).toBe(200);
   });
 });

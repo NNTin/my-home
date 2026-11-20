@@ -124,31 +124,14 @@ jobs:
             curl -fsS -o /dev/null "http://localhost:8080$icon"
           done
           curl -fsS http://localhost:8080/api/health/live | jq -e '.status == "ok"'
-      - name: Smoke test layouts
+      - name: Smoke test placements
         run: |
           set -euo pipefail
           base=http://localhost:8080/api
-          bed='{"id":"bed-1","typeId":"bed","levelId":"souterrain","roomId":"souterrain-bed-room","position":{"x":10.8,"z":-3.5},"rotationY":0,"props":{}}'
-          layout=$(curl -fsS -X POST "$base/homes/home/layouts" -H 'content-type: application/json' \
-            --data "{\"name\":\"Smoke test\",\"items\":[$bed]}")
-          echo "$layout" | jq -e '.version == 1 and (.items | length) == 1'
-          id=$(echo "$layout" | jq -er '.id')
-          curl -fsS "$base/homes/home/layouts" \
-            | jq -e --arg id "$id" 'any(.items[]; .id == $id and .itemCount == 1)'
-          # Optimistic concurrency: the first update wins, a second one with the same version is a 409.
-          update='{"name":"Smoke test","items":[],"version":1}'
-          curl -fsS -X PUT "$base/layouts/$id" -H 'content-type: application/json' --data "$update" \
-            | jq -e '.version == 2 and (.items | length) == 0'
-          status=$(curl -sS -o /dev/null -w '%{http_code}' -X PUT "$base/layouts/$id" \
-            -H 'content-type: application/json' --data "$update")
-          test "$status" = 409
-          # Export, import as a new layout, clean up.
-          curl -fsS "$base/layouts/$id/export" -o layout.json
-          jq -e '.name == "Smoke test" and .schemaVersion == 1' layout.json
-          copy=$(curl -fsS -X POST "$base/homes/home/layouts/import" \
-            -H 'content-type: application/json' --data @layout.json | jq -er '.id')
-          test "$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE "$base/layouts/$copy")" = 204
-          test "$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE "$base/layouts/$id")" = 204
+          curl -fsS "$base/homes/home/placements" | jq -e '.items | type == "array"'
+          # The named layouts are gone (#56): their routes are the api's 404.
+          test "$(curl -sS -o /dev/null -w '%{http_code}' "$base/homes/home/layouts")" = 404
+          test "$(curl -sS -o /dev/null -w '%{http_code}' "$base/layouts/some-id")" = 404
       - name: Smoke test photos
         run: |
           set -euo pipefail
@@ -189,11 +172,9 @@ jobs:
           curl -fsS "$base/homes/home/trash" | jq -e --arg id "$id" '.photos | map(.id) == [$id]'
           curl -fsS -X POST "$base/photos/$id/restore" | jq -e '.deletedAt == null'
           # A staging deploy (the release job: reset public, migrate, sync the homes). Photos stay.
-          curl -fsS -X POST "$base/homes/home/layouts" -H 'content-type: application/json' \
-            --data '{"name":"Dropped by the reset","items":[]}' | jq -e '.version == 1'
           docker compose run --rm --no-deps -e ALLOW_DATABASE_RESET=true -e RESET_PUBLIC=true \
             -e HOME_FILES=home.json api node dist/release.js
-          curl -fsS "$base/homes/home/layouts" | jq -e '.items == []'
+          curl -fsS "$base/homes" | jq -e '.items | map(.id) == ["home"]'
           curl -fsS "$base/photos/$id" | jq -e '.capturedRoomStatus == "current" and .room.id == "souterrain-kitchen"'
           curl -fsS "$base/photo-requests/$request" | jq -e '.status == "fulfilled"'
           test "$(curl -fsS "$base/photos/$id/image" | sha256sum)" = "$sum"

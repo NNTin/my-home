@@ -547,7 +547,7 @@ function checkSemantics(model: z.infer<typeof HomeModelShape>, ctx: z.Refinement
   const issue = (path: (string | number)[], message: string) =>
     ctx.addIssue({ code: 'custom', path, message });
 
-  // Ids are unique across the whole model so layouts and other documents can reference any entity.
+  // Ids are unique across the whole model so placements and other documents can reference any entity.
   const seen = new Map<string, string>();
   const claim = (id: string, path: (string | number)[]) => {
     const where = formatPath(path.slice(0, -1));

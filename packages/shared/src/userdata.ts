@@ -10,18 +10,21 @@ import {
 } from './catalog';
 import { Bearing, Id } from './home-model';
 import { ApiError } from './homes';
-import { PlanPosition } from './layouts';
 import { Subject, SubjectQuery } from './subjects';
 
 /**
  * What people change on a deployed environment, stored in the `userdata` schema (docs/userdata.md):
  * furniture placements, basic-parameter overrides of the openings in git, and the history of every
  * change with its actor. Positions are plan coordinates in metres (x east, z south) and
- * `rotationY` is three.js radians about +y, as in layouts.
+ * `rotationY` is three.js radians about +y (counter-clockwise seen from above).
  */
 
 const Timestamp = z.iso.datetime({ offset: true });
 const Name = z.string().trim().min(1).max(200);
+
+/** A point on the plan in metres (x east, z south, like the home model). */
+export const PlanPosition = z.strictObject({ x: z.number(), z: z.number() });
+export type PlanPosition = z.infer<typeof PlanPosition>;
 
 /** What a placement is fixed to (`catalog/mounting.ts`): the floor, a wall or the ceiling. */
 export const PlacementMounting = z.enum(['floor', 'wall', 'ceiling']);

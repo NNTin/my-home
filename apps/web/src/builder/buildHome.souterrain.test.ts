@@ -154,7 +154,7 @@ describe('the souterrain rooms', () => {
       if (room.id === 'souterrain-corridor') continue; // too narrow for a bed
       const item = createItem(ctx, [], {
         id: 'a',
-        typeId: 'bed',
+        typeId: 'furniture.bed',
         levelId: 'souterrain',
         roomId: room.id,
       });

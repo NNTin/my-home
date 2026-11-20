@@ -139,7 +139,10 @@ export const homeSettings = userdata.table('home_settings', {
 });
 export type HomeSettingsRow = typeof homeSettings.$inferSelect;
 
-/** One-time imports, one row per home and source (`layouts`: the named layouts → placements). */
+/**
+ * One-time imports, one row per home and source (`layouts`: the named layouts → placements, #44;
+ * the import was removed in #56, the rows stay as the record).
+ */
 export const imports = userdata.table(
   'imports',
   {

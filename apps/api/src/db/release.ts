@@ -1,6 +1,5 @@
 import type { Config } from '../config';
 import type { Database } from './client';
-import { describeImports, importLayouts, type LayoutImport } from './layout-import';
 import { purgeHome } from './purge';
 import { resetDatabase } from './reset';
 import { describeSeedSync, readSeedFile, seedFileOf, syncSeeds, type SeedInput } from './seed-sync';
@@ -24,8 +23,7 @@ export interface ReleaseLog {
  *    then make each home's placements, opening overrides and notes match its seed, in one
  *    transaction (`syncSeeds`, history by `system` named `seed`); a home without a seed file is left alone;
  * 5. purge the homes named in `PURGE_HOMES` (a home that left git, e.g. the staging mock home):
- *    the stored home and its `userdata`, logged; photos are only listed, never deleted;
- * 6. import the named layouts once into the placement sets (`importLayouts`, #44).
+ *    the stored home and its `userdata`, logged; photos are only listed, never deleted.
  */
 export async function runRelease(
   database: Database,
@@ -35,7 +33,7 @@ export async function runRelease(
   >,
   log: ReleaseLog,
   folder?: string,
-): Promise<SyncReport & { imports: LayoutImport[]; seeds: SeedSyncReport }> {
+): Promise<SyncReport & { seeds: SeedSyncReport }> {
   if (config.resetPublic && !config.allowDatabaseReset) {
     throw new Error('refusing to reset public: RESET_PUBLIC needs ALLOW_DATABASE_RESET=true');
   }
@@ -87,12 +85,5 @@ export async function runRelease(
         (purged.photoIds.length > 0 ? `: ${purged.photoIds.join(', ')}` : ''),
     );
   }
-  const imported = await importLayouts(database.db, {
-    retentionDays: config.userdataTrashRetentionDays,
-    warn: (line) => log.warn(line),
-  });
-  const lines = describeImports(imported);
-  lines.info.forEach((line) => log.info(line));
-  lines.warn.forEach((line) => log.warn(line));
-  return { ...report, imports: imported, seeds: seeded };
+  return { ...report, seeds: seeded };
 }

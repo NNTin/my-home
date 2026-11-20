@@ -17,9 +17,8 @@ import {
 
 /**
  * Builds the app against in-memory PGlite, or against the Postgres in DATABASE_URL (CI).
- * Migrations run once per app; the tables are emptied so each test starts clean (deleting the
- * homes cascades to their layouts). Photos live in their own schema: tests that create them
- * call `clearMedia`.
+ * Migrations run once per app; the tables are emptied so each test starts clean. Photos live in
+ * their own schema: tests that create them call `clearMedia`.
  */
 export async function createTestApp(env: NodeJS.ProcessEnv = {}) {
   const config = loadConfig({

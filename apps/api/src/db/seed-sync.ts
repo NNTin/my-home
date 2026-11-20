@@ -21,7 +21,6 @@ import {
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import type { Db } from './client';
 import { recordHistory, sameJson, type HistoryActor, type Tx } from './history';
-import { LAYOUTS_SOURCE } from './layout-import';
 import { overrideState } from './opening-overrides';
 import { placementState } from './placements';
 import {
@@ -32,6 +31,13 @@ import {
   placements,
   type NoteRow,
 } from './userdata-schema';
+
+/**
+ * The `userdata.imports` source of the named layouts' one-time import (#44, removed in #56). The
+ * sync still records it as skipped for every seeded home, so an older api's release job never
+ * imports layouts over a seeded placement set.
+ */
+const LAYOUTS_SOURCE = 'layouts';
 
 /**
  * The actor of every change the release job's seed sync makes: `system` named `seed`, values the
