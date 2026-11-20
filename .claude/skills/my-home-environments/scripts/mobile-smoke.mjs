@@ -37,6 +37,11 @@ const RAIL_MAX = 96;
  * Draw calls of one moving frame (docs/design/realistic-render.md §10.1): the first view, then the
  * whole house.
  */
+/**
+ * How long a screenshot may take. The browser draws in software here: a frame of the lit scene
+ * takes seconds, and a shot waits until the frames before it are drawn.
+ */
+const SHOT_TIMEOUT_MS = 180_000;
 const DRAW_CALLS = { phone: [250, 350], desktop: [350, 500] };
 /** The lamp pool and the lights that cast shadows (the sun, and 4 lamps on a desktop). */
 const LAMPS = { phone: [6, 1], desktop: [12, 5] };
@@ -859,13 +864,16 @@ async function smoke(out, homeId) {
       rail.width <= RAIL_MAX,
       `${Math.round(rail.width)} px`,
     );
-    await page.screenshot({ path: out.replace(/\.png$/, '-landscape.png') });
+    await page.screenshot({
+      path: out.replace(/\.png$/, '-landscape.png'),
+      timeout: SHOT_TIMEOUT_MS,
+    });
     await page.setViewportSize(PORTRAIT);
     await page.waitForTimeout(1500);
 
     await tab(/Furniture/).tap();
     await settle();
-    await page.screenshot({ path: out });
+    await page.screenshot({ path: out, timeout: SHOT_TIMEOUT_MS });
     check(
       'no console or page errors',
       errors.length === 0,
