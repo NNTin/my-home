@@ -38,6 +38,8 @@ const RAIL_MAX = 96;
  * whole house.
  */
 const DRAW_CALLS = { phone: [250, 350], desktop: [350, 500] };
+/** The lamp pool and the lights that cast shadows (the sun, and 4 lamps on a desktop). */
+const LAMPS = { phone: [6, 1], desktop: [12, 5] };
 const QUALITIES = ['fast', 'auto', 'beautiful'];
 
 /** Counts what a page draws with WebGL, to tell a view at rest from one that keeps rendering. */
@@ -132,6 +134,23 @@ async function frameChecks(browser, { device, base, host, homeId }) {
           (await page.locator('canvas').first().getAttribute('data-tier')) === 'fast',
         `setting ${data?.setting}`,
       );
+      // Lamps (docs/design/realistic-render.md §6.4, §10.1): a fixed pool per device, and lamp
+      // shadows on a desktop only. A build before #111 reports no lamp change at all.
+      if (data?.lampChanges === undefined) {
+        console.log(`skip  the lamps ${where}: a build before #111 (no lamp pool)`);
+      } else {
+        const [pool, shadows] = LAMPS[device];
+        check(
+          `${where}: lamps are lit, at most ${pool}`,
+          data.litLamps > 0 && data.litLamps <= pool,
+          `${data.litLamps} lit`,
+        );
+        check(
+          `${where}: ${shadows} light${shadows === 1 ? ' casts a shadow, the sun' : 's cast shadows'}`,
+          data.shadowLights === shadows,
+          `${data.shadowLights} lights with shadows`,
+        );
+      }
       if (quality !== QUALITIES[0]) continue;
 
       // The budgets, once: a moving frame of the first view, then of the whole house.
@@ -170,9 +189,62 @@ async function frameChecks(browser, { device, base, host, homeId }) {
       await page.waitForTimeout(2000);
       check(`${where}: nothing is drawn afterwards`, (await draws()) === rest);
     }
+    await lampWalk(page, { device, base, homeId, perf, settled });
   } finally {
     await context.close();
   }
+}
+
+/**
+ * Walking from room to room moves the lamp pool (§6.4) and compiles nothing (§4.5): the figure
+ * walks until a pool light has changed its emitter, and the program count and the compile counter
+ * are what they were. A desktop's pool holds every lamp of the home, so only a phone's must move.
+ */
+async function lampWalk(page, { device, base, homeId, perf, settled }) {
+  const query = new URLSearchParams({ walk: 'first', perf: '1', hints: 'off' });
+  if (homeId) query.set('home', homeId);
+  await page.goto(new URL(`/?${query}`, base).href, { waitUntil: 'networkidle', timeout: 60_000 });
+  await page.waitForSelector('canvas', { timeout: 30_000 });
+  const where = `on a ${device}, walking`;
+  check(`${where}: the view settles`, await settled());
+  const start = await perf();
+  if (start?.lampChanges === undefined) {
+    console.log(`skip  the lamps ${where}: a build before #111 (no lamp pool)`);
+    return;
+  }
+  const [pool, shadows] = LAMPS[device];
+  // Forward, and around a corner when a wall stops the figure, until the pool has moved.
+  for (const [key, ms] of [
+    ['w', 4000],
+    ['a', 900],
+    ['w', 4000],
+    ['a', 900],
+    ['w', 4000],
+  ]) {
+    await page.keyboard.down(key);
+    await page.waitForTimeout(ms);
+    await page.keyboard.up(key);
+    if ((await perf()).lampChanges > start.lampChanges) break;
+  }
+  check(`${where}: the view settles after the walk`, await settled());
+  const now = await perf();
+  check(`${where}: frames were drawn`, now.frames > start.frames, `${now.frames - start.frames}`);
+  if (device === 'phone')
+    check(
+      `${where}: the pool moved to other lamps`,
+      now.lampChanges > start.lampChanges,
+      `${now.lampChanges - start.lampChanges} lights reassigned`,
+    );
+  check(
+    `${where}: no shader was compiled by the walk or a lamp reassignment`,
+    now.compiles === start.compiles && now.programs === start.programs,
+    `${start.programs} programs (${start.compiles} compiled) before, ${now.programs} (${now.compiles}) after`,
+  );
+  check(
+    `${where}: at most ${pool} lamps are lit and ${shadows} light${shadows === 1 ? ' casts a shadow' : 's cast shadows'}`,
+    now.litLamps <= pool && now.shadowLights === shadows,
+    `${now.litLamps} lit, ${now.shadowLights} with shadows`,
+  );
 }
 
 /** Whether two boxes share any area (a pixel of rounding is not an overlap). */

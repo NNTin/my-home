@@ -252,6 +252,12 @@ across; [photos.md § Field of view](photos.md#field-of-view)).
 The frame loop runs outside the canvas and only the controls re-render while the figure moves; the 3D scene
 reads the figure from a ref every frame.
 
+**Light.** In first person the rooms are lit by their own lamps: the lamp pool (`docs/mobile.md` § Battery and
+heat) gathers around the figure's eyes, and the daylight of the studio environment is lowered to 0.3 under the
+ceiling. A room without a lamp is lit by the **head lamp**, a soft light at the figure's eyes that is off
+wherever the room has a lamp of its own. Through the windows the backdrop is a vertical gradient. Walking from
+room to room moves pool lights only from lamps of rooms the figure is not in, and compiles no shader.
+
 ## Testing on an environment
 
 ```sh

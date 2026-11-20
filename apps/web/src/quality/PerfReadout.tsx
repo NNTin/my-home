@@ -38,7 +38,7 @@ export function PerfReadout({ governor }: { governor: FrameGovernor }) {
     ['Draw calls, last 3 s', `${data.recentDrawCalls} (${data.recentFrames} frames)`],
     ['Triangles', String(data.triangles)],
     ['Textures', String(data.textures)],
-    ['Lit lamps', String(data.litLamps)],
+    ['Lit lamps', `${data.litLamps} (${data.lampChanges} reassigned)`],
     ['Lights with shadows', String(data.shadowLights)],
     ['Shader programs', `${data.programs} (${data.compiles} compiled)`],
     ['Frame, median', ms(data.medianFrameMs)],

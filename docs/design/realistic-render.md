@@ -689,6 +689,9 @@ drawn.
   tier widens the filter with the light's radius, which is a uniform. If step 2 finds that this cannot give a
   visible penumbra at the three fixed views, the device uses `VSMShadowMap` in **both** tiers: the shadow type
   is fixed per device (§4.5). The choice is recorded in that step's PR.
+- **Chosen in step 2: `PCFShadowMap` on a phone and on a desktop** (D26). three r187 filters a PCF map with five
+  samples on a disc whose size is the light's radius, turned per pixel by a fixed pattern of the pixel's position
+  (no time in it, §6.7), so the radius alone gives the penumbra. `VSMShadowMap` is not used.
 
 ### 6.3 Environment and backdrop
 
@@ -700,31 +703,42 @@ drawn.
   of the real-time tiers; render mode has no such limit.
 - **Backdrop:** `sky` is today's flat blue and stays the default of the free view. Named views default to
   `studio-light` (white). `studio-dark` (charcoal) is offered as a backdrop; it is daylight on a dark ground,
-  not an evening.
+  not an evening. From step 2 `?backdrop=` chooses one for a visit; the View panel's control comes with the
+  named views (§7.3).
 - **Through windows** at eye level the backdrop is a simple vertical gradient.
 
 ### 6.4 Fixtures that emit light
 
 - A catalogue type may declare that it **emits light**: a position in its local frame, a colour, an intensity
-  in candela and a range. `fixture.downlight` is the first.
+  in candela and a range. `fixture.downlight` is the first. The declaration is `emits(values)` of the type's
+  piece module, next to `parts`, because the colour follows a parameter (D27). The rig's lamp factor turns
+  candela into the scene's intensity.
 - **A fixed lamp pool.** The scene holds a fixed number of point lights, created once: **6 on a phone, 12 on
   a desktop**. They are never added or removed. Each frame's pool is assigned to the emitters nearest the
   orbit target by **moving** the lights and setting their colour, intensity and range; a pool light with no
-  emitter has intensity 0. The number of lights the shaders see therefore never changes (§4.5).
+  emitter has intensity 0. The number of lights the shaders see therefore never changes (§4.5). In a view
+  from inside a room (eye level, walking in first person) the pool gathers around the eye instead.
 - **The same lamps in both tiers.** Fast and beautiful frames light the same emitters at the same intensity,
   so a view does not change brightness when it settles into a refined frame.
 - **Lamp shadows depend on the device, not the tier.** On a desktop, 4 pool lights cast shadows, in fast and
   in beautiful frames alike; they are assigned to the 4 nearest lit emitters. Their maps are static: redrawn
-  when a caster or the assignment changes, not per frame.
+  when a caster or the assignment changes, not per frame. While something moves a caster (a furniture drag, the
+  walking figure in the overview) only the sun's map follows it; the lamps' maps are drawn once it rests (D28).
 - **A phone never draws a lamp shadow,** in any tier and any setting. The sun's is its only shadow map
   (§10.1). Its refined `auto` frame and "Always beautiful" add ambient occlusion, anti-aliasing and the wider
   sun-shadow filter, and nothing that casts a shadow.
 - **Reassignment is hidden.** When the nearest emitters change (orbiting to another room, walking), lights are
-  reassigned only while their intensity is 0 or their room is not visible, so no lamp visibly jumps.
+  reassigned only while their intensity is 0 or their room is not visible, so no lamp visibly jumps. In an
+  orbit view every room that is drawn counts as visible; in a view from inside, only the room the eye is in.
+  A pool that is full of lamps in view therefore stays as it is.
 - **No leaking:** an emitter's range ends at the bounds of its room, so an unshadowed lamp does not light the
-  far side of a wall.
+  far side of a wall. The range is the distance to the room's farthest corner, or the type's own range when
+  that is shorter: a lamp lights its whole room and nothing beyond that distance. A range is a sphere and a
+  room is not, so behind a wall nearer than that corner an unshadowed lamp still lights a strip of the next
+  room, fading to nothing at the range (D29).
 - **Walk mode's head lamp goes** once the room the figure stands in has an emitter; it stays as the fallback in
-  rooms without one, as one more fixed pool light at intensity 0 elsewhere.
+  rooms without one, as one more fixed pool light at intensity 0 elsewhere. "View from here" is lit the same
+  way, at the photo's pose.
 
 ### 6.5 The seam for #18
 
@@ -1238,6 +1252,10 @@ All seven proposed defaults were accepted.
 | D23 | The backdrop is laid in by the output pass, over a target cleared transparent                              | The backdrop keeps its colour under any tone mapping; glass and edges in front of it blend as shown                                                                                                                       |
 | D24 | A part with its own roughness, metalness or shadow flags stays its own mesh until parts name finishes      | A merged mesh has one material; merging them would change how the piece looks. Merging also fixes the draw order of a piece's transparent parts to the parts' order, where three.js sorted them by distance before (#110) |
 | D25 | Surfaces that overlap in one pixel (glass over a wall, an anti-aliased edge) blend before tone mapping     | A consequence of D20: the old renderer blended tone-mapped colours. Translucent parts read denser                                                                                                                         |
+| D26 | `PCFShadowMap` on every device; the tiers differ in the light's radius only                                | three r187 filters PCF on a disc of the light's radius with a fixed per-pixel pattern: a penumbra without a second shadow type, and deterministic (#111)                                                                  |
+| D27 | A type declares the light it emits in its piece module (`emits(values)`), not in the shared definition     | The colour follows a parameter of the use, as the parts do; nothing but the viewer and render mode needs it (#111)                                                                                                        |
+| D28 | While a caster moves, only the sun's shadow follows it; the lamps' shadow maps are drawn when it rests     | A desktop's four lamp maps are 24 more views of the scene: per frame they would be most of a moving frame's draw calls (#111)                                                                                             |
+| D29 | A lamp's range is the distance to its room's farthest corner; a residual leak behind nearer walls is kept  | A range is a sphere. Cutting the light at the room's outline instead would draw a hard edge where rooms are open to each other, as the kitchen is to the corridor (#111)                                                  |
 
 ## 14. Open questions
 

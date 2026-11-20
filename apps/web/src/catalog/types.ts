@@ -87,6 +87,21 @@ export interface DimensionLine {
   name?: string;
 }
 
+/**
+ * Light a piece emits (docs/design/realistic-render.md §6.4), in its local frame. The viewer lights
+ * the nearest emitters with its fixed lamp pool (`lighting/lamps.ts`); the rig scales the intensity.
+ */
+export interface PieceEmitter {
+  /** Where the light comes from: for a recessed light, below its lens. */
+  position: Vec3;
+  /** `#rrggbb`. */
+  color: string;
+  /** Candela. */
+  intensity: number;
+  /** How far the light reaches, in metres; it ends sooner at the bounds of the piece's room. */
+  range: number;
+}
+
 /** Furniture highlight: selected in the editor, or overlapping a wall or another item. */
 export interface PartState {
   selected: boolean;
@@ -118,6 +133,8 @@ export interface PieceModule {
    * (`sectionOf` in piece-page/section.ts).
    */
   section?(values: ParamValues, ctx: PieceContext): SectionShape[];
+  /** Placed kinds: the light the piece emits; a piece without it emits none. */
+  emits?(values: ParamValues, ctx: PieceContext): PieceEmitter[];
 }
 
 /** Identity helper that type-checks a module definition. */

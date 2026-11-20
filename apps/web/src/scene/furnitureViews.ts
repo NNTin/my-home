@@ -44,6 +44,8 @@ export function furnitureViews(
         rotationY: item.rotationY,
         size: type?.size ?? UNKNOWN_SIZE,
         parts: type?.parts ?? UNKNOWN_PARTS,
+        ...(type && type.emitters.length > 0 && { emitters: type.emitters }),
+        ...(item.roomId !== undefined && { roomId: item.roomId }),
         selected: item.id === selectedId,
         colliding: colliding?.has(item.id) ?? false,
       },

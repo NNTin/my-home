@@ -11,7 +11,7 @@ import { ellipse, rectangle } from '../editor/geometry';
 import { box } from './parts';
 import { pieces } from './registry';
 import { sizeOf } from './furniture/size';
-import type { Part, PieceModule } from './types';
+import type { Part, PieceEmitter, PieceModule } from './types';
 
 /**
  * Furniture as the editor and the viewer use it: catalogue types placed in rooms (kinds
@@ -59,6 +59,8 @@ export interface ResolvedFurniture extends FurnitureType {
   /** Convex footprint in the local frame (x, z), from the effective size. */
   footprint: Vec2[];
   parts: Part[];
+  /** The light it emits, in the local frame; empty for most types. */
+  emitters: PieceEmitter[];
 }
 
 export interface FurnitureCategory {
@@ -86,6 +88,8 @@ export interface FurnitureRegistry {
 /** Items of an unknown type (e.g. a removed one) are drawn and collide as this grey box. */
 export const UNKNOWN_SIZE: ItemSize = { width: 0.5, depth: 0.5, height: 0.5 };
 const UNKNOWN_COLOR = '#9e9e9e';
+/** One array for every type that emits no light. */
+const NO_EMITTERS: PieceEmitter[] = [];
 const CACHE_LIMIT = 500;
 
 export const unknownParts = (size = UNKNOWN_SIZE, color = UNKNOWN_COLOR): Part[] => [
@@ -131,12 +135,10 @@ export function createFurniture(types: readonly CatalogType[] = catalog.types): 
       found.type.footprint === 'ellipse'
         ? ellipse(size.width, size.depth)
         : rectangle(size.width, size.depth);
-    const parts = found.piece.parts(values, {
-      width: size.width,
-      height: size.height,
-      wallDepth: size.depth,
-    });
-    return { ...found, values, size, footprint, parts };
+    const ctx = { width: size.width, height: size.height, wallDepth: size.depth };
+    const parts = found.piece.parts(values, ctx);
+    const emitters = found.piece.emits?.(values, ctx) ?? NO_EMITTERS;
+    return { ...found, values, size, footprint, parts, emitters };
   };
   const cache = new Map<string, ResolvedFurniture | undefined>();
   return {
