@@ -5,9 +5,9 @@ the souterrain apartment, in the existing web app, on desktop and phone. It foll
 [#107](https://github.com/NNTin/my-home/issues/107) and the owner's answers there, and is written for
 [#108](https://github.com/NNTin/my-home/issues/108).
 
-This document is a plan, not a description of the code: nothing in it exists yet unless it says "today". The
-implementation sub-issues are created from [Rollout](#12-rollout) once [Open questions](#14-open-questions) is
-empty.
+This document is a plan, not a description of the code: nothing in it exists yet unless it says "today". Its
+[open questions](#14-open-questions) are all answered, so the implementation sub-issues can be created from
+[Rollout](#12-rollout).
 
 ## Contents
 
@@ -54,6 +54,7 @@ empty.
 | WebGPU for the main viewer                                  | Not now. Only render mode uses WebGPU, in its own canvas (§9)                       |
 | Gaussian splats, AI restyling of renders                    | No (#107)                                                                           |
 | Moving, resizing or re-angling anything                     | Never: the exterior, floor plan and room plan are fixed (`AGENTS.md`)               |
+| Editing finishes in the app                                 | Not in this epic: finishes change by a PR to `home.json` (§5.5)                     |
 | Interiors of the ground floor and attic                     | Out of scope: they appear as neutral shells (§7.5)                                  |
 
 ## 2. Where we start
@@ -457,6 +458,8 @@ the manifest entry, and a note of which photo ids called for it.
 - **Manifest:** `apps/web/src/finishes/ASSETS.md`, generated from the definitions, lists every file with its
   source, licence, size and SHA-256. A unit test fails when a file is not listed, a listed file is missing, a
   checksum differs or a budget of §10 is exceeded.
+- **In git:** the files are committed to the repository as plain files, not Git LFS. The manifest test caps the
+  folder at 16 MB; the twelve sets take about 8 MB.
 - **Tooling:** `tools/finishes/fetch.mjs` (download, verify, convert, write the manifest). It runs on a
   developer machine or in an agent session, not in CI; CI only checks the result.
 
@@ -515,7 +518,10 @@ A **finish use** is:
 - **Validation:** the zod schema and the generated JSON Schema gain these fields (`pnpm schema:generate`). The
   api and CI reject an unknown finish id, a finish used on a surface it does not list, and a tint on a finish
   that is not tintable.
-- **The pastel room colours** of today become a view option, "Plan colours", for telling rooms apart.
+- **The pastel room colours** of today become a view option, "Plan colours", for telling rooms apart. It is off
+  by default and remembered per device: from step 3a everyone sees finishes.
+- **Finishes are edited in git,** by a PR to `home.json`. There is no editing of finishes in the app in this
+  epic; it can follow later with the same data model, stored like opening overrides.
 
 ```mermaid
 erDiagram
@@ -826,6 +832,7 @@ viewer's own renderer instead, and the PR says so. Either way the tier's interfa
 | Draw calls while idle                  | 0                           | 0                                                           |
 | Triangles, whole house                 | ≤ 150,000                   | ≤ 150,000                                                   |
 | Triangles per catalogue piece          | ≤ 5,000                     | ≤ 5,000                                                     |
+| Texture files in the repository        | ≤ 16 MB                     | same                                                        |
 | Texture download, all finishes         | ≤ 1.5 MB                    | ≤ 6 MB                                                      |
 | Texture memory on the GPU              | ≤ 40 MB                     | ≤ 220 MB                                                    |
 | Lights with shadows                    | 1 (sun)                     | 5 (sun and 4 lamps)                                         |
@@ -856,7 +863,9 @@ about 200 MB.
 CI and the agents' machine render in software, so frame times mean nothing there. `?perf=1` shows a small
 readout over the viewer: tier, draw calls, triangles, textures loaded, median and 95th-percentile frame time
 while moving, and the refined frame's time. Steps 1, 2 and 8 end with the owner opening one link on a phone
-and one on a desktop and reporting the numbers. The readout stays in the app as a diagnostic.
+and one on a desktop and reporting the numbers. The owner has agreed to these
+checks and has a desktop with a discrete GPU for step 8. Each of those sub-issues carries an owner-only
+checklist of two links. The readout stays in the app as a diagnostic.
 
 ## 11. Testing and verification
 
@@ -1090,6 +1099,20 @@ the catalogue, a family per PR.
 | 10  | An evening look?                         | **In #18**, not here                                                                          |
 | 11  | The offline Blender pipeline?            | **No**                                                                                        |
 
+### The owner's answers to this design's questions (#108, 2026-11-20)
+
+All seven proposed defaults were accepted.
+
+| #   | Question                                                                                  | Decision                                                                                               | In         |
+| --- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ---------- |
+| Q1  | May finishes be edited in the app?                                                        | No: only in `home.json` by PR in this epic. In-app editing can follow later with the same data model   | §5.5       |
+| Q2  | Do finishes replace the pastel room colours for everyone?                                 | Yes, in every tier. "Plan colours" is an option, off by default, remembered per device                 | §5.5       |
+| Q3  | Is beautiful the desktop default on production, with Neutral tone mapping replacing ACES? | Yes. `fast` stays one click away and the viewer steps down by itself                                   | §3.2, §6.6 |
+| Q4  | Texture files in plain git or Git LFS?                                                    | Plain git, capped at 16 MB by the manifest test                                                        | §5.3       |
+| Q5  | May render mode require WebGPU?                                                           | Yes: desktop browsers with WebGPU; others get one sentence and keep their tier                         | §9         |
+| Q6  | Will the owner measure on real devices, and is a desktop with a discrete GPU available?   | Yes to both: an owner-only checklist of two `?perf=1` links at the end of steps 1, 2 and 8             | §10.3      |
+| Q7  | Should the design reserve more than a seam for #18?                                       | No. #18 decides in its own design how a clock drives the light rig and how that fits the location rule | §6.5       |
+
 ### Design decisions
 
 | #   | Decision                                                                           | Why                                                                                   |
@@ -1114,33 +1137,4 @@ the catalogue, a family per PR.
 
 ## 14. Open questions
 
-Each is also a comment on #108 with the same number. This section must be empty before #108 is done; an
-answered question moves to §13.
-
-1. **Editing finishes in the app.** Should a room's finish be changeable in the app (stored like opening
-   overrides, exported through the seed), or only in `home.json` by PR?
-   _Proposed default:_ only in `home.json` by PR in this epic. In-app editing can follow later without changing
-   the data model.
-2. **The default look when finishes arrive.** From step 3a the pastel room colours are replaced by finishes for
-   everyone, with "Plan colours" as an option that is off by default. Is that the wanted default?
-   _Proposed default:_ yes. Finishes are the default in every tier; "Plan colours" is remembered per device.
-3. **Beautiful as the desktop default on production.** From step 2 every desktop visitor gets the beautiful
-   tier without opting in, and every existing frame changes slightly (Neutral tone mapping instead of ACES).
-   _Proposed default:_ yes; `fast` stays one click away and the viewer steps down by itself when frames are
-   slow.
-4. **Texture files in git.** The twelve sets are about 8 MB of binary WebP files committed to the repository
-   (both sizes), growing when finishes are added. Plain git, or Git LFS?
-   _Proposed default:_ plain git, with a cap of 16 MB for `finishes/textures` enforced by the manifest test.
-   LFS would complicate CI and the container builds for little gain at this size.
-5. **Render mode needs WebGPU.** It would work in current Chrome, Edge and Safari on a desktop and not in
-   browsers without WebGPU or on phones in this epic. Acceptable?
-   _Proposed default:_ yes. Other browsers get one sentence and keep the beautiful tier.
-6. **Measurements only the owner can make.** Steps 1, 2 and 8 each end with the owner opening a `?perf=1` link
-   on a phone and on a desktop and reporting a few numbers (step 8: a desktop with a discrete GPU). Is that
-   acceptable, and is such a desktop available?
-   _Proposed default:_ yes to both. Each of those sub-issues carries an owner-only checklist of two links.
-7. **The boundary with #18.** #18 asks for sunlight that follows the time of day, which is a geographic sun;
-   the answer to #107 was "no geographic sun". This design keeps a studio sun and only leaves a seam (§6.5).
-   Should it reserve anything more for #18?
-   _Proposed default:_ no. #18 decides in its own design how a clock drives the light rig and how that fits the
-   location rule.
+None.
