@@ -39,6 +39,78 @@
       }
     },
     {
+      "id": "souterrain-bench-1",
+      "typeId": "garden.bench",
+      "name": "Patio · bench",
+      "levelId": "souterrain",
+      "position": {
+        "x": 13.72,
+        "z": -9.9
+      },
+      "rotationY": 1.5707963267948966,
+      "params": {}
+    },
+    {
+      "id": "souterrain-bird-house-1",
+      "typeId": "garden.bird-house",
+      "name": "Garden · bird house",
+      "levelId": "souterrain",
+      "position": {
+        "x": 4.3,
+        "z": -14.7
+      },
+      "rotationY": 0,
+      "params": {}
+    },
+    {
+      "id": "souterrain-chair-1",
+      "typeId": "garden.chair",
+      "name": "Patio · chair 1",
+      "levelId": "souterrain",
+      "position": {
+        "x": 15.38,
+        "z": -10.25
+      },
+      "rotationY": -1.5707963267948966,
+      "params": {}
+    },
+    {
+      "id": "souterrain-chair-2",
+      "typeId": "garden.chair",
+      "name": "Patio · chair 2",
+      "levelId": "souterrain",
+      "position": {
+        "x": 15.38,
+        "z": -9.55
+      },
+      "rotationY": -1.5707963267948966,
+      "params": {}
+    },
+    {
+      "id": "souterrain-chair-3",
+      "typeId": "garden.chair",
+      "name": "Patio · chair 3",
+      "levelId": "souterrain",
+      "position": {
+        "x": 14.65,
+        "z": -10.85
+      },
+      "rotationY": 0,
+      "params": {}
+    },
+    {
+      "id": "souterrain-chair-4",
+      "typeId": "garden.chair",
+      "name": "Patio · chair 4",
+      "levelId": "souterrain",
+      "position": {
+        "x": 14.65,
+        "z": -8.95
+      },
+      "rotationY": 3.141592653589793,
+      "params": {}
+    },
+    {
       "id": "souterrain-downlight-10",
       "typeId": "fixture.downlight",
       "name": "Kitchen · downlight 4",
@@ -168,6 +240,36 @@
       "params": {}
     },
     {
+      "id": "souterrain-grass-1",
+      "typeId": "garden.grass",
+      "name": "Garden · ornamental grass",
+      "levelId": "souterrain",
+      "position": {
+        "x": 4.43,
+        "z": -15.83
+      },
+      "rotationY": 0,
+      "params": {
+        "diameter": 0.7,
+        "height": 1.4
+      }
+    },
+    {
+      "id": "souterrain-log-1",
+      "typeId": "garden.log",
+      "name": "Garden · log",
+      "levelId": "souterrain",
+      "position": {
+        "x": 8,
+        "z": -11.2
+      },
+      "rotationY": 0,
+      "params": {
+        "diameter": 0.4,
+        "width": 0.7
+      }
+    },
+    {
       "id": "souterrain-microwave-1",
       "typeId": "appliance.microwave",
       "name": "Kitchen · microwave",
@@ -181,6 +283,35 @@
       "params": {
         "color": "#cfcfcc"
       }
+    },
+    {
+      "id": "souterrain-pergola-1",
+      "typeId": "garden.pergola",
+      "name": "Patio · pergola",
+      "levelId": "souterrain",
+      "position": {
+        "x": 14.3,
+        "z": -9.6
+      },
+      "rotationY": 1.5707963267948966,
+      "params": {
+        "depth": 1.75,
+        "frontHeight": 2.15,
+        "height": 2.65,
+        "width": 2.9
+      }
+    },
+    {
+      "id": "souterrain-planter-1",
+      "typeId": "garden.planter",
+      "name": "Garden · planter",
+      "levelId": "souterrain",
+      "position": {
+        "x": 10.3,
+        "z": -11.25
+      },
+      "rotationY": 0,
+      "params": {}
     },
     {
       "id": "souterrain-radiator-1",
@@ -197,6 +328,38 @@
       "params": {}
     },
     {
+      "id": "souterrain-rock-pile-1",
+      "typeId": "garden.rock-pile",
+      "name": "Patio · dry-stone pile",
+      "levelId": "souterrain",
+      "position": {
+        "x": 16.6,
+        "z": -5.9
+      },
+      "rotationY": 0,
+      "params": {
+        "depth": 0.7,
+        "height": 0.45,
+        "width": 2
+      }
+    },
+    {
+      "id": "souterrain-rock-pile-2",
+      "typeId": "garden.rock-pile",
+      "name": "Patio · dry-stone pile by the door",
+      "levelId": "souterrain",
+      "position": {
+        "x": 14.3,
+        "z": -5.75
+      },
+      "rotationY": 0,
+      "params": {
+        "depth": 1,
+        "height": 0.6,
+        "width": 1.8
+      }
+    },
+    {
       "id": "souterrain-shoe-cabinet-1",
       "typeId": "furniture.shoe-cabinet",
       "name": "Corridor · shoe cabinet",
@@ -209,6 +372,67 @@
       "params": {}
     },
     {
+      "id": "souterrain-shrub-1",
+      "typeId": "garden.shrub",
+      "name": "Patio · rose bush",
+      "levelId": "souterrain",
+      "position": {
+        "x": 16.8,
+        "z": -9.6
+      },
+      "rotationY": 0,
+      "params": {
+        "diameter": 1.1,
+        "flowerColor": "#e46a3c",
+        "flowers": "roses",
+        "height": 1.6
+      }
+    },
+    {
+      "id": "souterrain-shrub-2",
+      "typeId": "garden.shrub",
+      "name": "Garden · shrub",
+      "levelId": "souterrain",
+      "position": {
+        "x": 3.8,
+        "z": -16.4
+      },
+      "rotationY": 0,
+      "params": {
+        "diameter": 0.9,
+        "height": 1.6,
+        "leafColor": "#5d6b3c"
+      }
+    },
+    {
+      "id": "souterrain-stepping-stone-1",
+      "typeId": "garden.stepping-stone",
+      "name": "Garden · stepping stone 1",
+      "levelId": "souterrain",
+      "position": {
+        "x": 16.87,
+        "z": -13.1
+      },
+      "rotationY": 0,
+      "params": {
+        "diameter": 0.6
+      }
+    },
+    {
+      "id": "souterrain-stepping-stone-2",
+      "typeId": "garden.stepping-stone",
+      "name": "Garden · stepping stone 2",
+      "levelId": "souterrain",
+      "position": {
+        "x": 13.55,
+        "z": -13.46
+      },
+      "rotationY": 0,
+      "params": {
+        "diameter": 0.6
+      }
+    },
+    {
       "id": "souterrain-storage-shelf-1",
       "typeId": "furniture.storage-shelf",
       "name": "Corridor · storage shelf",
@@ -219,6 +443,21 @@
       },
       "rotationY": 3.141592653589793,
       "params": {}
+    },
+    {
+      "id": "souterrain-table-1",
+      "typeId": "garden.table",
+      "name": "Patio · garden table",
+      "levelId": "souterrain",
+      "position": {
+        "x": 14.65,
+        "z": -9.9
+      },
+      "rotationY": 1.5707963267948966,
+      "params": {
+        "depth": 0.8,
+        "width": 1.2
+      }
     },
     {
       "id": "souterrain-tall-cabinet-1",

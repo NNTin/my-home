@@ -61,7 +61,7 @@ describe('catalogSections', () => {
     ]);
     expect(sections[3]!.groups.map((g) => [g.name, g.types.map((t) => t.name)])).toEqual([
       ['Garden', ['Bird house']],
-      ['Patio', ['Garden chair', 'Garden table', 'Lean-to pergola']],
+      ['Patio', ['Garden bench', 'Garden chair', 'Garden table', 'Lean-to pergola']],
       ['Plants', ['Ornamental grass', 'Planter', 'Shrub']],
       ['Stone & wood', ['Dry-stone pile', 'Log', 'Stepping stone']],
     ]);

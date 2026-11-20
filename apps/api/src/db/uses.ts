@@ -8,6 +8,7 @@ import {
   modelUses,
   openingFitIssues,
   outdoorAreaAt,
+  outdoorRoomIssue,
   type HistoryEntry,
   type HomeSettings,
   type ListUsesQuery,
@@ -149,6 +150,8 @@ function placementUse(model: HomeModel, p: PlacementRow): Use {
     const at = { levelId: p.levelId, x: p.x, z: p.z, rotationY: p.rotationY };
     problems.push(...mountIssues(model, effective.values, at, p.mounting, p.roomId));
     problems.push(...heightFitIssues(model, type, effective.values, at, p.mounting, p.elevation));
+    const inRoom = outdoorRoomIssue(model, type, p.levelId, p);
+    if (inRoom) problems.push(inRoom);
   }
   return withStatus({
     id: p.id,

@@ -8,6 +8,7 @@ import {
   heightFitIssues,
   isPlacedKind,
   outdoorAreaAt,
+  outdoorRoomIssue,
   mountingIssue,
   mountingsFor,
   roomAt,
@@ -105,6 +106,17 @@ export function validOverrides(type: CatalogType, params: unknown): ParamValues 
 const checkMounting = (type: CatalogType, mounting: PlacementMounting, elevation: number) => {
   const issue = mountingIssue(type, mounting, elevation);
   if (issue) throw problem(400, issue, { issues: [{ path: 'mounting', message: issue }] });
+};
+
+/** A 422 when an outdoor piece would stand in a room. */
+const checkOutside = (
+  model: HomeModel,
+  type: CatalogType,
+  levelId: string,
+  at: { x: number; z: number },
+) => {
+  const issue = outdoorRoomIssue(model, type, levelId, at);
+  if (issue) throw problem(422, issue, { issues: [{ path: 'position', message: issue }] });
 };
 
 /** A 422 when the piece reaches above the ceiling over it. */
@@ -279,6 +291,7 @@ export function placementStore(db: Db, options: { retentionDays: number }) {
         elevation,
       );
       if (high.length > 0) throw tooHigh(high);
+      checkOutside(m, type, level.id, input.position);
       const row = await db.transaction((tx) =>
         store.insert(
           tx,
@@ -385,6 +398,7 @@ export function placementStore(db: Db, options: { retentionDays: number }) {
         const elevation = input.elevation ?? (mounting === 'ceiling' ? 0 : current.elevation);
         const mounted = mounting !== current.mounting || elevation !== current.elevation;
         if (type && mounted) checkMounting(type, mounting, elevation);
+        if (type && moved) checkOutside(m, type, levelId, position);
 
         // Nor a change push a piece that fitted under the ceiling above it.
         if (type && (mounted || moved || !sameJson(params, current.params))) {

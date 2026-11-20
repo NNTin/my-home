@@ -4,6 +4,7 @@ import {
   catalog,
   isPlacedKind,
   mountingIssue,
+  outdoorRoomIssue,
   ParamValues,
   TypeId,
 } from './catalog';
@@ -187,7 +188,8 @@ function modelIds(value: unknown, into = new Set<string>()): Set<string> {
 
 /**
  * Why a seed does not fit its home and the catalogue (empty when it does): every placement's type
- * is a furniture, fixture or outdoor type, its mounting one the type allows (`mountingsFor`), its params
+ * is a furniture, fixture or outdoor type (an outdoor one outside the rooms), its mounting one the type
+ * allows (`mountingsFor`), its params
  * are valid basic params, its level exists and its id
  * is unique and not a home-model id; every override is of a use in the model, for the use's
  * current type, with valid params that fit the hole; every note's type is in the catalogue and
@@ -215,6 +217,8 @@ export function seedIssues(seed: HomeSeed, model: HomeModel): SeedIssue[] {
     }
     const mounted = mountingIssue(type, p.mounting ?? 'floor', p.elevation ?? 0);
     if (mounted) add(`${at}.mounting`, mounted);
+    const inRoom = outdoorRoomIssue(model, type, p.levelId, p.position);
+    if (inRoom) add(`${at}.position`, inRoom);
     const parsed = basicOverridesSchema(type).safeParse(p.params);
     if (!parsed.success) {
       for (const issue of parsed.error.issues) {

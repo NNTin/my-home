@@ -73,6 +73,27 @@ export const chair = defineType({
   footprint: 'rectangle',
 });
 
+export const bench = defineType({
+  id: 'garden.bench',
+  kind: 'outdoor',
+  family: 'garden',
+  name: 'Garden bench',
+  description: 'A wooden slatted bench with a backrest, against a wall or free-standing.',
+  icon: '🪑',
+  category: 'Patio',
+  placement: 'floor',
+  mounting: 'floor',
+  params: {
+    color: color('Colour', '#8e8a82'),
+    width: length('Width', 1.2, 0.8, 2.4),
+    depth: length('Depth', 0.55, 0.4, 0.7),
+    height: length('Height', 0.85, 0.7, 1),
+    seat: fixedLength('Seat height', 0.45),
+  },
+  snapping: { wall: 'back' },
+  footprint: 'rectangle',
+});
+
 export const planter = defineType({
   id: 'garden.planter',
   kind: 'outdoor',
@@ -218,6 +239,7 @@ export const garden = [
   pergola,
   table,
   chair,
+  bench,
   planter,
   shrub,
   grass,

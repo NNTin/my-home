@@ -80,7 +80,7 @@ describe('golden render records', () => {
 
   it('draws every outdoor type as recorded', async () => {
     const outdoor = catalog.types.filter(isOutdoorKind).map((t) => furniture.get(t.id)!);
-    expect(outdoor).toHaveLength(10);
+    expect(outdoor).toHaveLength(11);
     const records = await renderRecords(
       <FurnitureLayer items={furnitureViews(outdoor)} handlers={handlers} />,
     );

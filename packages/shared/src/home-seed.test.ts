@@ -76,6 +76,16 @@ describe('seedIssues', () => {
     expect(paths({ placements: [{ ...bed, id: home.rooms[0]!.id }] })).toEqual([
       'placements[0].id',
     ]);
+    // An outdoor piece stands outside the rooms: on the patio, not in the bed room.
+    const pergola = { ...bed, id: 'souterrain-pergola-1', typeId: 'garden.pergola', params: {} };
+    expect(paths({ placements: [{ ...pergola, position: { x: 16, z: -4 } }] })).toEqual([]);
+    expect(seedIssues(seed({ placements: [pergola] }), home)).toEqual([
+      {
+        path: 'placements[0].position',
+        message:
+          'The lean-to pergola is an outdoor piece: it stands outside the rooms, not in Bed room',
+      },
+    ]);
   });
 
   it('checks overrides: the use is in the model, of that type, with valid params', () => {

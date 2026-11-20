@@ -103,6 +103,22 @@ describe('placements', () => {
       // Outside every outdoor area: the level's name, as for furniture.
       const far = await place({ typeId: 'garden.shrub', position: { x: 40, z: 40 } });
       expect(far.name).toBe('Souterrain · Shrub');
+      // Never in a room: placed there, or moved there.
+      const inRoom = await inject('POST', url, {
+        typeId: 'garden.chair',
+        levelId: 'souterrain',
+        position: { x: -3, z: 2.5 },
+        rotationY: 0,
+      });
+      expect(inRoom.statusCode).toBe(422);
+      expect(inRoom.json().message).toMatch(
+        /outdoor piece: it stands outside the rooms, not in Bedroom/,
+      );
+      const moved = await inject('PATCH', `${url}/${far.id}`, {
+        version: far.version,
+        position: { x: -3, z: 2.5 },
+      });
+      expect(moved.statusCode).toBe(422);
     });
 
     it('places fixtures with stable ids: one per light, kept through moves and the trash', async () => {
