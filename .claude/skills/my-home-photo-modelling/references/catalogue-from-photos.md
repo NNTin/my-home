@@ -29,7 +29,7 @@ garden of the souterrain went this way: the `outdoor` kind, ten `garden.*` types
   - the piece module in `apps/web/src/catalog/<family>/<variant>/`: boxes and cylinders, `rotationX` to tilt,
     at most 8 dimension lines;
   - the tests that list every type (`catalog.test.ts`, `Catalog.test.tsx`), the goldens (`vitest -u
-src/catalog/golden.test.tsx`, reviewed), a test for anything clever, and the table in `docs/catalog.md`.
+src/catalog/golden.test.ts`, reviewed), a test for anything clever, and the table in `docs/catalog.md`.
 - Pick the kind by where the piece is:
   - `furniture`: in a room, stands or hangs;
   - `fixtures`: built in (lights, heating);

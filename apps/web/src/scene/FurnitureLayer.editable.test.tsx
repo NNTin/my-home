@@ -1,5 +1,6 @@
 import ReactThreeTestRenderer from '@react-three/test-renderer';
 import { describe, expect, it, vi } from 'vitest';
+import { box } from '../catalog/parts';
 import { FurnitureLayer, type FurnitureHandlers, type FurnitureView } from './FurnitureLayer';
 
 const item: FurnitureView = {
@@ -7,7 +8,7 @@ const item: FurnitureView = {
   position: [0, 0, 0],
   rotationY: 0,
   size: { width: 1, depth: 2, height: 0.5 },
-  parts: [{ kind: 'box', size: [1, 0.5, 2], position: [0, 0.25, 0], color: '#888888' }] as never,
+  parts: [box([0, 0.25, 0], [1, 0.5, 2], '#888888', 'body')],
   selected: true,
   colliding: false,
 };

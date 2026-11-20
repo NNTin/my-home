@@ -138,13 +138,15 @@ The registry rejects a module whose `id` does not match its folder, that lacks `
 `dimensions`, has no shared type or is missing for a type, with the file path in the error, so a
 broken piece fails the tests and the build.
 
-## Golden render records
+## Golden draw lists
 
-[`catalog/golden.test.tsx`](../apps/web/src/catalog/golden.test.tsx) renders both homes and every
-furniture type without WebGL and compares every mesh (geometry, world matrix, material, shadows, in
-draw order) with the records in `apps/web/src/catalog/__golden__/`. **A design change updates the
+[`catalog/golden.test.ts`](../apps/web/src/catalog/golden.test.ts) builds the **draw list** of both homes and of
+every furniture and outdoor type at its default size, without WebGL, and compares every draw item (shape, world
+matrix, finish and tint, material settings, shadow flags, in draw order) with the records in
+`apps/web/src/catalog/__golden__/`. The draw list ([`builder/drawList.ts`](../apps/web/src/builder/drawList.ts)) is
+everything the renderer is given; how it is merged into meshes is not recorded. **A design change updates the
 goldens in the same PR and says so**: run `pnpm --filter @my-home/web exec vitest run -u
-src/catalog/golden.test.tsx` and review the diff (one line per mesh). A refactor must leave them
+src/catalog/golden.test.ts` and review the diff (one line per solid). A refactor must leave them
 unchanged. A new type changes no golden until a home or the furniture list uses it (the furniture
 golden lists every furniture type, so a new furniture type adds its lines).
 

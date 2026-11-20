@@ -1,0 +1,7 @@
+{
+  "main": { "baseline": "d4df5df", "baselineGzipBytes": 420582, "maxGrowthGzipBytes": 35000 },
+  "lazy": {
+    "render-beautiful": { "maxGzipBytes": 150000, "required": false },
+    "render-path": { "required": false }
+  }
+}

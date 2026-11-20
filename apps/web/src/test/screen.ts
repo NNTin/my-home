@@ -1,5 +1,7 @@
 import { act, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
+import type { HomeScene } from '../builder/buildHome';
+import { visibleScene, type Visibility } from '../builder/visibility';
 import { LANDSCAPE_QUERY, MOBILE_QUERY, type LayoutMode } from '../overlay/useLayoutMode';
 
 /**
@@ -66,3 +68,10 @@ export function pointerEvent(
   if (extra.pointerType) Object.defineProperty(event, 'pointerType', { value: extra.pointerType });
   return event;
 }
+
+/**
+ * What a mocked `Scene` would draw: it is handed the whole home with a visibility, and hides
+ * per batch.
+ */
+export const shownScene = (props: { scene: HomeScene; visibility?: Visibility | undefined }) =>
+  props.visibility ? visibleScene(props.scene, props.visibility) : props.scene;
