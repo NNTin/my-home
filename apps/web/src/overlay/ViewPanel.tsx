@@ -1,10 +1,14 @@
 import type { HomeScene } from '../builder/buildHome';
 import { toggleId, type Visibility } from '../builder/visibility';
+import type { Quality } from '../quality/setting';
+import { QualityControl } from './QualityControl';
 
 interface Props {
   scene: HomeScene;
   visibility: Visibility;
   onChange(visibility: Visibility): void;
+  quality: Quality;
+  onQuality(quality: Quality): void;
 }
 
 interface Item {
@@ -25,7 +29,7 @@ interface Group {
  * The phone's View tab. The cutaway level is in the top bar; here are the room names and the
  * rarely used switches for single levels, apartments and outdoor areas, folded away by default.
  */
-export function ViewPanel({ scene, visibility, onChange }: Props) {
+export function ViewPanel({ scene, visibility, onChange, quality, onQuality }: Props) {
   const set = (patch: Partial<Visibility>) => onChange({ ...visibility, ...patch });
   /** The hidden ids of a group that is shown or hidden as a whole. */
   const hidden = (all: { id: string }[], shown: boolean) => (shown ? [] : all.map((x) => x.id));
@@ -83,6 +87,7 @@ export function ViewPanel({ scene, visibility, onChange }: Props) {
         />{' '}
         Room names
       </label>
+      <QualityControl quality={quality} onChange={onQuality} phone />
       <h2>Show / hide…</h2>
       {groups
         .filter((g) => g.items.length > 0)

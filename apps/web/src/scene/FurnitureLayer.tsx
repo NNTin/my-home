@@ -8,6 +8,7 @@ import { PartsMesh, SELECTION_COLOR } from '../catalog/PartsMesh';
 import type { Part } from '../catalog/types';
 import { FurnitureToolbar, type FurnitureToolbarProps } from '../overlay/FurnitureToolbar';
 import { onCanvas, swallowNextClick } from './canvasEvent';
+import { useFrameControl } from './Frame';
 
 /** One item as the scene draws it; built by the viewer from the layout and the catalogue. */
 export interface FurnitureView {
@@ -269,6 +270,14 @@ export function FurnitureLayer({
   /** Edit mode: items can be dragged and rotated. Off, they can only be selected. */
   editable?: boolean;
 }) {
+  // Furniture casts shadows: the sun's map is drawn again when an item is placed, moved (each
+  // frame of a drag), turned or removed. A glow (selected, colliding) is a material of its own,
+  // compiled ahead the first time.
+  const frame = useFrameControl();
+  const casters = items.map((i) => `${i.id}:${i.position.join(',')}:${i.rotationY}`).join('|');
+  const glows = items.map((i) => (i.colliding ? 'c' : i.selected ? 's' : '')).join('');
+  useEffect(() => frame?.castersChanged(), [frame, casters]);
+  useEffect(() => frame?.materialsChanged(), [frame, glows, items.length]);
   return (
     <group>
       {items.map((item) => (

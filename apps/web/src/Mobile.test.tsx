@@ -147,6 +147,25 @@ describe('phone layout', () => {
     expect(screen.getByText('Add to Souterrain')).toBeInTheDocument();
   });
 
+  it('offers the quality setting in the View panel, in a phone\u2019s words, and remembers it', async () => {
+    await open('portrait');
+    // A phone refines when the view is still.
+    expect(lastScene?.quality).toBe('auto');
+    fireEvent.click(tab(/View/));
+    const quality = within(
+      within(region('View controls')!).getByRole('group', { name: 'Quality' }),
+    );
+    expect(quality.getAllByRole('radio').map((r) => r.parentElement?.textContent?.trim())).toEqual([
+      'Fast',
+      'Automatic',
+      'Always beautiful',
+    ]);
+    expect(quality.getByLabelText('Automatic')).toBeChecked();
+    fireEvent.click(quality.getByLabelText('Always beautiful'));
+    expect(lastScene?.quality).toBe('beautiful');
+    expect(localStorage.getItem('my-home.quality')).toBe('beautiful');
+  });
+
   it('folds the rarely used switches away and shows or hides a whole group', async () => {
     await open('portrait');
     fireEvent.click(tab(/View/));

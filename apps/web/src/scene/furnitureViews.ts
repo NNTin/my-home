@@ -5,6 +5,9 @@ import type { EditorItem } from '../editor/item';
 import { mountHeightOf, typeOf, type EditorContext } from '../editor/operations';
 import type { FurnitureView } from './FurnitureLayer';
 
+/** One array for every item of an unknown type: its meshes are built once, not on each drag. */
+const UNKNOWN_PARTS = unknownParts();
+
 /**
  * The furniture the scene draws for a visibility: the items on the levels and in the apartments
  * that are shown, each at its place in the world with the parts of its type.
@@ -40,7 +43,7 @@ export function furnitureViews(
         position: [item.position.x, base + mountHeightOf(ctx, item), item.position.z] as Vec3,
         rotationY: item.rotationY,
         size: type?.size ?? UNKNOWN_SIZE,
-        parts: type?.parts ?? unknownParts(),
+        parts: type?.parts ?? UNKNOWN_PARTS,
         selected: item.id === selectedId,
         colliding: colliding?.has(item.id) ?? false,
       },

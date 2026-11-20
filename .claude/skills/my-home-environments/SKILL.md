@@ -91,8 +91,9 @@ $S/seed.sh staging diff                                # drift between git's see
   phone 390x844: `phone`; all with `hints=off`) into `DIR/<view>.png` plus `DIR/manifest.json`
   (deployed commit, view arguments, sha256). It reads the deployed commit before and after and fails if a
   deploy happened in between. `visual-diff.sh compare DIR_A DIR_B` prints a Markdown table per view:
-  identical (same sha256) or the number of differing pixels and `DIR_B/diff-<view>.png` (differences red over
-  a faded copy of A), decoded in headless Chromium. Exit 0 all identical, 5 some differ, 1 on an error.
+  identical (same sha256) or the number of differing pixels, how many of them differ by more than 2 levels of
+  255 in a channel, the largest difference, and `DIR_B/diff-<view>.png` (those larger differences red, the smaller
+  ones, which are rounding, amber, over a faded copy of A), decoded in headless Chromium. Exit 0 all identical, 5 some differ, 1 on an error.
   Two shoots of the same commit are byte-identical, so a renderer refactor is checked by shooting `main` and
   the PR on staging (shared: do both in one go and re-shoot if another deploy lands in between).
 - `mobile-smoke.sh <env> [--out file.png] [--home ID]`: the phone layout at 390x844 and 844x390 with touch: the
@@ -101,7 +102,13 @@ $S/seed.sh staging diff                                # drift between git's see
   long-pressed, duplicated and deleted with real touch events, walk mode is entered and left, and held across
   the sheet is at the side. It also counts WebGL draw calls (nothing is drawn while nothing moves, a finger
   or "Reset view" draws again), checks the canvas' pixel ratio (at most 1.5), that every control has a name,
-  and that the web app manifest and its icons are served, and that there is no layout manager. Read-only: every
+  and that the web app manifest and its icons are served, and that there is no layout manager. The View panel's
+  **Quality** control has its three named values and remembers the chosen one. Then the frame loop
+  (`docs/mobile.md` § Battery and heat), in a phone's and in a desktop's (1440x900) context of their own, read from
+  `?perf=1` (`window.__myHomePerf()`): for each of `?quality=fast|auto|beautiful` the view settles
+  (`canvas[data-frame="settled"]`) and then draws nothing, and a moving frame of the first view and of the whole
+  house is within the draw-call budget (250 and 350 on a phone, 350 and 500 on a desktop) and compiles no
+  shader. A build before #110 skips these. Read-only: every
   placement write is **answered inside the browser** (as the api would, merged into the placement reads), every
   other write is refused there.
 - `catalog-smoke.sh <env> [--out file.png] [--home ID]`: the catalogue pages (`docs/catalog.md`) at 1440x900 and

@@ -111,20 +111,35 @@ They mean something on `/` only: the [catalogue pages](catalog.md#query-paramete
 
 ## Battery and heat
 
-On a phone (the same condition as the phone layout) the 3D view:
+On **every device**, a phone and a desktop alike, the 3D view renders **on demand**: a new frame only when
+something changed (the camera, the scene, the size of the view), not sixty times a second. Orbiting, dragging
+furniture and the panels ask for frames by themselves. While walking, the walk loop runs outside the canvas, so
+`WalkRig` watches the figure and asks for a frame whenever it has moved, and once more while the figure still eases
+to a new height. The walk [minimap](walking.md#minimap) is SVG outside the canvas and asks for no frames. At rest
+nothing is drawn. The frame loop is `apps/web/src/scene/Frame.tsx`; the frame governor
+(`apps/web/src/quality/governor.ts`) marks the canvas with `data-frame="moving|settled"` and
+`data-tier="fast|beautiful"`, so a smoke or a screenshot can wait for a settled frame.
 
-- renders **on demand**: a new frame only when something changed (the camera, the scene, the size of the view),
-  not sixty times a second. Orbiting, dragging furniture and the panels ask for frames by themselves. While
-  walking, the walk loop runs outside the canvas, so `WalkRig` watches the figure and asks for a frame whenever
-  it has moved, and once more while the figure still eases to a new height (on a desktop, which draws every
-  frame anyway, that watcher does not run). The walk [minimap](walking.md#minimap) is SVG outside the
-  canvas and asks for no frames;
+The sun's **shadow map is static**: it is fitted to what is visible and drawn again only when what casts shadows
+changed (the home, what is shown, a furniture item, the walking figure in the overview).
+
+On a phone (the same condition as the phone layout) the 3D view also:
+
 - caps the **device pixel ratio** at 1.5 (2 on a desktop screen): a phone with a ratio of 3 would otherwise
   shade four times as many pixels for little visible gain;
-- uses a **1024 px shadow map** instead of 2048 px.
+- uses a **1024 px shadow map** instead of 2048 px;
+- draws its frames **without multisampling** and smooths the edges with one **FXAA** step after the output pass
+  (a desktop's frames have 4 samples).
+
+The **Quality** control of the View tab (`fast`, `auto`, `beautiful`: "Fast", "Automatic", "Always beautiful")
+says which tier is drawn when; a phone starts on "Automatic". It is remembered on the device
+(`localStorage`, `my-home.quality`), and `?quality=` sets it for one visit. Until the beautiful tier exists every
+value draws the fast tier (`docs/design/realistic-render.md` §3). `?perf=1` shows what a frame costs on the
+device: draw calls, triangles, shader programs and frame times.
 
 Anything new that moves the camera or an object from outside React and the orbit controls (a timer, a sensor)
-must call `invalidate()` on a phone, or the picture stays as it was until the next touch.
+must call `invalidate()`, or the picture stays as it was until the next input. Anything new that casts a shadow
+and moves must also tell the frame loop (`useFrameControl().castersChanged()`), or its shadow stays behind.
 
 ## Installing it
 

@@ -2,7 +2,9 @@
 //   node mobile-smoke.mjs <out.png> [home-id]   (SITE_BASE, SITE_TOKEN from with-site-token.sh)
 // Smoke test of the phone layout on a touch screen: the top bar, the sheet with its panels, the level
 // switcher, furniture (every placement write answered inside the browser), walk mode, and the side
-// sheet with the phone held across. Read-only: nothing is written to the environment.
+// sheet with the phone held across. Then the frame loop, on a phone and on a desktop: the draw calls of a
+// moving frame against the budgets, and nothing drawn while idle in every value of the quality setting.
+// Read-only: nothing is written to the environment.
 // Playwright is loaded from MY_HOME_PLAYWRIGHT_DIR.
 /* global document, window, WebGL2RenderingContext */
 import { createRequire } from 'node:module';
@@ -30,6 +32,148 @@ const LANDSCAPE = { width: 844, height: 390 };
 const TOUCH = 44;
 /** The widest the collapsed side sheet may be (it is 72 px plus the safe area), in CSS pixels. */
 const RAIL_MAX = 96;
+
+/**
+ * Draw calls of one moving frame (docs/design/realistic-render.md §10.1): the first view, then the
+ * whole house.
+ */
+const DRAW_CALLS = { phone: [250, 350], desktop: [350, 500] };
+const QUALITIES = ['fast', 'auto', 'beautiful'];
+
+/** Counts what a page draws with WebGL, to tell a view at rest from one that keeps rendering. */
+function countDraws() {
+  window.__draws = 0;
+  for (const name of [
+    'drawElements',
+    'drawArrays',
+    'drawElementsInstanced',
+    'drawArraysInstanced',
+  ]) {
+    const original = WebGL2RenderingContext.prototype[name];
+    WebGL2RenderingContext.prototype[name] = function (...args) {
+      window.__draws++;
+      return original.apply(this, args);
+    };
+  }
+}
+
+/**
+ * The frame loop on one kind of device, in a context of its own: for every value of the quality
+ * setting the view settles and then draws nothing; a moving frame of the first view and of the whole
+ * house stays within the draw-call budget. Read-only: only GET requests leave the browser.
+ */
+async function frameChecks(browser, { device, base, host, homeId }) {
+  const phone = device === 'phone';
+  const context = await browser.newContext(
+    phone
+      ? { viewport: PORTRAIT, hasTouch: true, isMobile: true, deviceScaleFactor: 2 }
+      : { viewport: { width: 1440, height: 900 } },
+  );
+  await context.addInitScript(countDraws);
+  await context.route('**/*', (route) => {
+    const request = route.request();
+    if (new URL(request.url()).host !== host) return route.continue();
+    if (!['GET', 'HEAD'].includes(request.method())) return route.abort();
+    return route.continue({ headers: { ...request.headers(), authorization: `Bearer ${token}` } });
+  });
+  const page = await context.newPage();
+  const draws = () => page.evaluate(() => window.__draws);
+  const perf = () => page.evaluate(() => window.__myHomePerf?.());
+  const settled = () =>
+    page.waitForSelector('canvas[data-frame="settled"]', { timeout: 180_000 }).then(
+      () => true,
+      () => false,
+    );
+  /** One step of the mouse wheel or a short pinch-free swipe: a few moving frames. */
+  const nudge = async () => {
+    const canvas = await page.locator('canvas').first().boundingBox();
+    const x = canvas.x + canvas.width / 2;
+    const y = canvas.y + canvas.height * 0.4;
+    if (phone) {
+      const finger = await context.newCDPSession(page);
+      const touch = (type, dx = 0) =>
+        finger.send('Input.dispatchTouchEvent', {
+          type,
+          touchPoints: type === 'touchEnd' ? [] : [{ x: Math.round(x + dx), y: Math.round(y) }],
+        });
+      await touch('touchStart');
+      for (let step = 1; step <= 4; step++) await touch('touchMove', step * 10);
+      await touch('touchEnd');
+    } else {
+      await page.mouse.move(x, y);
+      await page.mouse.wheel(0, 120);
+    }
+    await page.waitForTimeout(1500);
+  };
+  try {
+    for (const quality of QUALITIES) {
+      const query = new URLSearchParams({ quality, perf: '1', hints: 'off' });
+      if (homeId) query.set('home', homeId);
+      await page.goto(new URL(`/?${query}`, base).href, {
+        waitUntil: 'networkidle',
+        timeout: 60_000,
+      });
+      await page.waitForSelector('canvas', { timeout: 30_000 });
+      await page.waitForTimeout(1500);
+      if ((await page.locator('canvas').first().getAttribute('data-frame')) === null) {
+        console.log(`skip  the frame loop on a ${device}: a build before #110 (no data-frame)`);
+        return;
+      }
+      const where = `on a ${device}, quality ${quality}`;
+      check(`${where}: the view settles`, await settled());
+      const before = await draws();
+      await page.waitForTimeout(2000);
+      const idle = (await draws()) - before;
+      const data = await perf();
+      check(`${where}: nothing is drawn while idle`, idle === 0, `${idle} draw calls in 2 s`);
+      check(
+        `${where}: the setting is read from the URL and the fast tier is drawn`,
+        data?.setting === quality &&
+          (await page.locator('canvas').first().getAttribute('data-tier')) === 'fast',
+        `setting ${data?.setting}`,
+      );
+      if (quality !== QUALITIES[0]) continue;
+
+      // The budgets, once: a moving frame of the first view, then of the whole house.
+      const [first, whole] = DRAW_CALLS[device];
+      await nudge();
+      const moving = await perf();
+      check(
+        `${where}: a moving frame of the first view is within ${first} draw calls`,
+        moving.frames > data.frames && moving.drawCalls > 0 && moving.drawCalls <= first,
+        `${moving.drawCalls} draw calls, ${moving.triangles} triangles`,
+      );
+      if (phone) {
+        await page
+          .getByRole('radiogroup', { name: 'Show up to level' })
+          .getByRole('radio')
+          .first()
+          .tap();
+      } else {
+        await page.getByRole('group', { name: 'Show up to level' }).getByLabel('Roof').check();
+      }
+      await page.waitForTimeout(1500);
+      await nudge();
+      const house = await perf();
+      check(
+        `${where}: a moving frame of the whole house is within ${whole} draw calls`,
+        house.drawCalls > moving.drawCalls && house.drawCalls <= whole,
+        `${house.drawCalls} draw calls, ${house.triangles} triangles`,
+      );
+      check(
+        `${where}: no frame compiled a shader after the warm-up`,
+        house.compiles === data.compiles,
+        `${data.compiles} programs compiled at the start, ${house.compiles} now`,
+      );
+      check(`${where}: and the view settles again`, await settled());
+      const rest = await draws();
+      await page.waitForTimeout(2000);
+      check(`${where}: nothing is drawn afterwards`, (await draws()) === rest);
+    }
+  } finally {
+    await context.close();
+  }
+}
 
 /** Whether two boxes share any area (a pixel of rounding is not an overlap). */
 const overlap = (a, b) =>
@@ -64,22 +208,7 @@ async function smoke(out, homeId) {
       // A phone's screen is finer than this; 2 is enough to see that the canvas stops at 1.5.
       deviceScaleFactor: 2,
     });
-    // Counts what the page draws with WebGL, to tell a view at rest from one that keeps rendering.
-    await context.addInitScript(() => {
-      window.__draws = 0;
-      for (const name of [
-        'drawElements',
-        'drawArrays',
-        'drawElementsInstanced',
-        'drawArraysInstanced',
-      ]) {
-        const original = WebGL2RenderingContext.prototype[name];
-        WebGL2RenderingContext.prototype[name] = function (...args) {
-          window.__draws++;
-          return original.apply(this, args);
-        };
-      }
-    });
+    await context.addInitScript(countDraws);
     await context.route('**/*', async (route) => {
       const request = route.request();
       const url = new URL(request.url());
@@ -335,6 +464,27 @@ async function smoke(out, homeId) {
       await page.getByRole('region', { name: 'View controls' }).isVisible(),
     );
     await named('of the View panel');
+    // The quality setting (#110): three named values, remembered on the device.
+    const quality = page.getByRole('group', { name: 'Quality' });
+    if ((await quality.count()) === 0) {
+      console.log('skip  the Quality control: a build before #110');
+    } else {
+      const names = await quality
+        .getByRole('radio')
+        .evaluateAll((radios) => radios.map((r) => r.closest('label')?.textContent?.trim()));
+      check(
+        'the View panel offers the quality setting in a phone\u2019s words',
+        names.join(', ') === 'Fast, Automatic, Always beautiful',
+        names.join(', '),
+      );
+      check('a phone starts on "Automatic"', await quality.getByLabel('Automatic').isChecked());
+      await quality.getByLabel('Fast', { exact: true }).tap();
+      check(
+        'a chosen quality is remembered on the device',
+        (await page.evaluate(() => window.localStorage.getItem('my-home.quality'))) === 'fast',
+      );
+      await quality.getByLabel('Automatic').tap();
+    }
     const half = await box('canvas');
     check(
       'the 3D view ends where the open sheet begins',
@@ -656,6 +806,11 @@ async function smoke(out, homeId) {
     );
     check('nothing was written', blocked.length === 0, blocked.join(', '));
     console.log(`screenshot ${out}`);
+    await context.close();
+
+    // The frame loop: budgets and rest, on a phone and on a desktop.
+    for (const device of ['phone', 'desktop'])
+      await frameChecks(browser, { device, base, host, homeId });
   } finally {
     await browser.close();
   }

@@ -66,6 +66,7 @@ import { useKeyboardViewport } from './overlay/useKeyboardViewport';
 import { useLayoutMode } from './overlay/useLayoutMode';
 import { ViewPanel } from './overlay/ViewPanel';
 import { filterPhotos, NO_FILTERS } from './photos/filters';
+import { useQuality } from './quality/setting';
 import {
   focusVisibility,
   frameFor,
@@ -198,6 +199,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   const photos = usePhotos(model.id);
   const layout = useLayoutMode();
   const mobile = layout !== 'desktop';
+  const [quality, setQuality] = useQuality(mobile);
   useKeyboardViewport(mobile);
   const resetView = useRef<(() => void) | undefined>(undefined);
   const [initial] = useState(initialPanel);
@@ -843,6 +845,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
             paused={walking && cameraOpen}
             pieces={walking ? undefined : { onSelectPiece: selectPiece, highlightId: highlight }}
             frame={frame}
+            quality={quality}
           />
           {toast && (
             <p className="toast" role="alert">
@@ -934,7 +937,13 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
               side={side}
             >
               {panel === 'view' ? (
-                <ViewPanel scene={scene} visibility={chosenVisibility} onChange={setVisibility} />
+                <ViewPanel
+                  scene={scene}
+                  visibility={chosenVisibility}
+                  onChange={setVisibility}
+                  quality={quality}
+                  onQuality={setQuality}
+                />
               ) : panel === 'furniture' ? (
                 furniturePanel
               ) : (
@@ -947,6 +956,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
                 {...controls}
                 photosOpen={photosOpen}
                 onPhotos={() => (photosOpen ? closePhotos() : setPhotosOpen(true))}
+                quality={quality}
+                onQuality={setQuality}
               />
               {photosOpen ? photosPanel : furniturePanel}
             </>

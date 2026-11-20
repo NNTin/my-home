@@ -93,19 +93,19 @@ reference made offline during the investigation. The acceptance criteria in §12
 
 A **tier** is what one frame contains.
 
-|                   | **Fast**                                                                        | **Beautiful**                                                                                    | **Render**                |
-| ----------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------- |
-| Purpose           | Moving on any device                                                            | The look of the app at rest                                                                      | A still image             |
-| Geometry          | Merged shell, merged pieces                                                     | Same                                                                                             | Same draw list, own scene |
-| Finishes          | The device's size: 512 px on a phone, 1024 px with a roughness map on a desktop | Same                                                                                             | Same                      |
-| Sun shadow        | One fitted static map                                                           | Same map, wider filter                                                                           | Traced                    |
-| Environment       | Neutral studio environment                                                      | Same                                                                                             | Same environment, traced  |
-| Lamps             | Phone: up to 6, no shadows. Desktop: up to 12, of which 4 cast shadows          | Same                                                                                             | All, traced               |
-| Ambient occlusion | No                                                                              | Yes                                                                                              | Traced                    |
-| Anti-aliasing     | MSAA on the frame's target: none on a phone, 4 samples on a desktop             | MSAA, 4 samples on every device                                                                  | By accumulation           |
-| Tone mapping      | Neutral                                                                         | Neutral                                                                                          | Neutral                   |
-| Pixel ratio       | Up to 1.5 (phone), 2 (desktop)                                                  | Same caps                                                                                        | 1, at export size         |
-| Code              | Main chunk                                                                      | Main chunk, plus the lazy chunk `render-beautiful` for the AO pass and the beautiful-only extras | Lazy chunk `render-path`  |
+|                   | **Fast**                                                                                                 | **Beautiful**                                                                                    | **Render**                |
+| ----------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------- |
+| Purpose           | Moving on any device                                                                                     | The look of the app at rest                                                                      | A still image             |
+| Geometry          | Merged shell, merged pieces                                                                              | Same                                                                                             | Same draw list, own scene |
+| Finishes          | The device's size: 512 px on a phone, 1024 px with a roughness map on a desktop                          | Same                                                                                             | Same                      |
+| Sun shadow        | One fitted static map                                                                                    | Same map, wider filter                                                                           | Traced                    |
+| Environment       | Neutral studio environment                                                                               | Same                                                                                             | Same environment, traced  |
+| Lamps             | Phone: up to 6, no shadows. Desktop: up to 12, of which 4 cast shadows                                   | Same                                                                                             | All, traced               |
+| Ambient occlusion | No                                                                                                       | Yes                                                                                              | Traced                    |
+| Anti-aliasing     | A desktop: MSAA, 4 samples on the frame's target. A phone: no MSAA, a fixed FXAA step in the output pass | MSAA, 4 samples on every device                                                                  | By accumulation           |
+| Tone mapping      | Neutral                                                                                                  | Neutral                                                                                          | Neutral                   |
+| Pixel ratio       | Up to 1.5 (phone), 2 (desktop)                                                                           | Same caps                                                                                        | 1, at export size         |
+| Code              | Main chunk                                                                                               | Main chunk, plus the lazy chunk `render-beautiful` for the AO pass and the beautiful-only extras | Lazy chunk `render-path`  |
 
 Fast is not "today": it has finishes, merged geometry, the environment and lit lamps. Step 1 of the rollout
 makes fast cheaper than today before anything is added to it.
@@ -297,6 +297,10 @@ between the builder and three.js.
   vertex colours, so differently tinted items of the same finish still share a draw call. A piece's parts
   merge the same way: the part colours become vertex colours.
 - **UVs are written at merge time,** in metres, by the conventions of §5.4.
+- **A part with its own roughness, metalness or shadow flags stays a mesh of its own** until parts name
+  finishes (§5.7): one material cannot hold them per vertex. Most pieces are one or two meshes; none of today's is
+  more than four (D24). A piece's transparent parts are drawn in the order of its parts, whatever the camera:
+  one mesh has one order, where three.js sorted separate meshes by distance.
 - **Picking stays per piece.** Nothing in the shell can be picked today and nothing will be. A piece keeps its
   own group and meshes, so the click handler, the "is it frontmost" ray test and the highlight work as now.
   The highlight clones the piece's material while it glows.
@@ -322,7 +326,8 @@ The **frame governor** owns the decision of what a frame contains.
 - It records frame times for the `?perf` readout (§10.3).
 
 **Shadows are static.** The sun's shadow map is drawn only when what casts shadows changed: the model, the
-visibility, a placement after a drag ends, the light rig, or the section plane. While furniture is dragged the
+visibility, a placement after a drag ends, the walking figure in the overview, the light rig, or the section
+plane. While furniture is dragged the
 map is redrawn each frame of the drag, and never otherwise. The shadow frustum is fitted to the bounds of what
 is visible, not to a fixed 60 m square.
 
@@ -742,7 +747,14 @@ package requires three below 0.188 and would block upgrades of three; the addons
 | Scene into target | Phone: no MSAA. Desktop: 4 samples                | 4 samples on every device                                                         |
 | Ambient occlusion | No                                                | `N8AOPass` from `n8ao` (ISC). Half resolution on phones. No temporal accumulation |
 | Output pass       | Neutral tone mapping, exposure from the rig, sRGB | Same                                                                              |
+| FXAA              | Phone: yes, after the output pass. Desktop: no    | No: the target has 4 samples                                                      |
 
+- **A phone's fast frames are anti-aliased by FXAA,** one fixed step after the output pass, on the tone-mapped
+  image: their target has no MSAA, and a phone's moving frames must not show stair-stepped edges (D21).
+- **The backdrop is laid in by the output pass.** The target is cleared transparent and holds coverage in its
+  alpha; the output pass tone-maps the frame and lays it over the backdrop colour. The backdrop so keeps its exact
+  colour whatever the tone mapping, and glass or an anti-aliased edge in front of it blends with it as displayed
+  (D23).
 - The sample counts are fixed as written. Nothing about anti-aliasing is decided at runtime: if a phone's
   refined frame is too slow, the governor steps down (§3.4); it does not change what a frame contains.
 - **Tone mapping is Neutral in every tier** (three's `NeutralToneMapping`), so a finish has the same colour in
@@ -1199,28 +1211,33 @@ All seven proposed defaults were accepted.
 
 ### Design decisions
 
-| #   | Decision                                                                                                   | Why                                                                                                  |
-| --- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| D1  | Three tiers, and a setting with three values (`fast`, `auto`, `beautiful`)                                 | Separates what a frame contains from when it is drawn; `auto` is the phone's answer 6                |
-| D2  | Frames on demand on every device                                                                           | Needed for refine-when-still; one loop to test instead of two                                        |
-| D3  | A draw list between the builder and three.js; merge by level, apartment and finish                         | Cuts draw calls about sixfold and keeps visibility and picking as they are                           |
-| D4  | Goldens record the draw list, not meshes                                                                   | Merging changes every mesh and no pixel                                                              |
-| D5  | A static sun shadow, fitted to what is visible                                                             | Halves draw calls per frame and sharpens the map                                                     |
-| D6  | Finishes are shared catalogue entries; defaults are plain                                                  | Reviewable in git; an unrefined room does not look falsely specific                                  |
-| D7  | WebP textures at 512 and 1024 px, one size per device in every tier; no GPU-compressed format              | Meets the budgets without a transcoder or a new toolchain; the computed memory is the real footprint |
-| D8  | A wall face takes the finish of the room it borders; no finish per wall                                    | Covers what photos show at this stage with one rule                                                  |
-| D9  | A generated neutral environment instead of a sky photograph                                                | No download, no blue cast, nothing that suggests a place                                             |
-| D10 | three's own passes and `n8ao`, not the `postprocessing` package                                            | That package pins three below 0.188                                                                  |
-| D11 | Neutral tone mapping in every tier                                                                         | One colour per finish across tiers                                                                   |
-| D12 | The camera stays perspective; a narrow field of view for the isometric look                                | Orbit controls, picking and depth effects stay unchanged                                             |
-| D13 | Stencil caps for sections                                                                                  | Independent of overlapping solids, which broke the cheaper trick in #107                             |
-| D14 | Render mode is WebGPU in its own canvas, behind a measured gate                                            | The library's WebGL tracer is deprecated; no GPU was available to measure in #107                    |
-| D15 | The mesh part for CC0 models is built with the furnishing follow-up                                        | No type in this epic needs it                                                                        |
-| D16 | No texture is ever made from an owner's photo                                                              | It would put photo data into git                                                                     |
-| D17 | Renders for PRs go to an `assets/render-shots` branch and are linked by commit                             | The CLI cannot attach images; the repo already uses this pattern for the references                  |
-| D18 | Fast and beautiful share one scene: nothing that is part of a shader program differs between tiers         | A tier switch or a refined frame must never compile shaders (review of #109)                         |
-| D19 | A fixed lamp pool per device (6 on a phone, 12 on a desktop); lamp shadows on desktops only, in both tiers | Stable light counts; a phone's budget of one shadow map (review of #109)                             |
-| D20 | Every frame goes through an offscreen target and the output pass                                           | Keeps tone mapping and colour space out of material programs                                         |
+| #   | Decision                                                                                                   | Why                                                                                                                                                                                                                       |
+| --- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Three tiers, and a setting with three values (`fast`, `auto`, `beautiful`)                                 | Separates what a frame contains from when it is drawn; `auto` is the phone's answer 6                                                                                                                                     |
+| D2  | Frames on demand on every device                                                                           | Needed for refine-when-still; one loop to test instead of two                                                                                                                                                             |
+| D3  | A draw list between the builder and three.js; merge by level, apartment and finish                         | Cuts draw calls about sixfold and keeps visibility and picking as they are                                                                                                                                                |
+| D4  | Goldens record the draw list, not meshes                                                                   | Merging changes every mesh and no pixel                                                                                                                                                                                   |
+| D5  | A static sun shadow, fitted to what is visible                                                             | Halves draw calls per frame and sharpens the map                                                                                                                                                                          |
+| D6  | Finishes are shared catalogue entries; defaults are plain                                                  | Reviewable in git; an unrefined room does not look falsely specific                                                                                                                                                       |
+| D7  | WebP textures at 512 and 1024 px, one size per device in every tier; no GPU-compressed format              | Meets the budgets without a transcoder or a new toolchain; the computed memory is the real footprint                                                                                                                      |
+| D8  | A wall face takes the finish of the room it borders; no finish per wall                                    | Covers what photos show at this stage with one rule                                                                                                                                                                       |
+| D9  | A generated neutral environment instead of a sky photograph                                                | No download, no blue cast, nothing that suggests a place                                                                                                                                                                  |
+| D10 | three's own passes and `n8ao`, not the `postprocessing` package                                            | That package pins three below 0.188                                                                                                                                                                                       |
+| D11 | Neutral tone mapping in every tier                                                                         | One colour per finish across tiers                                                                                                                                                                                        |
+| D12 | The camera stays perspective; a narrow field of view for the isometric look                                | Orbit controls, picking and depth effects stay unchanged                                                                                                                                                                  |
+| D13 | Stencil caps for sections                                                                                  | Independent of overlapping solids, which broke the cheaper trick in #107                                                                                                                                                  |
+| D14 | Render mode is WebGPU in its own canvas, behind a measured gate                                            | The library's WebGL tracer is deprecated; no GPU was available to measure in #107                                                                                                                                         |
+| D15 | The mesh part for CC0 models is built with the furnishing follow-up                                        | No type in this epic needs it                                                                                                                                                                                             |
+| D16 | No texture is ever made from an owner's photo                                                              | It would put photo data into git                                                                                                                                                                                          |
+| D17 | Renders for PRs go to an `assets/render-shots` branch and are linked by commit                             | The CLI cannot attach images; the repo already uses this pattern for the references                                                                                                                                       |
+| D18 | Fast and beautiful share one scene: nothing that is part of a shader program differs between tiers         | A tier switch or a refined frame must never compile shaders (review of #109)                                                                                                                                              |
+| D19 | A fixed lamp pool per device (6 on a phone, 12 on a desktop); lamp shadows on desktops only, in both tiers | Stable light counts; a phone's budget of one shadow map (review of #109)                                                                                                                                                  |
+| D20 | Every frame goes through an offscreen target and the output pass                                           | Keeps tone mapping and colour space out of material programs                                                                                                                                                              |
+| D21 | A phone's fast frames use FXAA in the output pass                                                          | Their target has no MSAA; one cheap step keeps moving edges smooth (#110)                                                                                                                                                 |
+| D22 | Main chunk growth ≤ 35 kB gzipped                                                                          | 25 in the first draft: the environment and the output pass live in the main chunk (#110)                                                                                                                                  |
+| D23 | The backdrop is laid in by the output pass, over a target cleared transparent                              | The backdrop keeps its colour under any tone mapping; glass and edges in front of it blend as shown                                                                                                                       |
+| D24 | A part with its own roughness, metalness or shadow flags stays its own mesh until parts name finishes      | A merged mesh has one material; merging them would change how the piece looks. Merging also fixes the draw order of a piece's transparent parts to the parts' order, where three.js sorted them by distance before (#110) |
+| D25 | Surfaces that overlap in one pixel (glass over a wall, an anti-aliased edge) blend before tone mapping     | A consequence of D20: the old renderer blended tone-mapped colours. Translucent parts read denser                                                                                                                         |
 
 ## 14. Open questions
 

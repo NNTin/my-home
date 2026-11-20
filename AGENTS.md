@@ -24,6 +24,7 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 
 - `pnpm install`, then `pnpm dev` (web on :5173, api on :3000)
 - `pnpm lint`, `pnpm format`, `pnpm typecheck`, `pnpm test`, `pnpm build`
+- `pnpm check:bundle` after `pnpm build`: the web bundle against `apps/web/bundle-budget.json` (CI runs it)
 - `pnpm schema:generate` after editing the HomeModel zod schema (commit the JSON Schema)
 - `pnpm db:generate` after editing the Drizzle schema (commit the migration), `pnpm db:migrate`, `pnpm db:seed`
 - One package: `pnpm --filter @my-home/api test`
