@@ -9,7 +9,7 @@ Photos and their metadata live only in the database. They never go into the repo
 
 ## Data model
 
-Everything is in the Postgres schema **`media`**, apart from the home model and the layouts in `public`:
+Everything is in the Postgres schema **`media`**, apart from the home model in `public`:
 
 | Table                      | Content                                                                                                     |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------- |

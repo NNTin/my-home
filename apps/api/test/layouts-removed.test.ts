@@ -4,7 +4,7 @@ import { seed } from '../src/db/seed';
 import { createTestApp, injector } from './helpers';
 import { mockHomeFile } from './fixtures';
 
-describe('the named layouts api is gone (#56)', () => {
+describe('the named layouts are gone (#56)', () => {
   let ctx: Awaited<ReturnType<typeof createTestApp>>;
   let inject: ReturnType<typeof injector>;
   beforeAll(async () => {
@@ -14,13 +14,13 @@ describe('the named layouts api is gone (#56)', () => {
   });
   afterAll(() => ctx.app.close());
 
-  it('keeps public.layouts for a rollback, and userdata.imports', async () => {
+  it('drops public.layouts and keeps userdata.imports', async () => {
     // Both drivers return `{ rows }`; the shared Db type leaves the result untyped.
     const tables = (await ctx.database.db.execute(
       sql`select table_schema || '.' || table_name as name from information_schema.tables
           where table_name in ('layouts', 'imports') order by name`,
     )) as unknown as { rows: { name: string }[] };
-    expect(tables.rows.map((r) => r.name)).toEqual(['public.layouts', 'userdata.imports']);
+    expect(tables.rows.map((r) => r.name)).toEqual(['userdata.imports']);
   });
 
   it('answers the old routes with 404 and still lists the placements', async () => {
