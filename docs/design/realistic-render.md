@@ -93,19 +93,19 @@ reference made offline during the investigation. The acceptance criteria in §12
 
 A **tier** is what one frame contains.
 
-|                   | **Fast**                       | **Beautiful**                                          | **Render**                |
-| ----------------- | ------------------------------ | ------------------------------------------------------ | ------------------------- |
-| Purpose           | Moving on any device           | The look of the app at rest                            | A still image             |
-| Geometry          | Merged shell, merged pieces    | Same                                                   | Same draw list, own scene |
-| Finishes          | 512 px: colour and relief      | Desktop: 1024 px, plus a roughness map. Phone: as fast | As beautiful              |
-| Sun shadow        | One fitted static map          | Same map, wider filter                                 | Traced                    |
-| Environment       | Hemisphere light               | Neutral studio environment                             | Same environment, traced  |
-| Lamps             | Up to 4, no shadows            | Up to 12; the 4 nearest cast shadows                   | All, traced               |
-| Ambient occlusion | No                             | Yes                                                    | Traced                    |
-| Anti-aliasing     | Canvas MSAA                    | MSAA on the composer target                            | By accumulation           |
-| Tone mapping      | Neutral                        | Neutral                                                | Neutral                   |
-| Pixel ratio       | Up to 1.5 (phone), 2 (desktop) | Same caps                                              | 1, at export size         |
-| Code              | Main chunk                     | Lazy chunk `render-beautiful`                          | Lazy chunk `render-path`  |
+|                   | **Fast**                                      | **Beautiful**                                                           | **Render**                |
+| ----------------- | --------------------------------------------- | ----------------------------------------------------------------------- | ------------------------- |
+| Purpose           | Moving on any device                          | The look of the app at rest                                             | A still image             |
+| Geometry          | Merged shell, merged pieces                   | Same                                                                    | Same draw list, own scene |
+| Finishes          | 512 px: colour and relief                     | Desktop: 1024 px, plus a roughness map. Phone: as fast                  | As beautiful              |
+| Sun shadow        | One fitted static map                         | Same map, wider filter                                                  | Traced                    |
+| Environment       | Hemisphere light                              | Neutral studio environment                                              | Same environment, traced  |
+| Lamps             | Phone: up to 6. Desktop: up to 12. No shadows | Same lamps. Desktop: the 4 nearest cast shadows. Phone: no lamp shadows | All, traced               |
+| Ambient occlusion | No                                            | Yes                                                                     | Traced                    |
+| Anti-aliasing     | Canvas MSAA                                   | MSAA on the composer target                                             | By accumulation           |
+| Tone mapping      | Neutral                                       | Neutral                                                                 | Neutral                   |
+| Pixel ratio       | Up to 1.5 (phone), 2 (desktop)                | Same caps                                                               | 1, at export size         |
+| Code              | Main chunk                                    | Lazy chunk `render-beautiful`                                           | Lazy chunk `render-path`  |
 
 Fast is not "today": it has finishes and merged geometry. Step 1 of the rollout makes fast cheaper than today
 before anything is added to it.
@@ -208,7 +208,7 @@ Paths are under `apps/web/src/` unless they start with `packages/`.
 | Light rig           | `lighting/`                                | main               | The rig interface, the fast rig, view presets                        |
 | Finishes at runtime | `finishes/`                                | main               | Material cache, texture loading by tier                              |
 | Texture files       | `finishes/textures/<set>/`                 | assets (hashed)    | WebP files, fetched when a finish is first drawn                     |
-| Beautiful           | `beautiful/`                               | `render-beautiful` | Environment, composer, AO, lamp shadows, roughness maps              |
+| Beautiful           | `beautiful/`                               | `render-beautiful` | Environment, composer, AO, lamp shadows (desktop), roughness maps    |
 | Views               | `views/`                                   | main               | Named views, section plane, caps, backdrop, image export             |
 | Render mode         | `render-mode/`                             | `render-path`      | Its canvas, WebGPU renderer and path tracer                          |
 | Catalogue           | `catalog/`                                 | main               | Unchanged role. `Part` gains shapes and a finish (§8.2)              |
@@ -658,8 +658,15 @@ drawn.
 
 - A catalogue type may declare that it **emits light**: a position in its local frame, a colour, an intensity
   in candela and a range. `fixture.downlight` is the first.
-- **Caps:** the fast tier lights the 4 emitters nearest the orbit target, without shadows. The beautiful tier
-  lights up to 12, and the 4 nearest cast shadows from static maps that are redrawn only on change.
+- **How many are lit depends on the device, not the tier:** a phone lights the 6 emitters nearest the orbit
+  target, a desktop the 12 nearest. Fast and beautiful frames light the same lamps, so a view does not change
+  brightness when it settles into a refined frame.
+- **Lamp shadows are the tier's difference, on desktops only:** in the beautiful tier on a desktop the 4
+  nearest lit lamps cast shadows, from static maps that are redrawn only on change. The fast tier has no lamp
+  shadows on any device.
+- **A phone never draws lamp shadows,** in any tier and any setting. Its refined `auto` frame and
+  "Always beautiful" add the environment, ambient occlusion and the wider sun-shadow filter to the fast
+  frame, and nothing else that casts a shadow: the sun's is the phone's only shadow map (§10.1).
 - **No leaking:** an emitter's range ends at the bounds of its room, so an unshadowed lamp does not light the
   far side of a wall.
 - **Walk mode's head lamp goes** once the room the figure stands in has an emitter; it stays as the fallback in
@@ -835,7 +842,9 @@ viewer's own renderer instead, and the PR says so. Either way the tier's interfa
 | Texture files in the repository        | ≤ 16 MB                     | same                                                        |
 | Texture download, all finishes         | ≤ 1.5 MB                    | ≤ 6 MB                                                      |
 | Texture memory on the GPU              | ≤ 40 MB                     | ≤ 220 MB                                                    |
-| Lights with shadows                    | 1 (sun)                     | 5 (sun and 4 lamps)                                         |
+| Lit lamps, every tier                  | ≤ 6                         | ≤ 12                                                        |
+| Lights with shadows, fast tier         | 1 (sun)                     | 1 (sun)                                                     |
+| Lights with shadows, beautiful tier    | 1 (sun): no lamp shadows    | 5 (sun and the 4 nearest lamps)                             |
 | Main chunk growth over `d4df5df`       | ≤ 25 kB gzipped, whole epic | same                                                        |
 | `render-beautiful` chunk               | ≤ 150 kB gzipped            | same                                                        |
 | `render-path` chunk                    | not offered                 | set at the decision gate (§9); never loaded before "Render" |
@@ -848,20 +857,22 @@ about 200 MB.
 
 ### 10.2 How each is enforced
 
-| Budget                           | Check                                                                                                  | Runs in                |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------ | ---------------------- |
-| Draw calls                       | A unit test counts batches and piece meshes of `home.json` with its seed, per visibility               | `pnpm test` (CI)       |
-| Draw calls, real                 | `mobile-smoke.sh` already counts WebGL draw calls; it gains the thresholds and the idle check per tier | Smokes on staging      |
-| Triangles                        | A unit test sums triangles of the merged geometry and of every piece type at its default size          | `pnpm test` (CI)       |
-| Texture download, memory         | The manifest test of §5.3 sums file sizes and computes memory per device class                         | `pnpm test` (CI)       |
-| Chunk sizes                      | `tools/check-bundle.mjs` reads the build output and compares with `apps/web/bundle-budget.json`        | CI, after `pnpm build` |
-| No static import of a lazy chunk | The same script fails if `render-beautiful` or `render-path` code is in the main chunk                 | CI, after `pnpm build` |
-| Frame times                      | The `?perf` readout on real devices (§10.3)                                                            | Owner-only check       |
+| Budget                           | Check                                                                                                                                                                                               | Runs in                |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| Draw calls                       | A unit test counts batches and piece meshes of `home.json` with its seed, per visibility                                                                                                            | `pnpm test` (CI)       |
+| Draw calls, real                 | `mobile-smoke.sh` already counts WebGL draw calls; it gains the thresholds and the idle check per tier                                                                                              | Smokes on staging      |
+| Triangles                        | A unit test sums triangles of the merged geometry and of every piece type at its default size                                                                                                       | `pnpm test` (CI)       |
+| Texture download, memory         | The manifest test of §5.3 sums file sizes and computes memory per device class                                                                                                                      | `pnpm test` (CI)       |
+| Chunk sizes                      | `tools/check-bundle.mjs` reads the build output and compares with `apps/web/bundle-budget.json`                                                                                                     | CI, after `pnpm build` |
+| No static import of a lazy chunk | The same script fails if `render-beautiful` or `render-path` code is in the main chunk                                                                                                              | CI, after `pnpm build` |
+| Lit lamps, lights with shadows   | A unit test of the lamp selection: for each device class and tier, the lit lamps and the shadow casters of `home.json` with its seed are within §10.1; a phone has no lamp among its shadow casters | `pnpm test` (CI)       |
+| Shadow maps, real                | `mobile-smoke.sh` reads the renderer's count of shadow-casting lights from the `?perf` data after the refined frame: 1 on a phone                                                                   | Smokes on staging      |
+| Frame times                      | The `?perf` readout on real devices (§10.3)                                                                                                                                                         | Owner-only check       |
 
 ### 10.3 Measuring on real devices
 
 CI and the agents' machine render in software, so frame times mean nothing there. `?perf=1` shows a small
-readout over the viewer: tier, draw calls, triangles, textures loaded, median and 95th-percentile frame time
+readout over the viewer: tier, draw calls, triangles, textures loaded, lit lamps, lights with shadows, median and 95th-percentile frame time
 while moving, and the refined frame's time. Steps 1, 2 and 8 end with the owner opening one link on a phone
 and one on a desktop and reporting the numbers. The owner has agreed to these
 checks and has a desktop with a discrete GPU for step 8. Each of those sub-issues carries an owner-only
@@ -877,6 +888,8 @@ checklist of two links. The readout stays in the app as a diagnostic.
 - Batching: items with the same key merge; vertex counts and bounds are conserved; visibility hides whole
   batches; a piece keeps its own meshes.
 - Quality: the setting resolves in the order of §3.2; the governor's states follow §3.5 with a fake clock.
+- Lamps: the selection of §6.4 for each device class and tier: which emitters are lit, which cast shadows
+  (none on a phone), the same lit set in fast and beautiful, and a range that ends at the emitter's room.
 - Web tests never load a texture and never need WebGL, as today.
 
 ### 11.2 Goldens
@@ -889,7 +902,8 @@ today. Step 1 converts the goldens and shows, with `visual-diff.sh`, that the pi
 ### 11.3 Smokes and visual diff
 
 - `mobile-smoke.sh`: draw-call thresholds; nothing drawn while idle in every setting; one refined frame after
-  input ends in `auto`; the Quality control is reachable and named.
+  input ends in `auto`; the Quality control is reachable and named. After the refined frame on a phone: at
+  most 6 lit lamps and one light with a shadow.
 - `walk-smoke.sh`: walking draws fast frames and refines on stop.
 - `visual-diff.sh`: the existing views pin `quality=fast`. New views: the three named views in `fast` and in
   `beautiful`, and the phone in `auto` after settling. It waits for the settled frame (§6.7).
@@ -958,7 +972,7 @@ No intended change of look.
 ### Step 2. Lighting and post: the beautiful tier (M)
 
 **Scope:** the light rig and view presets (§6.1, §6.2); the neutral environment and backdrops (§6.3); emitting
-fixtures with caps, lamp shadows and room-bounded range (§6.4); the composer with AO, MSAA and the output pass
+fixtures with their caps per device, lamp shadows on desktops and room-bounded range (§6.4); the composer with AO, MSAA and the output pass
 in the `render-beautiful` chunk (§6.6); Neutral tone mapping in every tier; refine when still and stepping down
 (§3.3, §3.4); the determinism checks (§6.7).
 
@@ -969,6 +983,9 @@ in the `render-beautiful` chunk (§6.6); Neutral tone mapping in every tier; ref
 - `render-beautiful` is within its budget and absent from the main chunk; the main chunk is within its budget.
 - On a phone in `auto`: fast frames while moving, exactly one refined frame after input ends, nothing while
   idle.
+- Lamps follow §6.4 and §10.1, by the unit test and on staging: a phone's refined frame lights at most 6
+  lamps and draws one shadow map, the sun's; a desktop's beautiful frame lights at most 12, of which 4 cast
+  shadows; the kitchen does not change brightness when a moving view settles.
 - Two shots of the same view are byte-identical in each tier.
 - The change of every existing frame from ACES to Neutral is shown before and after in the PR.
 - The owner's phone and desktop numbers from `?perf=1` are within §10.1, or the governor's thresholds are
