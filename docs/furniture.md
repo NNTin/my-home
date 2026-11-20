@@ -217,6 +217,6 @@ Earlier versions kept named furniture layouts per home (`public.layouts`, `/api/
 replaced them with the one placement set above: the release job imported a home's most recently updated layout
 into its placements once (`import` history rows by `system`) and recorded it in `userdata.imports` as
 `(home, 'layouts')`; the seed sync still writes that row, as skipped, for every home it syncs. #56 removed the
-import and the api: `/api/homes/:homeId/layouts` and `/api/layouts/:id` are the api's 404. The table stays, unused,
-for one release so a rollback still works ([deployment.md](deployment.md#roll-back-production)); a later release
-drops it. `userdata.imports` stays as the record.
+import and the api (#104), and one release later the table (Drizzle migration `0003_drop_layouts`):
+`/api/homes/:homeId/layouts` and `/api/layouts/:id` are the api's 404. `userdata.imports` stays as the record; a
+rollback past #104 is in [deployment.md](deployment.md#roll-back-production).

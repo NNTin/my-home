@@ -39,7 +39,7 @@ flowchart LR
       home and the catalogue); an invalid one fails the job **before anything is written**, Helm aborts the
       upgrade and the old pods keep serving;
    2. staging only (`RESET_PUBLIC=true`, guarded by `ALLOW_DATABASE_RESET=true`): it drops the `public` and
-      `drizzle` schemas (homes, layouts and their migration journal);
+      `drizzle` schemas (the homes and their migration journal);
    3. it migrates `public`, `media` and `userdata`;
    4. it syncs the homes from git (see [Homes come from git](#homes-come-from-git)) and logs one line per home;
    5. it makes each home's placements, opening overrides and notes match its seed (see
@@ -164,11 +164,33 @@ job leaves placements, overrides and notes exactly as the last seeded deploy lef
 history rows use the existing actor `system` (named `seed`), so that older api still lists and undoes them. A
 rollback to a release **with** the seed applies that older commit's seed.
 
-This release (#56) removed the named-layouts api and the one-time layout import but **keeps `public.layouts`**
-and its migrations, unused: the previous release's job still runs that import (it reads the table; the import has
-run for every home and is recorded in `userdata.imports`, so it does nothing) and serves the layouts routes. A
-rollback to it therefore works unchanged, and placements, overrides, notes, the seed and photos are unaffected. A
-later release drops the table.
+`public.layouts` is dropped (migration `0003_drop_layouts`) one release after #104 removed the layouts api and the
+one-time layout import (#56). A rollback to that release works unchanged: nothing in it reads the table. A
+rollback to a release from **before #104** finds no layouts table: that release's job migrates, syncs the homes
+and applies its seed, then fails in the one-time layout import (`relation "layouts" does not exist`). Helm aborts the upgrade and the newer pods keep serving, with
+the older commit's homes and seed already applied. Re-deploy forward, or first recreate the empty table (it held
+nothing anyone uses: the import has run for every home and is recorded in `userdata.imports`), then roll back:
+
+```sql
+CREATE TABLE IF NOT EXISTS public.layouts (
+  id text PRIMARY KEY,
+  home_id text NOT NULL REFERENCES public.homes (id) ON DELETE CASCADE,
+  name text NOT NULL,
+  schema_version integer NOT NULL,
+  version integer DEFAULT 1 NOT NULL,
+  items jsonb NOT NULL,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  updated_at timestamptz DEFAULT now() NOT NULL
+);
+CREATE INDEX IF NOT EXISTS layouts_home_id_idx ON public.layouts (home_id);
+```
+
+(psql on the production database, [lair's runbook](https://github.com/NNTin/lair.nntin.xyz/blob/develop/docs/my-home/deployment.md)).
+With it, the older release runs fully, its import finds nothing to do and its deprecated layouts routes answer
+with an empty list. Without it, only those routes and that release job break: placements, opening overrides,
+notes, the seed, photos and history are unaffected (`userdata` and `media` never depended on `public.layouts`).
+Rolling forward again does not drop a recreated table (the database's migration journal already lists
+`0003_drop_layouts`, so it never runs twice); it is unused and harmless, drop it by hand (`DROP TABLE public.layouts`).
 
 ## Databases and backups
 
@@ -198,5 +220,5 @@ full dump already includes it; adding it to the staging dump is an infrastructur
 NNTin/lair.nntin.xyz, and until then staging's `userdata` is test data that a database loss would take with it.
 
 A staging backup may leave out `public` and `drizzle`: they are recreated by every deploy. Production's `public`
-holds only what git restores on every deploy (the homes) plus the deprecated layouts (unused since #56). The api's memory limit
+holds only what git restores on every deploy (the homes). The api's memory limit
 is 512Mi (`charts/my-home/values.yaml`) because it decodes one full-size photo at a time.

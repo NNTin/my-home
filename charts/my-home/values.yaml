@@ -10,7 +10,7 @@ imagePullSecrets: []
 database:
   # Secret holding DATABASE_URL for this environment's database. The infrastructure repository provisions it.
   secretName: my-home-db
-  # Staging only: every deploy also drops `public` (homes, layouts) before migrating. `media` and `userdata` stay.
+  # Staging only: every deploy also drops `public` (the homes) before migrating. `media` and `userdata` stay.
   resetOnDeploy: false
 homes:
   # data/homes files the release job syncs on every deploy (docs/deployment.md). Empty: [home.json].

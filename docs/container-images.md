@@ -43,7 +43,7 @@ api (environment variables, validated at start-up):
 | `MIGRATE_ON_START`              | `true`               | apply Drizzle migrations before listening                                                   |
 | `APP_COMMIT`                    | unset                | release commit, reported by `GET /api/health/live`                                          |
 | `SEED_ON_START`                 | `false` in the image | insert sample data when the table is empty                                                  |
-| `ALLOW_DATABASE_RESET`          | `false`              | lets `node dist/reset.js` drop homes and layouts, never photos or userdata (staging only)   |
+| `ALLOW_DATABASE_RESET`          | `false`              | lets `node dist/reset.js` drop the homes, never photos or userdata (staging only)           |
 | `RESET_PUBLIC`                  | `false`              | `node dist/release.js` drops `public` first; needs `ALLOW_DATABASE_RESET` (staging only)    |
 | `HOME_FILES`                    | unset                | `data/homes` files `dist/release.js` syncs (comma-separated); unset: all, `home.json` first |
 | `PHOTO_MAX_UPLOAD_BYTES`        | `26214400`           | largest accepted photo upload (25 MB)                                                       |
