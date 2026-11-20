@@ -93,22 +93,27 @@ reference made offline during the investigation. The acceptance criteria in §12
 
 A **tier** is what one frame contains.
 
-|                   | **Fast**                                      | **Beautiful**                                                           | **Render**                |
-| ----------------- | --------------------------------------------- | ----------------------------------------------------------------------- | ------------------------- |
-| Purpose           | Moving on any device                          | The look of the app at rest                                             | A still image             |
-| Geometry          | Merged shell, merged pieces                   | Same                                                                    | Same draw list, own scene |
-| Finishes          | 512 px: colour and relief                     | Desktop: 1024 px, plus a roughness map. Phone: as fast                  | As beautiful              |
-| Sun shadow        | One fitted static map                         | Same map, wider filter                                                  | Traced                    |
-| Environment       | Hemisphere light                              | Neutral studio environment                                              | Same environment, traced  |
-| Lamps             | Phone: up to 6. Desktop: up to 12. No shadows | Same lamps. Desktop: the 4 nearest cast shadows. Phone: no lamp shadows | All, traced               |
-| Ambient occlusion | No                                            | Yes                                                                     | Traced                    |
-| Anti-aliasing     | Canvas MSAA                                   | MSAA on the composer target                                             | By accumulation           |
-| Tone mapping      | Neutral                                       | Neutral                                                                 | Neutral                   |
-| Pixel ratio       | Up to 1.5 (phone), 2 (desktop)                | Same caps                                                               | 1, at export size         |
-| Code              | Main chunk                                    | Lazy chunk `render-beautiful`                                           | Lazy chunk `render-path`  |
+|                   | **Fast**                                                                        | **Beautiful**                                                                                    | **Render**                |
+| ----------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------- |
+| Purpose           | Moving on any device                                                            | The look of the app at rest                                                                      | A still image             |
+| Geometry          | Merged shell, merged pieces                                                     | Same                                                                                             | Same draw list, own scene |
+| Finishes          | The device's size: 512 px on a phone, 1024 px with a roughness map on a desktop | Same                                                                                             | Same                      |
+| Sun shadow        | One fitted static map                                                           | Same map, wider filter                                                                           | Traced                    |
+| Environment       | Neutral studio environment                                                      | Same                                                                                             | Same environment, traced  |
+| Lamps             | Phone: up to 6, no shadows. Desktop: up to 12, of which 4 cast shadows          | Same                                                                                             | All, traced               |
+| Ambient occlusion | No                                                                              | Yes                                                                                              | Traced                    |
+| Anti-aliasing     | MSAA on the frame's target: none on a phone, 4 samples on a desktop             | MSAA, 4 samples on every device                                                                  | By accumulation           |
+| Tone mapping      | Neutral                                                                         | Neutral                                                                                          | Neutral                   |
+| Pixel ratio       | Up to 1.5 (phone), 2 (desktop)                                                  | Same caps                                                                                        | 1, at export size         |
+| Code              | Main chunk                                                                      | Main chunk, plus the lazy chunk `render-beautiful` for the AO pass and the beautiful-only extras | Lazy chunk `render-path`  |
 
-Fast is not "today": it has finishes and merged geometry. Step 1 of the rollout makes fast cheaper than today
-before anything is added to it.
+Fast is not "today": it has finishes, merged geometry, the environment and lit lamps. Step 1 of the rollout
+makes fast cheaper than today before anything is added to it.
+
+**Fast and beautiful share one scene.** Materials, textures, lights, shadows and the environment depend on the
+device and the view, never on the tier. A beautiful frame is a fast frame plus ambient occlusion, more
+anti-aliasing samples, a wider shadow filter and a few extra objects (grass tufts, §8.3). This is deliberate:
+switching tier must never compile a shader (§4.5), and a view must not change brightness when it settles.
 
 ### 3.2 The setting
 
@@ -196,22 +201,23 @@ stateDiagram-v2
 
 Paths are under `apps/web/src/` unless they start with `packages/`.
 
-| Part                | Path                                       | Chunk              | Does                                                                 |
-| ------------------- | ------------------------------------------ | ------------------ | -------------------------------------------------------------------- |
-| Finish definitions  | `packages/shared/src/finishes/`            | (shared)           | Ids, names, tile sizes, licences; used by api, web and CI            |
-| Home model          | `packages/shared/src/home-model.ts`        | (shared)           | Gains `finishes` on rooms and exterior surfaces                      |
-| Builder             | `builder/buildHome.ts`                     | main               | Unchanged role: descriptors. Gains finish ids, wall faces, UV frames |
-| Draw list           | `builder/drawList.ts`                      | main               | Turns descriptors and piece parts into `DrawItem`s (§4.2)            |
-| Batching            | `scene/batches.ts`                         | main               | Merges draw items into few geometries, with UVs in metres            |
-| Scene               | `scene/Scene.tsx`, `scene/ShellMeshes.tsx` | main               | Canvas, batches, pieces, furniture layer                             |
-| Quality             | `quality/`                                 | main               | The setting, its storage, the frame governor                         |
-| Light rig           | `lighting/`                                | main               | The rig interface, the fast rig, view presets                        |
-| Finishes at runtime | `finishes/`                                | main               | Material cache, texture loading by tier                              |
-| Texture files       | `finishes/textures/<set>/`                 | assets (hashed)    | WebP files, fetched when a finish is first drawn                     |
-| Beautiful           | `beautiful/`                               | `render-beautiful` | Environment, composer, AO, lamp shadows (desktop), roughness maps    |
-| Views               | `views/`                                   | main               | Named views, section plane, caps, backdrop, image export             |
-| Render mode         | `render-mode/`                             | `render-path`      | Its canvas, WebGPU renderer and path tracer                          |
-| Catalogue           | `catalog/`                                 | main               | Unchanged role. `Part` gains shapes and a finish (§8.2)              |
+| Part                | Path                                       | Chunk              | Does                                                                     |
+| ------------------- | ------------------------------------------ | ------------------ | ------------------------------------------------------------------------ |
+| Finish definitions  | `packages/shared/src/finishes/`            | (shared)           | Ids, names, tile sizes, licences; used by api, web and CI                |
+| Home model          | `packages/shared/src/home-model.ts`        | (shared)           | Gains `finishes` on rooms and exterior surfaces                          |
+| Builder             | `builder/buildHome.ts`                     | main               | Unchanged role: descriptors. Gains finish ids, wall faces, UV frames     |
+| Draw list           | `builder/drawList.ts`                      | main               | Turns descriptors and piece parts into `DrawItem`s (§4.2)                |
+| Batching            | `scene/batches.ts`                         | main               | Merges draw items into few geometries, with UVs in metres                |
+| Scene               | `scene/Scene.tsx`, `scene/ShellMeshes.tsx` | main               | Canvas, batches, pieces, furniture layer                                 |
+| Quality             | `quality/`                                 | main               | The setting, its storage, the frame governor                             |
+| Light rig           | `lighting/`                                | main               | The rig interface, view presets, the environment, the lamp pool (§6.4)   |
+| Finishes at runtime | `finishes/`                                | main               | Material cache, texture loading by tier                                  |
+| Texture files       | `finishes/textures/<set>/`                 | assets (hashed)    | WebP files, fetched when a finish is first drawn                         |
+| Beautiful           | `beautiful/`                               | `render-beautiful` | The AO pass and the beautiful-only extras (grass tufts)                  |
+| Frame output        | `scene/output.ts`                          | main               | The offscreen target and the output pass every frame goes through (§4.5) |
+| Views               | `views/`                                   | main               | Named views, section plane, caps, backdrop, image export                 |
+| Render mode         | `render-mode/`                             | `render-path`      | Its canvas, WebGPU renderer and path tracer                              |
+| Catalogue           | `catalog/`                                 | main               | Unchanged role. `Part` gains shapes and a finish (§8.2)                  |
 
 ```mermaid
 flowchart TB
@@ -231,14 +237,14 @@ flowchart TB
         MAT["finishes<br/>material cache"]
         SCENE["scene/Scene<br/>Canvas, frames on demand"]
         GOV["quality<br/>setting + frame governor"]
-        RIG["lighting<br/>rig + view presets"]
+        RIG["lighting<br/>rig, environment, lamp pool"]
+        OUT["scene/output<br/>target + output pass"]
         VIEWS["views<br/>section, caps, export"]
     end
 
     subgraph lazyB["Lazy chunk: render-beautiful"]
-        ENV["environment"]
-        POST["composer: AO, MSAA, output"]
-        LAMPS["lamp shadows"]
+        AO["ambient occlusion pass"]
+        EXTRAS["beautiful-only extras:<br/>grass tufts"]
     end
 
     subgraph lazyP["Lazy chunk: render-path"]
@@ -258,8 +264,9 @@ flowchart TB
     RIG --> SCENE
     VIEWS --> SCENE
     GOV --> SCENE
+    SCENE --> OUT
     GOV -.->|loads when needed| lazyB
-    lazyB --> SCENE
+    lazyB -->|inserts AO before| OUT
     DRAW -.->|same draw list| PT
     MAT -.-> PT
     VIEWS -.->|camera, cut| PT
@@ -328,7 +335,7 @@ sequenceDiagram
     participant R3F as R3F loop (on demand)
     participant Scene as Scene (batches, rig)
     participant Shadow as Sun shadow map
-    participant Post as Composer (lazy)
+    participant Post as AO pass (lazy)
 
     User->>Controls: drag
     Controls->>Gov: moving = true
@@ -336,15 +343,15 @@ sequenceDiagram
     loop each frame while moving
         R3F->>Gov: which tier?
         Gov-->>R3F: fast (setting auto)
-        R3F->>Scene: draw directly, no composer
+        R3F->>Scene: draw into the target, then the output pass
         Note over Shadow: not redrawn: casters unchanged
     end
     User->>Controls: release
     Controls->>Gov: moving = false
     Gov->>Gov: wait 200 ms without a frame request
     Gov->>R3F: invalidate(), tier beautiful
-    R3F->>Post: draw through composer (AO, MSAA, output)
-    Post->>Scene: render pass
+    R3F->>Post: same scene, with AO before the output pass
+    Note over Scene,Post: no shader is compiled: same materials and lights (4.5)
     Gov->>R3F: mark canvas settled, stop
     Note over R3F: idle: no draw calls
 
@@ -362,9 +369,43 @@ that the main chunk never imports statically.
 - `render-beautiful` is requested when the setting is `beautiful` or `auto`, after the first fast frame is on
   screen. Until it arrives the viewer draws fast frames; nothing waits for it.
 - `render-path` is requested when "Render" is pressed, after a WebGPU check.
-- Textures are files, not code: each is requested when a finish that uses it is first drawn, in the size the
-  device's class calls for (§5.3). A finish draws with its tint alone until its texture arrives.
-- A chunk or texture that fails to load leaves the viewer in the fast tier with a toast, never blank.
+- Textures are files, not code: each is requested when a finish that uses it is first drawn, in the one size
+  the device's class calls for (§5.3). A finish draws with its tint alone until its texture arrives.
+- **A texture that fails to load** leaves that finish on its tint, in whatever tier is drawn. The viewer shows
+  one toast for the visit ("Some surfaces could not be loaded") and tries again on the next visit. It does not
+  change the tier.
+- **A chunk that fails to load** leaves the viewer in the fast tier with a toast, never blank.
+
+### 4.5 Stable shader programs
+
+three.js compiles a shader program per combination of material features, light counts, shadow counts, the
+environment, the output colour space, tone mapping and clipping planes. A change in any of them recompiles
+every affected material, which on a phone can take longer than a whole refined frame is allowed. So:
+
+**Nothing that is part of a program differs between the fast and the beautiful tier.** Switching tier, and
+moving between rooms, compiles nothing.
+
+| What three.js keys programs on     | How the design keeps it fixed                                                                                                                        |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Number of lights of each type      | A fixed **lamp pool** per device, created once (§6.4). Lamps are moved, never added or removed                                                       |
+| Number of lights that cast shadows | Fixed per device: the sun everywhere, plus 4 pool lamps on a desktop, in both tiers                                                                  |
+| Shadow map type                    | One type per device, chosen in step 2 (§6.2); the tiers differ only in the filter radius                                                             |
+| Environment                        | Present in both tiers; its intensity is a uniform                                                                                                    |
+| Texture maps of a material         | One size per device (§5.3). Every map slot of a finish holds a 1 × 1 placeholder until its file arrives, so arrival swaps an image and not a program |
+| Tone mapping, output colour space  | **Every** frame is drawn into an offscreen target and brought to the canvas by the output pass. Material shaders never tone-map                      |
+| Anti-aliasing samples              | A property of the target, not of programs: two targets are kept                                                                                      |
+
+- **Things that do change programs are view changes,** and happen rarely: switching a section on or off
+  (a clipping plane), a finish appearing for the first time, the first highlight of a piece. Each is
+  **compiled ahead** with `renderer.compileAsync` while the previous frame stays on screen.
+- **Warm-up:** after the scene is built, and again when the `render-beautiful` chunk arrives, everything is
+  compiled ahead once, including the AO pass's own programs and the beautiful-only extras (which exist from
+  then on and are only hidden in fast frames).
+- **The governor ignores a frame that compiled** when it judges frame times (§3.4), so a legitimate compile
+  cannot trigger a step down.
+- **Check:** the `?perf` data carries the renderer's program count and a counter of compiles. The smoke
+  (§11.3) asserts that both are unchanged across fast → beautiful → fast, and across a walk from one room to
+  the next.
 
 ```mermaid
 sequenceDiagram
@@ -384,7 +425,7 @@ sequenceDiagram
     and beautiful chunk
         Gov->>Net: import("beautiful")
         Net-->>B: chunk
-        B-->>Gov: ready (environment, composer)
+        B-->>Gov: ready (AO pass compiled)
         Gov->>App: frames now beautiful
     end
 
@@ -451,8 +492,10 @@ the manifest entry, and a note of which photo ids called for it.
   toolchain to CI, and the memory budget (§10) holds without it at these sizes.
 - **Maps and sizes:** every set has `color` and `normal` at **512** and **1024** px. A set may have `roughness`
   at 1024 px. Relief-only sets (plaster, facade render) have no `color` map.
-- **Which size is fetched:** phones fetch 512 px in every tier. Desktops fetch 512 px in the fast tier and
-  1024 px, with the roughness map, in the beautiful tier.
+- **One size per device, in every tier:** a phone fetches the 512 px maps and nothing else. A desktop fetches
+  the 1024 px maps, with the roughness map, and nothing else. No device ever holds two sizes of a set, so the
+  memory budget of §10.1 is what is really resident, and no texture is swapped when the tier changes. Until a
+  file arrives the finish draws with its tint (§4.4).
 - **Where:** `apps/web/src/finishes/textures/<set>/<map>-<size>.webp`, imported by URL so Vite gives them
   hashed names under `/assets/`, which nginx already serves as immutable.
 - **Manifest:** `apps/web/src/finishes/ASSETS.md`, generated from the definitions, lists every file with its
@@ -638,14 +681,15 @@ drawn.
 - **No geographic sun.** Nothing in this epic derives a sun position from a place, a date or a time.
 - **Shadow:** one map, fitted to what is visible, 2048² on a desktop and 1024² on a phone, drawn only on change
   (§4.3). three r187 removed `PCFSoftShadowMap`; the renderer asks for `PCFShadowMap` explicitly. The beautiful
-  tier widens the filter with the light's radius. If step 2 finds that this cannot give a visible penumbra at
-  the three fixed views, beautiful uses `VSMShadowMap`; the choice is recorded in that step's PR.
+  tier widens the filter with the light's radius, which is a uniform. If step 2 finds that this cannot give a
+  visible penumbra at the three fixed views, the device uses `VSMShadowMap` in **both** tiers: the shadow type
+  is fixed per device (§4.5). The choice is recorded in that step's PR.
 
 ### 6.3 Environment and backdrop
 
 - **Environment:** a neutral studio environment generated in the browser at start (a few lit panels,
   prefiltered once). It costs no download and has no colour cast. #107 used a sky photograph and found that it
-  tints shaded walls blue.
+  tints shaded walls blue. It lights both real-time tiers and replaces today's hemisphere light.
 - **Indoors:** an environment lights a closed room as if it had no ceiling. Views under a ceiling (eye level,
   first-person walking) multiply it by the rig's `interior` factor and rely on lamps. This is the known limit
   of the real-time tiers; render mode has no such limit.
@@ -658,19 +702,24 @@ drawn.
 
 - A catalogue type may declare that it **emits light**: a position in its local frame, a colour, an intensity
   in candela and a range. `fixture.downlight` is the first.
-- **How many are lit depends on the device, not the tier:** a phone lights the 6 emitters nearest the orbit
-  target, a desktop the 12 nearest. Fast and beautiful frames light the same lamps, so a view does not change
-  brightness when it settles into a refined frame.
-- **Lamp shadows are the tier's difference, on desktops only:** in the beautiful tier on a desktop the 4
-  nearest lit lamps cast shadows, from static maps that are redrawn only on change. The fast tier has no lamp
-  shadows on any device.
-- **A phone never draws lamp shadows,** in any tier and any setting. Its refined `auto` frame and
-  "Always beautiful" add the environment, ambient occlusion and the wider sun-shadow filter to the fast
-  frame, and nothing else that casts a shadow: the sun's is the phone's only shadow map (§10.1).
+- **A fixed lamp pool.** The scene holds a fixed number of point lights, created once: **6 on a phone, 12 on
+  a desktop**. They are never added or removed. Each frame's pool is assigned to the emitters nearest the
+  orbit target by **moving** the lights and setting their colour, intensity and range; a pool light with no
+  emitter has intensity 0. The number of lights the shaders see therefore never changes (§4.5).
+- **The same lamps in both tiers.** Fast and beautiful frames light the same emitters at the same intensity,
+  so a view does not change brightness when it settles into a refined frame.
+- **Lamp shadows depend on the device, not the tier.** On a desktop, 4 pool lights cast shadows, in fast and
+  in beautiful frames alike; they are assigned to the 4 nearest lit emitters. Their maps are static: redrawn
+  when a caster or the assignment changes, not per frame.
+- **A phone never draws a lamp shadow,** in any tier and any setting. The sun's is its only shadow map
+  (§10.1). Its refined `auto` frame and "Always beautiful" add ambient occlusion, anti-aliasing and the wider
+  sun-shadow filter, and nothing that casts a shadow.
+- **Reassignment is hidden.** When the nearest emitters change (orbiting to another room, walking), lights are
+  reassigned only while their intensity is 0 or their room is not visible, so no lamp visibly jumps.
 - **No leaking:** an emitter's range ends at the bounds of its room, so an unshadowed lamp does not light the
   far side of a wall.
 - **Walk mode's head lamp goes** once the room the figure stands in has an emitter; it stays as the fallback in
-  rooms without one.
+  rooms without one, as one more fixed pool light at intensity 0 elsewhere.
 
 ### 6.5 The seam for #18
 
@@ -680,16 +729,22 @@ backdrop) without touching tiers, finishes or the frame loop. Until then every r
 
 ### 6.6 Post-processing
 
-The beautiful tier draws through three.js' own `EffectComposer` (the `three/addons` passes), not through the
-`postprocessing` package #107's spike used. That package requires three below 0.188 and would block upgrades
-of three; the addons ship with three itself.
+Every frame, in both tiers, takes the same path: the scene is drawn into an offscreen target, and three.js'
+own output pass brings it to the canvas with tone mapping and the colour-space conversion (§4.5). That path is
+in the main chunk. The beautiful tier inserts ambient occlusion between the two, from the `render-beautiful`
+chunk.
 
-| Pass              | What                                                                                                                |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Render pass       | The scene into a multisampled target (4 samples; 0 on a phone's refined frame if the governor measured it too slow) |
-| Ambient occlusion | `N8AOPass` from `n8ao` (ISC). Half resolution on phones. No temporal accumulation                                   |
-| Output pass       | Neutral tone mapping, exposure from the rig, sRGB                                                                   |
+The passes are three.js' own (`three/addons`), not the `postprocessing` package #107's spike used. That
+package requires three below 0.188 and would block upgrades of three; the addons ship with three itself.
 
+| Pass              | Fast                                              | Beautiful                                                                         |
+| ----------------- | ------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Scene into target | Phone: no MSAA. Desktop: 4 samples                | 4 samples on every device                                                         |
+| Ambient occlusion | No                                                | `N8AOPass` from `n8ao` (ISC). Half resolution on phones. No temporal accumulation |
+| Output pass       | Neutral tone mapping, exposure from the rig, sRGB | Same                                                                              |
+
+- The sample counts are fixed as written. Nothing about anti-aliasing is decided at runtime: if a phone's
+  refined frame is too slow, the governor steps down (§3.4); it does not change what a frame contains.
 - **Tone mapping is Neutral in every tier** (three's `NeutralToneMapping`), so a finish has the same colour in
   fast and beautiful. Today's ACES goes; that changes every existing frame slightly and is listed in step 2.
 - No bloom, depth of field or vignette in this epic.
@@ -729,9 +784,13 @@ URL and from the View panel.
 
 - **Cutaway:** the tops of walls of the highest visible level are drawn with `cut.dark` when the level above is
   hidden. The builder marks those faces; no extra geometry.
-- **Section:** one clipping plane cuts every material. Cut solids are closed with a **stencil cap**: back faces
-  and front faces of all closed solids write the stencil, and one quad on the cut plane is drawn where a solid
-  is open. The cap uses `cut.dark` for building parts and `soil.plain` for terrain.
+- **Section:** one clipping plane cuts every material. Cut solids are closed with a **stencil cap**: the back
+  and front faces of closed solids write the stencil, and a quad on the cut plane is drawn where a solid is
+  open.
+- **One stencil bit and one quad per cap material.** There are two cap materials, `cut.dark` for building
+  parts and furniture and `soil.plain` for terrain. Each has its own stencil bit, written only by the solids
+  that take that cap, and its own quad that tests only that bit. The building's quad is drawn after the
+  terrain's, so where a wall stands in soil the wall's cap wins.
 - Stencil caps do not depend on how solids overlap, which is what broke the back-face trick in #107's spike at
   wall openings.
 - Every draw item says whether it is a closed solid. Flat polygons (floors, lawns) are cut and need no cap.
@@ -832,47 +891,48 @@ viewer's own renderer instead, and the PR says so. Either way the tier's interfa
 
 "Default view" is the first view of "Our home": the souterrain cutaway.
 
-| Budget                                 | Phone                       | Desktop                                                     |
-| -------------------------------------- | --------------------------- | ----------------------------------------------------------- |
-| Draw calls, default view, moving frame | ≤ 250                       | ≤ 350                                                       |
-| Draw calls, whole house                | ≤ 350                       | ≤ 500                                                       |
-| Draw calls while idle                  | 0                           | 0                                                           |
-| Triangles, whole house                 | ≤ 150,000                   | ≤ 150,000                                                   |
-| Triangles per catalogue piece          | ≤ 5,000                     | ≤ 5,000                                                     |
-| Texture files in the repository        | ≤ 16 MB                     | same                                                        |
-| Texture download, all finishes         | ≤ 1.5 MB                    | ≤ 6 MB                                                      |
-| Texture memory on the GPU              | ≤ 40 MB                     | ≤ 220 MB                                                    |
-| Lit lamps, every tier                  | ≤ 6                         | ≤ 12                                                        |
-| Lights with shadows, fast tier         | 1 (sun)                     | 1 (sun)                                                     |
-| Lights with shadows, beautiful tier    | 1 (sun): no lamp shadows    | 5 (sun and the 4 nearest lamps)                             |
-| Main chunk growth over `d4df5df`       | ≤ 25 kB gzipped, whole epic | same                                                        |
-| `render-beautiful` chunk               | ≤ 150 kB gzipped            | same                                                        |
-| `render-path` chunk                    | not offered                 | set at the decision gate (§9); never loaded before "Render" |
-| Moving frame, median                   | ≤ 33 ms                     | ≤ 17 ms                                                     |
-| Refined frame (`auto`)                 | ≤ 300 ms                    | n/a                                                         |
+| Budget                                                           | Phone                       | Desktop                                                     |
+| ---------------------------------------------------------------- | --------------------------- | ----------------------------------------------------------- |
+| Draw calls, default view, moving frame                           | ≤ 250                       | ≤ 350                                                       |
+| Draw calls, whole house                                          | ≤ 350                       | ≤ 500                                                       |
+| Draw calls while idle                                            | 0                           | 0                                                           |
+| Triangles, whole house                                           | ≤ 150,000                   | ≤ 150,000                                                   |
+| Triangles per catalogue piece                                    | ≤ 5,000                     | ≤ 5,000                                                     |
+| Texture files in the repository                                  | ≤ 16 MB                     | same                                                        |
+| Texture download, all finishes                                   | ≤ 1.5 MB                    | ≤ 6 MB                                                      |
+| Texture memory on the GPU                                        | ≤ 40 MB                     | ≤ 220 MB                                                    |
+| Point lights in the lamp pool, every tier                        | 6                           | 12                                                          |
+| Lights with shadows, every tier                                  | 1 (sun): no lamp shadows    | 5 (sun and 4 pool lamps)                                    |
+| Shader programs compiled by a tier switch or a lamp reassignment | 0                           | 0                                                           |
+| Main chunk growth over `d4df5df`                                 | ≤ 35 kB gzipped, whole epic | same                                                        |
+| `render-beautiful` chunk                                         | ≤ 150 kB gzipped            | same                                                        |
+| `render-path` chunk                                              | not offered                 | set at the decision gate (§9); never loaded before "Render" |
+| Moving frame, median                                             | ≤ 33 ms                     | ≤ 17 ms                                                     |
+| Refined frame (`auto`)                                           | ≤ 300 ms                    | n/a                                                         |
 
-Texture memory is computed, not measured: width × height × 4 bytes × 1.33 for each texture a device class
-loads, summed. Twelve sets at 512 px with two maps come to about 33 MB; at 1024 px with a roughness map,
-about 200 MB.
+Texture memory is computed, not measured: width × height × 4 bytes × 1.33 for each texture a device holds,
+summed. A device holds **one** size of each set in every tier (§5.3), so this is the real footprint: a phone
+holds twelve sets at 512 px with two maps, about 33 MB; a desktop holds them at 1024 px with a roughness map,
+about 200 MB. The shadow maps and the frame's targets are outside this budget.
 
 ### 10.2 How each is enforced
 
-| Budget                           | Check                                                                                                                                                                                               | Runs in                |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| Draw calls                       | A unit test counts batches and piece meshes of `home.json` with its seed, per visibility                                                                                                            | `pnpm test` (CI)       |
-| Draw calls, real                 | `mobile-smoke.sh` already counts WebGL draw calls; it gains the thresholds and the idle check per tier                                                                                              | Smokes on staging      |
-| Triangles                        | A unit test sums triangles of the merged geometry and of every piece type at its default size                                                                                                       | `pnpm test` (CI)       |
-| Texture download, memory         | The manifest test of §5.3 sums file sizes and computes memory per device class                                                                                                                      | `pnpm test` (CI)       |
-| Chunk sizes                      | `tools/check-bundle.mjs` reads the build output and compares with `apps/web/bundle-budget.json`                                                                                                     | CI, after `pnpm build` |
-| No static import of a lazy chunk | The same script fails if `render-beautiful` or `render-path` code is in the main chunk                                                                                                              | CI, after `pnpm build` |
-| Lit lamps, lights with shadows   | A unit test of the lamp selection: for each device class and tier, the lit lamps and the shadow casters of `home.json` with its seed are within §10.1; a phone has no lamp among its shadow casters | `pnpm test` (CI)       |
-| Shadow maps, real                | `mobile-smoke.sh` reads the renderer's count of shadow-casting lights from the `?perf` data after the refined frame: 1 on a phone                                                                   | Smokes on staging      |
-| Frame times                      | The `?perf` readout on real devices (§10.3)                                                                                                                                                         | Owner-only check       |
+| Budget                           | Check                                                                                                                                                                                                                                              | Runs in                |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| Draw calls                       | A unit test counts batches and piece meshes of `home.json` with its seed, per visibility                                                                                                                                                           | `pnpm test` (CI)       |
+| Draw calls, real                 | `mobile-smoke.sh` already counts WebGL draw calls; it gains the thresholds and the idle check per tier                                                                                                                                             | Smokes on staging      |
+| Triangles                        | A unit test sums triangles of the merged geometry and of every piece type at its default size                                                                                                                                                      | `pnpm test` (CI)       |
+| Texture download, memory         | The manifest test of §5.3 sums, per device, exactly the files that device fetches (one size per set) and computes their memory. A second test of the texture loader asserts that a device never requests the other size                            | `pnpm test` (CI)       |
+| Chunk sizes                      | `tools/check-bundle.mjs` reads the build output and compares with `apps/web/bundle-budget.json`                                                                                                                                                    | CI, after `pnpm build` |
+| No static import of a lazy chunk | The same script fails if `render-beautiful` or `render-path` code is in the main chunk                                                                                                                                                             | CI, after `pnpm build` |
+| Lamp pool, lights with shadows   | A unit test of the lamp pool: its size per device never changes, unassigned lights have intensity 0, a phone's pool has no shadow caster, a desktop's has 4, and both tiers get the same assignment                                                | `pnpm test` (CI)       |
+| No compile on a tier switch      | `mobile-smoke.sh` reads the program count and the compile counter from the `?perf` data: unchanged across fast → beautiful → fast and across a walk into the next room; and the count of shadow-casting lights after a refined frame: 1 on a phone | Smokes on staging      |
+| Frame times                      | The `?perf` readout on real devices (§10.3)                                                                                                                                                                                                        | Owner-only check       |
 
 ### 10.3 Measuring on real devices
 
 CI and the agents' machine render in software, so frame times mean nothing there. `?perf=1` shows a small
-readout over the viewer: tier, draw calls, triangles, textures loaded, lit lamps, lights with shadows, median and 95th-percentile frame time
+readout over the viewer: tier, draw calls, triangles, textures loaded, lit lamps, lights with shadows, shader programs and compiles, median and 95th-percentile frame time
 while moving, and the refined frame's time. Steps 1, 2 and 8 end with the owner opening one link on a phone
 and one on a desktop and reporting the numbers. The owner has agreed to these
 checks and has a desktop with a discrete GPU for step 8. Each of those sub-issues carries an owner-only
@@ -888,8 +948,11 @@ checklist of two links. The readout stays in the app as a diagnostic.
 - Batching: items with the same key merge; vertex counts and bounds are conserved; visibility hides whole
   batches; a piece keeps its own meshes.
 - Quality: the setting resolves in the order of §3.2; the governor's states follow §3.5 with a fake clock.
-- Lamps: the selection of §6.4 for each device class and tier: which emitters are lit, which cast shadows
-  (none on a phone), the same lit set in fast and beautiful, and a range that ends at the emitter's room.
+- Lamps: the pool of §6.4 for each device: a fixed size, unassigned lights at intensity 0, the nearest
+  emitters assigned by moving lights, the same assignment in fast and beautiful, shadow casters fixed (none on
+  a phone, 4 on a desktop), and a range that ends at the emitter's room.
+- Textures: the loader requests one size per device and never the other; a failed file leaves the tint.
+- The governor ignores a frame that compiled when it judges frame times.
 - Web tests never load a texture and never need WebGL, as today.
 
 ### 11.2 Goldens
@@ -903,7 +966,8 @@ today. Step 1 converts the goldens and shows, with `visual-diff.sh`, that the pi
 
 - `mobile-smoke.sh`: draw-call thresholds; nothing drawn while idle in every setting; one refined frame after
   input ends in `auto`; the Quality control is reachable and named. After the refined frame on a phone: at
-  most 6 lit lamps and one light with a shadow.
+  most 6 lit lamps and one light with a shadow. The program count and the compile counter are the same
+  before and after fast → beautiful → fast, and after walking into the next room (§4.5).
 - `walk-smoke.sh`: walking draws fast frames and refines on stop.
 - `visual-diff.sh`: the existing views pin `quality=fast`. New views: the three named views in `fast` and in
   `beautiful`, and the phone in `auto` after settling. It waits for the settled frame (§6.7).
@@ -957,8 +1021,8 @@ flowchart LR
 
 **Scope:** the draw list and batching (§4.2); frames on demand on every device and the frame governor with the
 quality setting, `?quality=` and the View panel control (§3, §4.3); the static, fitted sun shadow and an
-explicit shadow type (§6.2); the `?perf` readout (§10.3); goldens moved to the draw list (§11.2);
-`tools/check-bundle.mjs` in CI. The `auto` and `beautiful` settings exist and draw the fast tier until step 2.
+explicit shadow type (§6.2); the frame's offscreen target and output pass, and compiling ahead (§4.5); the
+`?perf` readout (§10.3); goldens moved to the draw list (§11.2); `tools/check-bundle.mjs` in CI. The `auto` and `beautiful` settings exist and draw the fast tier until step 2.
 No intended change of look.
 
 **Acceptance:**
@@ -971,10 +1035,11 @@ No intended change of look.
 
 ### Step 2. Lighting and post: the beautiful tier (M)
 
-**Scope:** the light rig and view presets (§6.1, §6.2); the neutral environment and backdrops (§6.3); emitting
-fixtures with their caps per device, lamp shadows on desktops and room-bounded range (§6.4); the composer with AO, MSAA and the output pass
-in the `render-beautiful` chunk (§6.6); Neutral tone mapping in every tier; refine when still and stepping down
-(§3.3, §3.4); the determinism checks (§6.7).
+**Scope:** the light rig and view presets (§6.1, §6.2); the neutral environment in both tiers and the
+backdrops (§6.3); emitting fixtures through the fixed lamp pool, lamp shadows on desktops and room-bounded
+range (§6.4); the AO pass in the `render-beautiful` chunk (§6.6); Neutral tone mapping in every tier; stable
+shader programs across tiers, with the warm-up (§4.5); refine when still and stepping down (§3.3, §3.4); the
+determinism checks (§6.7).
 
 **Acceptance:**
 
@@ -983,9 +1048,11 @@ in the `render-beautiful` chunk (§6.6); Neutral tone mapping in every tier; ref
 - `render-beautiful` is within its budget and absent from the main chunk; the main chunk is within its budget.
 - On a phone in `auto`: fast frames while moving, exactly one refined frame after input ends, nothing while
   idle.
-- Lamps follow §6.4 and §10.1, by the unit test and on staging: a phone's refined frame lights at most 6
-  lamps and draws one shadow map, the sun's; a desktop's beautiful frame lights at most 12, of which 4 cast
-  shadows; the kitchen does not change brightness when a moving view settles.
+- Lamps follow §6.4 and §10.1, by the unit test and on staging: a phone lights at most 6 lamps and draws one
+  shadow map, the sun's, in every tier; a desktop lights at most 12, of which 4 cast shadows; the kitchen
+  does not change brightness when a moving view settles.
+- No shader is compiled by a tier switch or a lamp reassignment: the program count and the compile counter are
+  unchanged across fast → beautiful → fast and across a walk into the next room, checked by the smoke.
 - Two shots of the same view are byte-identical in each tier.
 - The change of every existing frame from ACES to Neutral is shown before and after in the PR.
 - The owner's phone and desktop numbers from `?perf=1` are within §10.1, or the governor's thresholds are
@@ -1132,25 +1199,28 @@ All seven proposed defaults were accepted.
 
 ### Design decisions
 
-| #   | Decision                                                                           | Why                                                                                   |
-| --- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| D1  | Three tiers, and a setting with three values (`fast`, `auto`, `beautiful`)         | Separates what a frame contains from when it is drawn; `auto` is the phone's answer 6 |
-| D2  | Frames on demand on every device                                                   | Needed for refine-when-still; one loop to test instead of two                         |
-| D3  | A draw list between the builder and three.js; merge by level, apartment and finish | Cuts draw calls about sixfold and keeps visibility and picking as they are            |
-| D4  | Goldens record the draw list, not meshes                                           | Merging changes every mesh and no pixel                                               |
-| D5  | A static sun shadow, fitted to what is visible                                     | Halves draw calls per frame and sharpens the map                                      |
-| D6  | Finishes are shared catalogue entries; defaults are plain                          | Reviewable in git; an unrefined room does not look falsely specific                   |
-| D7  | WebP textures at 512 and 1024 px; no GPU-compressed format                         | Meets the budgets without a transcoder or a new toolchain                             |
-| D8  | A wall face takes the finish of the room it borders; no finish per wall            | Covers what photos show at this stage with one rule                                   |
-| D9  | A generated neutral environment instead of a sky photograph                        | No download, no blue cast, nothing that suggests a place                              |
-| D10 | three's own composer and `n8ao`, not the `postprocessing` package                  | That package pins three below 0.188                                                   |
-| D11 | Neutral tone mapping in every tier                                                 | One colour per finish across tiers                                                    |
-| D12 | The camera stays perspective; a narrow field of view for the isometric look        | Orbit controls, picking and depth effects stay unchanged                              |
-| D13 | Stencil caps for sections                                                          | Independent of overlapping solids, which broke the cheaper trick in #107              |
-| D14 | Render mode is WebGPU in its own canvas, behind a measured gate                    | The library's WebGL tracer is deprecated; no GPU was available to measure in #107     |
-| D15 | The mesh part for CC0 models is built with the furnishing follow-up                | No type in this epic needs it                                                         |
-| D16 | No texture is ever made from an owner's photo                                      | It would put photo data into git                                                      |
-| D17 | Renders for PRs go to an `assets/render-shots` branch and are linked by commit     | The CLI cannot attach images; the repo already uses this pattern for the references   |
+| #   | Decision                                                                                                   | Why                                                                                                  |
+| --- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| D1  | Three tiers, and a setting with three values (`fast`, `auto`, `beautiful`)                                 | Separates what a frame contains from when it is drawn; `auto` is the phone's answer 6                |
+| D2  | Frames on demand on every device                                                                           | Needed for refine-when-still; one loop to test instead of two                                        |
+| D3  | A draw list between the builder and three.js; merge by level, apartment and finish                         | Cuts draw calls about sixfold and keeps visibility and picking as they are                           |
+| D4  | Goldens record the draw list, not meshes                                                                   | Merging changes every mesh and no pixel                                                              |
+| D5  | A static sun shadow, fitted to what is visible                                                             | Halves draw calls per frame and sharpens the map                                                     |
+| D6  | Finishes are shared catalogue entries; defaults are plain                                                  | Reviewable in git; an unrefined room does not look falsely specific                                  |
+| D7  | WebP textures at 512 and 1024 px, one size per device in every tier; no GPU-compressed format              | Meets the budgets without a transcoder or a new toolchain; the computed memory is the real footprint |
+| D8  | A wall face takes the finish of the room it borders; no finish per wall                                    | Covers what photos show at this stage with one rule                                                  |
+| D9  | A generated neutral environment instead of a sky photograph                                                | No download, no blue cast, nothing that suggests a place                                             |
+| D10 | three's own passes and `n8ao`, not the `postprocessing` package                                            | That package pins three below 0.188                                                                  |
+| D11 | Neutral tone mapping in every tier                                                                         | One colour per finish across tiers                                                                   |
+| D12 | The camera stays perspective; a narrow field of view for the isometric look                                | Orbit controls, picking and depth effects stay unchanged                                             |
+| D13 | Stencil caps for sections                                                                                  | Independent of overlapping solids, which broke the cheaper trick in #107                             |
+| D14 | Render mode is WebGPU in its own canvas, behind a measured gate                                            | The library's WebGL tracer is deprecated; no GPU was available to measure in #107                    |
+| D15 | The mesh part for CC0 models is built with the furnishing follow-up                                        | No type in this epic needs it                                                                        |
+| D16 | No texture is ever made from an owner's photo                                                              | It would put photo data into git                                                                     |
+| D17 | Renders for PRs go to an `assets/render-shots` branch and are linked by commit                             | The CLI cannot attach images; the repo already uses this pattern for the references                  |
+| D18 | Fast and beautiful share one scene: nothing that is part of a shader program differs between tiers         | A tier switch or a refined frame must never compile shaders (review of #109)                         |
+| D19 | A fixed lamp pool per device (6 on a phone, 12 on a desktop); lamp shadows on desktops only, in both tiers | Stable light counts; a phone's budget of one shadow map (review of #109)                             |
+| D20 | Every frame goes through an offscreen target and the output pass                                           | Keeps tone mapping and colour space out of material programs                                         |
 
 ## 14. Open questions
 
