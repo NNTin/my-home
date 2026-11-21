@@ -31,9 +31,11 @@ export interface FrameReport {
   /** This frame compiled a program itself, instead of finding it compiled ahead. */
   compiled: boolean;
   textures: number;
-  /** Lights that cast a shadow, and lamps of the pool that are lit (none before #111). */
+  /** Lights that cast a shadow, and lamps of the pool that are lit. */
   shadowLights: number;
   litLamps: number;
+  /** Pool lights that changed their emitter since the page loaded (§6.4). */
+  lampChanges: number;
 }
 
 /** The `?perf` data (§10.3). Times are milliseconds. */
@@ -93,19 +95,28 @@ export class FrameGovernor {
     textures: 0,
     shadowLights: 0,
     litLamps: 0,
+    lampChanges: 0,
   };
   /** Told when the state or the tier changes: the scene marks the canvas with them. */
   onChange: ((state: FrameState, tier: Tier) => void) | undefined;
   /** Whether a frame is waiting to be drawn; a settle is put off while one is. */
   framePending: () => boolean = () => false;
+  /** Told when the last source stopped moving the view. */
+  private onStill: (() => void) | undefined;
 
   /** Connects the frame loop; returns the action that disconnects it. */
-  attach(loop: { onChange(state: FrameState, tier: Tier): void; framePending(): boolean }) {
+  attach(loop: {
+    onChange(state: FrameState, tier: Tier): void;
+    framePending(): boolean;
+    onStill?(): void;
+  }) {
     this.onChange = loop.onChange;
     this.framePending = loop.framePending;
+    this.onStill = loop.onStill;
     return () => {
       this.onChange = undefined;
       this.framePending = () => false;
+      this.onStill = undefined;
     };
   }
 
@@ -136,10 +147,12 @@ export class FrameGovernor {
 
   /** `source` starts or stops moving the view (`orbit`, `drag`, `walk`). */
   setMoving(source: string, moving: boolean) {
+    const was = this.moving;
     if (moving) this.sources.add(source);
     else this.sources.delete(source);
     if (moving) this.unsettle();
     else this.armSettle();
+    if (was && !this.moving) this.onStill?.();
   }
 
   /** A frame is about to be drawn. */

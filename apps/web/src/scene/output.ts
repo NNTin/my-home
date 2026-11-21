@@ -27,7 +27,8 @@ import type { Tier } from '../quality/governor';
  * tone-map, and a change of tone mapping or of tier compiles none of them.
  *
  * The backdrop is not part of the scene: the target is cleared transparent, and the output pass
- * lays the tone-mapped frame over the backdrop colour. The backdrop so keeps its exact colour,
+ * lays the tone-mapped frame over the backdrop (a colour, or a vertical gradient of two). The
+ * backdrop so keeps its exact colour,
  * and what is translucent or half-covered in front of it (glass, an anti-aliased roof line)
  * blends with it as displayed, as it did when the scene was drawn straight to the canvas.
  *
@@ -52,11 +53,15 @@ const OUTPUT_VERTEX = /* glsl */ `
     gl_Position = vec4(position.xy, 0.0, 1.0);
   }`;
 
-/** The target holds premultiplied linear colour and coverage; the backdrop is a display colour. */
+/**
+ * The target holds premultiplied linear colour and coverage; the backdrop is in display colours.
+ * Tone mapping is Neutral in every tier (§6.6), so a surface has one colour whatever draws it.
+ */
 const OUTPUT_FRAGMENT = /* glsl */ `
   precision highp float;
   uniform sampler2D tDiffuse;
-  uniform vec3 backdrop;
+  uniform vec3 backdropTop;
+  uniform vec3 backdropBottom;
   #include <tonemapping_pars_fragment>
   #include <colorspace_pars_fragment>
   varying vec2 vUv;
@@ -64,8 +69,9 @@ const OUTPUT_FRAGMENT = /* glsl */ `
     vec4 frame = texture2D(tDiffuse, vUv);
     float coverage = clamp(frame.a, 0.0, 1.0);
     vec3 color = coverage > 0.0 ? frame.rgb / coverage : vec3(0.0);
-    color = ACESFilmicToneMapping(color);
+    color = NeutralToneMapping(color);
     color = sRGBTransferOETF(vec4(color, 1.0)).rgb;
+    vec3 backdrop = mix(backdropBottom, backdropTop, clamp(vUv.y, 0.0, 1.0));
     gl_FragColor = vec4(mix(backdrop, color, coverage), 1.0);
   }`;
 
@@ -92,10 +98,10 @@ export class FrameOutput {
     uniforms: {
       tDiffuse: { value: null },
       toneMappingExposure: { value: 1 },
-      backdrop: { value: new Color() },
+      backdropTop: { value: new Color() },
+      backdropBottom: { value: new Color() },
     },
     vertexShader: OUTPUT_VERTEX,
-    // Tone mapping stays ACES in this step (Neutral comes with the beautiful tier, #111).
     fragmentShader: OUTPUT_FRAGMENT,
     depthTest: false,
     depthWrite: false,
@@ -161,11 +167,20 @@ export class FrameOutput {
     return this.resolved;
   }
 
-  /** The backdrop behind the scene, as a `#rrggbb` display colour. */
-  setBackdrop(backdrop: string) {
-    // The uniform holds the colour as displayed, not in linear light.
-    const color = this.outputMaterial.uniforms.backdrop!.value as Color;
-    color.set(backdrop).getRGB(color, SRGBColorSpace);
+  /** The tone-mapping exposure, from the light rig. */
+  setExposure(exposure: number) {
+    this.outputMaterial.uniforms.toneMappingExposure!.value = exposure;
+  }
+
+  /** The backdrop behind the scene, as `#rrggbb` display colours at the top and foot of the view. */
+  setBackdrop(top: string, bottom = top) {
+    // The uniforms hold the colours as displayed, not in linear light.
+    const set = (name: 'backdropTop' | 'backdropBottom', value: string) => {
+      const color = this.outputMaterial.uniforms[name]!.value as Color;
+      color.set(value).getRGB(color, SRGBColorSpace);
+    };
+    set('backdropTop', top);
+    set('backdropBottom', bottom);
   }
 
   /** Draws `scene` into the tier's target, then the output pass (and FXAA) onto the canvas. */
@@ -178,7 +193,6 @@ export class FrameOutput {
     renderer.render(scene, camera);
 
     this.outputMaterial.uniforms.tDiffuse!.value = target.texture;
-    this.outputMaterial.uniforms.toneMappingExposure!.value = renderer.toneMappingExposure;
     if (usesFxaa(tier, this.phone)) {
       const resolved = this.resolvedTarget();
       renderer.setRenderTarget(resolved);

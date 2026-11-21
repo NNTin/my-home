@@ -123,6 +123,15 @@ nothing is drawn. The frame loop is `apps/web/src/scene/Frame.tsx`; the frame go
 The sun's **shadow map is static**: it is fitted to what is visible and drawn again only when what casts shadows
 changed (the home, what is shown, a furniture item, the walking figure in the overview).
 
+The scene is lit by a **light rig** (`apps/web/src/lighting/`, `docs/design/realistic-render.md` §6): a studio
+sun, a neutral studio environment drawn once in the browser, and the **lamps**. Fixtures that emit light (the
+downlights) are lit by a **fixed pool of point lights**, created once: **6 on a phone, 12 on a desktop**. A
+frame moves the pool to the emitters nearest the view's focus; it never adds or removes a light, so moving
+between rooms compiles no shader. A light changes its lamp only while that lamp's room is out of sight. On a
+desktop the 4 nearest lamps cast shadows; **a phone never draws a lamp shadow**: the sun's is its only shadow
+map. A lamp's light ends at the bounds of its room. `?backdrop=sky|studio-light|studio-dark` sets what is
+behind the scene for one visit.
+
 On a phone (the same condition as the phone layout) the 3D view also:
 
 - caps the **device pixel ratio** at 1.5 (2 on a desktop screen): a phone with a ratio of 3 would otherwise
@@ -135,11 +144,13 @@ The **Quality** control of the View tab (`fast`, `auto`, `beautiful`: "Fast", "A
 says which tier is drawn when; a phone starts on "Automatic". It is remembered on the device
 (`localStorage`, `my-home.quality`), and `?quality=` sets it for one visit. Until the beautiful tier exists every
 value draws the fast tier (`docs/design/realistic-render.md` §3). `?perf=1` shows what a frame costs on the
-device: draw calls, triangles, shader programs and frame times.
+device: draw calls, triangles, lit lamps, lights with shadows, shader programs and frame times.
 
 Anything new that moves the camera or an object from outside React and the orbit controls (a timer, a sensor)
 must call `invalidate()`, or the picture stays as it was until the next input. Anything new that casts a shadow
 and moves must also tell the frame loop (`useFrameControl().castersChanged()`), or its shadow stays behind.
+Never add a light to the viewer's scene or remove one while it runs: the number of lights is part of every
+shader program. A piece that should light the room declares it (`emits`, `docs/adding-piece-type.md`).
 
 ## Installing it
 

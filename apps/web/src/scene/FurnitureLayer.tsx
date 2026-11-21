@@ -5,7 +5,7 @@ import { DoubleSide, Plane, Vector3, type Camera, type Object3D, type Ray } from
 import type { Vec2, Vec3 } from '../builder/buildHome';
 import type { ItemSize } from '../catalog/furniture';
 import { PartsMesh, SELECTION_COLOR } from '../catalog/PartsMesh';
-import type { Part } from '../catalog/types';
+import type { Part, PieceEmitter } from '../catalog/types';
 import { FurnitureToolbar, type FurnitureToolbarProps } from '../overlay/FurnitureToolbar';
 import { onCanvas, swallowNextClick } from './canvasEvent';
 import { useFrameControl } from './Frame';
@@ -19,6 +19,10 @@ export interface FurnitureView {
   size: ItemSize;
   /** In the item's local frame; an unknown type is a plain box (`unknownParts`). */
   parts: Part[];
+  /** The light the item emits, in its local frame (`lighting/lamps.ts`). */
+  emitters?: PieceEmitter[];
+  /** The room it is in, where known: a lamp's light ends at its room. */
+  roomId?: string;
   selected: boolean;
   colliding: boolean;
 }

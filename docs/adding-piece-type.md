@@ -126,6 +126,10 @@ export default definePiece({
   in depth × height, tagged by role), when the generic cut of its parts through the centre
   (`sectionOf` in [`piece-page/section.ts`](../apps/web/src/piece-page/section.ts)) is not right,
   e.g. once a design draws real sill or sash profiles. The wall around the hole is added by the page.
+- Optional `emits(values, ctx)` (placed kinds): the light the piece gives, as `PieceEmitter`s in the local
+  frame: a `position`, a `color`, an `intensity` in candela and a `range` in metres (`fixture.downlight`). The
+  viewer lights the nearest emitters with its fixed lamp pool and ends each range at the piece's room
+  (`docs/design/realistic-render.md` §6.4). A piece never adds a light to the scene itself.
 
 ## 3. Check it
 

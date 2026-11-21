@@ -20,6 +20,12 @@ const redact = (text) => {
 };
 
 const failures = [];
+/**
+ * How long a screenshot may take. The browser draws in software here: a frame of the lit scene
+ * takes seconds, and a shot waits until the frames before it are drawn.
+ */
+const SHOT_TIMEOUT_MS = 180_000;
+
 const check = (name, ok, detail = '') => {
   console.log(`${ok ? 'ok   ' : 'FAIL '} ${name}${detail ? `: ${detail}` : ''}`);
   if (!ok) failures.push(name);
@@ -155,7 +161,7 @@ async function smoke(out) {
       'the overview has no look layer over the canvas',
       (await page.locator('.walk-look').count()) === 0,
     );
-    await page.screenshot({ path: out });
+    await page.screenshot({ path: out, timeout: SHOT_TIMEOUT_MS });
 
     // Up the stair from the figure's level (walked in the overview, which draws faster).
     const stair = await map.evaluate((svg, level) => {
@@ -246,7 +252,10 @@ async function smoke(out) {
         await mapMatches(),
         JSON.stringify(await onMap()),
       );
-      await page.screenshot({ path: out.replace(/\.png$/, '-stair.png') });
+      await page.screenshot({
+        path: out.replace(/\.png$/, '-stair.png'),
+        timeout: SHOT_TIMEOUT_MS,
+      });
     }
     console.log(`end ${JSON.stringify(await figure())} in "${await where()}"`);
     // Leaving walk mode logs nothing, whichever way in: the first-person walk above, the overview

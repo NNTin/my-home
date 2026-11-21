@@ -120,8 +120,6 @@ export function WalkRig({ figure, view, rose }: Props) {
   const body = FIGURE_HEIGHT - 2 * FIGURE_RADIUS;
   return (
     <group ref={group}>
-      {/* Rooms have no lamps: in first person the figure carries a soft light at its head. */}
-      {view === 'first' && <pointLight position={[0, EYE_HEIGHT, 0]} intensity={0.9} decay={0} />}
       <group visible={view === 'third'}>
         <mesh position={[0, FIGURE_RADIUS + body / 2, 0]} castShadow>
           <capsuleGeometry args={[FIGURE_RADIUS, body, 6, 16]} />

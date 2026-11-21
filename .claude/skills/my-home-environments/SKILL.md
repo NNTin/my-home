@@ -108,7 +108,10 @@ $S/seed.sh staging diff                                # drift between git's see
   `?perf=1` (`window.__myHomePerf()`): for each of `?quality=fast|auto|beautiful` the view settles
   (`canvas[data-frame="settled"]`) and then draws nothing, and a moving frame of the first view and of the whole
   house is within the draw-call budget (250 and 350 on a phone, 350 and 500 on a desktop) and compiles no
-  shader. A build before #110 skips these. Read-only: every
+  shader. For every setting lamps are lit, at most 6 on a phone and 12 on a desktop, and 1 light casts a shadow on
+  a phone (the sun) and 5 on a desktop; then the figure walks (`?walk=first`) until the lamp pool has moved to
+  other lamps (a phone), and the shader program count and the compile counter are what they were. A build
+  before #110 skips the frame loop, one before #111 the lamps. Read-only: every
   placement write is **answered inside the browser** (as the api would, merged into the placement reads), every
   other write is refused there.
 - `catalog-smoke.sh <env> [--out file.png] [--home ID]`: the catalogue pages (`docs/catalog.md`) at 1440x900 and

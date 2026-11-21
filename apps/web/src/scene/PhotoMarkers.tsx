@@ -220,11 +220,6 @@ export function ViewpointRig({ viewpoint, rose }: { viewpoint: Viewpoint; rose?:
       camera.updateProjectionMatrix();
     }
   });
-  return (
-    <pointLight
-      position={[viewpoint.pose.position.x, viewpoint.pose.position.y, viewpoint.pose.position.z]}
-      intensity={0.9}
-      decay={0}
-    />
-  );
+  // The room is lit by its lamps, or by the pool's head lamp at the eye (`lighting/sceneLights.ts`).
+  return null;
 }

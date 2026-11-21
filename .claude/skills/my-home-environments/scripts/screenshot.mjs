@@ -17,6 +17,12 @@ const { version } = require('playwright/package.json');
  */
 const SETTLE_MS = 1000;
 
+/**
+ * How long a screenshot may take. The browser draws in software here: a frame of the lit scene
+ * takes seconds, and a shot waits until the frames before it are drawn.
+ */
+const SHOT_TIMEOUT_MS = 180_000;
+
 const LAUNCH_ARGS = ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'];
 const token = process.env.SITE_TOKEN ?? '';
 
@@ -151,10 +157,13 @@ async function shoot([
         });
         writeFileSync(out, Buffer.from(data, 'base64'));
       } else {
-        await page.locator('canvas').first().screenshot({ path: out, animations: 'disabled' });
+        await page
+          .locator('canvas')
+          .first()
+          .screenshot({ path: out, animations: 'disabled', timeout: SHOT_TIMEOUT_MS });
       }
     } else {
-      await page.screenshot({ path: out });
+      await page.screenshot({ path: out, timeout: SHOT_TIMEOUT_MS });
     }
     console.log(`errors ${errors.length ? '' : 'none'}`);
     for (const error of errors.slice(0, 10)) console.log(`  ${redact(error)}`);

@@ -43,6 +43,7 @@ const report = (patch: Partial<FrameReport> = {}): FrameReport => ({
   textures: 0,
   shadowLights: 1,
   litLamps: 0,
+  lampChanges: 0,
   ...patch,
 });
 
@@ -61,6 +62,25 @@ function setup() {
 }
 
 describe('the frame governor', () => {
+  it('tells the frame loop when the last source stopped moving the view', () => {
+    const { governor } = setup();
+    let still = 0;
+    governor.attach({
+      onChange: () => undefined,
+      framePending: () => false,
+      onStill: () => still++,
+    });
+    governor.setMoving('orbit', true);
+    governor.setMoving('drag', true);
+    governor.setMoving('orbit', false);
+    expect(still).toBe(0);
+    governor.setMoving('drag', false);
+    expect(still).toBe(1);
+    // Nothing was moving: nothing stopped.
+    governor.setMoving('drag', false);
+    expect(still).toBe(1);
+  });
+
   it('settles 200 ms after the last frame, and not before', () => {
     const { governor, advance, seen, frame } = setup();
     expect(governor.state).toBe('moving');

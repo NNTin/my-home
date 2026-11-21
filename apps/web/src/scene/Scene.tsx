@@ -7,6 +7,8 @@ import type { RoomLabel, Visibility } from '../builder/visibility';
 import type { CompassMarker } from '../compass/compass';
 import { CompassMarkers, CompassRose, CompassTracker } from '../compass/Compass';
 import type { FurnitureToolbarProps } from '../overlay/FurnitureToolbar';
+import { lampRooms, sceneEmitters } from '../lighting/lamps';
+import { backdropRequested, rigFor } from '../lighting/rig';
 import { FrameGovernor } from '../quality/governor';
 import { PerfReadout, perfRequested } from '../quality/PerfReadout';
 import type { Quality } from '../quality/setting';
@@ -81,9 +83,6 @@ function PauseFrames({ paused }: { paused: boolean }) {
 }
 
 export { PHONE_DPR };
-
-/** The sky: today's flat blue. The output pass draws it behind the scene (`output.ts`). */
-const BACKDROP = '#cfdde8';
 
 /**
  * Initial camera: south-east of the building, far enough to see the whole plot. `aspect` is the
@@ -236,6 +235,15 @@ export function Scene({
   const labelsRef = useRef<HTMLDivElement>(null);
   const northUpRef = useRef<() => void>(undefined);
   const rose = useMemo(() => ({ ref: roseRef, northBearing }), [northBearing]);
+  // The view is from inside a room: the rig's environment is lowered and lamps light it (§6.3).
+  const eye = walk?.view === 'first' || viewpoint !== undefined;
+  const rig = useMemo(() => {
+    const chosen = rigFor({ kind: eye ? 'eye' : 'free' });
+    const backdrop = backdropRequested(window.location.search);
+    return backdrop ? { ...chosen, backdrop } : chosen;
+  }, [eye]);
+  const rooms = useMemo(() => lampRooms(scene), [scene]);
+  const emitters = useMemo(() => sceneEmitters(furniture, rooms), [furniture, rooms]);
   const governor = useMemo(() => new FrameGovernor(), []);
   useEffect(() => () => governor.dispose(), [governor]);
   useEffect(() => governor.setSetting(quality), [governor, quality]);
@@ -281,8 +289,14 @@ export function Scene({
         style={{ touchAction: 'none' }}
       >
         <PauseFrames paused={paused} />
-        <hemisphereLight args={['#ffffff', '#5b5040', 0.8]} />
-        <FrameLoop governor={governor} phone={touch} backdrop={BACKDROP}>
+        <FrameLoop
+          governor={governor}
+          phone={touch}
+          rig={rig}
+          emitters={emitters}
+          rooms={rooms}
+          eye={eye}
+        >
           <ShellMeshes scene={scene} visibility={visibility} pieces={pieces} />
           <FurnitureLayer
             items={furniture}
