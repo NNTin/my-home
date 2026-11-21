@@ -129,6 +129,9 @@ export class SceneLights {
       const emitter = id === undefined ? undefined : byId.get(id);
       if (!emitter) {
         lamp.intensity = 0;
+        // Its map is not kept up while it is unlit (`redrawLampShadows`): whatever it is
+        // assigned to next, the same emitter included, draws the map again.
+        this.drawnFor[index] = '';
         return;
       }
       lit += 1;

@@ -102,6 +102,25 @@ describe('the scene lights', () => {
     expect(l.shadowCasters.every((lamp) => lamp.shadow.needsUpdate)).toBe(true);
   });
 
+  it('draws the map again for a lamp that was unlit while the casters changed', () => {
+    const l = lights(false);
+    const settle = () => l.shadowCasters.forEach((lamp) => (lamp.shadow.needsUpdate = false));
+    const one = [emitters[0]!];
+    l.update({ emitters: one, focus: [0, 0, 2] });
+    const lamp = l.shadowCasters[0]!;
+    settle();
+    // Its emitter goes (the apartment is hidden): the lamp is unlit.
+    l.update({ emitters: [], focus: [0, 0, 2] });
+    expect(lamp.intensity).toBe(0);
+    // Meanwhile something that casts shadows moves: an unlit lamp's map is not drawn.
+    l.redrawLampShadows();
+    expect(lamp.shadow.needsUpdate).toBe(false);
+    // The same emitter comes back, at the same place: its map is stale and is drawn again.
+    expect(l.update({ emitters: one, focus: [0, 0, 2] }).shadowsMoved).toBe(true);
+    expect(l.assignment[0]).toBe('a0');
+    expect(lamp.shadow.needsUpdate).toBe(true);
+  });
+
   it('lights the head lamp only at the eye in a room without an emitter', () => {
     const l = lights(true);
     l.update({ emitters, focus: [0, 0, 2] });
