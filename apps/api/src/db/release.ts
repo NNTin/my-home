@@ -14,8 +14,8 @@ export interface ReleaseLog {
 /**
  * The pre-deploy hook (`dist/release.js`) on every environment:
  * 1. read and validate every home file and its seed (`<home>.seed.json`, against the home and the
- *    catalogue): a bad one fails the release before anything is written, so Helm aborts the
- *    upgrade and the old pods keep serving;
+ *    catalogue), and reject any `PURGE_HOMES` id in the synced models: bad configuration fails
+ *    the release before anything is written, so Helm aborts the upgrade and the old pods keep serving;
  * 2. with `RESET_PUBLIC` (staging, guarded by `ALLOW_DATABASE_RESET`), drop `public` and the
  *    drizzle journal; `media` and `userdata` are never touched;
  * 3. migrate `public`, `media` and `userdata`;
@@ -55,6 +55,11 @@ export async function runRelease(
       `release: ${seeds.length} seed file(s) valid: ${seeds.map((s) => s.model.id).join(', ')}`,
     );
   }
+  for (const id of config.purgeHomes) {
+    if (models.some((m) => m.id === id)) {
+      throw new Error(`refusing to purge home "${id}": it is in the synced files`);
+    }
+  }
   if (config.resetPublic) {
     await resetDatabase(database.db);
     log.info('release: public reset (media and userdata kept)');
@@ -72,9 +77,6 @@ export async function runRelease(
   const seeded = await syncSeeds(database.db, seeds);
   describeSeedSync(seeded).forEach((line) => log.info(line));
   for (const id of config.purgeHomes) {
-    if (models.some((m) => m.id === id)) {
-      throw new Error(`refusing to purge home "${id}": it is in the synced files`);
-    }
     const purged = await purgeHome(database.db, id);
     const rows = Object.entries(purged.removed)
       .map(([table, n]) => `${table}=${n}`)
