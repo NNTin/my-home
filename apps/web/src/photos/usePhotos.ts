@@ -11,6 +11,7 @@ export interface PhotosState {
 }
 
 export interface Photos extends PhotosState {
+  savingTags: ReadonlySet<string>;
   reload(): Promise<void>;
   update(id: string, body: UpdatePhotoBody): Promise<void>;
   /** Undoes one change of a photo's pose (its history is `api.poseHistory`). */
@@ -33,6 +34,8 @@ export interface Photos extends PhotosState {
  */
 export function usePhotos(homeId: string, api: PhotosApi = photosApi): Photos {
   const [state, setState] = useState<PhotosState>({ photos: [], requests: [], trash: undefined });
+  const tagWrites = useRef(new Set<string>());
+  const [savingTags, setSavingTags] = useState<ReadonlySet<string>>(new Set());
 
   // Reloads can overlap (two quick edits, a capture while a list is loading). Only the answer to
   // the latest one is shown, so an older, slower response never overwrites newer data.
@@ -68,8 +71,29 @@ export function usePhotos(homeId: string, api: PhotosApi = photosApi): Photos {
     };
     return {
       ...state,
+      savingTags,
       reload,
-      update: (id, body) => run(() => api.update(id, body))(),
+      update: async (id, body) => {
+        if (body.tags === undefined) return run(() => api.update(id, body))();
+        // Keep the lock outside the detail view so closing/reopening cannot bypass it.
+        if (tagWrites.current.has(id)) return;
+        tagWrites.current.add(id);
+        setSavingTags(new Set(tagWrites.current));
+        try {
+          await run(async () => {
+            const saved = await api.update(id, body);
+            // Retain confirmed tags even if the refresh fails; invalidate pre-save reads.
+            ++latest.current;
+            setState((s) => ({
+              ...s,
+              photos: s.photos.map((p) => (p.id === id ? { ...p, tags: saved.tags } : p)),
+            }));
+          })();
+        } finally {
+          tagWrites.current.delete(id);
+          setSavingTags(new Set(tagWrites.current));
+        }
+      },
       undoPose: (id, changeId) => run(() => api.undoPose(id, changeId))(),
       remove: (id) => run(() => api.remove(id))(),
       restore: (id) => run(() => api.restore(id))(),
@@ -81,5 +105,5 @@ export function usePhotos(homeId: string, api: PhotosApi = photosApi): Photos {
       purgeRequest: (id) => run(() => api.purgeRequest(id))(),
       emptyTrash: run(() => api.emptyTrash(homeId)),
     };
-  }, [api, homeId, reload, state]);
+  }, [api, homeId, reload, savingTags, state]);
 }
