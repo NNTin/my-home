@@ -846,6 +846,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
             pieces={walking ? undefined : { onSelectPiece: selectPiece, highlightId: highlight }}
             frame={frame}
             quality={quality}
+            onNotice={setToast}
           />
           {toast && (
             <p className="toast" role="alert">

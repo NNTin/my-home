@@ -118,7 +118,8 @@ furniture and the panels ask for frames by themselves. While walking, the walk l
 to a new height. The walk [minimap](walking.md#minimap) is SVG outside the canvas and asks for no frames. At rest
 nothing is drawn. The frame loop is `apps/web/src/scene/Frame.tsx`; the frame governor
 (`apps/web/src/quality/governor.ts`) marks the canvas with `data-frame="moving|settled"` and
-`data-tier="fast|beautiful"`, so a smoke or a screenshot can wait for a settled frame.
+`data-tier="fast|beautiful"` (the tier of the frame on screen), so a smoke or a screenshot can wait for a
+settled frame. Settled means the GPU has drawn it.
 
 The sun's **shadow map is static**: it is fitted to what is visible and drawn again only when what casts shadows
 changed (the home, what is shown, a furniture item, the walking figure in the overview).
@@ -142,9 +143,25 @@ On a phone (the same condition as the phone layout) the 3D view also:
 
 The **Quality** control of the View tab (`fast`, `auto`, `beautiful`: "Fast", "Automatic", "Always beautiful")
 says which tier is drawn when; a phone starts on "Automatic". It is remembered on the device
-(`localStorage`, `my-home.quality`), and `?quality=` sets it for one visit. Until the beautiful tier exists every
-value draws the fast tier (`docs/design/realistic-render.md` §3). `?perf=1` shows what a frame costs on the
-device: draw calls, triangles, lit lamps, lights with shadows, shader programs and frame times.
+(`localStorage`, `my-home.quality`), and `?quality=` sets it for one visit (`docs/design/realistic-render.md` §3):
+
+- **Fast** draws fast frames always.
+- **Automatic** (a phone's default) draws fast frames while a finger moves the view, and **one beautiful frame**
+  200 ms after the last frame, when nothing moves any more: ambient occlusion, 4 samples of anti-aliasing and a
+  softer sun shadow. Then it stops; at rest nothing is drawn.
+- **Always beautiful** (a desktop's default) draws every frame that way.
+
+The beautiful tier's code is a **lazy chunk** (`render-beautiful`), asked for after the first frame; until it
+has arrived every frame is a fast one, and if it does not arrive the viewer stays fast and says so. Fast and
+beautiful frames draw the same scene with the same lights and shader programs, so switching tier compiles
+nothing and a view does not change brightness when it settles.
+
+The viewer **steps down** by itself for the rest of a visit: from "Always beautiful" to "Automatic" when the
+median of 30 consecutive moving frames is above 40 ms, and from "Automatic" to "Fast" when a refined frame
+takes longer than a second. It says so once ("Showing a faster view on this device"); choosing a value in the
+control clears it. `?stepdown=off` turns this off, for captures under software rendering. `?perf=1` shows what a frame costs on the
+device: the tier and whether the viewer stepped down, draw calls, triangles, lit lamps, lights with shadows,
+shader programs, frame times and the refined frame's time.
 
 Anything new that moves the camera or an object from outside React and the orbit controls (a timer, a sensor)
 must call `invalidate()`, or the picture stays as it was until the next input. Anything new that casts a shadow

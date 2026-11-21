@@ -31,7 +31,9 @@ export function PerfReadout({ governor }: { governor: FrameGovernor }) {
   }, [governor]);
   const rows: [string, string][] = [
     ['Setting', data.setting],
-    ['Tier', data.tier],
+    // The viewer protects itself on a slow device (§3.4): what it behaves as since.
+    ['Stepped down', data.steppedDown ? `yes, to ${data.steppedDown}` : 'no'],
+    ['Tier', data.beautifulReady ? data.tier : `${data.tier} (beautiful not loaded)`],
     ['View', data.state === 'settled' ? 'resting' : 'moving'],
     ['Draw calls, last frame', String(data.drawCalls)],
     // Whatever the state: 0 only when nothing at all was drawn in the last 3 seconds.
@@ -43,7 +45,7 @@ export function PerfReadout({ governor }: { governor: FrameGovernor }) {
     ['Shader programs', `${data.programs} (${data.compiles} compiled)`],
     ['Frame, median', ms(data.medianFrameMs)],
     ['Frame, 95th percentile', ms(data.p95FrameMs)],
-    ['Refined frame', ms(data.refinedFrameMs)],
+    ['Refined frame', `${ms(data.refinedFrameMs)} (${data.refinedFrames} drawn)`],
     ['Frames', String(data.frames)],
   ];
   return (

@@ -41,6 +41,28 @@ async function check() {
   await browser.close();
 }
 
+/** How long a shot waits for the view to settle: a software renderer takes seconds per frame. */
+const SETTLED_TIMEOUT_MS = 240_000;
+
+/**
+ * Waits for the settled frame (docs/design/realistic-render.md §6.7): the frame governor marks the
+ * canvas `data-frame="settled"` once the last frame is drawn and nothing asks for another. With
+ * `?quality=auto` or `beautiful` in the address it also waits for the beautiful tier, which comes
+ * with a lazy chunk after the first frames. A build before #110 has no such mark and is not waited
+ * for; a view that does not settle in time is shot as it is, with a warning.
+ */
+async function settled(page) {
+  const canvas = page.locator('canvas').first();
+  if ((await canvas.getAttribute('data-frame').catch(() => null)) === null) return;
+  const quality = new URL(page.url()).searchParams.get('quality');
+  const tier = quality === 'auto' || quality === 'beautiful' ? '[data-tier="beautiful"]' : '';
+  await page
+    .waitForSelector(`canvas[data-frame="settled"]${tier}`, { timeout: SETTLED_TIMEOUT_MS })
+    .catch(() =>
+      console.log(`warning: the view did not settle${tier && ' in the beautiful tier'}`),
+    );
+}
+
 /**
  * Runs `[{ click: selector } | { drag: [dx, dy] } | { pad: [dx, dy, ms] } | { key: [key, ms] }]` in order.
  * Drags start at the canvas centre; `pad` holds the walk mode's movement pad deflected, `key` holds a key.
@@ -139,7 +161,10 @@ async function shoot([
     await page.waitForSelector(viewer ? 'canvas' : 'h1', { timeout: 30_000 });
     await page.waitForTimeout(Number(waitMs));
     console.log(`title ${await page.title()}`);
+    if (viewer) await settled(page);
     const paused = await runActions(page, JSON.parse(actions), canvas === 'canvas');
+    // Not with a paused clock: there the frames after a drag are run by hand (SETTLE_MS).
+    if (viewer && !paused) await settled(page);
     if (canvas === 'canvas') {
       // Only the 3D view: hide every other element (visibility keeps the layout, so nothing redraws)
       // and clip to the canvas.

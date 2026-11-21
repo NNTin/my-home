@@ -86,11 +86,16 @@ async function frameChecks(browser, { device, base, host, homeId }) {
   const page = await context.newPage();
   const draws = () => page.evaluate(() => window.__draws);
   const perf = () => page.evaluate(() => window.__myHomePerf?.());
-  const settled = () =>
-    page.waitForSelector('canvas[data-frame="settled"]', { timeout: 180_000 }).then(
-      () => true,
-      () => false,
-    );
+  /** Waits for the settled frame, in `tier` when one is named. */
+  const settled = (tier) =>
+    page
+      .waitForSelector(`canvas[data-frame="settled"]${tier ? `[data-tier="${tier}"]` : ''}`, {
+        timeout: 240_000,
+      })
+      .then(
+        () => true,
+        () => false,
+      );
   /** One step of the mouse wheel or a short pinch-free swipe: a few moving frames. */
   const nudge = async () => {
     const canvas = await page.locator('canvas').first().boundingBox();
@@ -114,7 +119,8 @@ async function frameChecks(browser, { device, base, host, homeId }) {
   };
   try {
     for (const quality of QUALITIES) {
-      const query = new URLSearchParams({ quality, perf: '1', hints: 'off' });
+      // Stepping down is off: a software renderer is slow, and the tier asked for must be drawn.
+      const query = new URLSearchParams({ quality, perf: '1', hints: 'off', stepdown: 'off' });
       if (homeId) query.set('home', homeId);
       await page.goto(new URL(`/?${query}`, base).href, {
         waitUntil: 'networkidle',
@@ -127,18 +133,52 @@ async function frameChecks(browser, { device, base, host, homeId }) {
         return;
       }
       const where = `on a ${device}, quality ${quality}`;
-      check(`${where}: the view settles`, await settled());
+      // A build before the beautiful tier (#111) draws the fast tier in every setting.
+      const tiers = (await perf())?.beautifulReady !== undefined;
+      const atRest = tiers && quality !== 'fast' ? 'beautiful' : 'fast';
+      check(`${where}: the view settles in the ${atRest} tier`, await settled(atRest));
       const before = await draws();
       await page.waitForTimeout(2000);
       const idle = (await draws()) - before;
       const data = await perf();
       check(`${where}: nothing is drawn while idle`, idle === 0, `${idle} draw calls in 2 s`);
       check(
-        `${where}: the setting is read from the URL and the fast tier is drawn`,
+        `${where}: the setting is read from the URL and the ${atRest} tier is on screen`,
         data?.setting === quality &&
-          (await page.locator('canvas').first().getAttribute('data-tier')) === 'fast',
-        `setting ${data?.setting}`,
+          data?.tier === atRest &&
+          (await page.locator('canvas').first().getAttribute('data-tier')) === atRest,
+        `setting ${data?.setting}, tier ${data?.tier}`,
       );
+      if (tiers) {
+        // Refine when still (§3.3): `auto` draws one beautiful frame at rest; the others none.
+        check(
+          `${where}: ${quality === 'auto' ? 'the frame at rest is the refined one' : 'no frame is a refined one'}`,
+          quality === 'auto' ? data.refinedFrames >= 1 : data.refinedFrames === 0,
+          `${data.refinedFrames} refined frames, the last in ${Math.round(data.refinedFrameMs ?? 0)} ms`,
+        );
+        check(`${where}: the viewer has not stepped down`, data.steppedDown === undefined);
+        // Input: frames while it moves, then rest again. In `auto` those are fast frames and
+        // exactly one more refined frame; nothing is drawn afterwards.
+        await nudge();
+        check(`${where}: the view settles again after input`, await settled(atRest));
+        const after = await perf();
+        const more = after.frames - data.frames;
+        const refined = after.refinedFrames - data.refinedFrames;
+        check(
+          `${where}: input draws ${quality === 'auto' ? 'fast frames and exactly one refined frame' : `${atRest} frames`}`,
+          quality === 'auto' ? refined === 1 && more >= 2 : refined === 0 && more >= 1,
+          `${more} frames, ${refined} refined`,
+        );
+        const rested = await draws();
+        await page.waitForTimeout(2000);
+        check(`${where}: and nothing is drawn while it rests`, (await draws()) === rested);
+        check(
+          `${where}: no shader was compiled by those frames`,
+          after.compiles === data.compiles && after.programs === data.programs,
+          `${data.programs} programs (${data.compiles} compiled), then ${after.programs} (${after.compiles})`,
+        );
+        if (quality === 'beautiful') await tierSwitch(page, { device, where, perf, settled });
+      }
       // Lamps (docs/design/realistic-render.md §6.4, §10.1): a fixed pool per device, and lamp
       // shadows on a desktop only. A build before #111 reports no lamp change at all.
       if (data?.lampChanges === undefined) {
@@ -201,12 +241,56 @@ async function frameChecks(browser, { device, base, host, homeId }) {
 }
 
 /**
+ * Switching tier compiles nothing (§4.5): from `beautiful`, with its lazy chunk loaded and warm,
+ * the Quality control chooses fast, then beautiful, then fast again. The canvas shows each tier,
+ * and the program count and the compile counter stay what they were.
+ */
+async function tierSwitch(page, { device, where, perf, settled }) {
+  const phone = device === 'phone';
+  if (phone) {
+    // The control is in the View panel of the sheet.
+    await page.getByRole('tab', { name: /View/ }).tap();
+    await page.waitForTimeout(800);
+  }
+  const group = page.getByRole('group', { name: 'Quality' });
+  const choose = async (name) => {
+    const radio = group.getByLabel(name, { exact: true });
+    await radio.scrollIntoViewIfNeeded();
+    await (phone ? radio.tap() : radio.check());
+  };
+  const [fast, beautiful] = phone ? ['Fast', 'Always beautiful'] : ['Fast', 'Beautiful'];
+  const start = await perf();
+  const seen = [];
+  for (const [name, tier] of [
+    [fast, 'fast'],
+    [beautiful, 'beautiful'],
+    [fast, 'fast'],
+  ]) {
+    await choose(name);
+    seen.push((await settled(tier)) ? tier : `not ${tier}`);
+  }
+  const end = await perf();
+  check(
+    `${where}: the Quality control switches fast → beautiful → fast`,
+    seen.join(' → ') === 'fast → beautiful → fast' && end.frames > start.frames,
+    seen.join(' → '),
+  );
+  check(
+    `${where}: the tier switches compiled no shader`,
+    end.compiles === start.compiles && end.programs === start.programs,
+    `${start.programs} programs (${start.compiles} compiled) before, ${end.programs} (${end.compiles}) after`,
+  );
+}
+
+/**
  * Walking from room to room moves the lamp pool (§6.4) and compiles nothing (§4.5): the figure
  * walks until a pool light has changed its emitter, and the program count and the compile counter
  * are what they were. A desktop's pool holds every lamp of the home, so only a phone's must move.
  */
 async function lampWalk(page, { device, base, homeId, perf, settled }) {
-  const query = new URLSearchParams({ walk: 'first', perf: '1', hints: 'off' });
+  // In the fast tier: the lamps are the same in every tier (§6.4), and a refined frame at each
+  // stop would take the software renderer long enough to hold the figure back.
+  const query = new URLSearchParams({ walk: 'first', perf: '1', hints: 'off', quality: 'fast' });
   if (homeId) query.set('home', homeId);
   await page.goto(new URL(`/?${query}`, base).href, { waitUntil: 'networkidle', timeout: 60_000 });
   await page.waitForSelector('canvas', { timeout: 30_000 });
@@ -225,6 +309,10 @@ async function lampWalk(page, { device, base, homeId, perf, settled }) {
     ['w', 4000],
     ['a', 900],
     ['w', 4000],
+    ['a', 900],
+    ['w', 6000],
+    ['a', 900],
+    ['w', 6000],
   ]) {
     await page.keyboard.down(key);
     await page.waitForTimeout(ms);

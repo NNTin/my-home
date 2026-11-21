@@ -140,6 +140,10 @@ The **quality setting** decides which tier is drawn when. It has three values.
 are fast. When input ends and nothing has asked for a frame for **200 ms**, the viewer draws **one** beautiful
 frame at the full pixel-ratio cap and then stops. The idle state still draws nothing.
 
+The view counts as settled (§4.3) when that frame **has been drawn by the GPU**, not when it was handed to it:
+the governor waits on a fence, without holding the page. The refined frame's time, which §3.4 judges, runs
+until then (D30).
+
 ### 3.4 Stepping down
 
 The viewer protects itself. The frame governor (§4.3) watches frame times:
@@ -149,6 +153,8 @@ The viewer protects itself. The frame governor (§4.3) watches frame times:
 - In `auto`, when a refined frame takes longer than **1 s**, it behaves as `fast` for the rest of the visit.
 - A step down shows one toast ("Showing a faster view on this device") and is not remembered. Choosing a value
   in the View panel clears it.
+- `?stepdown=off` turns stepping down off for a visit. It is for captures and smokes: a software renderer takes
+  seconds per frame, and there the tier that was asked for must be the tier that is drawn (D31).
 
 ### 3.5 States
 
@@ -322,7 +328,8 @@ The **frame governor** owns the decision of what a frame contains.
   figure changing, a camera animation.
 - It picks the tier per frame from the setting (§3.2) and its own step-down state (§3.4).
 - It marks the canvas with `data-frame="moving|settled"` and `data-tier="fast|beautiful"` so smokes and
-  screenshots wait for a settled frame instead of sleeping.
+  screenshots wait for a settled frame instead of sleeping. The tier is that of the frame on screen: in `auto`
+  it is `fast` while the view moves and `beautiful` once it has refined.
 - It records frame times for the `?perf` readout (§10.3).
 
 **Shadows are static.** The sun's shadow map is drawn only when what casts shadows changed: the model, the
@@ -405,7 +412,8 @@ moving between rooms, compiles nothing.
   **compiled ahead** with `renderer.compileAsync` while the previous frame stays on screen.
 - **Warm-up:** after the scene is built, and again when the `render-beautiful` chunk arrives, everything is
   compiled ahead once, including the AO pass's own programs and the beautiful-only extras (which exist from
-  then on and are only hidden in fast frames).
+  then on and are only hidden in fast frames). The AO pass compiles its programs when it first runs, so its
+  warm-up is one beautiful frame that is not shown; frames turn beautiful when the GPU has drawn it.
 - **The governor ignores a frame that compiled** when it judges frame times (§3.4), so a legitimate compile
   cannot trigger a step down.
 - **Check:** the `?perf` data carries the renderer's program count and a counter of compiles. The smoke
@@ -762,6 +770,7 @@ package requires three below 0.188 and would block upgrades of three; the addons
 | ----------------- | ------------------------------------------------- | --------------------------------------------------------------------------------- |
 | Scene into target | Phone: no MSAA. Desktop: 4 samples                | 4 samples on every device                                                         |
 | Ambient occlusion | No                                                | `N8AOPass` from `n8ao` (ISC). Half resolution on phones. No temporal accumulation |
+| Sun shadow filter | Radius of 1 texel                                 | Radius of 3 texels, same map                                                      |
 | Output pass       | Neutral tone mapping, exposure from the rig, sRGB | Same                                                                              |
 | FXAA              | Phone: yes, after the output pass. Desktop: no    | No: the target has 4 samples                                                      |
 
@@ -771,6 +780,15 @@ package requires three below 0.188 and would block upgrades of three; the addons
   alpha; the output pass tone-maps the frame and lays it over the backdrop colour. The backdrop so keeps its exact
   colour whatever the tone mapping, and glass or an anti-aliased edge in front of it blends with it as displayed
   (D23).
+- **The AO pass** is given the frame's own multisampled target (colour and a depth texture) and writes the
+  shaded frame, in linear light with its coverage, into a target the output pass reads. Its settings are fixed
+  in the chunk: a radius of 0.6 m, 32 samples, and a strength that shades where surfaces meet and leaves open
+  surfaces as bright as a fast frame draws them, so a view does not change brightness when it settles. A
+  tighter and stronger setting showed its samples as speckle in the overview of the whole plot, where the radius
+  is a few pixels. Translucent surfaces
+  write no depth and are shaded as what stands behind them. `n8ao` is pinned to an exact version: the viewer
+  relies on its fixed sample pattern (§6.7). It names the `postprocessing` package as a peer for a pass the
+  viewer does not use; that package is not installed, and the build resolves its one import to a stub (D32).
 - The sample counts are fixed as written. Nothing about anti-aliasing is decided at runtime: if a phone's
   refined frame is too slow, the governor steps down (§3.4); it does not change what a frame contains.
 - **Tone mapping is Neutral in every tier** (three's `NeutralToneMapping`), so a finish has the same colour in
@@ -783,7 +801,9 @@ The pixel-exact tooling (`visual-diff.sh`) must keep working.
 
 - Every tier draws the same pixels for the same commit, view and viewport: no temporal accumulation, no
   time-based noise, no animation that does not settle.
-- A capture waits for `data-frame="settled"` on the canvas (§4.3) instead of a fixed time.
+- A capture waits for `data-frame="settled"` on the canvas (§4.3) instead of a fixed time, and for
+  `data-tier="beautiful"` when it asks for `auto` or `beautiful`: the beautiful tier arrives with its chunk,
+  after the first frames. `screenshot.sh` does both.
 - A unit of proof is "shot twice, byte-identical", per tier, added to the smoke for each step that touches a
   tier.
 
@@ -998,7 +1018,9 @@ today. Step 1 converts the goldens and shows, with `visual-diff.sh`, that the pi
   before and after fast → beautiful → fast, and after walking into the next room (§4.5).
 - `walk-smoke.sh`: walking draws fast frames and refines on stop.
 - `visual-diff.sh`: the existing views pin `quality=fast`. New views: the three named views in `fast` and in
-  `beautiful`, and the phone in `auto` after settling. It waits for the settled frame (§6.7).
+  `beautiful`, and the phone in `auto` after settling. It waits for the settled frame (§6.7). Step 2 adds
+  `default-beautiful`, `eye-fast` and `eye-beautiful` (the first room of walk mode, until the named views of
+  step 4 exist) and `phone-auto`, with `?stepdown=off`.
 - `catalog-smoke.sh`: thumbnails and piece pages draw the new shapes and finishes.
 
 ### 11.4 Showing renders in PRs
@@ -1258,6 +1280,10 @@ All seven proposed defaults were accepted.
 | D27 | A type declares the light it emits in its piece module (`emits(values)`), not in the shared definition     | The colour follows a parameter of the use, as the parts do; nothing but the viewer and render mode needs it (#111)                                                                                                        |
 | D28 | While a caster moves, only the sun's shadow follows it; the lamps' shadow maps are drawn when it rests     | A desktop's four lamp maps are 24 more views of the scene: per frame they would be most of a moving frame's draw calls (#111)                                                                                             |
 | D29 | A lamp's range is the distance to its room's farthest corner; a residual leak behind nearer walls is kept  | A range is a sphere. Cutting the light at the room's outline instead would draw a hard edge where rooms are open to each other, as the kitchen is to the corridor (#111)                                                  |
+| D30 | The view is settled, and a refined frame timed, when the GPU has drawn the frame (a fence, polled)         | A frame is handed to the GPU long before it is on screen: a capture would shoot the frame before, and a refined frame would always seem to take no time (#111)                                                            |
+| D31 | `?stepdown=off` turns stepping down off for a visit                                                        | Under software rendering (CI, the agents' machine) every frame is slow: without it no smoke could see the beautiful tier or a second refined frame (#111)                                                                 |
+| D32 | `n8ao` pinned to an exact version; `postprocessing`, its peer, is not installed and resolves to a stub     | D10: that package pins three below 0.188. n8ao needs it only for a second pass class the viewer does not use (#111)                                                                                                       |
+| D33 | The sun's shadow filter is 1 texel in a fast frame and 3 in a beautiful one                                | The same map and programs (D26); wider would show the five samples as noise (#111)                                                                                                                                        |
 
 ## 14. Open questions
 

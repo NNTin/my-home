@@ -81,6 +81,11 @@ $S/seed.sh staging diff                                # drift between git's see
   coarse pointer); the phone layout (`docs/mobile.md`) also shows without it at phone sizes such as 390x844 or
   844x390, and `--path '/?panel=view|furniture|photos|requests&sheet=half|full'` opens a panel of its sheet.
   Add `&hints=off` there, or the first-run hints cover the foot of the view in every fresh browser.
+- Every shot of the viewer **waits for the settled frame** (`canvas[data-frame="settled"]`: the last frame is
+  drawn and nothing asks for another) after `--wait` and after the actions, and with `quality=auto` or
+  `quality=beautiful` in `--path` also for the beautiful tier (`data-tier="beautiful"`), which arrives with a
+  lazy chunk. Under software rendering a beautiful frame takes many seconds, and the viewer **steps down** to a
+  faster setting by itself: add `&stepdown=off` to shoot the tier you asked for.
 - `screenshot.sh --canvas` shoots only the 3D canvas: every other element is hidden and the shot is clipped to
   the canvas, so UI text (photo count, room names, panels) cannot make two shots differ. With a `--drag`, page
   time is paused before the first drag and runs exactly 1 s of frames after each action (Playwright's fake
@@ -88,7 +93,9 @@ $S/seed.sh staging diff                                # drift between git's see
 - `visual-diff.sh <env> shoot --out DIR [--only VIEW]...`: pixel-exact visual regression of the 3D view,
   read-only. Shoots canvas-only screenshots of fixed views (desktop 1440x900: `default`, the cutaways
   `souterrain`, `ground-floor` and `first-floor`, `orbit-180` (`--drag 600,0`), `steep` (`--drag 0,250`, from above),
-  phone 390x844: `phone`; all with `hints=off`) into `DIR/<view>.png` plus `DIR/manifest.json`
+  phone 390x844: `phone`; all with `hints=off&quality=fast`; then the tiers, with `stepdown=off`:
+  `default-beautiful`, `eye-fast` and `eye-beautiful` (walk mode's first room at eye level) and `phone-auto`, the
+  refined frame) into `DIR/<view>.png` plus `DIR/manifest.json`
   (deployed commit, view arguments, sha256). It reads the deployed commit before and after and fails if a
   deploy happened in between. `visual-diff.sh compare DIR_A DIR_B` prints a Markdown table per view:
   identical (same sha256) or the number of differing pixels, how many of them differ by more than 2 levels of
@@ -105,8 +112,10 @@ $S/seed.sh staging diff                                # drift between git's see
   and that the web app manifest and its icons are served, and that there is no layout manager. The View panel's
   **Quality** control has its three named values and remembers the chosen one. Then the frame loop
   (`docs/mobile.md` § Battery and heat), in a phone's and in a desktop's (1440x900) context of their own, read from
-  `?perf=1` (`window.__myHomePerf()`): for each of `?quality=fast|auto|beautiful` the view settles
-  (`canvas[data-frame="settled"]`) and then draws nothing, and a moving frame of the first view and of the whole
+  `?perf=1` (`window.__myHomePerf()`): for each of `?quality=fast|auto|beautiful` (with `stepdown=off`) the view
+  settles (`canvas[data-frame="settled"]`) in its tier (fast, or beautiful for `auto` and `beautiful`) and then
+  draws nothing; `auto` rests on a refined frame, and after input draws fast frames and exactly one more refined
+  frame; the Quality control switches fast → beautiful → fast without compiling a shader; and a moving frame of the first view and of the whole
   house is within the draw-call budget (250 and 350 on a phone, 350 and 500 on a desktop) and compiles no
   shader. For every setting lamps are lit, at most 6 on a phone and 12 on a desktop, and 1 light casts a shadow on
   a phone (the sun) and 5 on a desktop; then the figure walks (`?walk=first`) until the lamp pool has moved to
@@ -156,7 +165,8 @@ $S/seed.sh staging diff                                # drift between git's see
 - `walk-smoke.sh <env> [--out file.png]`: opens walk mode at 390x844 with touch, pushes the pad and checks that
   the figure walks, turns and stops, that the controls and the minimap fit without overlapping, that the
   minimap tracks the figure, and, after putting the figure at the stair from the enlarged map, that the pad
-  walks it up and the minimap switches level; nothing may log an error. Read-only. Playwright (pinned) is installed outside the repository in
+  walks it up and the minimap switches level; and in `auto` walking draws fast frames and one beautiful frame
+  follows when the figure stops; nothing may log an error. Read-only. Playwright (pinned) is installed outside the repository in
   `${XDG_CACHE_HOME:-$HOME/.cache}/my-home-environments/playwright`, Chromium in `~/.cache/ms-playwright`;
   `screenshot.sh --check` installs them if missing and verifies a headless launch.
 - `raise-env-issue.sh [--dry-run] [--force] <env> <summary> [details-file]`: refuses (exit 3) unless

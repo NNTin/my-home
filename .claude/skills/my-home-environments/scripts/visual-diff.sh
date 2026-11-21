@@ -5,7 +5,11 @@
 # Pixel-exact visual regression of the 3D view, read-only. `shoot` takes canvas-only screenshots
 # (screenshot.sh --canvas) of a fixed set of views and writes DIR/<view>.png plus DIR/manifest.json (deployed
 # commit, view arguments). `--only` shoots just the named views. Desktop 1440x900: default, the cutaway to each
-# level, the default view orbited 180 degrees, a steep view; phone 390x844: default.
+# level, the default view orbited 180 degrees, a steep view; phone 390x844: default. Those pin ?quality=fast.
+# The tiers (docs/design/realistic-render.md §11.3): default-beautiful and, at eye level in the first room of
+# walk mode, eye-fast and eye-beautiful (desktop); phone-auto (the refined frame). They turn stepping down off
+# (?stepdown=off): a software renderer is slow, and the tier asked for must be the tier shot. Every shot waits
+# for the settled frame.
 # The deployed commit is read before and after: a deploy in between fails the shoot (exit 1), shoot again.
 # `compare` reports per view whether the PNGs are identical (sha256) or how many pixels differ, and writes
 # DIR_B/diff-<view>.png for those (differing pixels red over a faded copy of A). The diff runs in headless
@@ -16,7 +20,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$script_dir/lib.sh"
 
 usage() {
-  sed -n '2,12s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,16s/^# \{0,1\}//p' "$0" >&2
   exit 1
 }
 
@@ -30,12 +34,16 @@ first-floor
 orbit-180
 steep
 phone
+default-beautiful
+eye-fast
+eye-beautiful
+phone-auto
 EOF
 }
 
 # view_args <view>: sets the array ARGS for screenshot.sh.
 view_args() {
-  local base=(--viewport 1440x900 --path '/?hints=off')
+  local base=(--viewport 1440x900 --path '/?hints=off&quality=fast')
   case "$1" in
     default) ARGS=("${base[@]}") ;;
     souterrain) ARGS=("${base[@]}" --click 'label:has-text("Souterrain")') ;;
@@ -43,7 +51,11 @@ view_args() {
     first-floor) ARGS=("${base[@]}" --click 'label:has-text("First floor")') ;;
     orbit-180) ARGS=("${base[@]}" --drag '600,0') ;;
     steep) ARGS=("${base[@]}" --drag '0,250') ;;
-    phone) ARGS=(--viewport 390x844 --touch --path '/?hints=off') ;;
+    phone) ARGS=(--viewport 390x844 --touch --path '/?hints=off&quality=fast') ;;
+    default-beautiful) ARGS=(--viewport 1440x900 --path '/?hints=off&quality=beautiful&stepdown=off') ;;
+    eye-fast) ARGS=(--viewport 1440x900 --path '/?walk=first&hints=off&quality=fast') ;;
+    eye-beautiful) ARGS=(--viewport 1440x900 --path '/?walk=first&hints=off&quality=beautiful&stepdown=off') ;;
+    phone-auto) ARGS=(--viewport 390x844 --touch --path '/?hints=off&quality=auto&stepdown=off') ;;
     *) die "unknown view '$1' (views: $(views | tr '\n' ' '))" ;;
   esac
 }
