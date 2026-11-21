@@ -29,16 +29,19 @@ export const SEED_REPLACED_ON_DEPLOY =
 export const seedRoutes =
   (db: Db, config: Pick<Config, 'agentUsernames'>): FastifyPluginAsyncZod =>
   async (app) => {
-    const homes = homeStore(db);
-    const model = async (homeId: string) => {
-      const found = await homes.get(homeId);
+    const model = async (homeId: string, reader: Db = db) => {
+      const found = await homeStore(reader).get(homeId);
       if (!found) throw problem(404, `Home "${homeId}" not found`);
       return found;
     };
 
     // Text, so the file in git is byte for byte what the api answers.
     app.get('/homes/:homeId/seed', { schema: { params: SeedParams } }, async (request, reply) => {
-      const seed = await exportSeed(db, await model(request.params.homeId));
+      // Include the model: READ COMMITTED would still allow each SELECT to see a different state.
+      const seed = await db.transaction(
+        async (tx) => exportSeed(tx, await model(request.params.homeId, tx)),
+        { isolationLevel: 'repeatable read', accessMode: 'read only' },
+      );
       return reply.type('application/json; charset=utf-8').send(formatSeed(seed));
     });
 
