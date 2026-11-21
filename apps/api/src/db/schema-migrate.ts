@@ -49,7 +49,8 @@ export interface MigrateSchemaOptions {
  * staging database in any order: every migration whose tag is not in the schema's journal
  * (`<schema>.schema_migrations`) is applied, whatever was applied before or after it, and journal
  * entries this build does not know (from a newer branch) are left alone. That is only safe
- * because the migrations are expand-only and idempotent (docs/photos.md, docs/userdata.md).
+ * because the migrations are expand-only and idempotent (docs/photos.md, docs/userdata.md). Known
+ * tags must retain their recorded checksums; all are verified before any pending SQL runs.
  */
 export async function migrateSchema(db: Db, options: MigrateSchemaOptions): Promise<string[]> {
   const migrations = options.migrations ?? readSchemaMigrations(options.folder);
@@ -65,9 +66,20 @@ export async function migrateSchema(db: Db, options: MigrateSchemaOptions): Prom
         applied_at timestamp with time zone not null default now()
       )`);
     const journal = (await tx.execute(
-      sql`select tag from ${schema}.schema_migrations`,
-    )) as unknown as { rows: { tag: string }[] };
-    const applied = new Set(journal.rows.map((row) => row.tag));
+      sql`select tag, checksum from ${schema}.schema_migrations`,
+    )) as unknown as { rows: { tag: string; checksum: string }[] };
+    const applied = new Map(journal.rows.map((row) => [row.tag, row.checksum]));
+
+    // Validate the entire known history before executing any pending migration statements.
+    for (const migration of migrations) {
+      if (applied.has(migration.tag) && applied.get(migration.tag) !== migration.checksum) {
+        throw new Error(
+          `Migration checksum mismatch for ${options.schema}/${migration.tag}. ` +
+            'Applied migration files are immutable: restore the original SQL and add a new ' +
+            'expand-only migration for corrections. Do not rewrite the migration journal.',
+        );
+      }
+    }
 
     const pending = migrations.filter((m) => !applied.has(m.tag));
     for (const migration of pending) {
