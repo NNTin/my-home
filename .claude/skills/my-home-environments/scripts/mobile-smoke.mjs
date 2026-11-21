@@ -288,7 +288,9 @@ async function tierSwitch(page, { device, where, perf, settled }) {
  * are what they were. A desktop's pool holds every lamp of the home, so only a phone's must move.
  */
 async function lampWalk(page, { device, base, homeId, perf, settled }) {
-  const query = new URLSearchParams({ walk: 'first', perf: '1', hints: 'off', stepdown: 'off' });
+  // In the fast tier: the lamps are the same in every tier (§6.4), and a refined frame at each
+  // stop would take the software renderer long enough to hold the figure back.
+  const query = new URLSearchParams({ walk: 'first', perf: '1', hints: 'off', quality: 'fast' });
   if (homeId) query.set('home', homeId);
   await page.goto(new URL(`/?${query}`, base).href, { waitUntil: 'networkidle', timeout: 60_000 });
   await page.waitForSelector('canvas', { timeout: 30_000 });
@@ -307,6 +309,10 @@ async function lampWalk(page, { device, base, homeId, perf, settled }) {
     ['w', 4000],
     ['a', 900],
     ['w', 4000],
+    ['a', 900],
+    ['w', 6000],
+    ['a', 900],
+    ['w', 6000],
   ]) {
     await page.keyboard.down(key);
     await page.waitForTimeout(ms);
