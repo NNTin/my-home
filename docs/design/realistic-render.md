@@ -724,6 +724,8 @@ drawn.
   in beautiful frames alike; they are assigned to the 4 nearest lit emitters. Their maps are static: redrawn
   when a caster or the assignment changes, not per frame. While something moves a caster (a furniture drag, the
   walking figure in the overview) only the sun's map follows it; the lamps' maps are drawn once it rests (D28).
+  The exception is a lamp that is itself moved: its map belongs to its place, so dragging a downlight that
+  casts a shadow draws that one map with each frame of the drag. It is rare and one map of the four.
 - **A phone never draws a lamp shadow,** in any tier and any setting. The sun's is its only shadow map
   (§10.1). Its refined `auto` frame and "Always beautiful" add ambient occlusion, anti-aliasing and the wider
   sun-shadow filter, and nothing that casts a shadow.
