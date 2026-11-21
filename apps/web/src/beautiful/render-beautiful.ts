@@ -31,12 +31,16 @@ export interface AmbientOcclusion {
  * Metres: how far a surface looks for what shades it, and how strongly it is shaded. Contact
  * shading where surfaces meet, and open surfaces as bright as in a fast frame: a view must not
  * change brightness when it settles (§3.1).
+ *
+ * The pass must hold from eye level out to the overview of the whole plot, where this radius is
+ * a few pixels wide. There a stronger, tighter setting (0.45 m, a strength of 4, 16 samples)
+ * showed its samples as speckle on the walls; these values stay clean in both.
  */
-const RADIUS = 0.45;
-const INTENSITY = 4;
+const RADIUS = 0.6;
+const INTENSITY = 3;
 const FALLOFF = 1;
-const SAMPLES = 16;
-const DENOISE_SAMPLES = 8;
+const SAMPLES = 32;
+const DENOISE_SAMPLES = 16;
 const DENOISE_RADIUS = 12;
 
 /** The targets n8ao holds besides the frame it is given. */

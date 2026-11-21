@@ -782,8 +782,10 @@ package requires three below 0.188 and would block upgrades of three; the addons
   (D23).
 - **The AO pass** is given the frame's own multisampled target (colour and a depth texture) and writes the
   shaded frame, in linear light with its coverage, into a target the output pass reads. Its settings are fixed
-  in the chunk: a radius of 0.45 m and a strength that shades where surfaces meet and leaves open surfaces as
-  bright as a fast frame draws them, so a view does not change brightness when it settles. Translucent surfaces
+  in the chunk: a radius of 0.6 m, 32 samples, and a strength that shades where surfaces meet and leaves open
+  surfaces as bright as a fast frame draws them, so a view does not change brightness when it settles. A
+  tighter and stronger setting showed its samples as speckle in the overview of the whole plot, where the radius
+  is a few pixels. Translucent surfaces
   write no depth and are shaded as what stands behind them. `n8ao` is pinned to an exact version: the viewer
   relies on its fixed sample pattern (§6.7). It names the `postprocessing` package as a peer for a pass the
   viewer does not use; that package is not installed, and the build resolves its one import to a stub (D32).
