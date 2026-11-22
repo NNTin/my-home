@@ -1,5 +1,5 @@
 import type { CatalogType, ParamValues, Placement } from '@my-home/shared';
-import { useState } from 'react';
+import { useState, type Dispatch, type SetStateAction } from 'react';
 import { placementsApi } from '../api';
 import { href, Link } from '../routing';
 import { History } from './History';
@@ -33,7 +33,7 @@ interface RowProps {
   open: OpenUse | undefined;
   onOpen(open: OpenUse | undefined): void;
   draft: ParamValues | undefined;
-  onDraft(draft: ParamValues | undefined): void;
+  onDraft: Dispatch<SetStateAction<ParamValues | undefined>>;
   reload(homeId: string): Promise<boolean>;
 }
 
@@ -248,7 +248,7 @@ export function Uses({
   open: OpenUse | undefined;
   onOpen(open: OpenUse | undefined): void;
   draft: ParamValues | undefined;
-  onDraft(draft: ParamValues | undefined): void;
+  onDraft: Dispatch<SetStateAction<ParamValues | undefined>>;
 }) {
   const used = state.status === 'ready' ? whereUsed(type, state.homes) : undefined;
   const byHome = new Map(state.status === 'ready' ? state.homes.map((h) => [h.home.id, h]) : []);

@@ -7,7 +7,7 @@ import {
   type ParamValues,
   type Use,
 } from '@my-home/shared';
-import { useState } from 'react';
+import { useState, type Dispatch, type SetStateAction } from 'react';
 import { ApiRequestError, openingOverridesApi, placementsApi } from '../api';
 import { BasicControl } from './Playground';
 import { overrideSummary, contextOfUse } from './uses';
@@ -51,7 +51,7 @@ interface Props {
   model: HomeModel | undefined;
   /** The unsaved values (undefined: none, the form shows the saved ones). */
   draft: ParamValues | undefined;
-  onDraft(draft: ParamValues | undefined): void;
+  onDraft: Dispatch<SetStateAction<ParamValues | undefined>>;
   /**
    * Loads the home's uses again (after a write, or to see what changed elsewhere); false when that
    * failed and the use shown is the one from before.
@@ -110,7 +110,8 @@ export function UseEditor({ type, homeId, use, model, draft, onDraft, onReload }
         placed
           ? placementsApi.update(homeId, use.id, { version: use.version, params: current })
           : openingOverridesApi.put(homeId, use.id, { version: use.version, params: current }),
-      () => onDraft(undefined),
+      // Edits and use switches replace the draft object: acknowledge only this revision.
+      () => onDraft((latest) => (latest === draft ? undefined : latest)),
     );
 
   const reload = async () => {
