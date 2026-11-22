@@ -74,13 +74,17 @@ one staging database in any order:
   `--> statement-breakpoint`.
 - A **new column is nullable or has a default**, because older code does not write it.
 - New code must also run **without** a column it added being filled by older code (treat `null` as "unknown").
-- Never edit or delete a migration file that has been merged; add a new one (`NNNN_what_it_adds.sql`).
+- **Migration files are immutable once applied**, even before merge: never edit or delete them. Add a new
+  expand-only migration for corrections (`NNNN_what_it_adds.sql`).
 - No foreign keys into `public`, no CHECK constraints.
 
 Both schemas use one migrator, `migrateSchema(db, { schema, folder, lockKey })`
 ([`schema-migrate.ts`](../apps/api/src/db/schema-migrate.ts)): it applies every file whose name is not in
 `<schema>.schema_migrations`, in name order, and ignores journal entries it does not know. `userdata` uses the
-advisory lock `7216002` (`media`: `7216001`). A test lints the migration files for the rules above.
+advisory lock `7216002` (`media`: `7216001`). Under that lock, all known tags must match their stored checksums
+before any pending SQL runs. A mismatch fails with the schema and tag: restore the original migration file and
+put corrections in a new expand-only migration. Unknown tags remain untouched; the migrator never repairs the
+journal, replays changed SQL or resets the schema. A test lints the migration files for the rules above.
 
 ### Backups
 

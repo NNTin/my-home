@@ -1,5 +1,5 @@
 import type { OpeningOverride } from '@my-home/shared';
-import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { testPlacement } from '../test/fixtures';
 import { lastBody, openPiece, rowOf } from '../test/piecePage';
@@ -32,6 +32,32 @@ async function edit(useId: string, name: string) {
   await screen.findByText(/uses? in this environment/);
   fireEvent.click(rowOf('mock-home', useId).getByRole('button', { name: `Edit ${name}` }));
   return within(screen.getByRole('region', { name: `Edit ${name}` }));
+}
+
+/** Holds a successful write or its refresh until the test releases it. */
+function holdSaveResponse(api: ReturnType<typeof openPiece>, phase: 'write' | 'refresh') {
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const reached = vi.fn();
+  const real = api.fetch.getMockImplementation()!;
+  api.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
+    const response = await real(url, init);
+    if (
+      phase === 'write'
+        ? init?.method === 'PUT' || init?.method === 'PATCH'
+        : /\/uses\?typeId=/.test(url)
+    ) {
+      reached();
+      await pending;
+    }
+    return response;
+  });
+  return {
+    wait: () => waitFor(() => expect(reached).toHaveBeenCalled()),
+    release: () => act(async () => release()),
+  };
 }
 
 const dimension = (name: string) =>
@@ -88,6 +114,119 @@ describe('the per-use editor', () => {
       ),
     );
     expect(editor.getByRole('button', { name: 'Save' })).toBeDisabled();
+    expect(document.querySelector('.piece-showing')).not.toHaveTextContent('with unsaved changes');
+    expect(editor.getByRole('status', { name: 'Sashes' })).toHaveTextContent('2');
+  });
+
+  it.each(['write', 'refresh'] as const)(
+    'keeps newer edits while the successful %s is pending, then saves them with the refreshed version',
+    async (phase) => {
+      const api = openPiece('/catalog/openings/window.casement');
+      const editor = await edit(kitchen, 'Kitchen · back window');
+      const pending = holdSaveResponse(api, phase);
+      fireEvent.click(editor.getByRole('button', { name: 'More sashes' }));
+      fireEvent.click(editor.getByRole('button', { name: 'Save' }));
+      await pending.wait();
+      fireEvent.change(editor.getByRole('textbox', { name: 'Frame colour, hex' }), {
+        target: { value: '#123456' },
+      });
+      await pending.release();
+      await waitFor(() => expect(editor.getByRole('button', { name: 'Save' })).toBeEnabled());
+      expect(editor.getByRole('textbox', { name: 'Frame colour, hex' })).toHaveValue('#123456');
+      expect(document.querySelector('.piece-showing')).toHaveTextContent('with unsaved changes');
+      expect(api.overrides.get(`mock-home/${kitchen}`)!.params).toEqual({ sashes: 2 });
+      fireEvent.click(editor.getByRole('button', { name: 'Save' }));
+      await waitFor(() =>
+        expect(lastBody(api, 'PUT', /opening-overrides/)).toEqual({
+          version: 1,
+          params: { sashes: 2, frameColor: '#123456' },
+        }),
+      );
+      await waitFor(() =>
+        expect(document.querySelector('.piece-showing')).not.toHaveTextContent(
+          'with unsaved changes',
+        ),
+      );
+      expect(editor.getByRole('textbox', { name: 'Frame colour, hex' })).toHaveValue('#123456');
+      expect(editor.getByRole('button', { name: 'Save' })).toBeDisabled();
+    },
+  );
+
+  it.each(['write', 'refresh'] as const)(
+    'does not clear another use draft when the old %s completes',
+    async (phase) => {
+      const api = openPiece('/catalog/openings/window.casement');
+      const editor = await edit(kitchen, 'Kitchen · back window');
+      const pending = holdSaveResponse(api, phase);
+      fireEvent.click(editor.getByRole('button', { name: 'More sashes' }));
+      fireEvent.click(editor.getByRole('button', { name: 'Save' }));
+      await pending.wait();
+      const other = await edit('souterrain-bedroom-window', 'Bedroom · front window');
+      // Even an equal-valued draft belongs to a different use/revision.
+      fireEvent.click(other.getByRole('button', { name: 'More sashes' }));
+      await pending.release();
+      await waitFor(() =>
+        expect(rowOf('mock-home', kitchen).getByLabelText('Overrides')).toHaveTextContent(
+          '2 sashes',
+        ),
+      );
+      expect(other.getByRole('status', { name: 'Sashes' })).toHaveTextContent('2');
+      expect(other.getByRole('button', { name: 'Save' })).toBeEnabled();
+      expect(document.querySelector('.piece-showing')).toHaveTextContent('with unsaved changes');
+      fireEvent.click(other.getByRole('button', { name: 'Save' }));
+      await waitFor(() =>
+        expect(lastBody(api, 'PUT', /opening-overrides/)).toEqual({
+          version: 0,
+          params: { sashes: 2 },
+        }),
+      );
+      await waitFor(() =>
+        expect(document.querySelector('.piece-showing')).not.toHaveTextContent(
+          'with unsaved changes',
+        ),
+      );
+    },
+  );
+
+  it('keeps newer placement edits when its successful save completes', async () => {
+    const api = openPiece('/catalog/furniture/furniture.bed', {
+      placements: [testPlacement()],
+    });
+    const editor = await edit('souterrain-bed-1', 'Bedroom · Bed');
+    const pending = holdSaveResponse(api, 'refresh');
+    fireEvent.change(editor.getByRole('textbox', { name: 'Width' }), {
+      target: { value: '180' },
+    });
+    fireEvent.blur(editor.getByRole('textbox', { name: 'Width' }));
+    fireEvent.click(editor.getByRole('button', { name: 'Save' }));
+    await pending.wait();
+    fireEvent.click(editor.getByRole('button', { name: 'Reset width to type default' }));
+    await pending.release();
+    await waitFor(() => expect(editor.getByRole('button', { name: 'Save' })).toBeEnabled());
+    expect(editor.getByRole('textbox', { name: 'Width' })).toHaveValue('160.0');
+    expect(document.querySelector('.piece-showing')).toHaveTextContent('with unsaved changes');
+    fireEvent.click(editor.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(lastBody(api, 'PATCH', /placements/)).toEqual({ version: 2, params: {} }),
+    );
+    await waitFor(() =>
+      expect(document.querySelector('.piece-showing')).not.toHaveTextContent(
+        'with unsaved changes',
+      ),
+    );
+  });
+
+  it('retains the unsaved draft after a failed write', async () => {
+    const api = openPiece('/catalog/openings/window.casement');
+    const editor = await edit(kitchen, 'Kitchen · back window');
+    api.fetch.mockRejectedValueOnce(new Error('write failed'));
+    fireEvent.click(editor.getByRole('button', { name: 'More sashes' }));
+    fireEvent.click(editor.getByRole('button', { name: 'Save' }));
+    expect(await editor.findByRole('alert')).toHaveTextContent('write failed');
+    expect(editor.getByRole('status', { name: 'Sashes' })).toHaveTextContent('2');
+    expect(editor.getByRole('button', { name: 'Save' })).toBeEnabled();
+    expect(document.querySelector('.piece-showing')).toHaveTextContent('with unsaved changes');
+    expect(api.overrides.has(`mock-home/${kitchen}`)).toBe(false);
   });
 
   it('creates the first override with version 0', async () => {
@@ -172,6 +311,8 @@ describe('the per-use editor', () => {
       rowOf('mock-home', 'souterrain-bedroom-window').getByText('Bedroom · front window'),
     ).toBeTruthy();
     expect(editor.getByRole('status', { name: 'Sashes' })).toHaveTextContent('2');
+    expect(document.querySelector('.piece-showing')).toHaveTextContent('with unsaved changes');
+    await waitFor(() => expect(editor.getByRole('button', { name: 'Save' })).toBeEnabled());
     expect(screen.queryByText(/could not be loaded/)).not.toBeInTheDocument();
   });
 

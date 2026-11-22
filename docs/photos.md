@@ -196,13 +196,17 @@ newer branch has already extended. The `media` schema therefore has its own hand
   `create index if not exists … on media.…`, separated by `--> statement-breakpoint`.
 - A **new column is nullable or has a default**, because older code does not write it.
 - New code must also run **without** a column it added being filled by older code (treat `null` as "unknown").
-- Never edit or delete a migration file that has been merged; add a new one (`NNNN_what_it_adds.sql`).
+- **Migration files are immutable once applied**, even before merge: never edit or delete them. Add a new
+  expand-only migration for corrections (`NNNN_what_it_adds.sql`).
 - A stored value that code checks against a fixed list (a request's `status`, `requester`) cannot get new values
   without breaking older branches' reads. Add a new column instead.
 
 The migrator applies every file whose name is not in `media.schema_migrations`, in name order, whatever was
 applied before, and ignores journal entries it does not know. So two branches may each add a migration and deploy
-in either order. A test lints the migration files for these rules.
+in either order. Under its advisory lock, it verifies stored checksums for all known tags before running any
+pending SQL. A mismatch fails with the schema and tag: restore the original migration file and put corrections
+in a new expand-only migration. It never repairs the journal, replays changed SQL or resets the schema. A test
+lints the migration files for these rules.
 
 To add a column: write the migration, add the column to `media-schema.ts`, and extend the shared schema with an
 optional field.

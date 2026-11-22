@@ -3,11 +3,20 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { HomeModel } from '@my-home/shared';
 import { asc } from 'drizzle-orm';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runRelease, type ReleaseLog } from '../src/db/release';
+import * as reset from '../src/db/reset';
 import { homes } from '../src/db/schema';
 import { readHomeFile } from '../src/db/seed';
 import { homeFiles } from '../src/db/sync';
+import {
+  history,
+  imports,
+  issuedIds,
+  notes,
+  openingOverrides,
+  placements,
+} from '../src/db/userdata-schema';
 import { homesFolder } from '../src/paths';
 import { mockHomeFile } from './fixtures';
 import { clearMedia, clearUserdata, createTestApp, injector } from './helpers';
@@ -70,6 +79,7 @@ describe('the release job (dist/release.js)', () => {
     await ctx.database.db.delete(homes);
     await clearUserdata(ctx);
   });
+  afterEach(() => vi.restoreAllMocks());
   afterAll(() => ctx.app.close());
 
   it('syncs every data/homes file, home.json first: only "Our home"', async () => {
@@ -192,11 +202,89 @@ describe('the release job (dist/release.js)', () => {
     await clearMedia(ctx);
   });
 
-  it('refuses to purge a home that is synced', async () => {
-    await expect(
-      runRelease(ctx.database, config({ homeFiles: ['home.json'], purgeHomes: ['home'] }), log),
-    ).rejects.toThrow(/refusing to purge home "home"/);
-  });
+  it.each([
+    { resetPublic: false, purgeHomes: ['mock-home'] },
+    { resetPublic: true, purgeHomes: ['mock-home'] },
+    { resetPublic: false, purgeHomes: ['retired-home', 'mock-home'] },
+    { resetPublic: true, purgeHomes: ['retired-home', 'mock-home'] },
+  ])(
+    'rejects purge overlap before any mutation (resetPublic=$resetPublic, purgeHomes=$purgeHomes)',
+    async ({ resetPublic, purgeHomes }) => {
+      for (const id of ['mock-home', 'retired-home']) {
+        const imported = await inject(
+          'POST',
+          '/api/homes/import',
+          variant({ id, name: 'Stored draft' }),
+        );
+        expect(imported.statusCode, imported.body).toBe(201);
+        const placed = await inject('POST', `/api/homes/${id}/placements`, {
+          typeId: 'furniture.bed',
+          levelId: 'souterrain',
+          position: { x: 0, z: 0 },
+        });
+        expect(placed.statusCode, placed.body).toBe(201);
+        const override = await inject('PUT', `/api/homes/${id}/opening-overrides/${WINDOW}`, {
+          version: 0,
+          params: { frameColor: '#383e42' },
+        });
+        expect(override.statusCode, override.body).toBe(200);
+        const note = await inject('POST', '/api/notes', {
+          homeId: id,
+          subject: { kind: 'use', id: WINDOW },
+          body: 'Unexported draft',
+        });
+        expect(note.statusCode, note.body).toBe(201);
+      }
+      const incoming = await folderWith({
+        'mock-home.json': variant({ name: 'Release version' }),
+        // Applying this seed would trash the draft placement and clear the override and note.
+        'mock-home.seed.json': {
+          schemaVersion: 1,
+          homeId: 'mock-home',
+          placements: [],
+          openingOverrides: [],
+          notes: [],
+        },
+      });
+      const snapshot = async () => ({
+        homes: await ctx.database.db.select().from(homes).orderBy(homes.id),
+        placements: await ctx.database.db
+          .select()
+          .from(placements)
+          .orderBy(placements.homeId, placements.id),
+        overrides: await ctx.database.db
+          .select()
+          .from(openingOverrides)
+          .orderBy(openingOverrides.homeId, openingOverrides.useId),
+        notes: await ctx.database.db.select().from(notes).orderBy(notes.id),
+        history: await ctx.database.db.select().from(history).orderBy(history.seq),
+        issuedIds: await ctx.database.db
+          .select()
+          .from(issuedIds)
+          .orderBy(issuedIds.homeId, issuedIds.id),
+        imports: await ctx.database.db
+          .select()
+          .from(imports)
+          .orderBy(imports.homeId, imports.source),
+      });
+      const before = await snapshot();
+      const resetPublicSchema = vi.spyOn(reset, 'resetDatabase');
+      const migrate = vi.spyOn(ctx.database, 'migrate');
+
+      await expect(
+        runRelease(
+          ctx.database,
+          config({ resetPublic, allowDatabaseReset: resetPublic, purgeHomes }),
+          log,
+          incoming,
+        ),
+      ).rejects.toThrow('refusing to purge home "mock-home": it is in the synced files');
+
+      expect.soft(await snapshot()).toEqual(before);
+      expect.soft(resetPublicSchema.mock.calls.length).toBe(0);
+      expect(migrate.mock.calls.length).toBe(0);
+    },
+  );
 
   it('refuses RESET_PUBLIC without ALLOW_DATABASE_RESET', async () => {
     await expect(runRelease(ctx.database, config({ resetPublic: true }), log)).rejects.toThrow(

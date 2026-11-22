@@ -9,9 +9,9 @@ import {
   type CreatePhotoMeta,
   type HomeModel,
 } from '@my-home/shared';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import sharp from 'sharp';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { homeStore } from '../src/db/homes';
 import { photos, photoSubjects } from '../src/db/media-schema';
 import { photoStore } from '../src/db/photos';
@@ -444,6 +444,156 @@ describe('photos API', () => {
         `/api/photos/${photo.id}/pose-history/${first!.id}/undo`,
       );
       expect(Photo.parse(toStart.json().photo).pose).toEqual(photo.pose);
+    });
+
+    /** Hold the first mutation before commit until the competing mutation is waiting. */
+    const overlap = async <T, U>(first: () => PromiseLike<T>, second: () => PromiseLike<U>) => {
+      const { db, driver } = ctx.database;
+      const signal = () => {
+        let resolve!: () => void;
+        const promise = new Promise<void>((done) => {
+          resolve = done;
+        });
+        return { promise, resolve };
+      };
+      const held = signal();
+      const release = signal();
+      const attempted = signal();
+      const original = db.transaction.bind(db);
+      let calls = 0;
+      const transaction: typeof db.transaction = (callback, config) => {
+        const call = ++calls;
+        if (call === 2) attempted.resolve();
+        return original(async (tx) => {
+          const result = await callback(tx);
+          if (call === 1) {
+            held.resolve();
+            await release.promise;
+          }
+          return result;
+        }, config);
+      };
+      const spy = vi.spyOn(db, 'transaction').mockImplementation(transaction);
+      const a = Promise.resolve(first());
+      let b: Promise<U> | undefined;
+      try {
+        await Promise.race([
+          held.promise,
+          a.then(() => {
+            throw new Error('First mutation completed without reaching the commit barrier');
+          }),
+        ]);
+        b = Promise.resolve(second());
+        await Promise.race([
+          attempted.promise,
+          b.then(() => {
+            throw new Error('Competing mutation completed without starting a transaction');
+          }),
+        ]);
+        if (driver === 'postgres') {
+          // PGlite queues transactions on one connection. Postgres must actually block a
+          // second backend on the first: observe the server, not elapsed time or sleeps.
+          const deadline = Date.now() + 5_000;
+          for (;;) {
+            const result = (await db.execute(sql`
+              select exists (
+                select 1 from pg_stat_activity
+                where datname = current_database() and pid <> pg_backend_pid()
+                  and wait_event_type = 'Lock'
+                  and query like '%"media"."photos"%'
+                  and cardinality(pg_blocking_pids(pid)) > 0
+              ) as blocked
+            `)) as unknown as { rows: { blocked: boolean }[] };
+            if (result.rows[0]!.blocked) break;
+            if (Date.now() >= deadline)
+              throw new Error('Competing mutation did not wait on a photo lock');
+          }
+        }
+        release.resolve();
+        return await Promise.all([a, b]);
+      } finally {
+        release.resolve();
+        await Promise.allSettled([a, ...(b ? [b] : [])]);
+        spy.mockRestore();
+      }
+    };
+
+    it('serializes overlapping PATCHes so the latest undo restores the preceding committed pose', async () => {
+      const photo = await upload({ sensors });
+      const a = { ...photo.pose, yaw: 1 };
+      const b = { ...photo.pose, yaw: 2, fovH: 1.06 };
+      const [first, second] = await overlap(
+        () => inject('PATCH', `/api/photos/${photo.id}`, { pose: a }),
+        () => asAgent('PATCH', `/api/photos/${photo.id}`, { pose: b, poseReason: 'correction' }),
+      );
+      expect(first.statusCode, first.body).toBe(200);
+      expect(second.statusCode, second.body).toBe(200);
+      const changes = await history(photo.id);
+      expect(changes).toHaveLength(2);
+      expect(changes[0]).toMatchObject({
+        before: a,
+        after: b,
+        actor: 'agent',
+        reason: 'correction',
+      });
+      expect(changes[1]).toMatchObject({ before: photo.pose, after: a, actor: 'owner' });
+      const undone = await asAgent(
+        'POST',
+        `/api/photos/${photo.id}/pose-history/${changes[0]!.id}/undo`,
+      );
+      expect(undone.statusCode, undone.body).toBe(200);
+      expect(UndoPhotoPoseResponse.parse(undone.json()).photo).toMatchObject({ pose: a, sensors });
+    });
+
+    it('checks undo eligibility after an overlapping PATCH commits and refuses to overwrite it', async () => {
+      const photo = await upload({ sensors });
+      const a = { ...photo.pose, yaw: 1 };
+      const b = { ...photo.pose, yaw: 2 };
+      await inject('PATCH', `/api/photos/${photo.id}`, { pose: a });
+      const [target] = await history(photo.id);
+      const [patched, undo] = await overlap(
+        () => asAgent('PATCH', `/api/photos/${photo.id}`, { pose: b }),
+        () => inject('POST', `/api/photos/${photo.id}/pose-history/${target!.id}/undo`),
+      );
+      expect(patched.statusCode, patched.body).toBe(200);
+      expect(undo.statusCode, undo.body).toBe(409);
+      expect(ApiError.parse(undo.json()).message).toMatch(/changed since/);
+      expect(Photo.parse((await inject('GET', `/api/photos/${photo.id}`)).json())).toMatchObject({
+        pose: b,
+        sensors,
+      });
+      const changes = await history(photo.id);
+      expect(changes).toHaveLength(2);
+      expect(changes[0]).toMatchObject({ before: a, after: b, actor: 'agent' });
+      expect(changes.every((change) => change.undoesId === null)).toBe(true);
+    });
+
+    it('allows only one overlapping duplicate undo with no partial pose or history writes', async () => {
+      const photo = await upload({ sensors });
+      const corrected = { ...photo.pose, yaw: 1 };
+      await inject('PATCH', `/api/photos/${photo.id}`, { pose: corrected });
+      const [target] = await history(photo.id);
+      const url = `/api/photos/${photo.id}/pose-history/${target!.id}/undo`;
+      const [first, second] = await overlap(
+        () => asAgent('POST', url),
+        () => inject('POST', url),
+      );
+      expect(first.statusCode, first.body).toBe(200);
+      expect(second.statusCode, second.body).toBe(409);
+      expect(ApiError.parse(second.json()).message).toMatch(/undone already/);
+      const changes = await history(photo.id);
+      expect(changes).toHaveLength(2);
+      expect(changes[0]).toMatchObject({
+        undoesId: target!.id,
+        before: corrected,
+        after: photo.pose,
+        actor: 'agent',
+      });
+      expect(changes[1]).toMatchObject({ undoneById: changes[0]!.id, canUndo: false });
+      expect(Photo.parse((await inject('GET', `/api/photos/${photo.id}`)).json())).toMatchObject({
+        pose: photo.pose,
+        sensors,
+      });
     });
 
     it('answers 404 for an unknown photo or change', async () => {

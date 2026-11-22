@@ -136,6 +136,7 @@ function Detail({
   const [newTag, setNewTag] = useState('');
   const room = roomLabel(photo);
   const { position, yaw, pitch } = photo.pose;
+  const savingTags = photos.savingTags.has(photo.id);
   const tags = [...new Set([...PHOTO_TAGS, ...photo.tags])];
   const setTags = (next: string[]) => void photos.update(photo.id, { tags: next });
 
@@ -196,6 +197,7 @@ function Detail({
             <input
               type="checkbox"
               checked={photo.tags.includes(tag)}
+              disabled={savingTags}
               onChange={() =>
                 setTags(
                   photo.tags.includes(tag)
@@ -210,6 +212,7 @@ function Detail({
         <form
           onSubmit={(e) => {
             e.preventDefault();
+            if (savingTags) return;
             const tag = newTag.trim().toLowerCase();
             if (tag && !photo.tags.includes(tag)) setTags([...photo.tags, tag]);
             setNewTag('');
@@ -222,10 +225,12 @@ function Detail({
             maxLength={40}
             placeholder="add tag"
             aria-label="New tag"
+            disabled={savingTags}
             onChange={(e) => setNewTag(e.target.value)}
           />
         </form>
       </div>
+      {savingTags && <p role="status">Saving tags...</p>}
       <div className="buttons">
         <button type="button" aria-pressed={viewing} onClick={() => onViewFromHere(!viewing)}>
           {viewing ? 'Leave this view' : 'View from here'}

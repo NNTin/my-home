@@ -23,6 +23,7 @@ import type { ResolvedActor } from '../actor';
 import { problem } from '../errors';
 import type { ProcessedImage } from '../photos/image';
 import type { Db } from './client';
+import type { Tx } from './history';
 import {
   photoBlobs,
   photoPoseChanges,
@@ -143,8 +144,14 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
   const purgeAt = (deletedAt: Date | null) =>
     deletedAt ? new Date(deletedAt.getTime() + retentionMs).toISOString() : null;
 
-  const modelRooms = async (homeId: string): Promise<ModelRooms | undefined> => {
-    const [row] = await db.select({ model: homes.model }).from(homes).where(eq(homes.id, homeId));
+  const modelRooms = async (
+    homeId: string,
+    source: Db | Tx = db,
+  ): Promise<ModelRooms | undefined> => {
+    const [row] = await source
+      .select({ model: homes.model })
+      .from(homes)
+      .where(eq(homes.id, homeId));
     const parsed = StoredModelRooms.safeParse(row?.model);
     return parsed.success ? parsed.data : undefined;
   };
@@ -345,6 +352,83 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
         ),
       );
 
+  // Every pose writer takes this lock before reading state or checking undo eligibility.
+  const lockPhoto = async (tx: Tx, id: string) => {
+    const [current] = await tx.select().from(photos).where(eq(photos.id, id)).for('update');
+    return current;
+  };
+
+  /** Applies a correction and its history while the caller holds the photo row lock. */
+  const updateLocked = async (
+    tx: Tx,
+    current: PhotoRow,
+    body: UpdateBody,
+    actor: Pick<ResolvedActor, 'actor' | 'source' | 'username'>,
+    undoesId: string | null,
+  ) => {
+    const id = current.id;
+    const before = poseOfRow(current);
+    const after = body.pose && storedPose(body.pose);
+    const poseChanged = after !== undefined && (undoesId !== null || !samePose(before, after));
+    const model = await modelRooms(current.homeId, tx);
+    const levelId = body.levelId === undefined ? current.levelId : body.levelId;
+    const position = body.pose?.position ?? current;
+    const moved = body.pose !== undefined || body.levelId !== undefined;
+    const [updated] = await tx
+      .update(photos)
+      .set({
+        ...(body.levelId !== undefined && { levelId }),
+        ...(body.pose && {
+          x: body.pose.position.x,
+          y: body.pose.position.y,
+          z: body.pose.position.z,
+          yaw: body.pose.yaw,
+          pitch: body.pose.pitch,
+          fovH: body.pose.fovH ?? null,
+        }),
+        ...((moved || body.capturedRoomId !== undefined) &&
+          capturedRoom(model, levelId, position, body)),
+        ...(body.capturedRoomId === undefined &&
+          !moved &&
+          body.capturedRoomName !== undefined && { capturedRoomName: body.capturedRoomName }),
+        ...(body.takenAt !== undefined && { takenAt: new Date(body.takenAt) }),
+        ...(body.note !== undefined && { note: body.note }),
+        ...(body.tags !== undefined && { tags: body.tags }),
+        ...(body.requestId !== undefined && { requestId: body.requestId }),
+        ...(body.sensors !== undefined && { sensors: body.sensors }),
+        updatedAt: new Date(),
+      })
+      .where(eq(photos.id, id))
+      .returning();
+    if (updated && body.subjects !== undefined) {
+      await tx.delete(photoSubjects).where(eq(photoSubjects.photoId, id));
+      await link(tx, id, body.subjects);
+    }
+    // Linking a photo to a request answers it, exactly as uploading it for the request does.
+    if (updated && body.requestId) {
+      await linkRequestSubject(tx, id, body.requestId, updated.homeId);
+      await fulfilOpenRequest(tx, body.requestId, updated.homeId);
+    }
+    let change: PhotoPoseChangeRow | undefined;
+    if (updated && poseChanged) {
+      [change] = await tx
+        .insert(photoPoseChanges)
+        .values({
+          id: randomUUID(),
+          photoId: id,
+          actor: actor.actor,
+          actorSource: actor.source,
+          actorName: actor.username,
+          before,
+          after,
+          reason: body.poseReason ?? null,
+          undoesId,
+        })
+        .returning();
+    }
+    return updated && { updated, change, model };
+  };
+
   const store = {
     /** Stores a processed upload; undefined when `meta.id` is already taken. */
     async create(
@@ -492,72 +576,11 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
       actor: Pick<ResolvedActor, 'actor' | 'source' | 'username'> = DEFAULT_ACTOR,
       undoesId: string | null = null,
     ): Promise<{ photo: Photo; change: PhotoPoseChangeRow | undefined } | undefined> {
-      const [current] = await db.select().from(photos).where(eq(photos.id, id));
-      if (!current) return undefined;
-      const before = poseOfRow(current);
-      const after = body.pose && storedPose(body.pose);
-      const poseChanged = after !== undefined && (undoesId !== null || !samePose(before, after));
-      const model = await modelRooms(current.homeId);
-      const levelId = body.levelId === undefined ? current.levelId : body.levelId;
-      const position = body.pose?.position ?? current;
-      const moved = body.pose !== undefined || body.levelId !== undefined;
-      // The photo and the request it answers change together or not at all, as on upload.
       const row = await db.transaction(async (tx) => {
-        const [updated] = await tx
-          .update(photos)
-          .set({
-            ...(body.levelId !== undefined && { levelId }),
-            ...(body.pose && {
-              x: body.pose.position.x,
-              y: body.pose.position.y,
-              z: body.pose.position.z,
-              yaw: body.pose.yaw,
-              pitch: body.pose.pitch,
-              fovH: body.pose.fovH ?? null,
-            }),
-            ...((moved || body.capturedRoomId !== undefined) &&
-              capturedRoom(model, levelId, position, body)),
-            ...(body.capturedRoomId === undefined &&
-              !moved &&
-              body.capturedRoomName !== undefined && { capturedRoomName: body.capturedRoomName }),
-            ...(body.takenAt !== undefined && { takenAt: new Date(body.takenAt) }),
-            ...(body.note !== undefined && { note: body.note }),
-            ...(body.tags !== undefined && { tags: body.tags }),
-            ...(body.requestId !== undefined && { requestId: body.requestId }),
-            ...(body.sensors !== undefined && { sensors: body.sensors }),
-            updatedAt: new Date(),
-          })
-          .where(eq(photos.id, id))
-          .returning();
-        if (updated && body.subjects !== undefined) {
-          await tx.delete(photoSubjects).where(eq(photoSubjects.photoId, id));
-          await link(tx, id, body.subjects);
-        }
-        // Linking a photo to a request answers it, exactly as uploading it for the request does.
-        if (updated && body.requestId) {
-          await linkRequestSubject(tx, id, body.requestId, updated.homeId);
-          await fulfilOpenRequest(tx, body.requestId, updated.homeId);
-        }
-        let change: PhotoPoseChangeRow | undefined;
-        if (updated && poseChanged) {
-          [change] = await tx
-            .insert(photoPoseChanges)
-            .values({
-              id: randomUUID(),
-              photoId: id,
-              actor: actor.actor,
-              actorSource: actor.source,
-              actorName: actor.username,
-              before,
-              after,
-              reason: body.poseReason ?? null,
-              undoesId,
-            })
-            .returning();
-        }
-        return updated && { updated, change };
+        const current = await lockPhoto(tx, id);
+        return current && updateLocked(tx, current, body, actor, undoesId);
       });
-      const photo = row && (await one(row.updated, model));
+      const photo = row && (await one(row.updated, row.model));
       return photo && { photo, change: row.change };
     },
 
@@ -584,25 +607,32 @@ export function photoStore(db: Db, options: { retentionDays: number }) {
       changeId: string,
       actor: Pick<ResolvedActor, 'actor' | 'source' | 'username'>,
     ): Promise<UndoPoseResult> {
-      const [target] = await db
-        .select()
-        .from(photoPoseChanges)
-        .where(and(eq(photoPoseChanges.id, changeId), eq(photoPoseChanges.photoId, id)));
-      const [current] = await db.select().from(photos).where(eq(photos.id, id));
-      if (!target || !current) return { status: 'not-found' };
-      const [undone] = await db
-        .select({ id: photoPoseChanges.id })
-        .from(photoPoseChanges)
-        .where(eq(photoPoseChanges.undoesId, changeId));
-      if (undone) return { status: 'already-undone' };
-      if (!samePose(poseOfRow(current), target.after)) return { status: 'changed-since' };
       try {
-        const result = await this.updateWithChange(id, { pose: target.before }, actor, changeId);
-        if (!result?.change) return { status: 'not-found' };
+        const result = await db.transaction(async (tx) => {
+          const current = await lockPhoto(tx, id);
+          if (!current) return { status: 'not-found' } as const;
+          const [target] = await tx
+            .select()
+            .from(photoPoseChanges)
+            .where(and(eq(photoPoseChanges.id, changeId), eq(photoPoseChanges.photoId, id)));
+          if (!target) return { status: 'not-found' } as const;
+          const [undone] = await tx
+            .select({ id: photoPoseChanges.id })
+            .from(photoPoseChanges)
+            .where(eq(photoPoseChanges.undoesId, changeId));
+          if (undone) return { status: 'already-undone' } as const;
+          if (!samePose(poseOfRow(current), target.after))
+            return { status: 'changed-since' } as const;
+          const row = await updateLocked(tx, current, { pose: target.before }, actor, changeId);
+          return row ? ({ status: 'undone', ...row } as const) : ({ status: 'not-found' } as const);
+        });
+        if (result.status !== 'undone') return result;
+        const photo = await one(result.updated, result.model);
+        if (!photo || !result.change) return { status: 'not-found' };
         return {
           status: 'undone',
-          photo: result.photo,
-          change: toPoseChange(result.change, null, result.photo.pose),
+          photo,
+          change: toPoseChange(result.change, null, photo.pose),
         };
       } catch (error) {
         if (isUniqueViolation(error)) return { status: 'already-undone' };
