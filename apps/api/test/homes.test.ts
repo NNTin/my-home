@@ -262,6 +262,70 @@ describe('homes API', () => {
       expect((await inject('GET', '/api/homes')).json()).toEqual({ items: [] });
     });
 
+    it('rejects finishes the library or the surface does not allow, on import and on update', async () => {
+      const bad = clone();
+      const room = bad.rooms.find((r) => r.levelId === 'souterrain')!;
+      const upper = bad.rooms.find((r) => r.levelId !== 'souterrain');
+      room.finishes = {
+        floor: { finish: 'wood.mahogany', source: 'mock' },
+        walls: { finish: 'grass.lawn', source: 'mock' },
+      };
+      bad.building.finishes = {
+        roof: { finish: 'roof.clay-tile', tint: '#aa3322', source: 'mock' },
+      };
+      const at = `rooms[${bad.rooms.indexOf(room)}].finishes`;
+      const issues = [
+        { path: `${at}.floor.finish`, message: 'Unknown finish "wood.mahogany"' },
+        {
+          path: `${at}.walls.finish`,
+          message: 'Finish "grass.lawn" is not for a wall (it is for the ground)',
+        },
+        {
+          path: 'building.finishes.roof.tint',
+          message: 'Finish "roof.clay-tile" cannot be tinted',
+        },
+      ];
+      const imported = await inject('POST', '/api/homes/import', bad);
+      expect(imported.statusCode).toBe(400);
+      expect(ApiError.parse(imported.json()).issues).toEqual(issues);
+
+      await seed(ctx.database.db, { file: mockHomeFile });
+      const updated = await inject('PUT', '/api/homes/mock-home', bad);
+      expect(updated.statusCode).toBe(400);
+      expect(ApiError.parse(updated.json()).issues).toEqual(issues);
+
+      // The mock home has no room above the souterrain; a level above takes no finishes at all.
+      expect(upper).toBeUndefined();
+      const attic = clone();
+      attic.rooms.push({
+        ...structuredClone(attic.rooms[0]!),
+        id: 'attic-room',
+        name: 'Attic room',
+        levelId: 'first-floor',
+        apartmentId: 'apt-first-floor',
+        finishes: { floor: { finish: 'wood.oak-laminate', source: 'mock' } },
+      });
+      const rejected = await inject('PUT', '/api/homes/mock-home', attic);
+      expect(rejected.statusCode).toBe(400);
+      expect(ApiError.parse(rejected.json()).issues?.[0]?.path).toBe(
+        `rooms[${attic.rooms.length - 1}].finishes`,
+      );
+    });
+
+    it('stores and returns the finishes of a valid home', async () => {
+      await seed(ctx.database.db, { file: mockHomeFile });
+      const home = clone();
+      home.rooms.find((r) => r.levelId === 'souterrain')!.finishes = {
+        floor: { finish: 'wood.oak-laminate', tint: '#d9c2a0', rotation: 90, source: 'measured' },
+      };
+      home.building.finishes = {
+        facade: { finish: 'render.facade', source: 'estimated-from-photo' },
+      };
+      const res = await inject('PUT', '/api/homes/mock-home', home);
+      expect(res.statusCode).toBe(200);
+      expect((await inject('GET', '/api/homes/mock-home')).json()).toEqual(home);
+    });
+
     it('rejects malformed JSON and missing fields', async () => {
       const malformed = await ctx.app.inject({
         method: 'POST',

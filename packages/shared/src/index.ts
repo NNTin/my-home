@@ -1,4 +1,5 @@
 export * from './catalog';
+export * from './finishes';
 export * from './health';
 export * from './home-model';
 export * from './home-seed';

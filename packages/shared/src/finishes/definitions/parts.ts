@@ -1,0 +1,73 @@
+import type { Finish } from '../types';
+import { polyHaven } from './source';
+
+/** Finishes of catalogue parts. Nothing draws them until parts name finishes (§5.7 of the design). */
+export const parts: Finish[] = [
+  {
+    id: 'wood.veneer',
+    name: 'Oak veneer',
+    description: 'Oak veneer with a straight grain, for furniture fronts, tops and shelves.',
+    surfaces: ['part'],
+    texture: { id: 'wood-veneer', maps: ['color', 'normal', 'roughness'] },
+    tileSize: 1.83,
+    tint: '#ffffff',
+    tintable: true,
+    roughness: 1,
+    metalness: 0,
+    source: polyHaven('oak_veneer_01'),
+  },
+  {
+    id: 'fabric.weave',
+    name: 'Woven fabric',
+    description: 'A plain woven cloth, for upholstery, cushions and curtains.',
+    surfaces: ['part'],
+    // Relief only: the colour is the tint.
+    texture: { id: 'fabric-weave', maps: ['normal'] },
+    tileSize: 0.271,
+    tint: '#d9d4c7',
+    tintable: true,
+    roughness: 1,
+    metalness: 0,
+    source: polyHaven('rough_linen'),
+  },
+  {
+    id: 'metal.brushed',
+    name: 'Brushed metal',
+    description: 'Brushed steel or aluminium: handles, legs, appliance fronts.',
+    surfaces: ['part'],
+    tint: '#b9bdc1',
+    tintable: true,
+    roughness: 0.4,
+    metalness: 1,
+  },
+  {
+    id: 'ceramic.white',
+    name: 'White ceramic',
+    description: 'Glazed white ceramic: sanitary ware and sinks.',
+    surfaces: ['part'],
+    tint: '#f4f4f0',
+    tintable: false,
+    roughness: 0.2,
+    metalness: 0,
+  },
+  {
+    id: 'plastic.matt',
+    name: 'Matt plastic',
+    description: 'A plain matt surface for coated, lacquered and plastic parts.',
+    surfaces: ['part'],
+    tint: '#e8e8e5',
+    tintable: true,
+    roughness: 0.7,
+    metalness: 0,
+  },
+  {
+    id: 'glass.clear',
+    name: 'Clear glass',
+    description: 'Smooth clear glass. A part sets how see-through it is.',
+    surfaces: ['part'],
+    tint: '#dfeaf0',
+    tintable: true,
+    roughness: 0.05,
+    metalness: 0,
+  },
+];

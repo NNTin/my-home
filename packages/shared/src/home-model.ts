@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { catalog } from './catalog/catalog';
 import { TypeId } from './catalog/ids';
 import type { CatalogType } from './catalog/types';
+import { finishes } from './finishes/library';
+import { FinishId, type FinishSurface } from './finishes/types';
 
 /**
  * The home model: the single source of truth for the building.
@@ -83,6 +85,30 @@ export type Pitch = z.infer<typeof Pitch>;
 
 export const Name = z.string().min(1).max(200);
 
+/**
+ * A finish chosen for a surface: a finish of the library (`packages/shared/src/finishes/`), with
+ * where the choice comes from. A surface without one draws the default for its kind
+ * (docs/home-model.md § Finishes). Appearance only: it never changes geometry.
+ */
+export const FinishUse = z
+  .strictObject({
+    finish: FinishId,
+    /** Replaces the finish's own colour; only where the finish is tintable. */
+    tint: z
+      .string()
+      .regex(/^#[0-9a-f]{6}$/, 'Colours are written as #rrggbb, lower case')
+      .optional(),
+    /** A quarter turn, for the direction planks or tiles run; floors only. */
+    rotation: z.union([z.literal(0), z.literal(90)]).optional(),
+    /** `mock` for a placeholder, `estimated-from-photo` when chosen from photos, `measured` when the owner named the product or colour. */
+    source: DimensionSource,
+    /** Ids of the photos in the photo store that the choice was made from. */
+    photos: z.array(z.uuid()).max(50).optional(),
+    note: z.string().max(500).optional(),
+  })
+  .meta({ id: 'FinishUse', description: 'A finish of the library chosen for a surface.' });
+export type FinishUse = z.infer<typeof FinishUse>;
+
 /** The default: a flat slab of `building.roofThickness` on top of the highest level. */
 export const FlatRoof = z.strictObject({ type: z.literal('flat') }).meta({ id: 'FlatRoof' });
 
@@ -150,6 +176,8 @@ export const Building = z.strictObject({
    * home's location by the app.
    */
   magneticDeclination: Bearing.optional(),
+  /** The exterior: every outer wall face, and the roof. Omitted means the defaults. */
+  finishes: z.strictObject({ facade: FinishUse.optional(), roof: FinishUse.optional() }).optional(),
 });
 export type Building = z.infer<typeof Building>;
 
@@ -241,6 +269,18 @@ export const Room = z.strictObject({
   apartmentId: Id.optional(),
   /** Floor polygon. */
   outline: Polygon,
+  /**
+   * The room's surfaces; `walls` is every wall face that borders the room. Omitted means the
+   * defaults. Only rooms of the lowest level take finishes: the levels above are not modelled
+   * inside.
+   */
+  finishes: z
+    .strictObject({
+      floor: FinishUse.optional(),
+      walls: FinishUse.optional(),
+      ceiling: FinishUse.optional(),
+    })
+    .optional(),
 });
 export type Room = z.infer<typeof Room>;
 
@@ -307,6 +347,8 @@ export const OutdoorArea = z.strictObject({
   /** Height of the surface (its high edge when sloped). */
   elevation: Dimension,
   slope: Slope.optional(),
+  /** The surface; omitted means the default of the area's kind. */
+  finish: FinishUse.optional(),
 });
 export type OutdoorArea = z.infer<typeof OutdoorArea>;
 
@@ -353,6 +395,8 @@ export const Outbuilding = z
     /** Indexes of footprint edges without a wall (a carport's sides, or against the house). */
     openEdges: z.array(z.number().int().nonnegative()).optional(),
     openings: z.array(OutbuildingOpening).optional(),
+    /** The walls; omitted means the default of the outbuilding's kind. */
+    finish: FinishUse.optional(),
   })
   .meta({ id: 'Outbuilding' });
 export type Outbuilding = z.infer<typeof Outbuilding>;
@@ -373,6 +417,8 @@ export const Stair = z
     apartmentId: Id.optional(),
     path: z.array(Point).min(2),
     width: PositiveDimension,
+    /** The treads and landings; omitted means the default. */
+    finish: FinishUse.optional(),
   })
   .meta({ id: 'Stair' });
 export type Stair = z.infer<typeof Stair>;
@@ -807,6 +853,7 @@ function checkSemantics(model: z.infer<typeof HomeModelShape>, ctx: z.Refinement
   });
 
   checkTypesAndNames(model, issue);
+  checkFinishes(model, issue);
 
   if (roof?.type === 'gable' && roof.windows?.length) {
     const xs = model.building.footprint.map((p) => p.x.value);
@@ -824,6 +871,74 @@ function checkSemantics(model: z.infer<typeof HomeModelShape>, ctx: z.Refinement
       }
     });
   }
+}
+
+/** Where a finish use sits, as the messages say it. */
+const surfaceName: Record<FinishSurface, string> = {
+  floor: 'a floor',
+  wall: 'a wall',
+  ceiling: 'a ceiling',
+  facade: 'a facade',
+  roof: 'a roof',
+  ground: 'the ground',
+  part: 'a catalogue part',
+};
+
+/** Finish uses: the finish exists, fits its kind of surface, and is tinted and turned only where allowed. */
+function checkFinishes(
+  model: z.infer<typeof HomeModelShape>,
+  issue: (path: (string | number)[], message: string) => void,
+) {
+  const check = (
+    use: FinishUse | undefined,
+    surface: FinishSurface,
+    path: (string | number)[],
+    turns = false,
+  ) => {
+    if (!use) return;
+    const finish = finishes.get(use.finish);
+    if (!finish) {
+      issue([...path, 'finish'], `Unknown finish "${use.finish}"`);
+      return;
+    }
+    if (!finish.surfaces.includes(surface)) {
+      const allowed = finish.surfaces.map((s) => surfaceName[s]).join(', ');
+      issue(
+        [...path, 'finish'],
+        `Finish "${finish.id}" is not for ${surfaceName[surface]}` +
+          (allowed ? ` (it is for ${allowed})` : ' (only the viewer draws it)'),
+      );
+    }
+    if (use.tint !== undefined && !finish.tintable) {
+      issue([...path, 'tint'], `Finish "${finish.id}" cannot be tinted`);
+    }
+    if (use.rotation !== undefined && !turns) {
+      issue([...path, 'rotation'], 'Only the finish of a room floor can be turned');
+    }
+  };
+
+  // The lowest level is the one modelled inside (`interiorLevelId`).
+  const lowest = [...model.levels].sort((a, b) => a.elevation.value - b.elevation.value)[0];
+  model.rooms.forEach((r, i) => {
+    if (!r.finishes) return;
+    const path = ['rooms', i, 'finishes'];
+    if (lowest && r.levelId !== lowest.id) {
+      issue(
+        path,
+        `Room "${r.id}" is on level "${r.levelId}", which is not modelled inside: ` +
+          `only rooms of the lowest level ("${lowest.id}") take finishes`,
+      );
+      return;
+    }
+    check(r.finishes.floor, 'floor', [...path, 'floor'], true);
+    check(r.finishes.walls, 'wall', [...path, 'walls']);
+    check(r.finishes.ceiling, 'ceiling', [...path, 'ceiling']);
+  });
+  check(model.building.finishes?.facade, 'facade', ['building', 'finishes', 'facade']);
+  check(model.building.finishes?.roof, 'roof', ['building', 'finishes', 'roof']);
+  model.outdoorAreas.forEach((a, i) => check(a.finish, 'ground', ['outdoorAreas', i, 'finish']));
+  model.outbuildings?.forEach((b, i) => check(b.finish, 'facade', ['outbuildings', i, 'finish']));
+  model.stairs?.forEach((s, i) => check(s.finish, 'floor', ['stairs', i, 'finish']));
 }
 
 const openingTypePlural: Record<OpeningType, string> = {

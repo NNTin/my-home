@@ -20,6 +20,8 @@
     "db:migrate": "pnpm --filter @my-home/api db:migrate",
     "db:seed": "pnpm --filter @my-home/api db:seed",
     "schema:generate": "pnpm --filter @my-home/shared schema:generate",
+    "finishes:fetch": "pnpm --filter @my-home/shared exec tsx ../../tools/finishes/fetch.mjs fetch",
+    "finishes:manifest": "pnpm --filter @my-home/shared exec tsx ../../tools/finishes/fetch.mjs manifest",
     "prepare": "husky || true"
   },
   "devDependencies": {

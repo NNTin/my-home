@@ -980,6 +980,172 @@ describe('piece types and names', () => {
   });
 });
 
+describe('finishes', () => {
+  const use = (finish: string, rest: Record<string, unknown> = {}) => ({
+    finish,
+    source: 'estimated-from-photo' as const,
+    ...rest,
+  });
+  /** The first room of the lowest level: the only level whose rooms take finishes. */
+  const souterrainRoom = (home: HomeModel) => home.rooms.find((r) => r.levelId === 'souterrain')!;
+
+  it('accepts the real home and the mock home, which name no finish', () => {
+    for (const home of [realHome(), mockHome()]) {
+      expect(HomeModel.safeParse(home).success).toBe(true);
+      expect(JSON.stringify(home)).not.toContain('"finish');
+    }
+  });
+
+  it('accepts finishes on a room, the building, an outdoor area, an outbuilding and a stair', () => {
+    const home = realHome();
+    souterrainRoom(home).finishes = {
+      floor: use('wood.oak-laminate', {
+        tint: '#d9c2a0',
+        rotation: 90,
+        photos: ['0b0f6f0e-7f0a-4a52-9f43-6f1c2f0f7a11'],
+        note: 'Planks run along the long side of the room',
+      }),
+      walls: use('tile.light-60'),
+      ceiling: use('plaster.fine', { tint: '#ffffff' }),
+    };
+    home.building.finishes = {
+      facade: use('render.facade', { tint: '#e8e0d0' }),
+      roof: use('roof.clay-tile'),
+    };
+    home.outdoorAreas[0]!.finish = use('gravel.fine', { source: 'measured' });
+    home.outbuildings![0]!.finish = use('paint.plain', { tint: '#ffffff' });
+    home.stairs![0]!.finish = use('wood.oak-laminate');
+    const result = HomeModel.safeParse(home);
+    expect(result.error && describeIssues(formatIssues(result.error))).toBeUndefined();
+  });
+
+  it('rejects an unknown or malformed finish id', () => {
+    const home = realHome();
+    souterrainRoom(home).finishes = { floor: use('wood.mahogany') };
+    home.building.finishes = { roof: use('Clay Tiles') };
+    const index = home.rooms.indexOf(souterrainRoom(home));
+    expect(issuesOf(home)).toContainEqual({
+      path: 'building.finishes.roof.finish',
+      message: 'Finish ids look like "material.name" (a-z, 0-9, "-")',
+    });
+    delete home.building.finishes;
+    expect(issuesOf(home)).toEqual([
+      { path: `rooms[${index}].finishes.floor.finish`, message: 'Unknown finish "wood.mahogany"' },
+    ]);
+  });
+
+  it('rejects a finish on the wrong kind of surface', () => {
+    const home = realHome();
+    const index = home.rooms.indexOf(souterrainRoom(home));
+    souterrainRoom(home).finishes = { floor: use('grass.lawn'), ceiling: use('wood.oak-laminate') };
+    home.building.finishes = { facade: use('roof.clay-tile'), roof: use('cut.dark') };
+    home.outdoorAreas[0]!.finish = use('paint.plain');
+    home.stairs![0]!.finish = use('wood.veneer');
+    expect(issuesOf(home)).toEqual([
+      {
+        path: `rooms[${index}].finishes.floor.finish`,
+        message: 'Finish "grass.lawn" is not for a floor (it is for the ground)',
+      },
+      {
+        path: `rooms[${index}].finishes.ceiling.finish`,
+        message: 'Finish "wood.oak-laminate" is not for a ceiling (it is for a floor)',
+      },
+      {
+        path: 'building.finishes.facade.finish',
+        message: 'Finish "roof.clay-tile" is not for a facade (it is for a roof)',
+      },
+      {
+        path: 'building.finishes.roof.finish',
+        message: 'Finish "cut.dark" is not for a roof (only the viewer draws it)',
+      },
+      {
+        path: 'outdoorAreas[0].finish.finish',
+        message:
+          'Finish "paint.plain" is not for the ground (it is for a wall, a ceiling, a facade)',
+      },
+      {
+        path: 'stairs[0].finish.finish',
+        message: 'Finish "wood.veneer" is not for a floor (it is for a catalogue part)',
+      },
+    ]);
+  });
+
+  it('rejects a tint on a finish that cannot be tinted, and a malformed tint', () => {
+    const home = realHome();
+    home.building.finishes = { roof: use('roof.clay-tile', { tint: '#aa3322' }) };
+    expect(issuesOf(home)).toEqual([
+      { path: 'building.finishes.roof.tint', message: 'Finish "roof.clay-tile" cannot be tinted' },
+    ]);
+    home.building.finishes = { facade: use('render.facade', { tint: '#FFF' }) };
+    expect(issuesOf(home)).toEqual([
+      {
+        path: 'building.finishes.facade.tint',
+        message: 'Colours are written as #rrggbb, lower case',
+      },
+    ]);
+  });
+
+  it('turns only the finish of a room floor, by a quarter turn', () => {
+    const home = realHome();
+    const index = home.rooms.indexOf(souterrainRoom(home));
+    souterrainRoom(home).finishes = { walls: use('tile.light-60', { rotation: 90 }) };
+    home.outdoorAreas[0]!.finish = use('paving.concrete-slab', { rotation: 90 });
+    expect(issuesOf(home)).toEqual([
+      {
+        path: `rooms[${index}].finishes.walls.rotation`,
+        message: 'Only the finish of a room floor can be turned',
+      },
+      {
+        path: 'outdoorAreas[0].finish.rotation',
+        message: 'Only the finish of a room floor can be turned',
+      },
+    ]);
+    souterrainRoom(home).finishes = { floor: use('wood.oak-laminate', { rotation: 45 }) };
+    delete home.outdoorAreas[0]!.finish;
+    expect(issuesOf(home).map((i) => i.path)).toEqual([`rooms[${index}].finishes.floor.rotation`]);
+  });
+
+  it('rejects finishes on rooms of the ground floor and the attic', () => {
+    const home = realHome();
+    for (const id of ['ground-floor-interior', 'first-floor-interior']) {
+      home.rooms.find((r) => r.id === id)!.finishes = { floor: use('wood.oak-laminate') };
+    }
+    expect(issuesOf(home)).toEqual(
+      ['ground-floor', 'first-floor'].map((level) => ({
+        path: `rooms[${home.rooms.findIndex((r) => r.id === `${level}-interior`)}].finishes`,
+        message:
+          `Room "${level}-interior" is on level "${level}", which is not modelled inside: ` +
+          'only rooms of the lowest level ("souterrain") take finishes',
+      })),
+    );
+    // Even an empty object: the field itself is not allowed there.
+    home.rooms.find((r) => r.id === 'first-floor-interior')!.finishes = {};
+    delete home.rooms.find((r) => r.id === 'ground-floor-interior')!.finishes;
+    expect(issuesOf(home)).toHaveLength(1);
+  });
+
+  it('needs a provenance and takes no unknown field or photo that is not an id', () => {
+    const home = realHome();
+    const index = home.rooms.indexOf(souterrainRoom(home));
+    souterrainRoom(home).finishes = {
+      floor: { finish: 'wood.oak-laminate' } as never,
+      walls: use('paint.plain', { photos: ['IMG_1234.jpg'] }),
+      ceiling: use('paint.plain', { gloss: 1 }),
+    };
+    expect(issuesOf(home).map((i) => i.path)).toEqual([
+      `rooms[${index}].finishes.floor.source`,
+      `rooms[${index}].finishes.walls.photos[0]`,
+      `rooms[${index}].finishes.ceiling`,
+    ]);
+  });
+
+  it('describes finish uses in the JSON Schema', () => {
+    const schema = JSON.stringify(homeModelJsonSchema());
+    expect(schema).toContain('"FinishUse"');
+    expect(schema).toContain('"FinishId"');
+  });
+});
+
 describe('home model JSON Schema', () => {
   it('is committed and up to date (run `pnpm schema:generate`)', () => {
     expect(readJson('../schema/home-model.schema.json')).toEqual(homeModelJsonSchema());

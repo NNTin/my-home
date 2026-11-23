@@ -1,0 +1,264 @@
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+import { HomeModel, OutbuildingKind, OutdoorAreaKind } from '../home-model';
+import {
+  buildingFinishes,
+  createFinishLibrary,
+  CUT_FINISH,
+  DEFAULT_FINISHES,
+  deviceTextureFiles,
+  finishes,
+  interiorLevelId,
+  outbuildingFinishes,
+  outdoorAreaFinish,
+  resolveFinish,
+  roomFinishes,
+  SHELL_FINISHES,
+  stairFinish,
+  TERRAIN_FINISH,
+  textureFiles,
+  type Finish,
+  type FinishSurface,
+  type ResolvedFinish,
+} from './index';
+
+const readHome = (path: string) =>
+  HomeModel.parse(JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8')));
+const realHome = () => readHome('../../../../data/homes/home.json');
+const mockHome = () => readHome('../../test-fixtures/mock-home.json');
+
+const plain: Finish = {
+  id: 'paint.test',
+  name: 'Test paint',
+  description: 'A test finish.',
+  surfaces: ['wall'],
+  tint: '#ffffff',
+  tintable: true,
+  roughness: 1,
+  metalness: 0,
+};
+const textured: Finish = {
+  ...plain,
+  id: 'wood.test',
+  texture: { id: 'wood-test', maps: ['color', 'normal'] },
+  tileSize: 1,
+  source: {
+    provider: 'Poly Haven',
+    assetId: 'x',
+    url: 'https://polyhaven.com/a/x',
+    licence: 'CC0-1.0',
+    fetched: '2026-11-23',
+  },
+};
+
+describe('the finish library', () => {
+  it('starts with the finishes of the design, in library order', () => {
+    expect(finishes.finishes.map((f) => f.id)).toEqual([
+      'wood.oak-laminate',
+      'tile.light-60',
+      'concrete.screed',
+      'floor.neutral',
+      'plaster.fine',
+      'paint.plain',
+      'shell.neutral',
+      'render.facade',
+      'roof.clay-tile',
+      'cut.dark',
+      'grass.lawn',
+      'paving.concrete-slab',
+      'gravel.fine',
+      'asphalt.plain',
+      'soil.plain',
+      'wood.veneer',
+      'fabric.weave',
+      'metal.brushed',
+      'ceramic.white',
+      'plastic.matt',
+      'glass.clear',
+    ]);
+    expect(finishes.finishes.filter((f) => f.texture)).toHaveLength(13);
+    expect(finishes.get('paint.plain')?.tintable).toBe(true);
+    expect(finishes.get('nope.nope')).toBeUndefined();
+  });
+
+  it('takes every texture from a CC0 library, with a tile size', () => {
+    for (const finish of finishes.finishes.filter((f) => f.texture)) {
+      expect(finish.source?.licence, finish.id).toBe('CC0-1.0');
+      expect(['Poly Haven', 'ambientCG'], finish.id).toContain(finish.source?.provider);
+      expect(finish.tileSize, finish.id).toBeGreaterThan(0);
+    }
+  });
+
+  it('draws a tile of 60 cm: four tiles each way in one repeat of 2.4 m', () => {
+    expect(finishes.get('tile.light-60')).toMatchObject({
+      tileSize: 2.4,
+      surfaces: ['floor', 'wall'],
+    });
+  });
+
+  it('rejects a broken definition at import', () => {
+    const broken =
+      (finish: Partial<Finish>, base = plain) =>
+      () =>
+        createFinishLibrary([{ ...base, ...finish }]);
+    expect(broken({ id: 'Paint' })).toThrow('must look like "material.name"');
+    expect(() => createFinishLibrary([plain, plain])).toThrow('duplicate id');
+    expect(broken({ tint: '#FFFFFF' })).toThrow('not a lower-case #rrggbb colour');
+    expect(broken({ roughness: 2 })).toThrow('from 0 to 1');
+    expect(broken({ surfaces: ['wall', 'wall'] })).toThrow('distinct kinds of surface');
+    expect(broken({ surfaces: ['window' as FinishSurface] })).toThrow('distinct kinds');
+    expect(broken({ tileSize: 1 })).toThrow('a plain finish has no tile size and no source');
+    expect(broken({ tileSize: undefined }, textured)).toThrow('needs a tile size');
+    expect(broken({ source: undefined }, textured)).toThrow('needs a source');
+    expect(
+      broken({ source: { ...textured.source!, licence: 'CC-BY-4.0' as 'CC0-1.0' } }, textured),
+    ).toThrow('the licence must be CC0-1.0');
+    expect(
+      broken({ source: { ...textured.source!, provider: 'A photo' as 'Poly Haven' } }, textured),
+    ).toThrow('must be a CC0 library');
+    expect(broken({ texture: { id: 'wood-test', maps: ['color'] } }, textured)).toThrow(
+      'has a normal map',
+    );
+    expect(() => createFinishLibrary([textured, { ...textured, id: 'wood.other' }])).toThrow(
+      'belongs to another finish',
+    );
+    expect(createFinishLibrary([plain, textured]).finishes).toHaveLength(2);
+  });
+});
+
+describe('texture files per device', () => {
+  const paths = (id: string, device: 'phone' | 'desktop') =>
+    deviceTextureFiles(finishes.get(id)!, device).map((f) => f.path);
+
+  it('gives a phone the 512 px colour and normal maps and nothing else', () => {
+    expect(paths('wood.oak-laminate', 'phone')).toEqual([
+      'wood-oak-laminate/color-512.webp',
+      'wood-oak-laminate/normal-512.webp',
+    ]);
+  });
+
+  it('gives a desktop the 1024 px maps with the roughness map', () => {
+    expect(paths('wood.oak-laminate', 'desktop')).toEqual([
+      'wood-oak-laminate/color-1024.webp',
+      'wood-oak-laminate/normal-1024.webp',
+      'wood-oak-laminate/roughness-1024.webp',
+    ]);
+  });
+
+  it('has no colour map for a relief-only set and no file for a plain finish', () => {
+    expect(paths('plaster.fine', 'phone')).toEqual(['plaster-fine/normal-512.webp']);
+    expect(paths('render.facade', 'desktop')).toEqual(['render-facade/normal-1024.webp']);
+    expect(textureFiles(finishes.get('paint.plain')!)).toEqual([]);
+  });
+
+  it('never gives a device two sizes of a set', () => {
+    for (const finish of finishes.finishes) {
+      for (const device of ['phone', 'desktop'] as const) {
+        const sizes = new Set(deviceTextureFiles(finish, device).map((f) => f.size));
+        expect(sizes.size, `${finish.id} on a ${device}`).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+});
+
+describe('default finishes', () => {
+  /** A resolved finish names a finish of the library that may be used on that surface. */
+  const expectFits = (resolved: ResolvedFinish, surface: FinishSurface, what: string) => {
+    const finish = finishes.get(resolved.finish);
+    expect(finish, what).toBeDefined();
+    expect(finish!.surfaces, `${what}: ${resolved.finish}`).toContain(surface);
+    expect(resolved.tint, what).toMatch(/^#[0-9a-f]{6}$/);
+  };
+
+  it('resolves for every surface of the real home, which names no finish', () => {
+    const home = realHome();
+    expect(interiorLevelId(home)).toBe('souterrain');
+    for (const room of home.rooms) {
+      const f = roomFinishes(home, room);
+      if (room.levelId === 'souterrain') {
+        expect(f.floor.finish, room.id).toBe('floor.neutral');
+        expect(f.walls.finish, room.id).toBe('paint.plain');
+        expect(f.ceiling.finish, room.id).toBe('paint.plain');
+      } else {
+        expect(f, room.id).toBe(SHELL_FINISHES);
+      }
+      expectFits(f.floor, 'floor', room.id);
+      expectFits(f.walls, 'wall', room.id);
+      expectFits(f.ceiling, 'ceiling', room.id);
+    }
+    const building = buildingFinishes(home.building);
+    expect(building.facade.finish).toBe('render.facade');
+    expect(building.roof.finish).toBe('roof.clay-tile');
+    expectFits(building.facade, 'facade', 'facade');
+    expectFits(building.roof, 'roof', 'roof');
+    for (const area of home.outdoorAreas) expectFits(outdoorAreaFinish(area), 'ground', area.id);
+    for (const b of home.outbuildings ?? []) {
+      expectFits(outbuildingFinishes(b).walls, 'facade', b.id);
+      expectFits(outbuildingFinishes(b).roof, 'facade', `${b.id} roof`);
+    }
+    for (const stair of home.stairs ?? []) expectFits(stairFinish(stair), 'floor', stair.id);
+  });
+
+  it('has a default for every kind of outdoor area and outbuilding', () => {
+    const d = { value: 0, source: 'mock' as const };
+    expect(
+      Object.fromEntries(
+        OutdoorAreaKind.options.map((kind) => [kind, outdoorAreaFinish({ kind }).finish]),
+      ),
+    ).toEqual({
+      garden: 'grass.lawn',
+      driveway: 'paving.concrete-slab',
+      patio: 'paving.concrete-slab',
+      path: 'paving.concrete-slab',
+      road: 'asphalt.plain',
+      gravel: 'gravel.fine',
+      embankment: 'concrete.screed',
+    });
+    for (const kind of OutbuildingKind.options) {
+      expectFits(outbuildingFinishes({ kind }).walls, 'facade', kind);
+    }
+    // As the outbuildings have always been coloured.
+    expect(outbuildingFinishes({ kind: 'shed' }).walls).toEqual({
+      finish: 'paint.plain',
+      tint: '#9a7b56',
+      rotation: 0,
+    });
+    expect(d.value).toBe(0);
+  });
+
+  it('draws the ground with soil and cut faces dark', () => {
+    expect(TERRAIN_FINISH.finish).toBe('soil.plain');
+    expect(CUT_FINISH).toEqual({ finish: 'cut.dark', tint: '#35322f', rotation: 0 });
+    expect(finishes.get(DEFAULT_FINISHES.cut)?.surfaces).toEqual([]);
+  });
+
+  it('takes the finish, tint and turn of a use, and the finish’s own colour without a tint', () => {
+    expect(
+      resolveFinish(
+        { finish: 'wood.oak-laminate', tint: '#d9c2a0', rotation: 90, source: 'measured' },
+        { finish: 'floor.neutral' },
+      ),
+    ).toEqual({ finish: 'wood.oak-laminate', tint: '#d9c2a0', rotation: 90 });
+    expect(
+      resolveFinish({ finish: 'tile.light-60', source: 'mock' }, { finish: 'floor.neutral' }),
+    ).toEqual({ finish: 'tile.light-60', tint: '#ffffff', rotation: 0 });
+  });
+
+  it('falls back to the default for a finish the library does not have', () => {
+    expect(
+      resolveFinish({ finish: 'wood.gone', source: 'mock' }, { finish: 'floor.neutral' }).finish,
+    ).toBe('floor.neutral');
+  });
+
+  it('uses a room’s finishes on the lowest level and the neutral shell above', () => {
+    const home = mockHome();
+    const room = home.rooms.find((r) => r.levelId === 'souterrain')!;
+    const withFloor = {
+      ...room,
+      finishes: { floor: { finish: 'tile.light-60', source: 'mock' as const } },
+    };
+    expect(roomFinishes(home, withFloor).floor.finish).toBe('tile.light-60');
+    expect(roomFinishes(home, withFloor).walls.finish).toBe('paint.plain');
+    expect(roomFinishes(home, { ...withFloor, levelId: 'ground-floor' })).toBe(SHELL_FINISHES);
+  });
+});
