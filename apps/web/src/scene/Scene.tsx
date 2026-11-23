@@ -3,7 +3,7 @@ import { Canvas, useThree, type RootState } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, type RefObject } from 'react';
 import { PCFShadowMap, type PerspectiveCamera } from 'three';
 import type { HomeScene, Vec3 } from '../builder/buildHome';
-import type { RoomLabel, Visibility } from '../builder/visibility';
+import { roofIndex, type RoomLabel, type Visibility } from '../builder/visibility';
 import type { CompassMarker } from '../compass/compass';
 import { CompassMarkers, CompassRose, CompassTracker } from '../compass/Compass';
 import type { FurnitureToolbarProps } from '../overlay/FurnitureToolbar';
@@ -11,6 +11,7 @@ import { lampRooms, sceneEmitters } from '../lighting/lamps';
 import { backdropRequested, rigFor } from '../lighting/rig';
 import { FrameGovernor } from '../quality/governor';
 import { PerfReadout, perfRequested } from '../quality/PerfReadout';
+import { perfView } from '../quality/perfReport';
 import type { Quality } from '../quality/setting';
 import { onCanvas } from './canvasEvent';
 import { DPR, FrameLoop, PHONE_DPR } from './Frame';
@@ -345,7 +346,21 @@ export function Scene({
       </Canvas>
       <RoomLabels labels={labels} layerRef={labelsRef} />
       <CompassRose roseRef={roseRef} onNorthUp={() => northUpRef.current?.()} />
-      {perfRequested() && <PerfReadout governor={governor} />}
+      {perfRequested() && (
+        <PerfReadout
+          governor={governor}
+          phone={touch}
+          view={() =>
+            perfView({
+              levels: scene.levels,
+              // Everything is shown when no visibility is given.
+              maxLevelIndex: visibility?.maxLevelIndex ?? roofIndex(scene),
+              ...(walk && { walk: { view: walk.view, levelId: walk.figure.current.levelId } }),
+              viewpoint: viewpoint !== undefined,
+            })
+          }
+        />
+      )}
     </>
   );
 }

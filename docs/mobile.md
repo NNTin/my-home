@@ -161,7 +161,10 @@ median of 30 consecutive moving frames is above 40 ms, and from "Automatic" to "
 takes longer than a second. It says so once ("Showing a faster view on this device"); choosing a value in the
 control clears it. `?stepdown=off` turns this off, for captures under software rendering. `?perf=1` shows what a frame costs on the
 device: the tier and whether the viewer stepped down, draw calls, triangles, lit lamps, lights with shadows,
-shader programs, frame times and the refined frame's time.
+shader programs, frame times and the refined frame's time. Its **Copy** button puts the readout on the
+clipboard as a markdown table, with the commit, the mode, the viewport and this device's budgets, to paste into
+an issue; **Perf** folds it to the two buttons (it starts folded on a phone held sideways, and stands clear of
+the walk controls).
 
 Anything new that moves the camera or an object from outside React and the orbit controls (a timer, a sensor)
 must call `invalidate()`, or the picture stays as it was until the next input. Anything new that casts a shadow

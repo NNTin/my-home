@@ -423,6 +423,7 @@ async function smoke(out) {
       );
       check('and one beautiful frame refines the view when the figure stops', await refined());
     }
+    await perfReadoutSideways(browser, { base, host });
     check(
       'no console or page errors',
       errors.length === 0,
@@ -431,6 +432,95 @@ async function smoke(out) {
     console.log(`screenshot ${out}`);
   } finally {
     await browser.close();
+  }
+}
+
+/**
+ * The `?perf=1` readout while walking with the phone held sideways (844x390), where there is the
+ * least room: it starts folded, covers no control folded or open, and its "Copy" answers a tap.
+ * A context of its own; read-only.
+ */
+async function perfReadoutSideways(browser, { base, host }) {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    hasTouch: true,
+    isMobile: true,
+    permissions: ['clipboard-read', 'clipboard-write'],
+  });
+  try {
+    await context.route('**/*', (route) => {
+      const request = route.request();
+      if (new URL(request.url()).host !== host) return route.continue();
+      if (!['GET', 'HEAD'].includes(request.method())) return route.abort();
+      return route.continue({
+        headers: { ...request.headers(), authorization: `Bearer ${token}` },
+      });
+    });
+    const page = await context.newPage();
+    await page.goto(new URL('/?walk=first&perf=1&hints=off', base).href, {
+      waitUntil: 'networkidle',
+      timeout: 60_000,
+    });
+    await page.locator('[data-testid=walk-hud]').waitFor({ timeout: 30_000 });
+    await page.waitForTimeout(3000);
+    const readout = page.locator('.perf-readout');
+    const fold = readout.getByRole('button', { name: /Perf/ });
+    if ((await fold.count()) === 0) {
+      console.log('skip  the perf readout held sideways: a build before #123 (no Copy button)');
+      return;
+    }
+    const overlaps = (a, b) =>
+      a.x < b.x + b.width - 1 &&
+      b.x < a.x + a.width - 1 &&
+      a.y < b.y + b.height - 1 &&
+      b.y < a.y + a.height - 1;
+    const controls = ['.walk-bar > *', '.joystick', '.shutter', '.walk-tilt', '.walk-map'];
+    const covered = async () => {
+      const box = await readout.boundingBox();
+      const hit = [];
+      for (const selector of [...controls, '.compass']) {
+        for (const element of await page.locator(selector).all()) {
+          const other = await element.boundingBox();
+          if (other && overlaps(box, other)) hit.push(selector);
+        }
+      }
+      const inside =
+        box.x >= 0 && box.y >= 0 && box.x + box.width <= 844 && box.y + box.height <= 390;
+      return { ok: inside && hit.length === 0, detail: hit.join(', ') || JSON.stringify(box) };
+    };
+    const shown = [];
+    for (const selector of controls) shown.push(await page.locator(selector).count());
+    check(
+      'held sideways: the walk controls are there',
+      shown.every((n) => n > 0),
+      controls.filter((_, i) => shown[i] === 0).join(', '),
+    );
+    check(
+      'held sideways: the perf readout starts folded',
+      (await fold.getAttribute('aria-expanded')) === 'false' &&
+        (await readout.locator('dl').count()) === 0,
+    );
+    const folded = await covered();
+    check('held sideways: the folded perf readout covers no control', folded.ok, folded.detail);
+    await readout.getByRole('button', { name: 'Copy' }).tap();
+    await page.waitForTimeout(500);
+    const text = await page.evaluate(() => navigator.clipboard.readText()).catch(() => '');
+    check(
+      'held sideways: a tap on Copy copies the readout, with the walk and its level',
+      /\| Mode \| walk, first person, (level "[^"]+"|outdoors) \|/.test(text) &&
+        (await readout.getByRole('button', { name: 'Copied' }).count()) === 1,
+      text.split('\n').find((line) => line.startsWith('| Mode')) ?? 'nothing on the clipboard',
+    );
+    await fold.tap();
+    await page.waitForTimeout(500);
+    const open = await covered();
+    check(
+      'held sideways: the open perf readout covers no control',
+      (await readout.locator('dl').count()) === 1 && open.ok,
+      open.detail,
+    );
+  } finally {
+    await context.close();
   }
 }
 

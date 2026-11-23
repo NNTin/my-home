@@ -73,8 +73,8 @@ async function frameChecks(browser, { device, base, host, homeId }) {
   const phone = device === 'phone';
   const context = await browser.newContext(
     phone
-      ? { viewport: PORTRAIT, hasTouch: true, isMobile: true, deviceScaleFactor: 2 }
-      : { viewport: { width: 1440, height: 900 } },
+      ? { viewport: PORTRAIT, hasTouch: true, isMobile: true, deviceScaleFactor: 2, ...CLIPBOARD }
+      : { viewport: { width: 1440, height: 900 }, ...CLIPBOARD },
   );
   await context.addInitScript(countDraws);
   await context.route('**/*', (route) => {
@@ -233,11 +233,75 @@ async function frameChecks(browser, { device, base, host, homeId }) {
       const rest = await draws();
       await page.waitForTimeout(2000);
       check(`${where}: nothing is drawn afterwards`, (await draws()) === rest);
+      await copyReadout(page, { device, where, draws, perf });
     }
     await lampWalk(page, { device, base, homeId, perf, settled });
   } finally {
     await context.close();
   }
+}
+
+/** The readout's "Copy" may read and write the clipboard without a prompt. */
+const CLIPBOARD = { permissions: ['clipboard-read', 'clipboard-write'] };
+
+/**
+ * One tap or click on "Copy" puts the `?perf=1` readout on the clipboard as a markdown table with
+ * its context and this device's budgets, says "Copied", and draws nothing: the view has rested for
+ * more than the 3 seconds of "Draw calls, last 3 s", so the copied row itself reads 0. The table is
+ * printed: it is what goes into a pull request or an issue.
+ */
+async function copyReadout(page, { device, where, draws, perf }) {
+  const copy = page.locator('.perf-readout').getByRole('button', { name: 'Copy' });
+  if ((await copy.count()) === 0) {
+    console.log(`skip  ${where}: copying the readout: a build before #123 (no Copy button)`);
+    return;
+  }
+  await page.waitForTimeout(1500);
+  const before = { draws: await draws(), frames: (await perf()).frames };
+  await (device === 'phone' ? copy.tap() : copy.click());
+  await page.waitForTimeout(500);
+  const copied = await page
+    .locator('.perf-readout')
+    .getByRole('button', { name: 'Copied' })
+    .count();
+  const text = await page.evaluate(() => navigator.clipboard.readText()).catch(() => '');
+  const lines = text.trimEnd().split('\n');
+  const row = (name) => lines.find((line) => line.startsWith(`| ${name} |`)) ?? '';
+  check(
+    `${where}: Copy puts the readout on the clipboard as a markdown table and says so`,
+    copied === 1 &&
+      lines[0] === `| \`?perf=1\` | Measured | Budget (${device}) |` &&
+      lines[1] === '| --- | --- | --- |' &&
+      lines.length === 24 &&
+      lines.every((line) => line.startsWith('| ') && line.endsWith(' |')),
+    `${lines.length} lines, "${lines[0] ?? ''}"`,
+  );
+  check(
+    `${where}: the copy names the commit, the mode, the viewport and the browser`,
+    /^\| Commit \| [0-9a-f]{7} \|/.test(row('Commit')) &&
+      /^\| Mode \| orbit, /.test(row('Mode')) &&
+      /^\| Viewport \| \d+×\d+, device pixel ratio [\d.]+ \|/.test(row('Viewport')) &&
+      /^\| Browser \| Chrome \d+/.test(row('Browser')) &&
+      /^\| Time \| \d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ \|/.test(row('Time')),
+    [row('Commit'), row('Mode'), row('Viewport'), row('Browser')].join(' '),
+  );
+  const [first, whole] = DRAW_CALLS[device];
+  check(
+    `${where}: the copy holds the measured values against this device's budgets`,
+    row('Draw calls, last frame').endsWith(`| ≤ ${first} first view, ≤ ${whole} whole house |`) &&
+      row('Frame, median').endsWith(`| ≤ ${device === 'phone' ? 33 : 17} ms |`),
+    row('Draw calls, last frame'),
+  );
+  await page.waitForTimeout(1500);
+  const after = { draws: await draws(), frames: (await perf()).frames };
+  check(
+    `${where}: copying draws no frame, and the copied idle count is 0`,
+    after.draws === before.draws &&
+      after.frames === before.frames &&
+      row('Draw calls, last 3 s').startsWith('| Draw calls, last 3 s | 0 (0 frames) |'),
+    `${after.draws - before.draws} draw calls, ${after.frames - before.frames} frames; ${row('Draw calls, last 3 s')}`,
+  );
+  console.log(`the readout copied ${where}:\n${text}`);
 }
 
 /**

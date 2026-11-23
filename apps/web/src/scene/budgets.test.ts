@@ -9,6 +9,7 @@ import { furniture } from '../catalog/furniture';
 import { partBatches } from '../catalog/PartsMesh';
 import { createContext, defaultSettings } from '../editor/operations';
 import { batches } from './batches';
+import { BUDGETS } from '../quality/perfReport';
 import { furnitureViews } from './furnitureViews';
 
 /**
@@ -16,10 +17,10 @@ import { furnitureViews } from './furnitureViews';
  * meshes one frame draws (a draw call each) and the triangles, for "Our home" with its seed.
  */
 
-/** Per frame: phone, then desktop. */
-const DRAW_CALLS = { default: [250, 350], whole: [350, 500] } as const;
-const TRIANGLES_WHOLE = 150_000;
-const TRIANGLES_PER_PIECE = 5_000;
+/** Per frame, for a phone and a desktop. */
+const DRAW_CALLS = BUDGETS.drawCalls;
+const TRIANGLES_WHOLE = BUDGETS.trianglesWhole;
+const TRIANGLES_PER_PIECE = BUDGETS.trianglesPerPiece;
 /**
  * What a frame draws besides the home: the compass letters, the output pass (two steps on a
  * phone), and the selected item's rotate ring.
@@ -71,7 +72,7 @@ describe('draw-call and triangle budgets of "Our home"', () => {
     ['whole', wholeVisibility(scene)],
   ] as const)('the %s view is within the draw-call budget of a phone', (name, v) => {
     const f = frame(v);
-    const [phone, desktop] = DRAW_CALLS[name];
+    const { phone, desktop } = DRAW_CALLS[name];
     expect(f.drawCalls).toBeLessThanOrEqual(phone);
     expect(f.drawCalls).toBeLessThanOrEqual(desktop);
   });
