@@ -1129,7 +1129,7 @@ describe('finishes', () => {
     const index = home.rooms.indexOf(souterrainRoom(home));
     souterrainRoom(home).finishes = {
       floor: { finish: 'wood.oak-laminate' } as never,
-      walls: use('paint.plain', { photos: ['IMG_1234.jpg'] }),
+      walls: use('paint.plain', { photos: ['IMG 1234.jpg'] }),
       ceiling: use('paint.plain', { gloss: 1 }),
     };
     expect(issuesOf(home).map((i) => i.path)).toEqual([

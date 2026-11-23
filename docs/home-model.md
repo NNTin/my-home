@@ -342,7 +342,7 @@ from the home's location, which the model does not contain.
 
 A **finish** is a named surface material: oak laminate, plain paint, clay roof tiles. Finishes are a library in
 git, like the piece types: [`packages/shared/src/finishes/`](../packages/shared/src/finishes/) (definitions in
-`definitions/`, validated at import). A home refers to a finish by id. Every field is optional: a surface without
+`definitions/`, validated at import). A home refers to a finish by id. A home may leave out every finish: a surface without
 one draws the **default for its kind**, so a home that names no finish is valid and complete.
 
 A **finish use** is:

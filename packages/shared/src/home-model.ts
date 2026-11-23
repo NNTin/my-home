@@ -103,7 +103,7 @@ export const FinishUse = z
     /** `mock` for a placeholder, `estimated-from-photo` when chosen from photos, `measured` when the owner named the product or colour. */
     source: DimensionSource,
     /** Ids of the photos in the photo store that the choice was made from. */
-    photos: z.array(z.uuid()).max(50).optional(),
+    photos: z.array(Id).max(50).optional(),
     note: z.string().max(500).optional(),
   })
   .meta({ id: 'FinishUse', description: 'A finish of the library chosen for a surface.' });
