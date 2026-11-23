@@ -338,6 +338,65 @@ in the walking view's **Calibrate** sheet (stored as a home setting on top of th
 file's value) or in the home file, with the usual provenance. It is never derived
 from the home's location, which the model does not contain.
 
+### Finishes
+
+A **finish** is a named surface material: oak laminate, plain paint, clay roof tiles. Finishes are a library in
+git, like the piece types: [`packages/shared/src/finishes/`](../packages/shared/src/finishes/) (definitions in
+`definitions/`, validated at import). A home refers to a finish by id. Every field is optional: a surface without
+one draws the **default for its kind**, so a home that names no finish is valid and complete.
+
+A **finish use** is:
+
+```json
+{
+  "finish": "wood.oak-laminate",
+  "tint": "#d9c2a0",
+  "rotation": 90,
+  "source": "estimated-from-photo",
+  "photos": ["<photo id>"],
+  "note": "Planks run along the long side of the room"
+}
+```
+
+| Field      | Meaning                                                                                                  |
+| ---------- | -------------------------------------------------------------------------------------------------------- |
+| `finish`   | The finish's id, `<material>.<name>`                                                                     |
+| `tint`     | `#rrggbb`, lower case; replaces the finish's own colour. Only where the finish is tintable               |
+| `rotation` | `0` or `90`: a quarter turn, for the direction planks run. Only on a room's floor                        |
+| `source`   | Required. `mock` for a placeholder, `estimated-from-photo`, or `measured` when the owner named a product |
+| `photos`   | Ids of photos in the photo store the choice was made from. Never a file name, never an upload            |
+| `note`     | Free text                                                                                                |
+
+| Where           | Field                                                  | Kind of surface            | Default when missing                                                                                                                                    |
+| --------------- | ------------------------------------------------------ | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A room          | `finishes.floor`, `finishes.walls`, `finishes.ceiling` | `floor`, `wall`, `ceiling` | `floor.neutral`, `paint.plain`, `paint.plain`                                                                                                           |
+| The building    | `building.finishes.facade`, `.roof`                    | `facade`, `roof`           | `render.facade`, `roof.clay-tile`                                                                                                                       |
+| An outdoor area | `finish`                                               | `ground`                   | By kind: garden `grass.lawn`; patio, path and driveway `paving.concrete-slab`; road `asphalt.plain`; gravel `gravel.fine`; embankment `concrete.screed` |
+| An outbuilding  | `finish` (its walls)                                   | `facade`                   | By kind, with the colours they have always had: garage, carport and porch `render.facade`; shed and compost `paint.plain`                               |
+| A stair         | `finish`                                               | `floor`                    | `wood.oak-laminate`                                                                                                                                     |
+
+- **Finishes are appearance.** They may be refined from photos like windows and furniture. They never move,
+  resize or re-angle anything: the geometry rules are unchanged.
+- **`walls` is per room, not per wall.** Every wall face takes the `walls` finish of the room it borders; a face
+  that borders no room is an outer face and takes the facade finish.
+- **Only rooms of the lowest level take finishes.** That is the level modelled inside (the souterrain of
+  "Our home"). The rooms of every level above are neutral shells (`shell.neutral`), and `finishes` on one of
+  them is an error.
+- **Defaults are plain indoors on purpose:** a room nobody has refined looks neutral, not falsely specific.
+- **The ground itself** (terrain where no area covers it) is `soil.plain`, and cut faces are `cut.dark`. Neither
+  is in the model; `cut.dark` cannot be named by a home.
+- **Editing:** by a pull request to `data/homes/home.json`. The app has no editor for finishes.
+
+Which finishes exist, with their surfaces, tints and sources, is in the definitions. A textured finish has files under
+[`apps/web/src/finishes/textures/`](../apps/web/src/finishes/textures/), all from CC0 libraries, each listed with
+its source, licence and SHA-256 in [`apps/web/src/finishes/ASSETS.md`](../apps/web/src/finishes/ASSETS.md).
+
+**Adding a finish** is its own pull request: the definition, then `pnpm finishes:fetch <finish id>` (downloads
+from the CC0 library, checks the provider's checksum, writes the WebP files and the manifest; needs ImageMagick
+with WebP and `unzip`), and a note of which photo ids called for it. `pnpm test` checks the files against the
+manifest and the texture budgets. **No texture is ever made from a photo:** a texture cut from one of the
+owner's photos would put the photo into git.
+
 ### Validation beyond the shape
 
 The zod schema also checks what JSON Schema cannot, so these only show up in `pnpm test`, the api
@@ -357,6 +416,8 @@ and the seed script, not in the editor:
 - every `typeId` is a known piece type that sits where the use is (`wall`, `roof`, `fence`), and a
   wall opening's `type` is one its type carries; a gate has a `typeId`, other fences none
 - names are unique across all uses, ignoring case
+- every finish use names a finish of the library that is for that kind of surface; a `tint` only on a tintable
+  finish, a `rotation` only on a room's floor; `finishes` only on rooms of the lowest level
 
 Errors carry a path into the document, for example
 `openings[2].width: Opening "x" spans 7.65 m to 9.15 m but wall "y" is only 8 m long`.
