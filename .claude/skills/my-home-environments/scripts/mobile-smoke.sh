@@ -6,7 +6,8 @@
 # building away, a furniture item is placed and then dragged, rotated, long-pressed, duplicated and deleted by
 # touch, walk mode is entered and left, and held across the sheet is at the side. Ends with a screenshot (and
 # <out>-landscape.png). Also: nothing is drawn while nothing moves (WebGL draw calls are counted), the canvas'
-# pixel ratio is capped, every control has a name, and the web app manifest and its icons are served.
+# pixel ratio is capped, every control has a name, and the web app manifest and its icons are served; finish
+# textures are asked for in one size per device and compile no shader when they arrive.
 # Exit 0 when every check passes.
 # Read-only: every placement write is answered inside the browser (as the api would), every other write
 # (photos, photo requests, settings, the home) is refused there. Uses the Playwright set-up of
@@ -17,7 +18,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$script_dir/lib.sh"
 
 usage() {
-  sed -n '2,13s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,14s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 

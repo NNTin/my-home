@@ -28,6 +28,8 @@ const data: PerfData = {
   compiles: 7,
   compiled: false,
   textures: 4,
+  textureFiles: 0,
+  textureFailures: 0,
   shadowLights: 1,
   litLamps: 6,
   lampChanges: 2,
@@ -135,7 +137,12 @@ describe('perfReport', () => {
 
   it('carries every row of the readout, with its budget', () => {
     const rows = perfRows(data, true);
-    expect(rows).toHaveLength(15);
+    expect(rows).toHaveLength(16);
+    expect(rows).toContainEqual({ name: 'Texture files', value: '0' });
+    expect(perfRows({ ...data, textureFiles: 9, textureFailures: 2 }, true)).toContainEqual({
+      name: 'Texture files',
+      value: '9, 2 failed',
+    });
     expect(lines.slice(9)).toEqual(rows.map((r) => [r.name, r.value, r.budget ?? '']));
     expect(lines).toContainEqual(['Setting', 'auto', '']);
     expect(lines).toContainEqual(['Tier', 'beautiful', '']);

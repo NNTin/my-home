@@ -1,11 +1,22 @@
 import {
+  buildingFinishes,
   catalog,
+  DEFAULT_FINISHES,
   effectiveParams,
+  interiorLevelId,
+  outbuildingFinishes,
+  outdoorAreaFinish,
+  resolveFinish,
   roofOf,
+  roomFinishes,
+  SHELL_FINISHES,
+  stairFinish,
   wallLength,
   type HomeModel,
   type Opening,
   type ParamValues,
+  type ResolvedFinish,
+  type RoomFinishes,
   type Slope,
   type Stair,
   type Wall,
@@ -49,6 +60,33 @@ export interface ProfileSolid {
   outline: Vec2[];
 }
 
+/**
+ * How a texture is laid on a surface (docs/design/realistic-render.md §5.4): a point of the world
+ * and two unit directions. A vertex's texture coordinate, in metres, is its distance from `origin`
+ * along `u` and along `v`.
+ */
+export interface UvFrame {
+  origin: Vec3;
+  u: Vec3;
+  v: Vec3;
+}
+
+/**
+ * One long face of a wall segment, or the stretch of it that borders one room: the box (or the
+ * `outline`) of that stretch, of which only the face on `side` is drawn. A face takes the wall
+ * finish of the room it borders; a face that borders none is an outer face of the building and
+ * takes the facade finish (§5.5).
+ */
+export interface WallFace extends Box {
+  /** The face at the segment's local +z (1) or -z (-1). */
+  side: 1 | -1;
+  /** The room the face borders. */
+  roomId?: string;
+  finish: ResolvedFinish;
+  /** As `WallSegment.outline`, for this stretch. */
+  outline?: Vec2[];
+}
+
 export interface WallSegment extends Box {
   id: string;
   wallId: string;
@@ -60,12 +98,21 @@ export interface WallSegment extends Box {
    * height y, relative to `center`) extruded through the wall thickness instead of the box.
    */
   outline?: Vec2[];
+  /** The finish of everything but the two long faces: the top, the ends, the reveals of openings. */
+  finish: ResolvedFinish;
+  /** The two long faces, split where the room they border changes. */
+  faces: WallFace[];
+  /** Textures run along the wall from its start and up from its floor, on both faces. */
+  uv: UvFrame;
 }
 
 /** One sloped plane of a pitched roof. */
 export interface RoofPlaneDescriptor extends ProfileSolid {
   id: string;
   levelId: string;
+  finish: ResolvedFinish;
+  /** Textures run along the eave from its start and up the slope, at true length. */
+  uv: UvFrame;
 }
 
 /**
@@ -157,6 +204,7 @@ export interface SlabDescriptor extends Prism {
   id: string;
   levelId: string;
   kind: 'floor' | 'roof';
+  finish: ResolvedFinish;
 }
 
 /**
@@ -168,6 +216,8 @@ export interface CeilingDescriptor extends Prism {
   name: string;
   levelId: string;
   apartmentId?: string;
+  /** The ceiling finish of the room it hangs in. */
+  finish: ResolvedFinish;
 }
 
 /** A flat surface at height `y`, or on `slope` (`y` is then the high edge). */
@@ -186,6 +236,19 @@ export interface RoomFloorDescriptor extends Surface {
   apartmentId?: string;
   /** Where the room's name goes: the middle of its floor. */
   labelAt: Vec3;
+  finish: ResolvedFinish;
+}
+
+/**
+ * The ceiling of a room: a surface just under the slab above, with the room's ceiling finish.
+ * Like a lowered ceiling it is shown with the level above it, so a cutaway looks into the room.
+ */
+export interface RoomCeilingDescriptor extends Surface {
+  id: string;
+  roomId: string;
+  levelId: string;
+  apartmentId?: string;
+  finish: ResolvedFinish;
 }
 
 export interface TerrainDescriptor extends Prism {
@@ -200,6 +263,7 @@ export interface OutdoorAreaDescriptor extends Surface {
   ownerApartmentId?: string;
   /** Contour lines of a sloped area (none when flat): the closer together, the steeper. */
   contours: Surface[];
+  finish: ResolvedFinish;
 }
 
 /** A stair: one box per tread and landing, bottom to top. */
@@ -216,6 +280,7 @@ export interface StairDescriptor {
   steps: (Box & { id: string; part: 'tread' | 'landing' })[];
   /** Plan rectangle the stair covers: the stairwell opening in the floor it leads up to. */
   well: Vec2[];
+  finish: ResolvedFinish;
 }
 
 /**
@@ -244,6 +309,8 @@ export interface OutbuildingDescriptor {
   walls: (Box & { id: string })[];
   openings: OutbuildingOpeningDescriptor[];
   roof: Prism & { id: string };
+  /** Of the walls, and of the flat roof. */
+  finishes: { walls: ResolvedFinish; roof: ResolvedFinish };
 }
 
 /**
@@ -283,6 +350,7 @@ export interface HomeScene {
   slabs: SlabDescriptor[];
   ceilings: CeilingDescriptor[];
   roomFloors: RoomFloorDescriptor[];
+  roomCeilings: RoomCeilingDescriptor[];
   terrain: TerrainDescriptor[];
   outdoorAreas: OutdoorAreaDescriptor[];
   /** Planes of a pitched roof; a flat roof is a slab of kind `roof` instead. */
@@ -296,6 +364,11 @@ export interface HomeScene {
 
 /** Room floors and outdoor surfaces float this far above their base to avoid z-fighting. */
 export const SURFACE_OFFSET = 0.01;
+
+/** How far in front of a wall face the room it borders is looked for. */
+const FACE_PROBE = 0.05;
+/** A stretch of a face shorter than this is not given a finish of its own. */
+const FACE_MIN = 0.01;
 
 /** Basic parameter overrides by use id (opening, roof window or gate id). */
 export type PieceOverrides = ReadonlyMap<string, ParamValues>;
@@ -369,7 +442,10 @@ export const roofUnderside = (g: Gable, across: number) =>
   g.eaveY + ((g.across[1] - g.across[0]) / 2 - Math.abs(across - g.ridge)) * g.slope;
 
 /** The two roof planes, each from the ridge down past the eaves by the overhang. */
-export function gableRoofPlanes(g: Gable): RoofPlaneDescriptor[] {
+export function gableRoofPlanes(
+  g: Gable,
+  finish: ResolvedFinish = resolveFinish(undefined, { finish: DEFAULT_FINISHES.roof }),
+): RoofPlaneDescriptor[] {
   const half = (g.across[1] - g.across[0]) / 2;
   const reach = half + g.overhang;
   const ridgeY = g.eaveY + half * g.slope;
@@ -381,19 +457,34 @@ export function gableRoofPlanes(g: Gable): RoofPlaneDescriptor[] {
   // Local x runs across the ridge (towards +z or +x), local z along it.
   const rotationY = g.ridgeAxis === 'x' ? rotationFor(0, 1) : rotationFor(1, 0);
   const depth = g.along[1] - g.along[0] + 2 * g.overhang;
-  return ([-1, 1] as const).map((side) => ({
-    id: `roof:${side < 0 ? 'min' : 'max'}`,
-    levelId: g.levelId,
-    center,
-    rotationY,
-    depth,
-    outline: [
-      [0, ridgeY],
-      [side * reach, eaveY],
-      [side * reach, eaveY + t],
-      [0, ridgeY + t],
-    ],
-  }));
+  return ([-1, 1] as const).map((side) => {
+    const solid = { center, rotationY, depth, outline: [] };
+    // The eave's start on the top face, and from there along the eave and up the slope.
+    const origin = solidPoint(solid, [side * reach, eaveY + t], -depth / 2);
+    const [ex, , ez] = solidPoint(solid, [side * reach, eaveY + t], depth / 2);
+    const [rx, ry, rz] = solidPoint(solid, [0, ridgeY + t], -depth / 2);
+    const up: Vec3 = [rx - origin[0], ry - origin[1], rz - origin[2]];
+    const length = Math.hypot(...up);
+    return {
+      id: `roof:${side < 0 ? 'min' : 'max'}`,
+      levelId: g.levelId,
+      center,
+      rotationY,
+      depth,
+      outline: [
+        [0, ridgeY],
+        [side * reach, eaveY],
+        [side * reach, eaveY + t],
+        [0, ridgeY + t],
+      ],
+      finish,
+      uv: {
+        origin,
+        u: [(ex - origin[0]) / depth, 0, (ez - origin[2]) / depth],
+        v: [up[0] / length, up[1] / length, up[2] / length],
+      },
+    };
+  });
 }
 
 /**
@@ -511,6 +602,22 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
   for (const o of model.openings)
     openingsByWall.set(o.wallId, [...(openingsByWall.get(o.wallId) ?? []), o]);
 
+  // Finishes (§5.5): a room's own or the defaults; above the interior level the neutral shell.
+  const exteriorFinishes = buildingFinishes(model.building);
+  const interiorLevel = interiorLevelId(model);
+  // The defaults of a level, for a face or a ceiling that belongs to none of its rooms.
+  const interiorDefaults = roomFinishes(model, { levelId: interiorLevel ?? '' });
+  const levelFinishes = (levelId: string): RoomFinishes =>
+    levelId === interiorLevel ? interiorDefaults : SHELL_FINISHES;
+  const rooms = model.rooms.map((r) => ({
+    id: r.id,
+    levelId: r.levelId,
+    outline: toOutline(r.outline),
+    finishes: roomFinishes(model, r),
+  }));
+  const roomAt = (levelId: string, point: Vec2) =>
+    rooms.find((r) => r.levelId === levelId && pointInPolygon(point, r.outline));
+
   // Which side of a wall opening is outdoors: windows put their board and curtain in the room.
   const plan = toOutline(model.building.footprint);
   for (const wall of model.walls) {
@@ -543,11 +650,62 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
     // Under a gable roof the attic's walls are trimmed to the roof underside, which turns a tall
     // gable-end wall into a gable and knee walls into a flush fit.
     const trim = gable?.levelId === wall.levelId ? roofCeiling(gable, wall, base) : undefined;
+
+    // What each long face borders, along the wall: a room's outline can only begin or end where
+    // one of its corners lies, so the face is probed between the corners of the level's rooms.
+    const corners = rooms
+      .filter((r) => r.levelId === wall.levelId)
+      .flatMap((r) => r.outline.map(([x, z]) => (x - sx) * dx + (z - sz) * dz))
+      .filter((t) => t > FACE_MIN && t < length - FACE_MIN)
+      .sort((a, b) => a - b);
+    const stops = [0, ...corners, length].filter((t, i, all) => i === 0 || t - all[i - 1]! > EPS);
+    const runsOf = (side: 1 | -1) => {
+      const reach = side * (thickness / 2 + FACE_PROBE);
+      const runs: { from: number; to: number; roomId?: string; finish: ResolvedFinish }[] = [];
+      for (let i = 0; i + 1 < stops.length; i++) {
+        const [from, to] = [stops[i]!, stops[i + 1]!];
+        const mid = (from + to) / 2;
+        // The segment's local +z is (-dz, dx) on the plan.
+        const probe: Vec2 = [sx + dx * mid - dz * reach, sz + dz * mid + dx * reach];
+        const room = roomAt(wall.levelId, probe);
+        const finish = room
+          ? room.finishes.walls
+          : wall.kind === 'exterior' && !pointInPolygon(probe, plan)
+            ? exteriorFinishes.facade
+            : levelFinishes(wall.levelId).walls;
+        const last = runs.at(-1);
+        if (last && last.roomId === room?.id && last.finish === finish) last.to = to;
+        else runs.push({ from, to, ...(room && { roomId: room.id }), finish });
+      }
+      return runs;
+    };
+    const runs = { 1: runsOf(1), [-1]: runsOf(-1) } as Record<1 | -1, ReturnType<typeof runsOf>>;
+
     spans.forEach((s, i) => {
       const outline = trim && clipSpan(s, trim.ceiling, trim.kinks);
       if (outline === null) return;
       const mid = (s.from + s.to) / 2;
       const midY = (s.bottom + s.top) / 2;
+      const faces: WallFace[] = [];
+      for (const side of [1, -1] as const) {
+        for (const run of runs[side]) {
+          const from = Math.max(run.from, s.from);
+          const to = Math.min(run.to, s.to);
+          if (to - from < EPS) continue;
+          const part = trim && clipSpan({ ...s, from, to }, trim.ceiling, trim.kinks);
+          if (part === null) continue;
+          const at0 = (from + to) / 2;
+          faces.push({
+            side,
+            ...(run.roomId !== undefined && { roomId: run.roomId }),
+            finish: run.finish,
+            center: at(at0, base + midY),
+            size: [to - from, s.top - s.bottom, thickness],
+            rotationY,
+            ...(part && { outline: part.map(([t, y]): Vec2 => [t - at0, y - midY]) }),
+          });
+        }
+      }
       walls.push({
         ...common,
         id: `${wall.id}:${i}:${s.part}`,
@@ -556,6 +714,10 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
         size: [s.to - s.from, s.top - s.bottom, thickness],
         rotationY,
         ...(outline && { outline: outline.map(([t, y]): Vec2 => [t - mid, y - midY]) }),
+        finish:
+          wall.kind === 'exterior' ? exteriorFinishes.facade : levelFinishes(wall.levelId).walls,
+        faces,
+        uv: { origin: [sx, base, sz], u: [dx, 0, dz], v: [0, 1, 0] },
       });
     });
 
@@ -610,9 +772,11 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
     holes: wellsOf(l.id),
     bottom: l.elevation.value - l.slabThickness.value,
     top: l.elevation.value,
+    // A slab is covered by floors and ceilings; where it shows (a stairwell, a cut) it is neutral.
+    finish: SHELL_FINISHES.floor,
   }));
   const topLevel = levels.at(-1);
-  const roofPlanes = gable ? gableRoofPlanes(gable) : [];
+  const roofPlanes = gable ? gableRoofPlanes(gable, exteriorFinishes.roof) : [];
   if (topLevel && !gable) {
     const roofBottom = topLevel.elevation + topLevel.height;
     slabs.push({
@@ -624,28 +788,32 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
       bottom: roofBottom,
       // Top-floor exterior walls usually end flush with the roof; lift it to avoid z-fighting.
       top: roofBottom + model.building.roofThickness.value + SURFACE_OFFSET,
+      finish: exteriorFinishes.roof,
     });
   }
 
   const ceilings: CeilingDescriptor[] = (model.ceilings ?? []).flatMap((c) => {
     const level = levelById.get(c.levelId);
     if (!level) return [];
+    const outline = toOutline(c.outline);
     return [
       {
         id: c.id,
         name: c.name,
         levelId: c.levelId,
         ...(c.apartmentId !== undefined && { apartmentId: c.apartmentId }),
-        outline: toOutline(c.outline),
+        outline,
         holes: [],
         bottom: level.elevation.value + c.height.value,
         // Kept off the slab above and the wall tops, which no one sees from here.
         top: level.elevation.value + level.height.value - SURFACE_OFFSET,
+        finish: (roomAt(c.levelId, centroid(outline))?.finishes ?? levelFinishes(c.levelId))
+          .ceiling,
       },
     ];
   });
 
-  const roomFloors: RoomFloorDescriptor[] = model.rooms.map((r) => {
+  const roomFloors: RoomFloorDescriptor[] = model.rooms.map((r, index) => {
     const outline = toOutline(r.outline);
     const y = elevationOf(r.levelId) + SURFACE_OFFSET;
     const [cx, cz] = centroid(outline);
@@ -660,7 +828,33 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
       ...(holes.length > 0 && { holes }),
       y,
       labelAt: [cx, y, cz],
+      finish: rooms[index]!.finishes.floor,
     };
+  });
+
+  // Under a pitched roof the top level has no flat ceiling: its rooms end at the roof's underside.
+  const roomCeilings: RoomCeilingDescriptor[] = model.rooms.flatMap((r, index) => {
+    const level = levelById.get(r.levelId);
+    if (!level || gable?.levelId === r.levelId) return [];
+    const outline = toOutline(r.outline);
+    // A stair that leaves the level goes through its ceiling.
+    const holes = stairs
+      .filter((s) => s.levelId === r.levelId)
+      .map((s) => s.well)
+      .filter((well) => inside(centroid(well), outline));
+    return [
+      {
+        id: `${r.id}:ceiling`,
+        roomId: r.id,
+        levelId: r.levelId,
+        ...(r.apartmentId !== undefined && { apartmentId: r.apartmentId }),
+        outline,
+        ...(holes.length > 0 && { holes }),
+        // Just under the slab above, and above the top of a lowered ceiling.
+        y: level.elevation.value + level.height.value - SURFACE_OFFSET / 2,
+        finish: rooms[index]!.finishes.ceiling,
+      },
+    ];
   });
 
   const terrain: TerrainDescriptor[] = model.terrain.patches.map((p) => {
@@ -689,6 +883,7 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
       y: a.elevation.value + SURFACE_OFFSET,
       ...(slope && { slope }),
       contours: slope ? slopeContours(outline, slope) : [],
+      finish: outdoorAreaFinish(a),
     };
   });
 
@@ -706,6 +901,7 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
     slabs,
     ceilings,
     roomFloors,
+    roomCeilings,
     terrain,
     outdoorAreas,
     roofPlanes,
@@ -866,6 +1062,7 @@ export function buildOutbuilding(
       bottom: floor + height - b.roofThickness.value,
       top: floor + height + SURFACE_OFFSET,
     },
+    finishes: outbuildingFinishes(b),
   };
 }
 
@@ -1021,6 +1218,7 @@ export function buildStair(stair: Stair, from: number, to: number): StairDescrip
     turn: Math.abs(cross) < EPS ? 'straight' : cross < 0 ? 'counter-clockwise' : 'clockwise',
     rise,
     steps,
+    finish: stairFinish(stair),
     well: [
       [min[0], min[2]],
       [max[0], min[2]],

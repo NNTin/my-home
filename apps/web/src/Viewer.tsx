@@ -66,6 +66,7 @@ import { useKeyboardViewport } from './overlay/useKeyboardViewport';
 import { useLayoutMode } from './overlay/useLayoutMode';
 import { ViewPanel } from './overlay/ViewPanel';
 import { filterPhotos, NO_FILTERS } from './photos/filters';
+import { usePlanColours } from './quality/planColours';
 import { useQuality } from './quality/setting';
 import {
   focusVisibility,
@@ -200,6 +201,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   const layout = useLayoutMode();
   const mobile = layout !== 'desktop';
   const [quality, setQuality] = useQuality(mobile);
+  const [planColours, setPlanColours] = usePlanColours();
   useKeyboardViewport(mobile);
   const resetView = useRef<(() => void) | undefined>(undefined);
   const [initial] = useState(initialPanel);
@@ -847,6 +849,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
             frame={frame}
             quality={quality}
             onNotice={setToast}
+            planColours={planColours}
           />
           {toast && (
             <p className="toast" role="alert">
@@ -944,6 +947,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
                   onChange={setVisibility}
                   quality={quality}
                   onQuality={setQuality}
+                  planColours={planColours}
+                  onPlanColours={setPlanColours}
                 />
               ) : panel === 'furniture' ? (
                 furniturePanel
@@ -959,6 +964,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
                 onPhotos={() => (photosOpen ? closePhotos() : setPhotosOpen(true))}
                 quality={quality}
                 onQuality={setQuality}
+                planColours={planColours}
+                onPlanColours={setPlanColours}
               />
               {photosOpen ? photosPanel : furniturePanel}
             </>

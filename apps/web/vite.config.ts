@@ -15,8 +15,13 @@ export default defineConfig(({ mode }) => {
         ),
       },
     },
-    // three.js + drei make up most of the bundle.
-    build: { chunkSizeWarningLimit: 1500 },
+    build: {
+      // three.js + drei make up most of the bundle.
+      chunkSizeWarningLimit: 1500,
+      // A texture is a file a device fetches when a finish is first drawn, in one size
+      // (docs/design/realistic-render.md §5.3): never inlined into the script, however small.
+      assetsInlineLimit: (file) => (file.endsWith('.webp') ? false : undefined),
+    },
     server: {
       port: 5173,
       proxy: { '/api': { target: env.API_URL ?? 'http://localhost:3000', changeOrigin: true } },

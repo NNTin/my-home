@@ -1,5 +1,16 @@
+import { resolveFinish, TERRAIN_FINISH, type ResolvedFinish } from '@my-home/shared';
 import type { Part } from '../catalog/types';
-import type { Box, HomeScene, PlaneSlope, Prism, Surface, Vec2, Vec3 } from './buildHome';
+import type {
+  Box,
+  HomeScene,
+  PlaneSlope,
+  Prism,
+  Surface,
+  UvFrame,
+  Vec2,
+  Vec3,
+  WallSegment,
+} from './buildHome';
 import { roofIndex, type Visibility } from './visibility';
 
 /**
@@ -12,14 +23,21 @@ import { roofIndex, type Visibility } from './visibility';
 /** A 4 × 4 transform, column-major like three.js' `Matrix4.elements`. */
 export type Matrix = number[];
 
+/**
+ * Which faces of a box or a profile are drawn: the one at local +z (`front`), the one at local
+ * -z (`back`), or all the others (`core`). A wall is drawn as three items, so that its two long
+ * faces can each take the finish of the room they border; together they are the closed solid.
+ */
+export type FacePart = 'front' | 'back' | 'core';
+
 /** The solid of a draw item, in its local frame; `matrix` puts it into the world. */
 export type DrawShape =
   /** Centred, [x, y, z] extents. */
-  | { kind: 'box'; size: Vec3 }
+  | { kind: 'box'; size: Vec3; only?: FacePart }
   /** Upright, centred, of `diameter` and `height`, drawn with `CYLINDER_SEGMENTS` sides. */
   | { kind: 'cylinder'; diameter: number; height: number }
   /** A closed outline in local x/y, extruded through `depth` along z and centred on it. */
-  | { kind: 'profile'; outline: Vec2[]; depth: number }
+  | { kind: 'profile'; outline: Vec2[]; depth: number; only?: FacePart }
   /**
    * A plan polygon extruded from `bottom` up to `top` (or to its slope). Local (x, y) is plan
    * (x, z) and local z runs down from the top face, which the matrix puts at `top`.
@@ -82,12 +100,18 @@ export interface DrawItem {
   /** Local frame to world. */
   matrix: Matrix;
   /**
-   * The finish. Until finishes exist (#112) it is today's colour (`#rrggbb`), or `part` for
-   * the parts of a catalogue piece, which all share one material.
+   * The finish: an id of the finish library (`packages/shared/src/finishes`), or `part` for the
+   * parts of a catalogue piece, which draw with their own colour, roughness and metalness.
    */
   finish: string;
   /** The colour written into the vertices: differently tinted items share a batch. */
   tint: string;
+  /**
+   * How a texture is laid on the item (§5.4). Without one its texture coordinates are a box
+   * projection: of the world for what lies on the plan (floors, ground, slabs), so neighbours
+   * line up, and of the item's own frame for boxes, cylinders and profiles.
+   */
+  uv?: UvFrame;
   material?: DrawMaterial;
   castShadow: boolean;
   receiveShadow: boolean;
@@ -152,41 +176,27 @@ export function multiply(a: Matrix, b: Matrix): Matrix {
 
 // --- colours ------------------------------------------------------------------------------------
 
-const colors = {
-  exterior: '#d8d2c4',
-  interior: '#f1ece2',
-  floorSlab: '#a6a29b',
-  ceiling: '#f4f2ec',
-  roof: '#7d5f50',
-  terrain: '#7c6a4f',
-  garden: '#5e9b4c',
-  driveway: '#8e8c88',
-  patio: '#b8a184',
-  path: '#c2b59b',
-  road: '#6f6f6f',
-  gravel: '#a9a8a2',
-  embankment: '#8d8778',
-  stair: '#b9a98c',
-  fencePost: '#3d4043',
-  brickPillar: '#9a5b40',
-  outbuilding: '#e4e0d6',
+/** Fences are not in the home model's finishes: plain paint in the colours they have always had. */
+const paint = (tint: string): ResolvedFinish =>
+  resolveFinish(undefined, { finish: 'paint.plain', tint });
+const fenceFinishes = {
+  post: paint('#3d4043'),
+  brickPillar: paint('#9a5b40'),
+  'chain-link': paint('#4a4e52'),
+  privacy: paint('#2c2e30'),
+  trellis: paint('#7a5a3a'),
 } as const;
 
-/** Wall colours of outbuildings that are not rendered like the house. */
-const outbuildingColors: Partial<Record<HomeScene['outbuildings'][number]['kind'], string>> = {
-  shed: '#9a7b56',
-  compost: '#3c4038',
-};
-
-/** Fences other than gates (a gate is drawn from its piece). */
-const fenceColors = {
-  'chain-link': '#4a4e52',
-  privacy: '#2c2e30',
-  trellis: '#7a5a3a',
-} as const;
-
-/** Room floors are told apart by colour, in the order of the home's rooms. */
-const roomColors = ['#e9d8b4', '#d7e3c8', '#cfdbe6', '#ead0cc', '#ddd3e8', '#e6e0c4'];
+/**
+ * "Plan colours": room floors told apart by colour, in the order of the home's rooms, as the
+ * viewer drew them before finishes. A view option (`ShellOptions.planColours`).
+ */
+export const PLAN_COLORS = ['#e9d8b4', '#d7e3c8', '#cfdbe6', '#ead0cc', '#ddd3e8', '#e6e0c4'];
+const planColor = (index: number): ResolvedFinish =>
+  resolveFinish(undefined, {
+    finish: 'floor.neutral',
+    tint: PLAN_COLORS[index % PLAN_COLORS.length]!,
+  });
 
 const srgbToLinear = (c: number) =>
   c < 0.04045 ? c * 0.0773993808 : Math.pow(c * 0.9478672986 + 0.0521327014, 2.4);
@@ -224,36 +234,81 @@ const solid = (
   common: Common,
   shape: DrawShape,
   matrix: Matrix,
-  color: string,
+  finish: ResolvedFinish,
   rest: Partial<DrawItem> = {},
 ): DrawItem => ({
   ...common,
   shape,
   matrix,
-  finish: color,
-  tint: color,
+  finish: finish.finish,
+  tint: finish.tint,
   castShadow: true,
   receiveShadow: true,
   closed: true,
   ...rest,
 });
 
-const boxItem = (common: Common, box: Box, color: string, rest?: Partial<DrawItem>) =>
-  solid(common, { kind: 'box', size: box.size }, transform(box.center, box.rotationY), color, rest);
+const boxItem = (
+  common: Common,
+  box: Box,
+  finish: ResolvedFinish,
+  rest?: Partial<DrawItem>,
+  only?: FacePart,
+) =>
+  solid(
+    common,
+    { kind: 'box', size: box.size, ...(only && { only }) },
+    transform(box.center, box.rotationY),
+    finish,
+    rest,
+  );
 
 const profileItem = (
   common: Common,
   s: { center: Vec3; rotationY: number; depth: number; outline: Vec2[] },
-  color: string,
+  finish: ResolvedFinish,
+  rest?: Partial<DrawItem>,
+  only?: FacePart,
 ) =>
   solid(
     common,
-    { kind: 'profile', outline: s.outline, depth: s.depth },
+    { kind: 'profile', outline: s.outline, depth: s.depth, ...(only && { only }) },
     transform(s.center, s.rotationY),
-    color,
+    finish,
+    rest,
   );
 
-const prismItem = (common: Common, p: Prism, color: string) =>
+/**
+ * A wall segment: its core (top, ends, reveals) and its two long faces, each stretch with the
+ * finish of the room it borders. The three kinds of item together are the closed solid.
+ */
+function wallItems(w: WallSegment): DrawItem[] {
+  const group = levelGroup(w);
+  const part = (
+    id: string,
+    box: Box & { outline?: Vec2[] },
+    finish: ResolvedFinish,
+    only: FacePart,
+  ) => {
+    const common = { id, group };
+    const rest = { uv: w.uv };
+    return box.outline
+      ? profileItem(
+          common,
+          { ...box, depth: box.size[2], outline: box.outline },
+          finish,
+          rest,
+          only,
+        )
+      : boxItem(common, box, finish, rest, only);
+  };
+  return [
+    part(w.id, w, w.finish, 'core'),
+    ...w.faces.map((f, i) => part(`${w.id}/face-${i}`, f, f.finish, f.side > 0 ? 'front' : 'back')),
+  ];
+}
+
+const prismItem = (common: Common, p: Prism, finish: ResolvedFinish) =>
   solid(
     common,
     {
@@ -265,11 +320,19 @@ const prismItem = (common: Common, p: Prism, color: string) =>
       ...(p.slope && { slope: p.slope }),
     },
     transform([0, p.top, 0], 0, Math.PI / 2),
-    color,
+    finish,
   );
 
-/** `finish` differs from `color` for a tinted use of a finish (a contour on its area). */
-const surfaceItem = (common: Common, s: Surface, color: string, finish = color): DrawItem => ({
+/** A floor finish turned by a quarter: its texture runs along plan z instead of plan x. */
+const QUARTER_TURN: UvFrame = { origin: [0, 0, 0], u: [0, 0, 1], v: [-1, 0, 0] };
+
+/** `tint` differs from the finish's for a tinted use of it (a contour on its area). */
+const surfaceItem = (
+  common: Common,
+  s: Surface,
+  finish: ResolvedFinish,
+  tint = finish.tint,
+): DrawItem => ({
   ...common,
   shape: {
     kind: 'surface',
@@ -279,8 +342,9 @@ const surfaceItem = (common: Common, s: Surface, color: string, finish = color):
     ...(s.slope && { slope: s.slope }),
   },
   matrix: transform([0, s.y, 0], 0, -Math.PI / 2),
-  finish,
-  tint: color,
+  finish: finish.finish,
+  tint,
+  ...(finish.rotation === 90 && { uv: QUARTER_TURN }),
   material: { doubleSided: true },
   castShadow: false,
   receiveShadow: true,
@@ -395,21 +459,37 @@ export function scenePieceDraws(scene: HomeScene): PieceDraw[] {
   ];
 }
 
+/** What the viewer may draw differently for the same home. */
+export interface ShellOptions {
+  /** "Plan colours": room floors in the pastel colours that tell rooms apart, not their finishes. */
+  planColours?: boolean;
+}
+
 /**
  * The shell and outdoors of the scene without its pieces: what `ShellMeshes` merges into
  * batches. Built from the whole scene; what is hidden is decided per group (`groupShown`).
+ * Every item names a finish of the library: the home's own, or the default of its surface.
  */
-export function shellItems(scene: HomeScene): DrawItem[] {
+export function shellItems(scene: HomeScene, options: ShellOptions = {}): DrawItem[] {
   const terrain: DrawGroup = { kind: 'terrain' };
+  const ceilingGroup = (c: { levelId: string; apartmentId?: string }): DrawGroup => ({
+    kind: 'ceiling',
+    levelId: c.levelId,
+    ...(c.apartmentId !== undefined && { apartmentId: c.apartmentId }),
+  });
   return [
-    ...scene.terrain.map((t) => prismItem({ id: t.id, group: terrain }, t, colors.terrain)),
+    ...scene.terrain.map((t) => prismItem({ id: t.id, group: terrain }, t, TERRAIN_FINISH)),
     ...scene.outdoorAreas.flatMap((a) => {
       const group: DrawGroup = { kind: 'area', id: a.id };
-      const color = colors[a.kind];
       return [
-        surfaceItem({ id: a.id, group }, a, color),
+        surfaceItem({ id: a.id, group }, a, a.finish),
         ...a.contours.map((c, i) =>
-          surfaceItem({ id: `${a.id}/contour-${i}`, group }, c, contourColor(color), color),
+          surfaceItem(
+            { id: `${a.id}/contour-${i}`, group },
+            c,
+            a.finish,
+            contourColor(a.finish.tint),
+          ),
         ),
       ];
     }),
@@ -417,55 +497,46 @@ export function shellItems(scene: HomeScene): DrawItem[] {
       prismItem(
         { id: s.id, group: { kind: 'slab', levelId: s.levelId, roof: s.kind === 'roof' } },
         s,
-        s.kind === 'roof' ? colors.roof : colors.floorSlab,
+        s.finish,
       ),
     ),
-    ...scene.ceilings.map((c) =>
-      prismItem(
-        {
-          id: c.id,
-          group: {
-            kind: 'ceiling',
-            levelId: c.levelId,
-            ...(c.apartmentId !== undefined && { apartmentId: c.apartmentId }),
-          },
-        },
-        c,
-        colors.ceiling,
-      ),
+    ...scene.ceilings.map((c) => prismItem({ id: c.id, group: ceilingGroup(c) }, c, c.finish)),
+    ...scene.roomCeilings.map((c) =>
+      surfaceItem({ id: c.id, group: ceilingGroup(c) }, c, c.finish),
     ),
     ...scene.roomFloors.map((r, i) =>
-      surfaceItem({ id: r.id, group: levelGroup(r) }, r, roomColors[i % roomColors.length]!),
+      surfaceItem(
+        { id: r.id, group: levelGroup(r) },
+        r,
+        options.planColours ? planColor(i) : r.finish,
+      ),
     ),
-    ...scene.walls.map((w) => {
-      const common = { id: w.id, group: levelGroup(w) };
-      return w.outline
-        ? profileItem(common, { ...w, depth: w.size[2], outline: w.outline }, colors[w.kind])
-        : boxItem(common, w, colors[w.kind]);
-    }),
+    ...scene.walls.flatMap(wallItems),
     ...scene.roofPlanes.map((r) =>
-      profileItem({ id: r.id, group: { kind: 'roof', levelId: r.levelId } }, r, colors.roof),
+      profileItem({ id: r.id, group: { kind: 'roof', levelId: r.levelId } }, r, r.finish, {
+        uv: r.uv,
+      }),
     ),
     ...scene.stairs.flatMap((s) =>
-      s.steps.map((step) => boxItem({ id: step.id, group: levelGroup(s) }, step, colors.stair)),
+      s.steps.map((step) => boxItem({ id: step.id, group: levelGroup(s) }, step, s.finish)),
     ),
     ...scene.fences.flatMap((f) => {
       if (f.parts) return [];
       const group: DrawGroup = { kind: 'structure', id: f.id };
-      const kind = f.kind as keyof typeof fenceColors;
+      const kind = f.kind as Exclude<typeof f.kind, 'gate'>;
       return [
         ...f.posts.map((post) =>
           boxItem(
             { id: post.id, group },
             post,
-            f.kind === 'trellis' ? colors.brickPillar : colors.fencePost,
+            f.kind === 'trellis' ? fenceFinishes.brickPillar : fenceFinishes.post,
           ),
         ),
         ...f.panels.map((panel) =>
           boxItem(
             { id: panel.id, group },
             panel,
-            fenceColors[kind],
+            fenceFinishes[kind],
             f.kind === 'chain-link'
               ? { material: { transparent: true, opacity: 0.35, depthWrite: false } }
               : {},
@@ -476,10 +547,8 @@ export function shellItems(scene: HomeScene): DrawItem[] {
     ...scene.outbuildings.flatMap((b) => {
       const group: DrawGroup = { kind: 'structure', id: b.id };
       return [
-        ...b.walls.map((w) =>
-          boxItem({ id: w.id, group }, w, outbuildingColors[b.kind] ?? colors.outbuilding),
-        ),
-        prismItem({ id: b.roof.id, group }, b.roof, colors.floorSlab),
+        ...b.walls.map((w) => boxItem({ id: w.id, group }, w, b.finishes.walls)),
+        prismItem({ id: b.roof.id, group }, b.roof, b.finishes.roof),
       ];
     }),
   ];
@@ -498,9 +567,13 @@ export interface PlacementDraw {
  * The draw list of a home with its placements: the shell and outdoors, then every piece's parts
  * in the world. Plain data: the goldens record it, and render mode draws from it (§9).
  */
-export function drawList(scene: HomeScene, placements: readonly PlacementDraw[] = []): DrawItem[] {
+export function drawList(
+  scene: HomeScene,
+  placements: readonly PlacementDraw[] = [],
+  options: ShellOptions = {},
+): DrawItem[] {
   return [
-    ...shellItems(scene),
+    ...shellItems(scene, options),
     ...scenePieceDraws(scene).flatMap((p) => partItems(p.parts, p.id, p.group, pieceMatrix(p))),
     ...placements.flatMap((p) =>
       partItems(p.parts, p.id, { kind: 'placement', id: p.id }, transform(p.position, p.rotationY)),

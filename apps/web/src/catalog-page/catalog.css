@@ -112,3 +112,41 @@
   color: #aab0b8;
   font-size: 0.8125rem;
 }
+
+/* Finishes: cards like the types', but not links. */
+.catalog-note {
+  margin: 0 0 0.75rem;
+  max-width: 60ch;
+  color: #c5c9d0;
+  font-size: 0.875rem;
+}
+
+.finish-card .finish {
+  display: flex;
+  gap: 0.75rem;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 0.5rem;
+  background: rgb(255 255 255 / 0.04);
+}
+
+.finish-swatch {
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.12);
+}
+
+.finish-swatch img {
+  object-fit: cover;
+}
+
+.finish-id,
+.finish-source {
+  color: #aab0b8;
+  font-size: 0.8125rem;
+}
+
+.finish-source a {
+  color: inherit;
+}

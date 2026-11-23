@@ -3,6 +3,7 @@ import { useId, useMemo, useState } from 'react';
 import { useLayoutMode } from '../overlay/useLayoutMode';
 import { href, keptQuery, Link, useDocumentTitle, useRestoredScroll } from '../routing';
 import './catalog.css';
+import { FinishesSection, listedFinishes } from './Finishes';
 import { catalogSections, usesText, type CatalogGroup } from './sections';
 import { useThumbnail } from './thumbnails';
 import { useUsage, type Usage } from './useUsage';
@@ -67,7 +68,10 @@ function Cards({
   );
 }
 
-/** `/catalog`: every type by kind, with search, thumbnails and the number of uses here. */
+/**
+ * `/catalog`: every type by kind, with search, thumbnails and the number of uses here; then the
+ * finishes of the library.
+ */
 export default function CatalogPage() {
   useDocumentTitle('Catalogue');
   useRestoredScroll();
@@ -114,7 +118,10 @@ export default function CatalogPage() {
             )}
           </section>
         ))}
-        {sections.length === 0 && <p role="status">Nothing matches “{query.trim()}”.</p>}
+        <FinishesSection query={query} device={layout === 'desktop' ? 'desktop' : 'phone'} />
+        {sections.length === 0 && listedFinishes(query).length === 0 && (
+          <p role="status">Nothing matches “{query.trim()}”.</p>
+        )}
       </main>
     </div>
   );

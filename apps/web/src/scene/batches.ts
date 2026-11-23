@@ -13,7 +13,8 @@ import {
   ShapeGeometry,
   Vector2,
 } from 'three';
-import { slopeY, type PlaneSlope, type Vec2 } from '../builder/buildHome';
+import { finishes } from '@my-home/shared';
+import { slopeY, type PlaneSlope, type UvFrame, type Vec2 } from '../builder/buildHome';
 import {
   batchKey,
   CYLINDER_SEGMENTS,
@@ -23,6 +24,7 @@ import {
   type DrawItem,
   type DrawMaterial,
   type DrawShape,
+  type FacePart,
 } from '../builder/drawList';
 
 /**
@@ -30,6 +32,7 @@ import {
  * item with the same batch key becomes one mesh; its tint is written into the vertex colours, so
  * one material draws differently coloured items in one call. Positions and normals are merged in
  * the frame the items' matrices lead to: the world for the shell, the piece's own for a piece.
+ * The batches of a textured finish also get texture coordinates, in metres (§5.4).
  */
 
 /** Plan polygon as a three.js shape; `flipZ` for shapes laid down to face up (a surface). */
@@ -60,11 +63,41 @@ function slopeVertices(
   geometry.computeVertexNormals();
 }
 
+/**
+ * The triangles of a box or a profile that belong to one part of it: the face at local +z, the
+ * one at local -z, or everything else. Both shapes have flat faces, so a triangle's normal says
+ * which face it is on.
+ */
+function facePart(geometry: BufferGeometry, part: FacePart): BufferGeometry {
+  const flat = geometry.index ? geometry.toNonIndexed() : geometry;
+  const position = flat.getAttribute('position');
+  const normal = flat.getAttribute('normal');
+  const positions: number[] = [];
+  const normals: number[] = [];
+  for (let i = 0; i < position.count; i += 3) {
+    const nz = normal.getZ(i);
+    const on: FacePart = nz > 0.5 ? 'front' : nz < -0.5 ? 'back' : 'core';
+    if (on !== part) continue;
+    for (let k = i; k < i + 3; k++) {
+      positions.push(position.getX(k), position.getY(k), position.getZ(k));
+      normals.push(normal.getX(k), normal.getY(k), normal.getZ(k));
+    }
+  }
+  if (flat !== geometry) flat.dispose();
+  geometry.dispose();
+  const out = new BufferGeometry();
+  out.setAttribute('position', new BufferAttribute(new Float32Array(positions), 3));
+  out.setAttribute('normal', new BufferAttribute(new Float32Array(normals), 3));
+  return out;
+}
+
 /** The geometry of a shape in its local frame, as the viewer has always built it. */
 export function shapeGeometry(shape: DrawShape): BufferGeometry {
   switch (shape.kind) {
-    case 'box':
-      return new BoxGeometry(...shape.size);
+    case 'box': {
+      const g = new BoxGeometry(...shape.size);
+      return shape.only ? facePart(g, shape.only) : g;
+    }
     case 'cylinder':
       return new CylinderGeometry(
         shape.diameter / 2,
@@ -76,7 +109,7 @@ export function shapeGeometry(shape: DrawShape): BufferGeometry {
       const outline = new Shape(shape.outline.map(([x, y]) => new Vector2(x, y)));
       const g = new ExtrudeGeometry(outline, { depth: shape.depth, bevelEnabled: false });
       g.translate(0, 0, -shape.depth / 2);
-      return g;
+      return shape.only ? facePart(g, shape.only) : g;
     }
     case 'prism': {
       const g = new ExtrudeGeometry(toShape(shape.outline, shape.holes), {
@@ -130,13 +163,65 @@ export interface Batch {
 
 const matrix = new Matrix4();
 
+/** Texture coordinates in metres of a vertex at `p` with normal `n`, by the frame or by projection. */
+type Project = (px: number, py: number, pz: number, nx: number, ny: number, nz: number) => Vec2;
+
+/**
+ * A box projection: the two coordinates across the axis the surface faces most. A face that looks
+ * up or down takes (x, z), the plan; a face that looks sideways takes the horizontal coordinate
+ * along it and the height.
+ */
+const boxProjection: Project = (px, py, pz, nx, ny, nz) => {
+  const [ax, ay, az] = [Math.abs(nx), Math.abs(ny), Math.abs(nz)];
+  if (ay >= ax && ay >= az) return [px, pz];
+  return ax >= az ? [pz, py] : [px, py];
+};
+
+const planar =
+  ({ origin: [ox, oy, oz], u, v }: UvFrame): Project =>
+  (px, py, pz) => {
+    const [x, y, z] = [px - ox, py - oy, pz - oz];
+    return [x * u[0] + y * u[1] + z * u[2], x * v[0] + y * v[1] + z * v[2]];
+  };
+
+/** The texture coordinates of a geometry's vertices, in metres. */
+function projectUvs(g: BufferGeometry, project: Project): Float32Array {
+  const position = g.getAttribute('position');
+  const normal = g.getAttribute('normal');
+  const uv = new Float32Array(position.count * 2);
+  for (let i = 0; i < position.count; i++) {
+    const [u, v] = project(
+      position.getX(i),
+      position.getY(i),
+      position.getZ(i),
+      normal.getX(i),
+      normal.getY(i),
+      normal.getZ(i),
+    );
+    uv[i * 2] = u;
+    uv[i * 2 + 1] = v;
+  }
+  return uv;
+}
+
+/** What lies on the plan is projected in the world, so neighbours line up; the rest in its own frame. */
+const projectsInWorld = (shape: DrawShape) => shape.kind === 'prism' || shape.kind === 'surface';
+
+/** Whether the batches of a finish carry texture coordinates: only a textured finish needs them. */
+export const finishHasTexture = (finish: string) => finishes.get(finish)?.texture !== undefined;
+
 function merge(
   items: DrawItem[],
   transparent: boolean,
+  textured: boolean,
 ): { geometry: BufferGeometry; triangles: number } {
+  const uvs: Float32Array[] = [];
   const parts = items.map((item) => {
     const g = shapeGeometry(item.shape);
+    const local = textured && !item.uv && !projectsInWorld(item.shape);
+    if (local) uvs.push(projectUvs(g, boxProjection));
     g.applyMatrix4(matrix.fromArray(item.matrix));
+    if (textured && !local) uvs.push(projectUvs(g, item.uv ? planar(item.uv) : boxProjection));
     return g;
   });
   const vertices = parts.reduce((n, g) => n + g.getAttribute('position').count, 0);
@@ -148,6 +233,7 @@ function merge(
   const position = new Float32Array(vertices * 3);
   const normal = new Float32Array(vertices * 3);
   const color = new Float32Array(vertices * colorSize);
+  const uv = textured ? new Float32Array(vertices * 2) : undefined;
   const index = vertices > 65535 ? new Uint32Array(indices) : new Uint16Array(indices);
   let v = 0;
   let i = 0;
@@ -156,6 +242,7 @@ function merge(
     const count = g.getAttribute('position').count;
     position.set(g.getAttribute('position').array, v * 3);
     normal.set(g.getAttribute('normal').array, v * 3);
+    uv?.set(uvs[n]!, v * 2);
     const [r, green, b] = linearRgb(item.tint);
     for (let k = 0; k < count; k++) {
       const at = (v + k) * colorSize;
@@ -173,6 +260,7 @@ function merge(
   geometry.setAttribute('position', new BufferAttribute(position, 3));
   geometry.setAttribute('normal', new BufferAttribute(normal, 3));
   geometry.setAttribute('color', new BufferAttribute(color, colorSize));
+  if (uv) geometry.setAttribute('uv', new BufferAttribute(uv, 2));
   geometry.setIndex(new BufferAttribute(index, 1));
   return { geometry, triangles: indices / 3 };
 }
@@ -197,7 +285,7 @@ export function batches(items: readonly DrawItem[]): Batch[] {
       castShadow: first.castShadow,
       receiveShadow: first.receiveShadow,
       items: list.length,
-      ...merge(list, first.material?.transparent === true),
+      ...merge(list, first.material?.transparent === true, finishHasTexture(first.finish)),
     };
   });
 }
@@ -211,7 +299,8 @@ export interface Glow {
 const materials = new Map<string, MeshStandardMaterial>();
 
 /**
- * The material of a batch. One instance per kind of surface, shared by every batch of that kind
+ * The material of a catalogue piece's batch (the shell's batches draw with the material of their
+ * finish, `finishes/materials.ts`). One instance per kind of surface, shared by every batch of that kind
  * (the colours are in the vertices), so the whole scene draws with a handful of shader programs.
  * A mesh that glows gets a copy of its own with the glow as its emissive colour: a uniform, so
  * the copy compiles nothing.

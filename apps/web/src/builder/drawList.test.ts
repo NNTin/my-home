@@ -179,6 +179,7 @@ function emptyOf(scene: HomeScene): HomeScene {
     slabs: [],
     ceilings: [],
     roomFloors: [],
+    roomCeilings: [],
     terrain: [],
     outdoorAreas: [],
     roofPlanes: [],

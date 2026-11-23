@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { Box3, type Light, type Vector3, type WebGLRenderer } from 'three';
 import type { Vec3 } from '../builder/buildHome';
+import { finishMaterials, type FinishMaterials } from '../finishes/materials';
 import { studioEnvironment } from '../lighting/environment';
 import { roomAt, type Emitter, type LampRoom } from '../lighting/lamps';
 import { backdropColors, environmentIntensity, type LightRig } from '../lighting/rig';
@@ -35,6 +36,10 @@ export interface FrameControl {
   castersChanged(): void;
   /** A material may be new to the renderer: compile ahead before the next frame is drawn. */
   materialsChanged(): void;
+  /** The materials of finishes for this device, with their textures. */
+  finishes: FinishMaterials;
+  /** A finish is drawn: its texture files are asked for, once, in this device's size (§5.3). */
+  finishShown(finish: string): void;
 }
 
 const Context = createContext<FrameControl | undefined>(undefined);
@@ -74,6 +79,7 @@ export function endDamping(controls: Damped | null) {
 /** The toasts of §3.4 and §4.4. */
 const STEPPED_DOWN = 'Showing a faster view on this device';
 const CHUNK_FAILED = 'The beautiful view could not be loaded';
+const TEXTURE_FAILED = 'Some surfaces could not be loaded';
 
 /** How long a settle waits for the GPU at most: a software renderer takes many seconds a frame. */
 const DRAWN_TIMEOUT_MS = 120_000;
@@ -120,6 +126,8 @@ export function FrameLoop({
   const get = useThree((s) => s.get);
   const output = useMemo(() => new FrameOutput(gl, phone), [gl, phone]);
   useEffect(() => () => output.dispose(), [output]);
+  // One size of every texture set per device, in every tier (§5.3).
+  const finishSet = useMemo(() => finishMaterials(phone ? 'phone' : 'desktop'), [phone]);
   const lights = useMemo(() => new SceneLights(phone), [phone]);
   useEffect(() => () => lights.dispose(), [lights]);
   // The environment is drawn once, before the first frame is compiled.
@@ -160,9 +168,35 @@ export function FrameLoop({
         pending.current.compile = true;
         invalidate();
       },
+      finishes: finishSet,
+      finishShown(finish) {
+        finishSet.textures.request(finish);
+        // The view has not settled while a texture is on its way: a capture waits for it.
+        governor.setMoving('textures', finishSet.textures.pending > 0);
+      },
     }),
-    [governor, invalidate],
+    [governor, invalidate, finishSet],
   );
+
+  // A texture arrives: the next frame draws with it, and compiles nothing (§4.5). One that fails
+  // leaves its finish on its tint, in whatever tier is drawn, and is said once a visit (§4.4).
+  const textureNoticed = useRef(false);
+  useEffect(() => {
+    const textures = finishSet.textures;
+    governor.setMoving('textures', textures.pending > 0);
+    const off = textures.subscribe((event) => {
+      if (!event.texture && !textureNoticed.current) {
+        textureNoticed.current = true;
+        notice.current?.(TEXTURE_FAILED);
+      }
+      governor.setMoving('textures', textures.pending > 0);
+      invalidate();
+    });
+    return () => {
+      off();
+      governor.setMoving('textures', false);
+    };
+  }, [finishSet, governor, invalidate]);
 
   useLayoutEffect(() => {
     const canvas = gl.domElement;
@@ -306,6 +340,8 @@ export function FrameLoop({
       compiles: p.programs.size,
       compiled,
       textures: gl.info.memory.textures,
+      textureFiles: finishSet.textures.counts().loaded,
+      textureFailures: finishSet.textures.counts().failed,
       shadowLights,
       litLamps: lamps.lit,
       lampChanges: lampChanges.current,

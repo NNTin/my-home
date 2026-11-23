@@ -35,12 +35,12 @@ screen while the page is open (turning the phone, resizing a window), and what w
 
 Four tabs, one panel at a time:
 
-| Tab       | Panel                                                                                                                                 |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| View      | room names, and **Show / hide…**: levels, apartments and outdoor areas, folded away by default, each with **Show all** / **Hide all** |
-| Furniture | the [catalogue and edit tools](furniture.md)                                                                                          |
-| Photos    | the [gallery](photos.md#browsing-photos); the trash is behind **🗑 Trash** at its end                                                  |
-| Requests  | the photo requests                                                                                                                    |
+| Tab       | Panel                                                                                                                                                                                                                                                                        |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| View      | room names, **Plan colours** (room floors in the colours that tell rooms apart, instead of their finishes; remembered on the device), the quality, and **Show / hide…**: levels, apartments and outdoor areas, folded away by default, each with **Show all** / **Hide all** |
+| Furniture | the [catalogue and edit tools](furniture.md)                                                                                                                                                                                                                                 |
+| Photos    | the [gallery](photos.md#browsing-photos); the trash is behind **🗑 Trash** at its end                                                                                                                                                                                         |
+| Requests  | the photo requests                                                                                                                                                                                                                                                           |
 
 The sheet has three sizes: **collapsed** (only the tabs), **half** and **full**.
 

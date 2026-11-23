@@ -9,6 +9,9 @@ interface Props {
   onChange(visibility: Visibility): void;
   quality: Quality;
   onQuality(quality: Quality): void;
+  /** "Plan colours": room floors in the colours that tell rooms apart, not their finishes. */
+  planColours: boolean;
+  onPlanColours(on: boolean): void;
 }
 
 interface Item {
@@ -29,7 +32,15 @@ interface Group {
  * The phone's View tab. The cutaway level is in the top bar; here are the room names and the
  * rarely used switches for single levels, apartments and outdoor areas, folded away by default.
  */
-export function ViewPanel({ scene, visibility, onChange, quality, onQuality }: Props) {
+export function ViewPanel({
+  scene,
+  visibility,
+  onChange,
+  quality,
+  onQuality,
+  planColours,
+  onPlanColours,
+}: Props) {
   const set = (patch: Partial<Visibility>) => onChange({ ...visibility, ...patch });
   /** The hidden ids of a group that is shown or hidden as a whole. */
   const hidden = (all: { id: string }[], shown: boolean) => (shown ? [] : all.map((x) => x.id));
@@ -86,6 +97,10 @@ export function ViewPanel({ scene, visibility, onChange, quality, onQuality }: P
           onChange={() => set({ showRoomNames: !visibility.showRoomNames })}
         />{' '}
         Room names
+      </label>
+      <label className="toggle">
+        <input type="checkbox" checked={planColours} onChange={() => onPlanColours(!planColours)} />{' '}
+        Plan colours
       </label>
       <QualityControl quality={quality} onChange={onQuality} phone />
       <h2>Show / hide…</h2>

@@ -114,7 +114,9 @@ $S/seed.sh staging diff                                # drift between git's see
   (`docs/mobile.md` § Battery and heat), in a phone's and in a desktop's (1440x900) context of their own, read from
   `?perf=1` (`window.__myHomePerf()`): for each of `?quality=fast|auto|beautiful` (with `stepdown=off`) the view
   settles (`canvas[data-frame="settled"]`) in its tier (fast, or beautiful for `auto` and `beautiful`) and then
-  draws nothing; `auto` rests on a refined frame, and after input draws fast frames and exactly one more refined
+  draws nothing; finish textures, held back in a context of their own until the first frames are drawn, are
+  asked for in one size (512 px on the phone, 1024 px with roughness maps on the desktop), leave the view unsettled
+  until they are here, and compile no shader when they arrive; `auto` rests on a refined frame, and after input draws fast frames and exactly one more refined
   frame; the Quality control switches fast → beautiful → fast without compiling a shader; and a moving frame of the first view and of the whole
   house is within the draw-call budget (250 and 350 on a phone, 350 and 500 on a desktop) and compiles no
   shader. For every setting lamps are lit, at most 6 on a phone and 12 on a desktop, and 1 light casts a shadow on

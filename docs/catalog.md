@@ -45,6 +45,13 @@ All of these are real links (`<a href>`): a long press, open in a new tab and co
 - The card is a link named "<Type name>, N uses", with its description as the link's description.
 - On a phone (`useLayoutMode`): one column, safe-area insets, cards and controls at least 44 px tall, and no
   sideways scrolling upright (390×844) or across (844×390).
+- After the kinds, a section **Finishes**: every finish of the library (`packages/shared/src/finishes/`,
+  `docs/home-model.md` § Finishes) with its name, id, description, the kinds of surface it is for, whether it
+  can be tinted, how many metres one repeat covers, and for a textured finish a link to its source and the
+  licence (always CC0). The swatch is the finish's colour map, in the one size this device fetches (512 px on
+  a phone, 1024 px on a desktop), or its tint for a plain or relief-only finish. The search covers finishes
+  too (name, description, id). A finish card is not a link: finishes are chosen in the home file, and have no
+  page of their own.
 
 ## The piece page
 
