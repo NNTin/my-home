@@ -119,8 +119,11 @@ $S/seed.sh staging diff                                # drift between git's see
   house is within the draw-call budget (250 and 350 on a phone, 350 and 500 on a desktop) and compiles no
   shader. For every setting lamps are lit, at most 6 on a phone and 12 on a desktop, and 1 light casts a shadow on
   a phone (the sun) and 5 on a desktop; then the figure walks (`?walk=first`) until the lamp pool has moved to
-  other lamps (a phone), and the shader program count and the compile counter are what they were. A build
-  before #110 skips the frame loop, one before #111 the lamps. Read-only: every
+  other lamps (a phone), and the shader program count and the compile counter are what they were. The readout's
+  **Copy** is clicked once per device at rest: the clipboard holds the markdown table (commit, mode, viewport,
+  browser, this device's budgets), the button says "Copied", nothing is drawn, and the copied idle count is 0; the
+  table is printed, to paste into a pull request. A build
+  before #110 skips the frame loop, one before #111 the lamps, one before #123 the copy. Read-only: every
   placement write is **answered inside the browser** (as the api would, merged into the placement reads), every
   other write is refused there.
 - `catalog-smoke.sh <env> [--out file.png] [--home ID]`: the catalogue pages (`docs/catalog.md`) at 1440x900 and
@@ -166,7 +169,8 @@ $S/seed.sh staging diff                                # drift between git's see
   the figure walks, turns and stops, that the controls and the minimap fit without overlapping, that the
   minimap tracks the figure, and, after putting the figure at the stair from the enlarged map, that the pad
   walks it up and the minimap switches level; and in `auto` walking draws fast frames and one beautiful frame
-  follows when the figure stops; nothing may log an error. Read-only. Playwright (pinned) is installed outside the repository in
+  follows when the figure stops; and held sideways (844x390) the `?perf=1` readout starts folded, covers no
+  walk control folded or open, and its Copy answers a tap; nothing may log an error. Read-only. Playwright (pinned) is installed outside the repository in
   `${XDG_CACHE_HOME:-$HOME/.cache}/my-home-environments/playwright`, Chromium in `~/.cache/ms-playwright`;
   `screenshot.sh --check` installs them if missing and verifies a headless launch.
 - `raise-env-issue.sh [--dry-run] [--force] <env> <summary> [details-file]`: refuses (exit 3) unless

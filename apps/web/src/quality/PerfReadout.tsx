@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react';
+import { LiveResponse } from '@my-home/shared';
+import { useEffect, useRef, useState } from 'react';
 import type { FrameGovernor, PerfData } from './governor';
+import { perfReport, perfRows } from './perfReport';
 
 /**
  * The `?perf=1` readout (docs/design/realistic-render.md §10.3): a small panel over the viewer
  * with what a frame costs on this device. Frame times mean something only on real hardware, so
- * it is what the owner reads on a phone and a desktop. The same data is `window.__myHomePerf()`,
- * which the smokes read.
+ * it is what the owner reads on a phone and a desktop. "Copy" puts the readout on the clipboard
+ * as a markdown table, with the context to compare runs. The same data is
+ * `window.__myHomePerf()`, which the smokes read.
  */
 
 export const perfRequested = () => new URLSearchParams(window.location.search).get('perf') === '1';
@@ -16,10 +19,37 @@ declare global {
   }
 }
 
-const ms = (value: number | undefined) => (value === undefined ? '–' : `${value.toFixed(1)} ms`);
+/** How long "Copied" stays. */
+const COPIED_MS = 2000;
 
-export function PerfReadout({ governor }: { governor: FrameGovernor }) {
+/** A view too low for the whole panel (a phone held sideways): it starts folded. */
+const lowView = () => window.matchMedia?.('(max-height: 500px)').matches ?? false;
+
+/** The commit of the running release, from the public liveness answer; undefined if it has none. */
+async function appCommit(signal: AbortSignal): Promise<string | undefined> {
+  const response = await fetch('/api/health/live', { signal });
+  const live = LiveResponse.safeParse(await response.json());
+  return live.success ? (live.data.commit ?? undefined) : undefined;
+}
+
+export interface PerfReadoutProps {
+  governor: FrameGovernor;
+  /** The device class whose budgets apply. */
+  phone: boolean;
+  /** The view or mode in words, asked when the report is copied. */
+  view(): string;
+}
+
+export function PerfReadout({ governor, phone, view }: PerfReadoutProps) {
   const [data, setData] = useState(() => governor.perf());
+  const [open, setOpen] = useState(() => !lowView());
+  const [copied, setCopied] = useState(false);
+  // The clipboard was not available: the report, shown selected to be copied by hand.
+  const [manual, setManual] = useState<string>();
+  const [commit, setCommit] = useState<string>();
+  const panel = useRef<HTMLDivElement>(null);
+  const text = useRef<HTMLTextAreaElement>(null);
+
   useEffect(() => {
     window.__myHomePerf = () => governor.perf();
     // Text only: reading the numbers draws no frame.
@@ -29,33 +59,84 @@ export function PerfReadout({ governor }: { governor: FrameGovernor }) {
       delete window.__myHomePerf;
     };
   }, [governor]);
-  const rows: [string, string][] = [
-    ['Setting', data.setting],
-    // The viewer protects itself on a slow device (§3.4): what it behaves as since.
-    ['Stepped down', data.steppedDown ? `yes, to ${data.steppedDown}` : 'no'],
-    ['Tier', data.beautifulReady ? data.tier : `${data.tier} (beautiful not loaded)`],
-    ['View', data.state === 'settled' ? 'resting' : 'moving'],
-    ['Draw calls, last frame', String(data.drawCalls)],
-    // Whatever the state: 0 only when nothing at all was drawn in the last 3 seconds.
-    ['Draw calls, last 3 s', `${data.recentDrawCalls} (${data.recentFrames} frames)`],
-    ['Triangles', String(data.triangles)],
-    ['Textures', String(data.textures)],
-    ['Lit lamps', `${data.litLamps} (${data.lampChanges} reassigned)`],
-    ['Lights with shadows', String(data.shadowLights)],
-    ['Shader programs', `${data.programs} (${data.compiles} compiled)`],
-    ['Frame, median', ms(data.medianFrameMs)],
-    ['Frame, 95th percentile', ms(data.p95FrameMs)],
-    ['Refined frame', `${ms(data.refinedFrameMs)} (${data.refinedFrames} drawn)`],
-    ['Frames', String(data.frames)],
-  ];
+
+  // Asked once, ahead of the click: a copy must not wait for the network.
+  useEffect(() => {
+    const abort = new AbortController();
+    appCommit(abort.signal).then(setCommit, () => undefined);
+    return () => abort.abort();
+  }, []);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = window.setTimeout(() => setCopied(false), COPIED_MS);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
+
+  useEffect(() => {
+    if (manual === undefined) return;
+    text.current?.focus();
+    text.current?.select();
+    // iOS selects nothing on `select()` alone.
+    text.current?.setSelectionRange(0, manual.length);
+  }, [manual]);
+
+  // Nothing here touches the canvas or the scene: copying draws no frame.
+  const copy = async () => {
+    const canvas = panel.current?.parentElement?.querySelector('canvas');
+    const report = perfReport(governor.perf(), {
+      commit,
+      view: view(),
+      phone,
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      devicePixelRatio: window.devicePixelRatio,
+      canvas: canvas ? { width: canvas.width, height: canvas.height } : undefined,
+      userAgent: navigator.userAgent,
+      time: new Date(),
+    });
+    try {
+      // Absent without a secure context; refused without permission.
+      if (!navigator.clipboard?.writeText) throw new Error('no clipboard');
+      await navigator.clipboard.writeText(report);
+      setManual(undefined);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+      setManual(report);
+    }
+  };
+
   return (
-    <dl className="perf-readout" aria-label="Performance">
-      {rows.map(([name, value]) => (
-        <div key={name}>
-          <dt>{name}</dt>
-          <dd>{value}</dd>
+    <div className="perf-readout" ref={panel}>
+      <div className="perf-head">
+        <button type="button" aria-expanded={open} onClick={() => setOpen(!open)}>
+          Perf {open ? '▾' : '▸'}
+        </button>
+        <button type="button" onClick={() => void copy()}>
+          <span aria-live="polite">{copied ? 'Copied' : 'Copy'}</span>
+        </button>
+      </div>
+      {manual !== undefined && (
+        <div className="perf-manual">
+          <label>
+            Select all and copy:
+            <textarea ref={text} readOnly rows={4} value={manual} />
+          </label>
+          <button type="button" onClick={() => setManual(undefined)}>
+            Close
+          </button>
         </div>
-      ))}
-    </dl>
+      )}
+      {open && (
+        <dl aria-label="Performance">
+          {perfRows(data, phone).map(({ name, value }) => (
+            <div key={name}>
+              <dt>{name}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </div>
   );
 }

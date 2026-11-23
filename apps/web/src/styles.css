@@ -2050,14 +2050,16 @@ body {
   box-shadow: inset 0 0 0 3px #ffcc80;
 }
 
-/* The ?perf=1 readout: numbers over the 3D view, never in the way of a touch. */
+/*
+ * The ?perf=1 readout: numbers over the 3D view and over the walk controls. Only its two buttons
+ * (fold, copy) take a touch; everything else lets it through.
+ */
 .perf-readout {
   position: absolute;
   top: 0.5rem;
   left: 50%;
-  z-index: 7;
-  margin: 0;
-  padding: 0.4rem 0.6rem;
+  z-index: 11;
+  padding: 0.3rem 0.5rem;
   transform: translateX(-50%);
   border-radius: 0.4rem;
   background: rgb(20 24 30 / 0.8);
@@ -2070,7 +2072,51 @@ body {
   pointer-events: none;
 }
 
-.perf-readout div {
+/* Walking, the bar of controls is at the top: the readout goes below it, to the left edge. */
+.viewer.walking .perf-readout {
+  top: 50%;
+  left: calc(0.5rem + env(safe-area-inset-left, 0px));
+  transform: translateY(-50%);
+}
+
+/*
+ * A phone held sideways has no room below the bar: the readout stands at the foot of the view,
+ * between the movement pad and the look buttons, and starts folded (PerfReadout.tsx).
+ */
+@media (max-height: 500px) {
+  .viewer.walking .perf-readout {
+    top: auto;
+    bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+    left: calc(10.5rem + env(safe-area-inset-left, 0px));
+    transform: none;
+  }
+}
+
+.perf-head {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: space-between;
+}
+
+.perf-readout button {
+  min-width: 3.5rem;
+  min-height: 1.75rem;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid rgb(255 255 255 / 0.35);
+  border-radius: 0.3rem;
+  background: rgb(0 0 0 / 0.5);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.perf-readout dl {
+  margin: 0.3rem 0 0;
+}
+
+.perf-readout dl div {
   display: flex;
   gap: 1rem;
   justify-content: space-between;
@@ -2080,4 +2126,22 @@ body {
 .perf-readout dd {
   margin: 0;
   white-space: nowrap;
+}
+
+/* Without a clipboard: the report, selected, to copy by hand. */
+.perf-manual {
+  display: flex;
+  gap: 0.4rem;
+  align-items: flex-end;
+  margin-top: 0.3rem;
+  pointer-events: auto;
+}
+
+.perf-manual textarea {
+  display: block;
+  width: min(16rem, 60vw);
+  font: inherit;
+  /* Below 16px, iOS zooms the page into a focused field. */
+  font-size: 16px;
+  white-space: pre;
 }
