@@ -1002,8 +1002,11 @@ async function smoke(out, homeId) {
     // Pressed where the drag ended: the item followed the finger there. (The toolbar is no guide
     // here: near the edge of the view it is pushed back inside, away from the item.) The finger
     // stays down until the panel opens, however slow the renderer is, then lets go.
+    // The press is taken once the frames before it are drawn: after a drag those are several, a
+    // refined one among them, and with textures a software renderer needs seconds for each.
+    await atRest();
     await touch('touchStart', dropped.x, dropped.y);
-    const deadline = Date.now() + 5000;
+    const deadline = Date.now() + 20_000;
     while (Date.now() < deadline && (await snap()) !== 'half') await page.waitForTimeout(100);
     await touch('touchEnd');
     await settle();
