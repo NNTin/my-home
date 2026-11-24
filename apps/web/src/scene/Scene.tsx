@@ -1,6 +1,6 @@
 import { OrbitControls } from '@react-three/drei';
 import { Canvas, useThree, type RootState } from '@react-three/fiber';
-import { useEffect, useMemo, useRef, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react';
 import { PCFShadowMap, type PerspectiveCamera } from 'three';
 import type { HomeScene, Vec3 } from '../builder/buildHome';
 import { roofIndex, type RoomLabel, type Visibility } from '../builder/visibility';
@@ -8,7 +8,7 @@ import type { CompassMarker } from '../compass/compass';
 import { CompassMarkers, CompassRose, CompassTracker } from '../compass/Compass';
 import type { FurnitureToolbarProps } from '../overlay/FurnitureToolbar';
 import { lampRooms, sceneEmitters } from '../lighting/lamps';
-import { backdropRequested, rigFor } from '../lighting/rig';
+import { rigFor, type Backdrop, type RigView } from '../lighting/rig';
 import { FrameGovernor } from '../quality/governor';
 import { PerfReadout, perfRequested } from '../quality/PerfReadout';
 import { perfView } from '../quality/perfReport';
@@ -42,6 +42,8 @@ export interface SceneProps {
   northBearing: number;
   /** N/E/S/W letters on the ground. */
   markers: CompassMarker[];
+  /** The letters are not drawn for now: a named view shows the model alone (§7.1). */
+  lettersHidden?: boolean;
   /** Room names shown over their floors. */
   labels: RoomLabel[];
   /** Set while walking: the figure to draw and whose eyes or overview the camera takes. */
@@ -73,6 +75,16 @@ export interface SceneProps {
   onNotice?(message: string): void;
   /** "Plan colours": room floors in the colours that tell rooms apart, not their finishes. */
   planColours?: boolean;
+  /** How a named view is lit (§7.1); the free view's or the eye's rig when omitted. */
+  rigView?: RigView | undefined;
+  /** The backdrop chosen for the view; the rig's own when omitted. */
+  backdrop?: Backdrop | undefined;
+  /** What a named view adds to the scene, from its lazy chunk (`views/render-views.ts`). */
+  stage?: ReactNode;
+  /** The orbit controls were taken in hand: a named view is left. */
+  onOrbit?: (() => void) | undefined;
+  /** Something the view waits for (a lazy chunk): it has not settled meanwhile. */
+  busy?: boolean;
 }
 
 /** Stops the frame loop while `paused`, and puts back whichever loop ran before. */
@@ -103,6 +115,16 @@ export function initialCamera(bounds: HomeScene['bounds'], aspect = 1): Vec3 {
   const cx = (minX + maxX) / 2;
   const cz = (minZ + maxZ) / 2;
   return [cx + size * 0.55, maxY + size * 0.45, cz + size * 0.75];
+}
+
+/** The orbit camera's field of view, in degrees; a named view narrows or widens it (§7.1). */
+const ORBIT_FOV = 45;
+
+function setFov(camera: RootState['camera'], fov: number) {
+  const c = camera as PerspectiveCamera;
+  if (c.fov === fov) return;
+  c.fov = fov;
+  c.updateProjectionMatrix();
 }
 
 /** What "Reset view" needs of the orbit controls. */
@@ -150,6 +172,7 @@ function ViewReset({
   useEffect(() => {
     resetRef.current = () => {
       const { camera, size, controls } = get();
+      setFov(camera, ORBIT_FOV);
       resetOrbit(
         controls as unknown as OrbitReset | null,
         camera,
@@ -175,11 +198,28 @@ export function frameDistance(radius: number, fovDegrees: number, aspect: number
   return Math.max(MIN_FRAME_DISTANCE, (radius / Math.sin(narrow)) * FRAME_MARGIN);
 }
 
+/** The camera distance at which half a width `across` and half a height `up` fill the view. */
+export function extentDistance(
+  [across, up]: [number, number],
+  fovDegrees: number,
+  aspect: number,
+): number {
+  const tan = Math.tan((fovDegrees * Math.PI) / 360);
+  return Math.max(up / tan, across / (tan * (aspect > 0 ? aspect : 1))) * EXTENT_MARGIN;
+}
+const EXTENT_MARGIN = 1.06;
+
 /** Points the orbit camera at `frame` from its direction, at a distance that fits it. */
 function applyFrame(state: RootState, frame: FrameRequest) {
   const { camera, size, controls, invalidate } = state;
-  const fov = (camera as PerspectiveCamera).fov ?? 45;
-  const d = frameDistance(frame.radius, fov, size.width / size.height);
+  if (frame.fov !== undefined) setFov(camera, frame.fov);
+  const fov = (camera as PerspectiveCamera).fov ?? ORBIT_FOV;
+  const aspect = size.width / size.height;
+  const d =
+    frame.distance ??
+    (frame.extent
+      ? extentDistance(frame.extent, fov, aspect)
+      : frameDistance(frame.radius, fov, aspect));
   const [x, y, z] = frame.center;
   const [fx, fy, fz] = frame.from;
   resetOrbit(
@@ -221,6 +261,7 @@ export function Scene({
   handlers,
   northBearing,
   markers,
+  lettersHidden = false,
   labels,
   walk,
   photoMarkers = [],
@@ -237,18 +278,28 @@ export function Scene({
   quality = 'fast',
   onNotice,
   planColours = false,
+  rigView,
+  backdrop,
+  stage,
+  onOrbit,
+  busy = false,
 }: SceneProps) {
   const roseRef = useRef<HTMLButtonElement>(null);
   const labelsRef = useRef<HTMLDivElement>(null);
   const northUpRef = useRef<() => void>(undefined);
+  /** Whether the orbit controls are in hand: between their `start` and `end`. */
+  const held = useRef(false);
   const rose = useMemo(() => ({ ref: roseRef, northBearing }), [northBearing]);
   // The view is from inside a room: the rig's environment is lowered and lamps light it (§6.3).
-  const eye = walk?.view === 'first' || viewpoint !== undefined;
+  const eye = walk?.view === 'first' || viewpoint !== undefined || rigView?.kind === 'eye';
+  const look = rigView?.kind === 'section' ? rigView.look : undefined;
+  const rigKind = rigView?.kind ?? (eye ? 'eye' : 'free');
   const rig = useMemo(() => {
-    const chosen = rigFor({ kind: eye ? 'eye' : 'free' });
-    const backdrop = backdropRequested(window.location.search);
+    const chosen = rigFor(
+      rigKind === 'section' ? { kind: rigKind, look: look! } : { kind: rigKind },
+    );
     return backdrop ? { ...chosen, backdrop } : chosen;
-  }, [eye]);
+  }, [rigKind, look, backdrop]);
   const rooms = useMemo(() => lampRooms(scene), [scene]);
   const emitters = useMemo(() => sceneEmitters(furniture, rooms), [furniture, rooms]);
   // `?stepdown=off`: for captures under software rendering, where every frame is slow (§3.4).
@@ -261,6 +312,11 @@ export function Scene({
   );
   useEffect(() => () => governor.dispose(), [governor]);
   useEffect(() => governor.setSetting(quality), [governor, quality]);
+  // A capture waits for the settled frame: not before the view that was asked for is here.
+  useEffect(() => {
+    governor.setMoving('view', busy);
+    return () => governor.setMoving('view', false);
+  }, [governor, busy]);
   // A furniture drag moves the view's content like the orbit controls move the camera.
   const dragHandlers = useMemo(
     (): FurnitureHandlers => ({
@@ -283,7 +339,7 @@ export function Scene({
   return (
     <>
       <Canvas
-        camera={{ position: initialCamera(scene.bounds), fov: 45, near: 0.1, far: 500 }}
+        camera={{ position: initialCamera(scene.bounds), fov: ORBIT_FOV, near: 0.1, far: 500 }}
         // A phone has more pixels per inch than it can fill at a steady rate: a capped pixel ratio.
         dpr={touch ? PHONE_DPR : DPR}
         // On every device a new frame is drawn only when something changed (docs/mobile.md).
@@ -326,7 +382,7 @@ export function Scene({
             toolbar={toolbar}
             editable={editable}
           />
-          <CompassMarkers markers={markers} />
+          <CompassMarkers markers={markers} hidden={lettersHidden} />
           <RoomLabelTracker labels={labels} layerRef={labelsRef} />
           <OrbitControls
             makeDefault
@@ -334,8 +390,16 @@ export function Scene({
             maxPolarAngle={Math.PI * 0.95}
             // In first person the camera is the figure's eyes; dragging looks around instead.
             enabled={walk?.view !== 'first' && !viewpoint}
-            onStart={() => governor.setMoving('orbit', true)}
-            onEnd={() => governor.setMoving('orbit', false)}
+            onStart={() => {
+              governor.setMoving('orbit', true);
+              held.current = true;
+            }}
+            // A press that moves the camera, or a turn of the wheel: not a click on a window.
+            onChange={() => held.current && onOrbit?.()}
+            onEnd={() => {
+              governor.setMoving('orbit', false);
+              held.current = false;
+            }}
           />
           {walk && <WalkRig figure={walk.figure} view={walk.view} rose={rose} />}
           {viewpoint && <ViewpointRig viewpoint={viewpoint} rose={rose} />}
@@ -348,6 +412,7 @@ export function Scene({
             <ViewReset bounds={scene.bounds} target={target} resetRef={resetViewRef} />
           )}
           <FrameView frame={frame} />
+          {stage}
           <RequestGhosts ghosts={requestGhosts} />
           <CompassTracker northBearing={northBearing} roseRef={roseRef} northUpRef={northUpRef} />
         </FrameLoop>

@@ -65,8 +65,8 @@ function slopeVertices(
 
 /**
  * The triangles of a box or a profile that belong to one part of it: the face at local +z, the
- * one at local -z, or everything else. Both shapes have flat faces, so a triangle's normal says
- * which face it is on.
+ * one at local -z, or everything else (`core`), which is the faces that look up (`top`) and the
+ * others (`rest`). Both shapes have flat faces, so a triangle's normal says which face it is on.
  */
 function facePart(geometry: BufferGeometry, part: FacePart): BufferGeometry {
   const flat = geometry.index ? geometry.toNonIndexed() : geometry;
@@ -77,7 +77,12 @@ function facePart(geometry: BufferGeometry, part: FacePart): BufferGeometry {
   for (let i = 0; i < position.count; i += 3) {
     const nz = normal.getZ(i);
     const on: FacePart = nz > 0.5 ? 'front' : nz < -0.5 ? 'back' : 'core';
-    if (on !== part) continue;
+    if (
+      on === 'core'
+        ? part !== 'core' && part !== (normal.getY(i) > 0.5 ? 'top' : 'rest')
+        : on !== part
+    )
+      continue;
     for (let k = i; k < i + 3; k++) {
       positions.push(position.getX(k), position.getY(k), position.getZ(k));
       normals.push(normal.getX(k), normal.getY(k), normal.getZ(k));

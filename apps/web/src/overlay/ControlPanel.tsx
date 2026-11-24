@@ -1,4 +1,5 @@
 import type { HomeSummary } from '@my-home/shared';
+import type { ReactNode } from 'react';
 import type { HomeScene } from '../builder/buildHome';
 import { roofIndex, showUpTo, toggleId, type Visibility } from '../builder/visibility';
 import { EditToggle } from '../editMode/EditToggle';
@@ -25,6 +26,8 @@ interface Props {
   /** "Plan colours": room floors in the colours that tell rooms apart, not their finishes. */
   planColours: boolean;
   onPlanColours(on: boolean): void;
+  /** The "Views" control (`views/ViewsControl.tsx`), once its lazy chunk is here. */
+  views?: ReactNode;
 }
 
 function Toggle({
@@ -59,6 +62,7 @@ export function ControlPanel({
   onQuality,
   planColours,
   onPlanColours,
+  views,
 }: Props) {
   const set = (patch: Partial<Visibility>) => onChange({ ...visibility, ...patch });
   const levelsTopDown = [...scene.levels].reverse();
@@ -93,6 +97,8 @@ export function ControlPanel({
           📚 Catalogue
         </Link>
       </div>
+
+      {views}
 
       <fieldset>
         <legend>Show up to level</legend>

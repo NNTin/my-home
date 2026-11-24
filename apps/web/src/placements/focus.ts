@@ -99,6 +99,12 @@ export interface FrameRequest {
   center: Vec3;
   radius: number;
   from: Vec3;
+  /** The camera's field of view, in degrees; unchanged when omitted. A named view sets it (§7.1). */
+  fov?: number;
+  /** Fit this instead of the sphere: half the width across the view and half the height, in metres. */
+  extent?: [number, number];
+  /** Stand exactly this far from `center`. */
+  distance?: number;
 }
 
 const DEG = Math.PI / 180;

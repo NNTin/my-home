@@ -116,6 +116,21 @@ body {
   margin: 0.25rem 0;
 }
 
+/* The Views control: the named views, what each can be set to, the backdrop. */
+.views-control button[aria-pressed='true'] {
+  border-color: #6aa9ff;
+  background: rgb(61 139 255 / 0.35);
+}
+
+.views-control .field input[type='range'] {
+  width: 9rem;
+  vertical-align: middle;
+}
+
+.views-control output {
+  font-variant-numeric: tabular-nums;
+}
+
 .panel button,
 .panel .button {
   padding: 0.25rem 0.5rem;

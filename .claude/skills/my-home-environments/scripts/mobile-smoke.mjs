@@ -3,10 +3,13 @@
 // Smoke test of the phone layout on a touch screen: the top bar, the sheet with its panels, the level
 // switcher, furniture (every placement write answered inside the browser), walk mode, and the side
 // sheet with the phone held across. Then the frame loop, on a phone and on a desktop: the draw calls of a
-// moving frame against the budgets, and nothing drawn while idle in every value of the quality setting.
-// Read-only: nothing is written to the environment.
+// moving frame against the budgets, and nothing drawn while idle in every value of the quality setting. Then
+// the named views: each opens from its link, the section's cut and caps stay within the budget and compile
+// nothing when switched off and on, and "Save image" downloads a PNG of twice the canvas size.
+// Read-only: nothing is written to the environment. MOBILE_SMOKE_ONLY=views runs the named views alone.
 // Playwright is loaded from MY_HOME_PLAYWRIGHT_DIR.
 /* global document, window, WebGL2RenderingContext */
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
@@ -509,6 +512,204 @@ async function textureChecks(browser, { device, base, host, homeId }) {
   }
 }
 
+/** The pixel size of a PNG file: the IHDR chunk follows the 8 bytes of the signature. */
+function pngSize(file) {
+  const bytes = readFileSync(file);
+  const isPng = bytes.subarray(1, 4).toString('latin1') === 'PNG';
+  return isPng ? { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) } : undefined;
+}
+
+/**
+ * The named views (docs/views.md) on one kind of device, in a context of its own: each opens from
+ * its link and settles; the section stays within the whole house's draw-call budget, also while
+ * its cut moves; switching it off and on again compiles no shader; and "Save image" downloads a
+ * PNG of twice the canvas size in the beautiful tier, whatever the quality setting, and leaves
+ * the view as it was. Read-only: only GET requests leave the browser.
+ */
+async function viewChecks(browser, { device, base, host, homeId }) {
+  const phone = device === 'phone';
+  const context = await browser.newContext(
+    phone
+      ? { viewport: PORTRAIT, hasTouch: true, isMobile: true, deviceScaleFactor: 2 }
+      : { viewport: { width: 1440, height: 900 } },
+  );
+  await context.route('**/*', (route) => {
+    const request = route.request();
+    if (new URL(request.url()).host !== host) return route.continue();
+    if (!['GET', 'HEAD'].includes(request.method())) return route.abort();
+    return route.continue({ headers: { ...request.headers(), authorization: `Bearer ${token}` } });
+  });
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(String(error)));
+  const perf = () => page.evaluate(() => window.__myHomePerf?.());
+  const settled = (tier) =>
+    page
+      .waitForSelector(`canvas[data-frame="settled"]${tier ? `[data-tier="${tier}"]` : ''}`, {
+        timeout: 240_000,
+      })
+      .then(
+        () => true,
+        () => false,
+      );
+  const open = async (view) => {
+    // Stepping down is off: a software renderer is slow. The phone's View tab holds the control.
+    const query = new URLSearchParams({
+      quality: 'fast',
+      perf: '1',
+      hints: 'off',
+      stepdown: 'off',
+    });
+    if (phone) query.set('panel', 'view');
+    if (homeId) query.set('home', homeId);
+    await page.goto(new URL(`/?${query}&${view}`, base).href, {
+      waitUntil: 'networkidle',
+      timeout: 60_000,
+    });
+    await page.waitForSelector('canvas', { timeout: 30_000 });
+  };
+  const views = page.getByRole('group', { name: 'Views', exact: true });
+  const press = async (name) => {
+    const button = views.getByRole('button', { name, exact: true });
+    await button.scrollIntoViewIfNeeded();
+    await (phone ? button.tap() : button.click());
+  };
+  const pressed = (name) =>
+    views.getByRole('button', { name, exact: true }).getAttribute('aria-pressed');
+  const where = `on a ${device}`;
+  try {
+    await open('view=cutaway');
+    // The control comes with a lazy chunk, a moment after the page. A build before #114 has none.
+    await page.waitForSelector('.views-control', { timeout: 30_000 }).catch(() => undefined);
+    if ((await page.locator('.views-control').count()) === 0) {
+      console.log(`skip  the named views ${where}: a build before #114 (no Views control)`);
+      return;
+    }
+    check(
+      `${where}: ?view=cutaway opens the cutaway and settles`,
+      (await settled('fast')) && (await pressed('Cutaway')) === 'true',
+    );
+    check(
+      `${where}: the address keeps the view`,
+      new URL(page.url()).searchParams.get('view') === 'cutaway',
+      page.url().replace(/^[^?]*/, ''),
+    );
+    check(
+      `${where}: a named view shows no room names`,
+      (await page.locator('.room-label').count()) === 0,
+    );
+
+    await open('view=eye');
+    check(
+      `${where}: ?view=eye opens eye level in a room and settles`,
+      (await settled('fast')) && (await pressed('Eye level')) === 'true',
+    );
+
+    // A named view goes and comes back without a compile, once both were drawn (§4.5).
+    await open('view=cutaway');
+    let came = await settled('fast');
+    const compiled = [];
+    for (const name of ['Free', 'Cutaway', 'Free', 'Cutaway']) {
+      await press(name);
+      came &&= await settled('fast');
+      compiled.push((await perf()).compiles);
+    }
+    check(
+      `${where}: "Free" and "Cutaway" switch the view, and the second round compiles no shader`,
+      came && compiled[2] === compiled[1] && compiled[3] === compiled[1],
+      `${compiled.join(', ')} compiled (free, cutaway, free, cutaway)`,
+    );
+
+    if ((await views.getByRole('button', { name: 'Section', exact: true }).count()) === 0) {
+      console.log(`skip  the section and "Save image" ${where}: a build before the section`);
+      return;
+    }
+    await open('view=section&look=east');
+    check(
+      `${where}: ?view=section opens the section and settles`,
+      (await settled('fast')) && (await pressed('Section')) === 'true',
+    );
+    const cut = await perf();
+    const budget = DRAW_CALLS[device][1];
+    check(
+      `${where}: a frame of the section is within the whole house's draw-call budget`,
+      cut.drawCalls > 0 && cut.drawCalls <= budget,
+      `${cut.drawCalls} draw calls, budget ${budget}`,
+    );
+    // The cut moves with the slider (the arrow keys step it), and the address follows.
+    const slider = views.getByRole('slider');
+    await slider.scrollIntoViewIfNeeded();
+    const at = () => new URL(page.url()).searchParams.get('at');
+    const before = await at();
+    await slider.focus();
+    for (let step = 0; step < 4; step++) await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(400);
+    const moved = await settled('fast');
+    const after = await perf();
+    check(
+      `${where}: the slider moves the cut, the address follows, and the view settles`,
+      moved && (await at()) !== before && after.frames > cut.frames,
+      `at ${before} → ${await at()}`,
+    );
+    check(
+      `${where}: a frame with the cut moved is within the budget and compiled no shader`,
+      after.drawCalls <= budget && after.compiles === cut.compiles,
+      `${after.drawCalls} draw calls; ${cut.compiles} compiled before, ${after.compiles} after`,
+    );
+    // Off and on again: the programs of both are there, nothing is compiled, no frame is lost.
+    await press('Free');
+    const free = await settled('fast');
+    const off = await perf();
+    await press('Section');
+    const again = await settled('fast');
+    const on = await perf();
+    check(
+      `${where}: the section switches off and on again and each settles`,
+      free && again && on.frames > off.frames && (await pressed('Section')) === 'true',
+    );
+    check(
+      `${where}: switching the section off and on compiled no shader`,
+      on.compiles === after.compiles && off.compiles === after.compiles,
+      `${after.compiles} compiled before, ${off.compiles} off, ${on.compiles} on again`,
+    );
+
+    // "Save image": a PNG of twice the canvas, beautiful whatever the setting, named after the view.
+    const canvas = page.locator('canvas').first();
+    const css = await canvas.evaluate((c) => ({ width: c.clientWidth, height: c.clientHeight }));
+    const buffer = await canvas.evaluate((c) => ({ width: c.width, height: c.height }));
+    const save = views.getByRole('button', { name: 'Save image' });
+    await save.scrollIntoViewIfNeeded();
+    const [download] = await Promise.all([
+      page.waitForEvent('download', { timeout: 300_000 }),
+      phone ? save.tap() : save.click(),
+    ]);
+    const size = pngSize(await download.path());
+    const ratio = Math.min(2, 3840 / css.width);
+    check(
+      `${where}: "Save image" downloads a PNG named after the view`,
+      /^my-home-section-\d{8}-\d{4}\.png$/.test(download.suggestedFilename()),
+      download.suggestedFilename(),
+    );
+    check(
+      `${where}: the image has twice the canvas size`,
+      size?.width === Math.floor(css.width * ratio) &&
+        size?.height === Math.floor(css.height * ratio),
+      `${size?.width}x${size?.height} for a canvas of ${css.width}x${css.height}`,
+    );
+    const restored = await canvas.evaluate((c) => ({ width: c.width, height: c.height }));
+    check(
+      `${where}: after the export the canvas has its own size and the view settles in its tier`,
+      restored.width === buffer.width &&
+        restored.height === buffer.height &&
+        (await settled('fast')),
+      `${restored.width}x${restored.height}, before ${buffer.width}x${buffer.height}`,
+    );
+    check(`${where}: the named views log no page error`, errors.length === 0, errors[0] ?? '');
+  } finally {
+    await context.close();
+  }
+}
+
 const overlap = (a, b) =>
   a.x < b.x + b.width - 1 &&
   b.x < a.x + a.width - 1 &&
@@ -533,6 +734,12 @@ async function smoke(out, homeId) {
   const active = () => [...fake.values()].filter((p) => p.removedAt === null);
   const target = homeId ? `/?home=${encodeURIComponent(homeId)}` : '/';
   try {
+    // MOBILE_SMOKE_ONLY=views: the named views alone, a few minutes instead of the whole run.
+    if (process.env.MOBILE_SMOKE_ONLY === 'views') {
+      for (const device of ['phone', 'desktop'])
+        await viewChecks(browser, { device, base, host, homeId });
+      return;
+    }
     // A phone held upright, with a touch screen.
     const context = await browser.newContext({
       viewport: PORTRAIT,
@@ -1165,6 +1372,7 @@ async function smoke(out, homeId) {
     for (const device of ['phone', 'desktop']) {
       await frameChecks(browser, { device, base, host, homeId });
       await textureChecks(browser, { device, base, host, homeId });
+      await viewChecks(browser, { device, base, host, homeId });
     }
   } finally {
     await browser.close();

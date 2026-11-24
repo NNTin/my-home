@@ -100,6 +100,11 @@ export interface WallSegment extends Box {
   outline?: Vec2[];
   /** The finish of everything but the two long faces: the top, the ends, the reveals of openings. */
   finish: ResolvedFinish;
+  /**
+   * The segment's top is the top of its wall, not a window sill: it is a cut face when the level
+   * above is hidden, and under the level above (or the roof) otherwise (§7.2).
+   */
+  cutTop: boolean;
   /** The two long faces, split where the room they border changes. */
   faces: WallFace[];
   /** Textures run along the wall from its start and up from its floor, on both faces. */
@@ -716,6 +721,7 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
         ...(outline && { outline: outline.map(([t, y]): Vec2 => [t - mid, y - midY]) }),
         finish:
           wall.kind === 'exterior' ? exteriorFinishes.facade : levelFinishes(wall.levelId).walls,
+        cutTop: s.part !== 'below',
         faces,
         uv: { origin: [sx, base, sz], u: [dx, 0, dz], v: [0, 1, 0] },
       });
