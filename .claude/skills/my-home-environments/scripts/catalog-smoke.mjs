@@ -167,7 +167,9 @@ async function smoke(out, homeId) {
           .then(() => console.log(`screenshot ${shot}`))
           .catch((error) => console.log(`no focus screenshot: ${redact(error.message)}`));
         focusUrl.searchParams.set('focus', 'catalog-smoke-nope');
-        await focused.goto(focusUrl.href, { waitUntil: 'networkidle', timeout: 60_000 });
+        // Not `networkidle`: the message shows for a few seconds, and the page keeps fetching
+        // (finish textures) for longer than that.
+        await focused.goto(focusUrl.href, { waitUntil: 'domcontentloaded', timeout: 60_000 });
         const alert = focused.getByRole('alert').filter({ hasText: 'Not found in this home' });
         check(
           `${label}: an unknown ?focus= says "Not found in this home"`,
@@ -192,6 +194,13 @@ async function smoke(out, homeId) {
       await page.goto(viewerUrl.href, { waitUntil: 'networkidle', timeout: 60_000 });
       onHost(page);
       await page.waitForSelector('canvas', { timeout: 30_000 });
+      // The first frames and the finish textures keep a software renderer busy for many seconds;
+      // a click waits for the page. A build from #110 on marks the canvas when the view has settled.
+      if ((await page.locator('canvas').first().getAttribute('data-frame')) !== null) {
+        await page
+          .waitForSelector('canvas[data-frame="settled"]', { timeout: 240_000 })
+          .catch(() => {});
+      }
       const entry = page.getByRole('link', { name: /Catalogue$/ }).first();
       await entry.waitFor({ timeout: 30_000 });
       if (device.hasTouch) {
@@ -298,6 +307,16 @@ async function smoke(out, homeId) {
           () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
         );
         check(`${label}: the finishes do not make the page scroll sideways`, !wide);
+        // A card holds its text: nothing in it reaches past its frame.
+        const spills = await page.evaluate(
+          () =>
+            [...document.querySelectorAll('[data-finish-id] .finish')].filter(
+              (frame) =>
+                frame.scrollHeight > frame.clientHeight + 1 ||
+                frame.scrollWidth > frame.clientWidth + 1,
+            ).length,
+        );
+        check(`${label}: every finish card holds its text`, spills === 0, `${spills} spill`);
       }
       const bedName = await page
         .locator(`a[data-type-id="furniture.bed"]`)

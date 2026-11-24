@@ -148,6 +148,15 @@
   font-size: 0.8125rem;
 }
 
-.finish-source a {
+/* A link in a sentence: not the boxed link that a type card is. */
+.catalog-card .finish-source a {
+  display: inline;
+  min-height: 0;
+  height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
   color: inherit;
+  text-decoration: underline;
 }
