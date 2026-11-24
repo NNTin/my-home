@@ -14,6 +14,9 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
   furniture, kitchen units, appliances, the `fixtures` kind: lights, the radiator, and the `outdoor` kind: patio and
   garden pieces), auto-registered (`docs/adding-piece-type.md`); the furniture (one placement set per home) and its editor in `docs/furniture.md`;
   the phone layout (top bar, sheet) in `docs/mobile.md`
+- `packages/shared/src/finishes/`: the finish library (surface materials: one definition per finish), and
+  `apps/web/src/finishes/`: their texture files (CC0 only, `ASSETS.md`), loader and materials; a room or exterior
+  surface names a finish in `home.json` (`docs/home-model.md` § Finishes)
 - `apps/web/src/routing/` (no router library) and `apps/web/src/catalog-page/`: the pages `/catalog` and
   `/catalog/<kind>/<typeId>`, lazy chunks; thumbnails cached in the browser (`docs/catalog.md`)
 - `docs/`: project docs (designs not built yet in `docs/design/`: the realistic render, `realistic-render.md`);
@@ -26,6 +29,8 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - `pnpm lint`, `pnpm format`, `pnpm typecheck`, `pnpm test`, `pnpm build`
 - `pnpm check:bundle` after `pnpm build`: the web bundle against `apps/web/bundle-budget.json` (CI runs it)
 - `pnpm schema:generate` after editing the HomeModel zod schema (commit the JSON Schema)
+- `pnpm finishes:fetch <finish id>` after adding a textured finish (downloads from the CC0 library, writes the WebP
+  files and `ASSETS.md`; needs ImageMagick with WebP); `pnpm finishes:manifest` rewrites the manifest only
 - `pnpm db:generate` after editing the Drizzle schema (commit the migration), `pnpm db:migrate`, `pnpm db:seed`
 - One package: `pnpm --filter @my-home/api test`
 
@@ -55,6 +60,11 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
   owner in an issue.
 - **Still approximate, improve when photos allow**: window positions and sizes (along their walls), doors, stairs,
   ceilings, floor levels, and the furniture and fixtures (catalogue types and placements).
+- **Finishes are appearance, and may be refined from photos**: the finish of a souterrain room's floor, walls and
+  ceiling, of the facade, the roof, outdoor areas, outbuildings and stairs is a value in `home.json` with its
+  provenance and photo ids (`docs/home-model.md` § Finishes). Choosing one never moves, resizes or re-angles
+  anything: the geometry rules above are unchanged. A missing finish is its own PR, from a CC0 library.
+  **No texture is ever made from a photo.**
 - **Only the souterrain apartment is modelled inside.** The ground-floor and attic interiors are out of scope: keep
   their geometry (floors and windows as seen from outside) and never request photos inside them; photos of their
   windows only from the owner's garden, patio or the street.

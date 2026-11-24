@@ -272,7 +272,8 @@ async function copyReadout(page, { device, where, draws, perf }) {
     copied === 1 &&
       lines[0] === `| \`?perf=1\` | Measured | Budget (${device}) |` &&
       lines[1] === '| --- | --- | --- |' &&
-      lines.length === 24 &&
+      // One row more from #112 on: "Texture files".
+      lines.length === (row('Texture files') ? 25 : 24) &&
       lines.every((line) => line.startsWith('| ') && line.endsWith(' |')),
     `${lines.length} lines, "${lines[0] ?? ''}"`,
   );
@@ -405,6 +406,109 @@ async function lampWalk(page, { device, base, homeId, perf, settled }) {
 }
 
 /** Whether two boxes share any area (a pixel of rounding is not an overlap). */
+/**
+ * Finish textures (docs/design/realistic-render.md §4.4, §4.5, §5.3), in a context of its own
+ * whose texture files are held back until the first frames are drawn. Until they arrive the view
+ * draws tints and has not settled; a device asks for one size of each set and never the other;
+ * and their arrival compiles nothing: the program count and the compile counter stay what they
+ * were with the placeholders. Read-only.
+ */
+async function textureChecks(browser, { device, base, host, homeId }) {
+  const phone = device === 'phone';
+  const where = `on a ${device}`;
+  const context = await browser.newContext(
+    phone
+      ? { viewport: PORTRAIT, hasTouch: true, isMobile: true, deviceScaleFactor: 2 }
+      : { viewport: { width: 1440, height: 900 } },
+  );
+  const requested = [];
+  let release;
+  const held = new Promise((resolve) => (release = resolve));
+  await context.route('**/*', async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (url.host !== host) return route.continue();
+    if (!['GET', 'HEAD'].includes(request.method())) return route.abort();
+    // The files themselves, not a dev server's modules that only name them.
+    if (url.pathname.endsWith('.webp') && ['fetch', 'image'].includes(request.resourceType())) {
+      requested.push(url.pathname);
+      await held;
+    }
+    return route.continue({ headers: { ...request.headers(), authorization: `Bearer ${token}` } });
+  });
+  const page = await context.newPage();
+  const perf = () => page.evaluate(() => window.__myHomePerf?.());
+  try {
+    const query = new URLSearchParams({
+      quality: 'fast',
+      perf: '1',
+      hints: 'off',
+      stepdown: 'off',
+    });
+    if (homeId) query.set('home', homeId);
+    // Not `networkidle`: the held files are requests that do not end.
+    await page.goto(new URL(`/?${query}`, base).href, { waitUntil: 'load', timeout: 60_000 });
+    await page.waitForSelector('canvas', { timeout: 30_000 });
+    const drawn = await page
+      .waitForFunction(() => (window.__myHomePerf?.().frames ?? 0) >= 1, null, { timeout: 240_000 })
+      .then(
+        () => true,
+        () => false,
+      );
+    await page.waitForTimeout(3000);
+    const before = await perf();
+    if (before?.textureFiles === undefined) {
+      console.log(`skip  finish textures ${where}: a build before #112 (no texture files)`);
+      return;
+    }
+    check(`${where}: the first frames are drawn before any texture has arrived`, drawn);
+    check(
+      `${where}: textures are asked for, and none has arrived yet`,
+      requested.length > 0 && before.textureFiles === 0,
+      `${requested.length} requested, ${before.textureFiles} loaded`,
+    );
+    check(
+      `${where}: the view has not settled while textures are on their way`,
+      (await page.locator('canvas').first().getAttribute('data-frame')) === 'moving',
+    );
+    release();
+    const settled = await page
+      .waitForSelector('canvas[data-frame="settled"]', { timeout: 240_000 })
+      .then(
+        () => true,
+        () => false,
+      );
+    const after = await perf();
+    check(`${where}: the view settles once the textures are here`, settled);
+    check(
+      `${where}: every texture asked for arrived`,
+      after.textureFiles === requested.length && after.textureFailures === 0,
+      `${after.textureFiles} of ${requested.length} loaded, ${after.textureFailures} failed`,
+    );
+    check(
+      `${where}: the arrival of the textures compiled no shader`,
+      after.compiles === before.compiles && after.programs === before.programs,
+      `${before.programs} programs (${before.compiles} compiled) with placeholders, ${after.programs} (${after.compiles}) with textures`,
+    );
+    const [size, other] = phone ? ['512', '1024'] : ['1024', '512'];
+    const sizeOf = (file) => /-(512|1024)[-.]/.exec(file)?.[1];
+    check(
+      `${where}: one size of each texture set is asked for (${size} px), never the other`,
+      requested.every((file) => sizeOf(file) === size) &&
+        !requested.some((file) => sizeOf(file) === other) &&
+        new Set(requested).size === requested.length,
+      requested.filter((file) => sizeOf(file) !== size).join(', '),
+    );
+    check(
+      `${where}: a roughness map is asked for only on a desktop`,
+      requested.some((file) => file.includes('roughness')) === !phone,
+    );
+  } finally {
+    release();
+    await context.close();
+  }
+}
+
 const overlap = (a, b) =>
   a.x < b.x + b.width - 1 &&
   b.x < a.x + a.width - 1 &&
@@ -519,6 +623,19 @@ async function smoke(out, homeId) {
     const sheet = page.locator('.sheet');
     await sheet.waitFor({ timeout: 30_000 });
     await page.waitForTimeout(3000);
+    /**
+     * Waits until the view has settled (a build from #110 on marks the canvas): the first frames
+     * and, from #112 on, the finish textures take seconds under software rendering, and a check
+     * that the view rests, or a drag, must not start in the middle of them.
+     */
+    const atRest = async () => {
+      const canvas = page.locator('canvas').first();
+      if ((await canvas.getAttribute('data-frame').catch(() => null)) === null) return;
+      await page
+        .waitForSelector('canvas[data-frame="settled"]', { timeout: 240_000 })
+        .catch(() => {});
+    };
+    await atRest();
 
     const box = (selector) => page.locator(selector).first().boundingBox();
     const snap = async () =>
@@ -617,6 +734,7 @@ async function smoke(out, homeId) {
 
     // At rest nothing is drawn: the phone renders a frame only when something changed.
     const draws = () => page.evaluate(() => window.__draws);
+    await atRest();
     await page.waitForTimeout(3000);
     const resting = await draws();
     await page.waitForTimeout(2000);
@@ -884,8 +1002,11 @@ async function smoke(out, homeId) {
     // Pressed where the drag ended: the item followed the finger there. (The toolbar is no guide
     // here: near the edge of the view it is pushed back inside, away from the item.) The finger
     // stays down until the panel opens, however slow the renderer is, then lets go.
+    // The press is taken once the frames before it are drawn: after a drag those are several, a
+    // refined one among them, and with textures a software renderer needs seconds for each.
+    await atRest();
     await touch('touchStart', dropped.x, dropped.y);
-    const deadline = Date.now() + 5000;
+    const deadline = Date.now() + 20_000;
     while (Date.now() < deadline && (await snap()) !== 'half') await page.waitForTimeout(100);
     await touch('touchEnd');
     await settle();
@@ -1041,8 +1162,10 @@ async function smoke(out, homeId) {
     await context.close();
 
     // The frame loop: budgets and rest, on a phone and on a desktop.
-    for (const device of ['phone', 'desktop'])
+    for (const device of ['phone', 'desktop']) {
       await frameChecks(browser, { device, base, host, homeId });
+      await textureChecks(browser, { device, base, host, homeId });
+    }
   } finally {
     await browser.close();
   }

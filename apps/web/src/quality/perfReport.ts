@@ -64,6 +64,10 @@ export function perfRows(data: PerfData, phone: boolean): PerfRow[] {
     },
     { name: 'Textures', value: String(data.textures) },
     {
+      name: 'Texture files',
+      value: `${data.textureFiles}${data.textureFailures ? `, ${data.textureFailures} failed` : ''}`,
+    },
+    {
       name: 'Lit lamps',
       value: `${data.litLamps} (${data.lampChanges} reassigned)`,
       budget: `≤ ${BUDGETS.litLamps[device]}`,

@@ -71,6 +71,8 @@ export interface SceneProps {
   quality?: Quality;
   /** Shows a short message: the viewer stepped down to a faster view, or could not load a part. */
   onNotice?(message: string): void;
+  /** "Plan colours": room floors in the colours that tell rooms apart, not their finishes. */
+  planColours?: boolean;
 }
 
 /** Stops the frame loop while `paused`, and puts back whichever loop ran before. */
@@ -234,6 +236,7 @@ export function Scene({
   frame,
   quality = 'fast',
   onNotice,
+  planColours = false,
 }: SceneProps) {
   const roseRef = useRef<HTMLButtonElement>(null);
   const labelsRef = useRef<HTMLDivElement>(null);
@@ -310,7 +313,12 @@ export function Scene({
           beautiful={quality !== 'fast'}
           onNotice={onNotice}
         >
-          <ShellMeshes scene={scene} visibility={visibility} pieces={pieces} />
+          <ShellMeshes
+            scene={scene}
+            visibility={visibility}
+            pieces={pieces}
+            planColours={planColours}
+          />
           <FurnitureLayer
             items={furniture}
             handlers={dragHandlers}

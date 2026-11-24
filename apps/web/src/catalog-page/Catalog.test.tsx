@@ -1,9 +1,10 @@
-import { catalog } from '@my-home/shared';
+import { catalog, finishes } from '@my-home/shared';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeApi } from '../test/fakeApi';
 import { stubScreen } from '../test/screen';
 import CatalogPage from './CatalogPage';
+import { listedFinishes, surfacesText } from './Finishes';
 import { catalogSections } from './sections';
 
 // jsdom has no WebGL: the offscreen renderer is replaced.
@@ -164,6 +165,71 @@ describe('CatalogPage', () => {
     await vi.waitFor(() => expect(bed.querySelector('img')).toHaveAttribute('src', 'blob:3'));
     expect(screen.getByRole('link', { name: /^Bed/ })).toHaveAccessibleName(/^Bed/);
     expect(document.querySelectorAll('canvas')).toHaveLength(0);
+  });
+
+  it('lists the finishes of the library with their source and licence', () => {
+    fakeApi();
+    render(<CatalogPage />);
+    const cards = section('Finishes').getAllByRole('listitem');
+    expect(cards.map((c) => c.dataset.finishId)).toEqual(finishes.finishes.map((f) => f.id));
+    const lawn = within(cards.find((c) => c.dataset.finishId === 'grass.lawn')!);
+    expect(lawn.getByText('Lawn')).toBeInTheDocument();
+    expect(lawn.getByText('grass.lawn')).toBeInTheDocument();
+    expect(lawn.getByText(/For the ground · one repeat covers 1.4 m/)).toBeInTheDocument();
+    expect(lawn.getByRole('link', { name: 'ambientCG · Grass004' })).toHaveAttribute(
+      'href',
+      'https://ambientcg.com/a/Grass004',
+    );
+    expect(lawn.getByText(/licence CC0-1.0/)).toBeInTheDocument();
+    const paint = within(cards.find((c) => c.dataset.finishId === 'paint.plain')!);
+    expect(paint.getByText('A plain colour: no texture')).toBeInTheDocument();
+    expect(paint.getByText(/For walls, ceilings and facades · can be tinted/)).toBeInTheDocument();
+    // Every textured finish names where its texture comes from.
+    for (const finish of finishes.finishes.filter((f) => f.texture)) {
+      const card = within(cards.find((c) => c.dataset.finishId === finish.id)!);
+      expect(card.getByRole('link')).toHaveAttribute('href', finish.source!.url);
+      expect(card.getByText(/licence CC0-1.0/)).toBeInTheDocument();
+    }
+  });
+
+  it('shows a finish’s colour map in this device’s size, and a tint for a plain or relief-only one', () => {
+    fakeApi();
+    const { unmount } = render(<CatalogPage />);
+    const swatch = (id: string) =>
+      document.querySelector<HTMLElement>(`[data-finish-id="${id}"] .finish-swatch`)!;
+    expect(swatch('wood.oak-laminate').querySelector('img')!.getAttribute('src')).toMatch(
+      /wood-oak-laminate\/color-1024\.webp$/,
+    );
+    expect(swatch('wood.oak-laminate').querySelector('img')).toHaveAttribute('loading', 'lazy');
+    expect(swatch('paint.plain').querySelector('img')).toBeNull();
+    expect(swatch('paint.plain').style.background).toBe('rgb(242, 239, 232)');
+    expect(swatch('render.facade').querySelector('img')).toBeNull();
+    unmount();
+    stubScreen('portrait');
+    render(<CatalogPage />);
+    const images = [...document.querySelectorAll('.finish-swatch img')].map((i) =>
+      i.getAttribute('src'),
+    );
+    expect(images.length).toBeGreaterThan(5);
+    expect(images.every((src) => /color-512\.webp$/.test(src!))).toBe(true);
+  });
+
+  it('searches the finishes too, and says what a finish is for', () => {
+    fakeApi();
+    render(<CatalogPage />);
+    fireEvent.change(search(), { target: { value: 'clay' } });
+    expect(
+      section('Finishes')
+        .getAllByRole('listitem')
+        .map((c) => c.dataset.finishId),
+    ).toEqual(['roof.clay-tile']);
+    expect(screen.queryByText(/Nothing matches/)).not.toBeInTheDocument();
+    fireEvent.change(search(), { target: { value: 'window' } });
+    expect(screen.queryByRole('region', { name: 'Finishes' })).not.toBeInTheDocument();
+    expect(listedFinishes('PAINT.').map((f) => f.id)).toEqual(['paint.plain']);
+    expect(surfacesText(finishes.get('cut.dark')!)).toBe('Drawn by the viewer only');
+    expect(surfacesText(finishes.get('grass.lawn')!)).toBe('For the ground');
+    expect(surfacesText(finishes.get('tile.light-60')!)).toBe('For floors and walls');
   });
 
   it('is one column with the phone layout', () => {

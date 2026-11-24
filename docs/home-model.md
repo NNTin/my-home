@@ -342,7 +342,7 @@ from the home's location, which the model does not contain.
 
 A **finish** is a named surface material: oak laminate, plain paint, clay roof tiles. Finishes are a library in
 git, like the piece types: [`packages/shared/src/finishes/`](../packages/shared/src/finishes/) (definitions in
-`definitions/`, validated at import). A home refers to a finish by id. Every field is optional: a surface without
+`definitions/`, validated at import). A home refers to a finish by id. A home may leave out every finish: a surface without
 one draws the **default for its kind**, so a home that names no finish is valid and complete.
 
 A **finish use** is:
@@ -387,7 +387,8 @@ A **finish use** is:
   is in the model; `cut.dark` cannot be named by a home.
 - **Editing:** by a pull request to `data/homes/home.json`. The app has no editor for finishes.
 
-Which finishes exist, with their surfaces, tints and sources, is in the definitions. A textured finish has files under
+Which finishes exist, with their surfaces, tints and sources, is listed on the catalogue page (`/catalog`,
+section "Finishes") and in the definitions. A textured finish has files under
 [`apps/web/src/finishes/textures/`](../apps/web/src/finishes/textures/), all from CC0 libraries, each listed with
 its source, licence and SHA-256 in [`apps/web/src/finishes/ASSETS.md`](../apps/web/src/finishes/ASSETS.md).
 
@@ -540,9 +541,26 @@ slabs, lowered ceilings, room floors, terrain blocks, outdoor surfaces, roof pla
 panels) without three.js, and
 `visibility.ts` filters them for the cutaway and the visibility toggles. The cutaway's top entry,
 **Roof**, shows the whole building; choosing the highest level hides the roof to look into it, and
-**Room names** labels the rooms of the level being looked into. Walls are split around openings (no CSG). The R3F
-components in `apps/web/src/scene/` only draw descriptors, so any file that follows the schema
-renders without renderer changes.
+**Room names** labels the rooms of the level being looked into. Walls are split around openings (no CSG).
+
+Every descriptor carries its **finish**, resolved from the model or its default (§ [Finishes](#finishes)):
+
+- A wall segment has a `finish` for its core (top, ends, the reveals of openings) and `faces`: its two long
+  faces, each split where the room it borders changes. The builder finds that room with a point 5 cm in front of
+  the face. A face that borders no room takes the facade finish when that point is outside the footprint, and
+  the level's default wall finish otherwise.
+- Every room has a ceiling surface just under the slab above (`roomCeilings`), shown and hidden like a lowered
+  ceiling, with the room's ceiling finish; a lowered ceiling takes the ceiling finish of the room it hangs in.
+  The top level under a pitched roof has none.
+- Texture coordinates are in metres and are written when the draw items are merged: floors and the ground on
+  the plan from the plan origin (so neighbours line up), a wall face along the wall from its start and up from
+  its floor, a roof plane along the eave and up the slope at true length. The finish's `tileSize` then says how
+  many metres one repeat covers, so a tile of 60 cm measures 60 cm on every surface.
+- The viewer's **Plan colours** switch (off by default, remembered per device) draws the room floors in the
+  pastel colours that tell rooms apart, instead of their finishes.
+  The R3F
+  components in `apps/web/src/scene/` only draw descriptors, so any file that follows the schema
+  renders without renderer changes.
 
 ## Seeding, swapping and importing homes
 

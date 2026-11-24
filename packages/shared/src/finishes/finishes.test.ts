@@ -200,7 +200,6 @@ describe('default finishes', () => {
   });
 
   it('has a default for every kind of outdoor area and outbuilding', () => {
-    const d = { value: 0, source: 'mock' as const };
     expect(
       Object.fromEntries(
         OutdoorAreaKind.options.map((kind) => [kind, outdoorAreaFinish({ kind }).finish]),
@@ -223,7 +222,6 @@ describe('default finishes', () => {
       tint: '#9a7b56',
       rotation: 0,
     });
-    expect(d.value).toBe(0);
   });
 
   it('draws the ground with soil and cut faces dark', () => {

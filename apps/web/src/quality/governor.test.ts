@@ -45,6 +45,8 @@ const report = (patch: Partial<FrameReport> = {}): FrameReport => ({
   compiles: 6,
   compiled: false,
   textures: 0,
+  textureFiles: 0,
+  textureFailures: 0,
   shadowLights: 1,
   litLamps: 0,
   lampChanges: 0,

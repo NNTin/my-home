@@ -22,6 +22,9 @@ interface Props {
   onPhotos(): void;
   quality: Quality;
   onQuality(quality: Quality): void;
+  /** "Plan colours": room floors in the colours that tell rooms apart, not their finishes. */
+  planColours: boolean;
+  onPlanColours(on: boolean): void;
 }
 
 function Toggle({
@@ -54,6 +57,8 @@ export function ControlPanel({
   onPhotos,
   quality,
   onQuality,
+  planColours,
+  onPlanColours,
 }: Props) {
   const set = (patch: Partial<Visibility>) => onChange({ ...visibility, ...patch });
   const levelsTopDown = [...scene.levels].reverse();
@@ -115,6 +120,11 @@ export function ControlPanel({
           label="Room names"
           checked={visibility.showRoomNames}
           onChange={() => set({ showRoomNames: !visibility.showRoomNames })}
+        />
+        <Toggle
+          label="Plan colours"
+          checked={planColours}
+          onChange={() => onPlanColours(!planColours)}
         />
       </fieldset>
 

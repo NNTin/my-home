@@ -67,6 +67,12 @@ export function visibleScene(scene: HomeScene, v: Visibility): HomeScene {
     (item.apartmentId === undefined || !hiddenApartments.has(item.apartmentId));
 
   const showRoof = v.maxLevelIndex >= roofIndex(scene);
+  // A ceiling hides under the slab above, so it goes with the level above (or the roof).
+  const ceilingShown = (c: { levelId: string; apartmentId?: string }) => {
+    const index = scene.levels.find((l) => l.id === c.levelId)?.index;
+    const above = scene.levels.find((l) => l.index === (index ?? Infinity) + 1);
+    return shown(c) && (above ? shownLevels.has(above.id) : showRoof);
+  };
 
   return {
     ...scene,
@@ -76,12 +82,8 @@ export function visibleScene(scene: HomeScene, v: Visibility): HomeScene {
     stairs: scene.stairs.filter(shown),
     // Slabs belong to a level, so the floor of a hidden level is cut away with it.
     slabs: scene.slabs.filter((s) => shownLevels.has(s.levelId) && (s.kind !== 'roof' || showRoof)),
-    // A lowered ceiling hides under the slab above, so it goes with the level above (or the roof).
-    ceilings: scene.ceilings.filter((c) => {
-      const index = scene.levels.find((l) => l.id === c.levelId)?.index;
-      const above = scene.levels.find((l) => l.index === (index ?? Infinity) + 1);
-      return shown(c) && (above ? shownLevels.has(above.id) : showRoof);
-    }),
+    ceilings: scene.ceilings.filter(ceilingShown),
+    roomCeilings: scene.roomCeilings.filter(ceilingShown),
     roofPlanes: showRoof ? scene.roofPlanes.filter((r) => shownLevels.has(r.levelId)) : [],
     roofWindows: showRoof ? scene.roofWindows.filter((r) => shownLevels.has(r.levelId)) : [],
     terrain: v.showTerrain ? scene.terrain : [],

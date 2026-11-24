@@ -2,11 +2,18 @@ import { useThree, type ThreeEvent } from '@react-three/fiber';
 import { createContext, useContext, useEffect, useMemo } from 'react';
 import { Raycaster, type Object3D } from 'three';
 import type { HomeScene } from '../builder/buildHome';
-import { groupShown, scenePieceDraws, shellItems, type PieceDraw } from '../builder/drawList';
+import {
+  groupShown,
+  scenePieceDraws,
+  shellItems,
+  type PieceDraw,
+  type ShellOptions,
+} from '../builder/drawList';
 import type { Visibility } from '../builder/visibility';
 import { PartsMesh } from '../catalog/PartsMesh';
 import type { PartState } from '../catalog/types';
-import { batches, batchMaterial } from './batches';
+import { finishMaterials } from '../finishes/materials';
+import { batches } from './batches';
 import { onCanvas } from './canvasEvent';
 import { useFrameControl } from './Frame';
 
@@ -75,6 +82,7 @@ export function ShellMeshes({
   scene,
   visibility,
   pieces,
+  planColours = false,
 }: {
   /** The whole scene: what is hidden is decided per batch, and hiding rebuilds nothing. */
   scene: HomeScene;
@@ -82,8 +90,10 @@ export function ShellMeshes({
   visibility?: Visibility | undefined;
   /** Set to make windows, doors, roof windows and gates selectable. */
   pieces?: PieceHandlers | undefined;
+  /** "Plan colours": room floors in the colours that tell rooms apart, not their finishes. */
+  planColours?: ShellOptions['planColours'];
 }) {
-  const shell = useMemo(() => batches(shellItems(scene)), [scene]);
+  const shell = useMemo(() => batches(shellItems(scene, { planColours })), [scene, planColours]);
   useEffect(() => () => shell.forEach((b) => b.geometry.dispose()), [shell]);
   const pieceDraws = useMemo(() => scenePieceDraws(scene), [scene]);
   // The home or what is shown of it changed: the sun's shadow is drawn again, and what the new
@@ -92,6 +102,15 @@ export function ShellMeshes({
   useEffect(() => frame?.materialsChanged(), [frame, shell, pieceDraws]);
   useEffect(() => frame?.castersChanged(), [frame, shell, pieceDraws, visibility]);
   const shown = (group: PieceDraw['group']) => !visibility || groupShown(group, scene, visibility);
+  // Outside the viewer's frame loop (tests) the materials are a phone's and no texture is asked for.
+  const materials = frame?.finishes ?? finishMaterials('phone');
+  // A texture is asked for when its finish is first drawn: not for what is hidden (§4.4).
+  useEffect(() => {
+    if (!frame) return;
+    for (const b of shell) {
+      if (!visibility || groupShown(b.group, scene, visibility)) frame.finishShown(b.finish);
+    }
+  }, [frame, shell, scene, visibility]);
   return (
     <Pieces.Provider value={pieces}>
       <group>
@@ -99,7 +118,7 @@ export function ShellMeshes({
           <mesh
             key={b.key}
             geometry={b.geometry}
-            material={batchMaterial(b.material)}
+            material={materials.material(b.finish, b.material)}
             visible={shown(b.group)}
             castShadow={b.castShadow}
             receiveShadow={b.receiveShadow}

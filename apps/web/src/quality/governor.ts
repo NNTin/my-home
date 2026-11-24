@@ -41,6 +41,9 @@ export interface FrameReport {
   /** This frame compiled a program itself, instead of finding it compiled ahead. */
   compiled: boolean;
   textures: number;
+  /** Texture files of finishes that have arrived, and that failed to load (§4.4). */
+  textureFiles: number;
+  textureFailures: number;
   /** Lights that cast a shadow, and lamps of the pool that are lit. */
   shadowLights: number;
   litLamps: number;
@@ -150,6 +153,8 @@ export class FrameGovernor {
     compiles: 0,
     compiled: false,
     textures: 0,
+    textureFiles: 0,
+    textureFailures: 0,
     shadowLights: 0,
     litLamps: 0,
     lampChanges: 0,
