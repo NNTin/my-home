@@ -989,10 +989,41 @@ describe('finishes', () => {
   /** The first room of the lowest level: the only level whose rooms take finishes. */
   const souterrainRoom = (home: HomeModel) => home.rooms.find((r) => r.levelId === 'souterrain')!;
 
-  it('accepts the real home and the mock home, which name no finish', () => {
-    for (const home of [realHome(), mockHome()]) {
-      expect(HomeModel.safeParse(home).success).toBe(true);
-      expect(JSON.stringify(home)).not.toContain('"finish');
+  it('accepts the mock home, which names no finish', () => {
+    expect(HomeModel.safeParse(mockHome()).success).toBe(true);
+    expect(JSON.stringify(mockHome())).not.toContain('"finish');
+  });
+
+  it('accepts the real home: every finish cites photos, or is a default that names its photo request', () => {
+    const home = HomeModel.parse(realHome());
+    const uses = [
+      ...home.rooms.flatMap((r) => Object.values(r.finishes ?? {})),
+      ...Object.values(home.building.finishes ?? {}),
+      ...home.outdoorAreas.flatMap((a) => (a.finish ? [a.finish] : [])),
+    ];
+    expect(uses.length).toBeGreaterThan(40);
+    for (const use of uses) {
+      if (use.source === 'mock') {
+        expect(use.photos, use.note).toBeUndefined();
+        expect(use.tint, use.note).toBeUndefined();
+        expect(use.note).toMatch(/^Default: .* \(photo request [0-9a-f]{8}\)$/);
+      } else {
+        expect(use.source).toBe('estimated-from-photo');
+        expect(use.photos?.length, use.note).toBeGreaterThan(0);
+        expect(use.note?.length, use.finish).toBeGreaterThan(0);
+        // A tint is taken from two photos, or carried over from the room it was measured in.
+        if (use.tint && !use.note?.includes('measured there')) {
+          expect(use.photos!.length, use.note).toBeGreaterThanOrEqual(2);
+        }
+      }
+    }
+    // Every room of the souterrain is decided, surface by surface.
+    for (const room of home.rooms.filter((r) => r.levelId === 'souterrain')) {
+      expect(Object.keys(room.finishes ?? {}).sort(), room.id).toEqual([
+        'ceiling',
+        'floor',
+        'walls',
+      ]);
     }
   });
 

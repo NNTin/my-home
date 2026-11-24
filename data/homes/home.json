@@ -7,6 +7,20 @@
   "building": {
     "id": "building",
     "name": "House",
+    "finishes": {
+      "facade": {
+        "finish": "render.facade",
+        "tint": "#e5e3de",
+        "source": "estimated-from-photo",
+        "photos": ["75ecb36a-9c52-456f-b53c-b374717be4f6", "cbe9bda7-017e-4db9-a537-a4a24fd101f1"],
+        "note": "Coarse off-white render on the upper floors. Tint from lit parts of the wall in both photos, under an overcast sky. The souterrain band below is a smoother grey base render: the building has one facade finish"
+      },
+      "roof": {
+        "finish": "roof.clay-tile",
+        "source": "mock",
+        "note": "Default: the roof is only seen edge-on from the garden (photo request 34c07e85)"
+      }
+    },
     "footprint": [
       {
         "x": {
@@ -2309,7 +2323,24 @@
             "source": "measured"
           }
         }
-      ]
+      ],
+      "finishes": {
+        "floor": {
+          "finish": "floor.neutral",
+          "source": "mock",
+          "note": "Default: no photo shows the stair hall (photo request 9c5e1cee)"
+        },
+        "walls": {
+          "finish": "paint.plain",
+          "source": "mock",
+          "note": "Default: no photo shows the stair hall (photo request 9c5e1cee)"
+        },
+        "ceiling": {
+          "finish": "paint.plain",
+          "source": "mock",
+          "note": "Default: no photo shows the stair hall (photo request 9c5e1cee)"
+        }
+      }
     },
     {
       "id": "souterrain-work-room",
@@ -2358,7 +2389,34 @@
             "source": "measured"
           }
         }
-      ]
+      ],
+      "finishes": {
+        "floor": {
+          "finish": "wood.oak-laminate",
+          "tint": "#edd5b0",
+          "source": "estimated-from-photo",
+          "photos": ["6c8b4a31-2abc-4b74-9c6f-13f5b0f3a874"],
+          "note": "The same oak planks as in the corridor, laid east-west; the tint is the one measured there"
+        },
+        "walls": {
+          "finish": "paint.plain",
+          "source": "estimated-from-photo",
+          "photos": [
+            "ab2217ff-b07d-4fd7-ada9-9272a94728d0",
+            "6c8b4a31-2abc-4b74-9c6f-13f5b0f3a874"
+          ],
+          "note": "White painted walls; a grain is not resolved at this distance"
+        },
+        "ceiling": {
+          "finish": "paint.plain",
+          "source": "estimated-from-photo",
+          "photos": [
+            "6c8b4a31-2abc-4b74-9c6f-13f5b0f3a874",
+            "ab2217ff-b07d-4fd7-ada9-9272a94728d0"
+          ],
+          "note": "Smooth and white"
+        }
+      }
     },
     {
       "id": "souterrain-bath-room",
@@ -2407,7 +2465,30 @@
             "source": "measured"
           }
         }
-      ]
+      ],
+      "finishes": {
+        "floor": {
+          "finish": "floor.neutral",
+          "source": "mock",
+          "note": "Default: no photo shows the floor (photo request eb97ee82)"
+        },
+        "walls": {
+          "finish": "tile.light-60",
+          "tint": "#ded5cc",
+          "source": "estimated-from-photo",
+          "photos": [
+            "0e7191b4-fabc-4d1c-9fbf-90a4ccbccef2",
+            "c7ba57e6-2a94-493b-b49a-95fdbad50d1e"
+          ],
+          "note": "Light warm-grey wall tiles, about 30 x 60 cm laid flat: to the window sill on the north and west walls, to the ceiling on the east wall, white paint above, one dark strip beside the window. A finish is per room, and the library has a square tile only. Tint from the tiles in both photos"
+        },
+        "ceiling": {
+          "finish": "paint.plain",
+          "source": "estimated-from-photo",
+          "photos": ["0e7191b4-fabc-4d1c-9fbf-90a4ccbccef2"],
+          "note": "Smooth and white"
+        }
+      }
     },
     {
       "id": "souterrain-kitchen",
@@ -2456,7 +2537,37 @@
             "source": "measured"
           }
         }
-      ]
+      ],
+      "finishes": {
+        "floor": {
+          "finish": "wood.oak-laminate",
+          "tint": "#edd5b0",
+          "source": "estimated-from-photo",
+          "photos": [
+            "2d60004e-c67b-41c3-8c46-dd21f4995390",
+            "17409fa3-4d5a-45ea-b32e-27cb5b78335f"
+          ],
+          "note": "The same oak planks as in the corridor, laid east-west. Tint from lit patches of the floor in both photos"
+        },
+        "walls": {
+          "finish": "paint.plain",
+          "source": "estimated-from-photo",
+          "photos": [
+            "2d60004e-c67b-41c3-8c46-dd21f4995390",
+            "7dce64a0-69f9-40e1-8a90-da6ece2ba002"
+          ],
+          "note": "White painted walls; a grain is not resolved at this distance. The tiled strip behind the worktop is not modelled"
+        },
+        "ceiling": {
+          "finish": "paint.plain",
+          "source": "estimated-from-photo",
+          "photos": [
+            "2d60004e-c67b-41c3-8c46-dd21f4995390",
+            "17409fa3-4d5a-45ea-b32e-27cb5b78335f"
+          ],
+          "note": "Smooth and white"
+        }
+      }
     },
     {
       "id": "souterrain-corridor",
@@ -2505,7 +2616,37 @@
             "source": "measured"
           }
         }
-      ]
+      ],
+      "finishes": {
+        "floor": {
+          "finish": "wood.oak-laminate",
+          "tint": "#edd5b0",
+          "source": "estimated-from-photo",
+          "photos": [
+            "84a05d56-e8f3-4016-b41d-4d66c63f96af",
+            "17409fa3-4d5a-45ea-b32e-27cb5b78335f"
+          ],
+          "note": "Rustic oak planks, warm brown, laid along the corridor (east-west). Tint from lit patches of the floor in both photos"
+        },
+        "walls": {
+          "finish": "plaster.fine",
+          "source": "estimated-from-photo",
+          "photos": [
+            "f690114a-9fba-4d4c-9808-58095fbd3f70",
+            "8576e27c-04c0-4acf-a7e2-194499ed8454"
+          ],
+          "note": "White paint on a fine-grained plaster. The finish's own white: the photos do not separate a tint from the lamp light"
+        },
+        "ceiling": {
+          "finish": "paint.plain",
+          "source": "estimated-from-photo",
+          "photos": [
+            "b25c9288-2e7e-4b58-a825-c4a382dafe26",
+            "326d2127-3268-4311-90bd-7bdd91481682"
+          ],
+          "note": "Smooth and white"
+        }
+      }
     },
     {
       "id": "souterrain-living-room",
@@ -2554,7 +2695,31 @@
             "source": "measured"
           }
         }
-      ]
+      ],
+      "finishes": {
+        "floor": {
+          "finish": "wood.oak-laminate",
+          "tint": "#edd5b0",
+          "source": "estimated-from-photo",
+          "photos": ["bcc9f58e-0e4e-4de2-bf2f-4cd06fd8193c"],
+          "note": "The same oak planks as in the corridor and kitchen, laid east-west; the tint is the one measured there"
+        },
+        "walls": {
+          "finish": "paint.plain",
+          "source": "estimated-from-photo",
+          "photos": [
+            "bcc9f58e-0e4e-4de2-bf2f-4cd06fd8193c",
+            "a11924e7-50e6-4d1a-b667-47bdd06fda5a"
+          ],
+          "note": "White painted walls. Part of the west wall is dark green: a finish is per room, not per wall"
+        },
+        "ceiling": {
+          "finish": "paint.plain",
+          "source": "estimated-from-photo",
+          "photos": ["bcc9f58e-0e4e-4de2-bf2f-4cd06fd8193c"],
+          "note": "Smooth and white"
+        }
+      }
     },
     {
       "id": "souterrain-boiler-room",
@@ -2603,7 +2768,38 @@
             "source": "measured"
           }
         }
-      ]
+      ],
+      "finishes": {
+        "floor": {
+          "finish": "concrete.screed",
+          "source": "estimated-from-photo",
+          "photos": [
+            "10bee330-447a-42a3-9159-c49314f4639b",
+            "22746a6f-798f-4c87-a8e5-6a65cfcd8fb7"
+          ],
+          "note": "Bare concrete"
+        },
+        "walls": {
+          "finish": "plaster.fine",
+          "tint": "#cfcdc8",
+          "source": "estimated-from-photo",
+          "photos": [
+            "22746a6f-798f-4c87-a8e5-6a65cfcd8fb7",
+            "10bee330-447a-42a3-9159-c49314f4639b"
+          ],
+          "note": "Bare cement render and whitewashed concrete, light grey. Tint from both photos, against the white tank beside the wall"
+        },
+        "ceiling": {
+          "finish": "paint.plain",
+          "tint": "#b8b7b3",
+          "source": "estimated-from-photo",
+          "photos": [
+            "10bee330-447a-42a3-9159-c49314f4639b",
+            "22746a6f-798f-4c87-a8e5-6a65cfcd8fb7"
+          ],
+          "note": "Bare grey concrete with pipes under it; drawn as a plain grey. Tint from both photos"
+        }
+      }
     },
     {
       "id": "souterrain-bed-room",
@@ -2652,7 +2848,37 @@
             "source": "measured"
           }
         }
-      ]
+      ],
+      "finishes": {
+        "floor": {
+          "finish": "wood.oak-laminate",
+          "tint": "#edd5b0",
+          "source": "estimated-from-photo",
+          "photos": [
+            "7bdeed3a-d2c8-434e-af98-db645602c9f5",
+            "a9586a63-0421-426c-ad21-8098b5bc816c"
+          ],
+          "note": "The same oak planks as in the corridor, which run on through the door; the tint is the one measured there. The direction of the planks is not visible: as in the corridor"
+        },
+        "walls": {
+          "finish": "plaster.fine",
+          "source": "estimated-from-photo",
+          "photos": [
+            "12068a3c-650b-4fe5-b15f-813df154f3da",
+            "171ddd75-68d7-492c-99d9-1ef9f6fd4a4c"
+          ],
+          "note": "White paint on a fine-grained plaster, clearly seen in raking light. The finish's own white"
+        },
+        "ceiling": {
+          "finish": "paint.plain",
+          "source": "estimated-from-photo",
+          "photos": [
+            "12068a3c-650b-4fe5-b15f-813df154f3da",
+            "7bdeed3a-d2c8-434e-af98-db645602c9f5"
+          ],
+          "note": "Smooth and white"
+        }
+      }
     },
     {
       "id": "ground-floor-interior",
@@ -4604,6 +4830,11 @@
       "elevation": {
         "value": -0.2,
         "source": "estimated-from-photo"
+      },
+      "finish": {
+        "finish": "paving.concrete-slab",
+        "source": "mock",
+        "note": "Default: no photo shows the driveway (photo request 30ea4cf6)"
       }
     },
     {
@@ -5080,6 +5311,16 @@
       "elevation": {
         "value": -1.65,
         "source": "estimated-from-photo"
+      },
+      "finish": {
+        "finish": "paving.concrete-slab",
+        "source": "estimated-from-photo",
+        "photos": [
+          "65267d24-72e5-4b7f-9c4a-ad2930bd3adb",
+          "b2804d07-0a82-4bb0-9db9-97896632e3ae",
+          "0ab48d98-3898-47b3-a3bc-03040a4c8de7"
+        ],
+        "note": "Square grey concrete slabs of about 40 cm in staggered rows"
       }
     },
     {
@@ -5133,6 +5374,12 @@
         "value": -2.6,
         "source": "estimated-from-photo",
         "note": "Concrete pavers (b2804d07, 0ab48d98)"
+      },
+      "finish": {
+        "finish": "paving.concrete-slab",
+        "source": "estimated-from-photo",
+        "photos": ["0ab48d98-3898-47b3-a3bc-03040a4c8de7", "7daf98e9-f9f4-49d9-9787-a1e4b88cf275"],
+        "note": "Small rectangular concrete pavers; the library's slab is the nearest"
       }
     },
     {
@@ -5185,6 +5432,12 @@
       "elevation": {
         "value": -2.6,
         "source": "estimated-from-photo"
+      },
+      "finish": {
+        "finish": "gravel.fine",
+        "source": "estimated-from-photo",
+        "photos": ["e1ad6c34-9cf1-4aad-828d-16e78d8bdd01", "7daf98e9-f9f4-49d9-9787-a1e4b88cf275"],
+        "note": "Fine light gravel behind rough natural-stone step edges"
       }
     },
     {
@@ -5238,6 +5491,12 @@
         "value": -2.464,
         "source": "estimated-from-photo",
         "note": "Gravel treads between rows of natural stones (e1ad6c34, 7daf98e9)"
+      },
+      "finish": {
+        "finish": "gravel.fine",
+        "source": "estimated-from-photo",
+        "photos": ["e1ad6c34-9cf1-4aad-828d-16e78d8bdd01", "7daf98e9-f9f4-49d9-9787-a1e4b88cf275"],
+        "note": "Fine light gravel behind rough natural-stone step edges"
       }
     },
     {
@@ -5290,6 +5549,12 @@
       "elevation": {
         "value": -2.329,
         "source": "estimated-from-photo"
+      },
+      "finish": {
+        "finish": "gravel.fine",
+        "source": "estimated-from-photo",
+        "photos": ["e1ad6c34-9cf1-4aad-828d-16e78d8bdd01", "7daf98e9-f9f4-49d9-9787-a1e4b88cf275"],
+        "note": "Fine light gravel behind rough natural-stone step edges"
       }
     },
     {
@@ -5342,6 +5607,12 @@
       "elevation": {
         "value": -2.193,
         "source": "estimated-from-photo"
+      },
+      "finish": {
+        "finish": "gravel.fine",
+        "source": "estimated-from-photo",
+        "photos": ["e1ad6c34-9cf1-4aad-828d-16e78d8bdd01", "7daf98e9-f9f4-49d9-9787-a1e4b88cf275"],
+        "note": "Fine light gravel behind rough natural-stone step edges"
       }
     },
     {
@@ -5394,6 +5665,12 @@
       "elevation": {
         "value": -2.057,
         "source": "estimated-from-photo"
+      },
+      "finish": {
+        "finish": "gravel.fine",
+        "source": "estimated-from-photo",
+        "photos": ["e1ad6c34-9cf1-4aad-828d-16e78d8bdd01", "7daf98e9-f9f4-49d9-9787-a1e4b88cf275"],
+        "note": "Fine light gravel behind rough natural-stone step edges"
       }
     },
     {
@@ -5446,6 +5723,12 @@
       "elevation": {
         "value": -1.921,
         "source": "estimated-from-photo"
+      },
+      "finish": {
+        "finish": "gravel.fine",
+        "source": "estimated-from-photo",
+        "photos": ["e1ad6c34-9cf1-4aad-828d-16e78d8bdd01", "7daf98e9-f9f4-49d9-9787-a1e4b88cf275"],
+        "note": "Fine light gravel behind rough natural-stone step edges"
       }
     },
     {
@@ -5498,6 +5781,12 @@
       "elevation": {
         "value": -1.786,
         "source": "estimated-from-photo"
+      },
+      "finish": {
+        "finish": "gravel.fine",
+        "source": "estimated-from-photo",
+        "photos": ["e1ad6c34-9cf1-4aad-828d-16e78d8bdd01", "7daf98e9-f9f4-49d9-9787-a1e4b88cf275"],
+        "note": "Fine light gravel behind rough natural-stone step edges"
       }
     },
     {
@@ -5557,6 +5846,16 @@
           "value": -2.6,
           "source": "estimated-from-photo"
         }
+      },
+      "finish": {
+        "finish": "stone.rubble",
+        "source": "estimated-from-photo",
+        "photos": [
+          "e1ad6c34-9cf1-4aad-828d-16e78d8bdd01",
+          "0ab48d98-3898-47b3-a3bc-03040a4c8de7",
+          "b2804d07-0a82-4bb0-9db9-97896632e3ae"
+        ],
+        "note": "Dry-stacked grey granite boulders beside the steps"
       }
     },
     {
@@ -5616,6 +5915,16 @@
           "value": -2.6,
           "source": "estimated-from-photo"
         }
+      },
+      "finish": {
+        "finish": "stone.rubble",
+        "source": "estimated-from-photo",
+        "photos": [
+          "e1ad6c34-9cf1-4aad-828d-16e78d8bdd01",
+          "0ab48d98-3898-47b3-a3bc-03040a4c8de7",
+          "b2804d07-0a82-4bb0-9db9-97896632e3ae"
+        ],
+        "note": "Dry-stacked grey granite boulders beside the steps"
       }
     },
     {
@@ -5675,6 +5984,16 @@
           "value": -2.464,
           "source": "estimated-from-photo"
         }
+      },
+      "finish": {
+        "finish": "stone.rubble",
+        "source": "estimated-from-photo",
+        "photos": [
+          "e1ad6c34-9cf1-4aad-828d-16e78d8bdd01",
+          "0ab48d98-3898-47b3-a3bc-03040a4c8de7",
+          "b2804d07-0a82-4bb0-9db9-97896632e3ae"
+        ],
+        "note": "Dry-stacked grey granite boulders beside the steps"
       }
     },
     {
@@ -5734,6 +6053,16 @@
           "value": -2.464,
           "source": "estimated-from-photo"
         }
+      },
+      "finish": {
+        "finish": "stone.rubble",
+        "source": "estimated-from-photo",
+        "photos": [
+          "e1ad6c34-9cf1-4aad-828d-16e78d8bdd01",
+          "0ab48d98-3898-47b3-a3bc-03040a4c8de7",
+          "b2804d07-0a82-4bb0-9db9-97896632e3ae"
+        ],
+        "note": "Dry-stacked grey granite boulders beside the steps"
       }
     },
     {
@@ -5793,6 +6122,16 @@
           "value": -2.329,
           "source": "estimated-from-photo"
         }
+      },
+      "finish": {
+        "finish": "stone.rubble",
+        "source": "estimated-from-photo",
+        "photos": [
+          "e1ad6c34-9cf1-4aad-828d-16e78d8bdd01",
+          "0ab48d98-3898-47b3-a3bc-03040a4c8de7",
+          "b2804d07-0a82-4bb0-9db9-97896632e3ae"
+        ],
+        "note": "Dry-stacked grey granite boulders beside the steps"
       }
     },
     {
@@ -5852,6 +6191,16 @@
           "value": -2.329,
           "source": "estimated-from-photo"
         }
+      },
+      "finish": {
+        "finish": "stone.rubble",
+        "source": "estimated-from-photo",
+        "photos": [
+          "e1ad6c34-9cf1-4aad-828d-16e78d8bdd01",
+          "0ab48d98-3898-47b3-a3bc-03040a4c8de7",
+          "b2804d07-0a82-4bb0-9db9-97896632e3ae"
+        ],
+        "note": "Dry-stacked grey granite boulders beside the steps"
       }
     },
     {
@@ -5911,6 +6260,16 @@
           "value": -2.193,
           "source": "estimated-from-photo"
         }
+      },
+      "finish": {
+        "finish": "stone.rubble",
+        "source": "estimated-from-photo",
+        "photos": [
+          "e1ad6c34-9cf1-4aad-828d-16e78d8bdd01",
+          "0ab48d98-3898-47b3-a3bc-03040a4c8de7",
+          "b2804d07-0a82-4bb0-9db9-97896632e3ae"
+        ],
+        "note": "Dry-stacked grey granite boulders beside the steps"
       }
     },
     {
@@ -5970,6 +6329,16 @@
           "value": -2.193,
           "source": "estimated-from-photo"
         }
+      },
+      "finish": {
+        "finish": "stone.rubble",
+        "source": "estimated-from-photo",
+        "photos": [
+          "e1ad6c34-9cf1-4aad-828d-16e78d8bdd01",
+          "0ab48d98-3898-47b3-a3bc-03040a4c8de7",
+          "b2804d07-0a82-4bb0-9db9-97896632e3ae"
+        ],
+        "note": "Dry-stacked grey granite boulders beside the steps"
       }
     },
     {
@@ -6029,6 +6398,16 @@
           "value": -2.057,
           "source": "estimated-from-photo"
         }
+      },
+      "finish": {
+        "finish": "stone.rubble",
+        "source": "estimated-from-photo",
+        "photos": [
+          "e1ad6c34-9cf1-4aad-828d-16e78d8bdd01",
+          "0ab48d98-3898-47b3-a3bc-03040a4c8de7",
+          "b2804d07-0a82-4bb0-9db9-97896632e3ae"
+        ],
+        "note": "Dry-stacked grey granite boulders beside the steps"
       }
     },
     {
@@ -6088,6 +6467,16 @@
           "value": -2.057,
           "source": "estimated-from-photo"
         }
+      },
+      "finish": {
+        "finish": "stone.rubble",
+        "source": "estimated-from-photo",
+        "photos": [
+          "e1ad6c34-9cf1-4aad-828d-16e78d8bdd01",
+          "0ab48d98-3898-47b3-a3bc-03040a4c8de7",
+          "b2804d07-0a82-4bb0-9db9-97896632e3ae"
+        ],
+        "note": "Dry-stacked grey granite boulders beside the steps"
       }
     },
     {
@@ -6147,6 +6536,16 @@
           "value": -1.921,
           "source": "estimated-from-photo"
         }
+      },
+      "finish": {
+        "finish": "stone.rubble",
+        "source": "estimated-from-photo",
+        "photos": [
+          "e1ad6c34-9cf1-4aad-828d-16e78d8bdd01",
+          "0ab48d98-3898-47b3-a3bc-03040a4c8de7",
+          "b2804d07-0a82-4bb0-9db9-97896632e3ae"
+        ],
+        "note": "Dry-stacked grey granite boulders beside the steps"
       }
     },
     {
@@ -6206,6 +6605,16 @@
           "value": -1.921,
           "source": "estimated-from-photo"
         }
+      },
+      "finish": {
+        "finish": "stone.rubble",
+        "source": "estimated-from-photo",
+        "photos": [
+          "e1ad6c34-9cf1-4aad-828d-16e78d8bdd01",
+          "0ab48d98-3898-47b3-a3bc-03040a4c8de7",
+          "b2804d07-0a82-4bb0-9db9-97896632e3ae"
+        ],
+        "note": "Dry-stacked grey granite boulders beside the steps"
       }
     },
     {
@@ -6265,6 +6674,16 @@
           "value": -1.786,
           "source": "estimated-from-photo"
         }
+      },
+      "finish": {
+        "finish": "stone.rubble",
+        "source": "estimated-from-photo",
+        "photos": [
+          "e1ad6c34-9cf1-4aad-828d-16e78d8bdd01",
+          "0ab48d98-3898-47b3-a3bc-03040a4c8de7",
+          "b2804d07-0a82-4bb0-9db9-97896632e3ae"
+        ],
+        "note": "Dry-stacked grey granite boulders beside the steps"
       }
     },
     {
@@ -6324,6 +6743,16 @@
           "value": -1.786,
           "source": "estimated-from-photo"
         }
+      },
+      "finish": {
+        "finish": "stone.rubble",
+        "source": "estimated-from-photo",
+        "photos": [
+          "e1ad6c34-9cf1-4aad-828d-16e78d8bdd01",
+          "0ab48d98-3898-47b3-a3bc-03040a4c8de7",
+          "b2804d07-0a82-4bb0-9db9-97896632e3ae"
+        ],
+        "note": "Dry-stacked grey granite boulders beside the steps"
       }
     },
     {
@@ -6546,6 +6975,12 @@
       "elevation": {
         "value": -1.65,
         "source": "estimated-from-photo"
+      },
+      "finish": {
+        "finish": "grass.lawn",
+        "source": "estimated-from-photo",
+        "photos": ["97e4b230-069c-4beb-8185-322f2eef2306", "a543d461-6629-4902-8f4d-0b30273f38fb"],
+        "note": "Lawn"
       }
     },
     {
@@ -6618,6 +7053,12 @@
         "value": -1.65,
         "source": "estimated-from-photo",
         "note": "Gravel strip along the facade, between the wall and the lawn"
+      },
+      "finish": {
+        "finish": "gravel.fine",
+        "source": "estimated-from-photo",
+        "photos": ["75ecb36a-9c52-456f-b53c-b374717be4f6", "cbe9bda7-017e-4db9-a537-a4a24fd101f1"],
+        "note": "Dark grey chippings along the north wall; the library's gravel is lighter. The east part is not in the photos"
       }
     },
     {
@@ -6833,6 +7274,11 @@
       "elevation": {
         "value": -0.2,
         "source": "estimated-from-photo"
+      },
+      "finish": {
+        "finish": "asphalt.plain",
+        "source": "mock",
+        "note": "Default: no photo shows the street (photo request 30ea4cf6)"
       }
     },
     {
