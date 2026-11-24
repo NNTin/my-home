@@ -6,7 +6,7 @@
 // moving frame against the budgets, and nothing drawn while idle in every value of the quality setting. Then
 // the named views: each opens from its link, the section's cut and caps stay within the budget and compile
 // nothing when switched off and on, and "Save image" downloads a PNG of twice the canvas size.
-// Read-only: nothing is written to the environment.
+// Read-only: nothing is written to the environment. MOBILE_SMOKE_ONLY=views runs the named views alone.
 // Playwright is loaded from MY_HOME_PLAYWRIGHT_DIR.
 /* global document, window, WebGL2RenderingContext */
 import { readFileSync } from 'node:fs';
@@ -722,6 +722,12 @@ async function smoke(out, homeId) {
   const active = () => [...fake.values()].filter((p) => p.removedAt === null);
   const target = homeId ? `/?home=${encodeURIComponent(homeId)}` : '/';
   try {
+    // MOBILE_SMOKE_ONLY=views: the named views alone, a few minutes instead of the whole run.
+    if (process.env.MOBILE_SMOKE_ONLY === 'views') {
+      for (const device of ['phone', 'desktop'])
+        await viewChecks(browser, { device, base, host, homeId });
+      return;
+    }
     // A phone held upright, with a touch screen.
     const context = await browser.newContext({
       viewport: PORTRAIT,
