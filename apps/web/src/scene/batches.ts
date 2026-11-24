@@ -11,10 +11,12 @@ import {
   Path,
   Shape,
   ShapeGeometry,
+  ShapeUtils,
   Vector2,
+  Vector3,
 } from 'three';
 import { finishes } from '@my-home/shared';
-import { slopeY, type PlaneSlope, type UvFrame, type Vec2 } from '../builder/buildHome';
+import { slopeY, type PlaneSlope, type UvFrame, type Vec2, type Vec3 } from '../builder/buildHome';
 import {
   batchKey,
   CYLINDER_SEGMENTS,
@@ -24,7 +26,6 @@ import {
   type DrawItem,
   type DrawMaterial,
   type DrawShape,
-  type FacePart,
 } from '../builder/drawList';
 import { SECTION_PLANES } from '../views/planes';
 
@@ -65,45 +66,50 @@ function slopeVertices(
 }
 
 /**
- * The triangles of a box or a profile that belong to one part of it: the face at local +z, the
- * one at local -z, or everything else (`core`), which is the faces that look up (`top`) and the
- * others (`rest`). Both shapes have flat faces, so a triangle's normal says which face it is on.
+ * A flat polygon in space, with holes: its points are projected onto the plane it lies in and
+ * triangulated there. Every triangle is turned to face the way the outline does.
  */
-function facePart(geometry: BufferGeometry, part: FacePart): BufferGeometry {
-  const flat = geometry.index ? geometry.toNonIndexed() : geometry;
-  const position = flat.getAttribute('position');
-  const normal = flat.getAttribute('normal');
-  const positions: number[] = [];
-  const normals: number[] = [];
-  for (let i = 0; i < position.count; i += 3) {
-    const nz = normal.getZ(i);
-    const on: FacePart = nz > 0.5 ? 'front' : nz < -0.5 ? 'back' : 'core';
-    if (
-      on === 'core'
-        ? part !== 'core' && part !== (normal.getY(i) > 0.5 ? 'top' : 'rest')
-        : on !== part
-    )
-      continue;
-    for (let k = i; k < i + 3; k++) {
-      positions.push(position.getX(k), position.getY(k), position.getZ(k));
-      normals.push(normal.getX(k), normal.getY(k), normal.getZ(k));
-    }
+function polygonGeometry(outline: Vec3[], holes: Vec3[][]): BufferGeometry {
+  // Newell's normal: the outline is anticlockwise seen from the front.
+  const n = new Vector3();
+  outline.forEach(([x, y, z], i) => {
+    const [nx, ny, nz] = outline[(i + 1) % outline.length]!;
+    n.x += (y - ny) * (z + nz);
+    n.y += (z - nz) * (x + nx);
+    n.z += (x - nx) * (y + ny);
+  });
+  n.normalize();
+  // Two axes of the plane: drop the coordinate the normal points along most.
+  const [ax, ay, az] = [Math.abs(n.x), Math.abs(n.y), Math.abs(n.z)];
+  const flat = ([x, y, z]: Vec3) =>
+    ax >= ay && ax >= az ? new Vector2(y, z) : ay >= az ? new Vector2(z, x) : new Vector2(x, y);
+  const points = [outline, ...holes].flat();
+  const position = new Float32Array(points.flat());
+  const normal = new Float32Array(points.length * 3);
+  for (let i = 0; i < points.length; i++) normal.set([n.x, n.y, n.z], i * 3);
+  const index: number[] = [];
+  const [a, b, c, d] = [new Vector3(), new Vector3(), new Vector3(), new Vector3()];
+  for (const [i, j, k] of ShapeUtils.triangulateShape(
+    outline.map(flat),
+    holes.map((h) => h.map(flat)),
+  ) as [number, number, number][]) {
+    a.fromArray(points[i]!);
+    d.crossVectors(b.fromArray(points[j]!).sub(a), c.fromArray(points[k]!).sub(a));
+    if (d.dot(n) >= 0) index.push(i, j, k);
+    else index.push(i, k, j);
   }
-  if (flat !== geometry) flat.dispose();
-  geometry.dispose();
-  const out = new BufferGeometry();
-  out.setAttribute('position', new BufferAttribute(new Float32Array(positions), 3));
-  out.setAttribute('normal', new BufferAttribute(new Float32Array(normals), 3));
-  return out;
+  const g = new BufferGeometry();
+  g.setAttribute('position', new BufferAttribute(position, 3));
+  g.setAttribute('normal', new BufferAttribute(normal, 3));
+  g.setIndex(index);
+  return g;
 }
 
 /** The geometry of a shape in its local frame, as the viewer has always built it. */
 export function shapeGeometry(shape: DrawShape): BufferGeometry {
   switch (shape.kind) {
-    case 'box': {
-      const g = new BoxGeometry(...shape.size);
-      return shape.only ? facePart(g, shape.only) : g;
-    }
+    case 'box':
+      return new BoxGeometry(...shape.size);
     case 'cylinder':
       return new CylinderGeometry(
         shape.diameter / 2,
@@ -115,7 +121,7 @@ export function shapeGeometry(shape: DrawShape): BufferGeometry {
       const outline = new Shape(shape.outline.map(([x, y]) => new Vector2(x, y)));
       const g = new ExtrudeGeometry(outline, { depth: shape.depth, bevelEnabled: false });
       g.translate(0, 0, -shape.depth / 2);
-      return shape.only ? facePart(g, shape.only) : g;
+      return g;
     }
     case 'prism': {
       const g = new ExtrudeGeometry(toShape(shape.outline, shape.holes), {
@@ -148,6 +154,8 @@ export function shapeGeometry(shape: DrawShape): BufferGeometry {
       }
       return g;
     }
+    case 'polygon':
+      return polygonGeometry(shape.outline, shape.holes);
   }
 }
 

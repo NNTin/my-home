@@ -88,7 +88,9 @@ describe('the shell items', () => {
   it('flat polygons are open, cast no shadow and are drawn from both sides', () => {
     for (const item of shellItems(home)) {
       const flat = item.shape.kind === 'surface';
-      expect(item.closed).toBe(!flat);
+      // A face of a wall is open too, but one side of a closed surface: it casts its shadow.
+      const face = item.shape.kind === 'polygon';
+      expect(item.closed).toBe(!flat && !face);
       expect(item.castShadow).toBe(!flat);
       expect(item.material?.doubleSided ?? false).toBe(flat);
     }
@@ -175,6 +177,10 @@ function emptyOf(scene: HomeScene): HomeScene {
   return {
     ...scene,
     walls: [],
+    wallFaces: [],
+    skirting: [],
+    doorReveals: [],
+    roofTrim: [],
     openings: [],
     slabs: [],
     ceilings: [],

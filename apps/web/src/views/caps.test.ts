@@ -81,7 +81,12 @@ describe('what a section caps', () => {
     expect(glass.length).toBeGreaterThan(10);
     expect(glass.some(capped)).toBe(false);
     expect(
-      shell.filter((i) => i.shape.kind !== 'surface' && !i.material?.transparent).every(capped),
+      shell
+        .filter(
+          (i) =>
+            i.shape.kind !== 'surface' && i.shape.kind !== 'polygon' && !i.material?.transparent,
+        )
+        .every(capped),
     ).toBe(true);
   });
 
@@ -90,14 +95,11 @@ describe('what a section caps', () => {
     expect(soil).toHaveLength(1);
     expect(soil[0]).toMatchObject({ group: { kind: 'terrain' }, items: home.terrain.length });
     const dark = solids.filter((s) => s.cap === 'dark');
-    // A wall is counted once, however many items draw it: its core, not its top or its faces.
-    const parts = items.filter((i) => {
-      const only = (i.shape as { only?: string }).only;
-      return capped(i) && only !== undefined && only !== 'core' && only !== 'rest';
-    });
-    expect(parts.length).toBeGreaterThan(home.walls.length);
+    // A wall is drawn as faces, which are no solids: it is counted as its solid stretches.
+    expect(items.filter((i) => i.shape.kind === 'polygon').some(capped)).toBe(false);
+    for (const wall of home.walls) expect(items.filter((i) => i.id === wall.id)).toHaveLength(1);
     expect(dark.reduce((n, s) => n + s.items, 0)).toBe(
-      items.filter(capped).length - parts.length - home.terrain.length,
+      items.filter(capped).length - home.terrain.length,
     );
   });
 

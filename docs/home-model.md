@@ -548,10 +548,24 @@ panels) without three.js, and
 
 Every descriptor carries its **finish**, resolved from the model or its default (§ [Finishes](#finishes)):
 
-- A wall segment has a `finish` for its core (top, ends, the reveals of openings) and `faces`: its two long
-  faces, each split where the room it borders changes. The builder finds that room with a point 5 cm in front of
-  the face. A face that borders no room takes the facade finish when that point is outside the footprint, and
-  the level's default wall finish otherwise.
+- A wall is drawn face by face (`wallFaces`, `builder/wallFaces.ts`): each long face is one flat polygon per
+  room it borders, with the windows as holes and the doors as notches, so a wall with openings has no seams.
+  The builder finds that room with a point 5 cm in front of the face. A face that borders no room takes the
+  facade finish when that point is outside the footprint, and the level's default wall finish otherwise. The
+  reveal of an opening is in two halves, each with the finish of the long face it meets. The top is a cut face
+  (`cut.dark`), drawn only while the level above or the roof is hidden. An end that looks into a room takes that
+  room's finish; an end inside another wall and the underside are not drawn. The solid stretches of a wall
+  (`walls`) are what a section caps; they are not drawn.
+- **Shell detail** is derived by the builder from the walls, openings and roof (`builder/shellDetail.ts`); the
+  sizes are its defaults (`SHELL_DETAIL`), not measurements, and nothing of the model moves:
+  - `skirting`: boards 7 cm high and 1.2 cm deep at the foot of every wall face of a room of the level modelled
+    inside, broken at doors, around a wall's free end.
+  - `doorReveals`: a threshold in every doorway, through the wall's depth and 1 cm over the floor; a door through
+    an inner wall of that level is also lined (jambs and head, 1.5 cm) in the colour of its frame. The frame
+    stays the door piece's.
+  - `roofTrim`: on a gable roof an eaves board on each eave's edge, a half-round gutter in front of it and a cap
+    over the ridge, shown and hidden with the roof.
+  - The stair is still one box per tread: its rebuild, with stringers and a handrail, is #145.
 - Every room has a ceiling surface just under the slab above (`roomCeilings`), shown and hidden like a lowered
   ceiling, with the room's ceiling finish; a lowered ceiling takes the ceiling finish of the room it hangs in.
   The top level under a pitched roof has none.

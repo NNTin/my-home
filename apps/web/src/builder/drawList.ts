@@ -9,7 +9,7 @@ import type {
   UvFrame,
   Vec2,
   Vec3,
-  WallSegment,
+  WallFace,
 } from './buildHome';
 import { roofIndex, type Visibility } from './visibility';
 
@@ -23,23 +23,14 @@ import { roofIndex, type Visibility } from './visibility';
 /** A 4 × 4 transform, column-major like three.js' `Matrix4.elements`. */
 export type Matrix = number[];
 
-/**
- * Which faces of a box or a profile are drawn: the one at local +z (`front`), the one at local
- * -z (`back`), or all the others (`core`). A wall is drawn as three kinds of item, so that its two
- * long faces can each take the finish of the room they border; together they are the closed solid.
- * A wall that ends in a cut face has its core in two parts: the faces that look up (`top`) and
- * the others (`rest`).
- */
-export type FacePart = 'front' | 'back' | 'core' | 'top' | 'rest';
-
 /** The solid of a draw item, in its local frame; `matrix` puts it into the world. */
 export type DrawShape =
   /** Centred, [x, y, z] extents. */
-  | { kind: 'box'; size: Vec3; only?: FacePart }
+  | { kind: 'box'; size: Vec3 }
   /** Upright, centred, of `diameter` and `height`, drawn with `CYLINDER_SEGMENTS` sides. */
   | { kind: 'cylinder'; diameter: number; height: number }
   /** A closed outline in local x/y, extruded through `depth` along z and centred on it. */
-  | { kind: 'profile'; outline: Vec2[]; depth: number; only?: FacePart }
+  | { kind: 'profile'; outline: Vec2[]; depth: number }
   /**
    * A plan polygon extruded from `bottom` up to `top` (or to its slope). Local (x, y) is plan
    * (x, z) and local z runs down from the top face, which the matrix puts at `top`.
@@ -56,7 +47,12 @@ export type DrawShape =
    * A flat plan polygon facing up at height `y` (or on its slope). Local (x, y) is plan
    * (x, -z); the matrix lays it down at `y`. Not a closed solid.
    */
-  | { kind: 'surface'; outline: Vec2[]; holes: Vec2[][]; y: number; slope?: PlaneSlope };
+  | { kind: 'surface'; outline: Vec2[]; holes: Vec2[][]; y: number; slope?: PlaneSlope }
+  /**
+   * A flat polygon anywhere in the local frame, drawn from the side it is anticlockwise from: a
+   * face of a wall (§8.1). Not a closed solid.
+   */
+  | { kind: 'polygon'; outline: Vec3[]; holes: Vec3[][] };
 
 /** Cylinders are drawn with this many sides. */
 export const CYLINDER_SEGMENTS = 24;
@@ -78,10 +74,15 @@ export interface DrawMaterial {
  * apartment or an outdoor area hides whole batches and rebuilds nothing (`groupShown`).
  */
 export type DrawGroup =
-  /** Walls, room floors, stairs and wall openings of a level (and apartment). */
+  /** Wall faces, shell detail, room floors, stairs and wall openings of a level (and apartment). */
   | { kind: 'level'; levelId: string; apartmentId?: string }
   /** The slab under a level; `roof`: the flat roof slab, shown only with the roof. */
   | { kind: 'slab'; levelId: string; roof: boolean }
+  /**
+   * The tops of a level's walls, which are cut faces (§7.2): shown with the level while the
+   * level above (or the roof) is hidden, and hidden under it.
+   */
+  | { kind: 'cut'; levelId: string; apartmentId?: string }
   /** A lowered ceiling: it goes with the level above (or the roof). */
   | { kind: 'ceiling'; levelId: string; apartmentId?: string }
   /** Roof planes and roof windows. */
@@ -250,16 +251,10 @@ const solid = (
   ...rest,
 });
 
-const boxItem = (
-  common: Common,
-  box: Box,
-  finish: ResolvedFinish,
-  rest?: Partial<DrawItem>,
-  only?: FacePart,
-) =>
+const boxItem = (common: Common, box: Box, finish: ResolvedFinish, rest?: Partial<DrawItem>) =>
   solid(
     common,
-    { kind: 'box', size: box.size, ...(only && { only }) },
+    { kind: 'box', size: box.size },
     transform(box.center, box.rotationY),
     finish,
     rest,
@@ -270,49 +265,39 @@ const profileItem = (
   s: { center: Vec3; rotationY: number; depth: number; outline: Vec2[] },
   finish: ResolvedFinish,
   rest?: Partial<DrawItem>,
-  only?: FacePart,
 ) =>
   solid(
     common,
-    { kind: 'profile', outline: s.outline, depth: s.depth, ...(only && { only }) },
+    { kind: 'profile', outline: s.outline, depth: s.depth },
     transform(s.center, s.rotationY),
     finish,
     rest,
   );
 
 /**
- * A wall segment: its core (top, ends, reveals) and its two long faces, each stretch with the
- * finish of the room it borders. The top of a wall is a cut face (§7.2): it shows when the level
- * above is hidden and is covered otherwise, so it is always drawn dark and nothing is rebuilt
- * when the cutaway changes. All the items together are the closed solid.
+ * A face of a wall: a flat polygon with the finish of the room it borders (§8.1). The faces of a
+ * wall together are its closed surface; each alone is not a solid.
  */
-function wallItems(w: WallSegment): DrawItem[] {
-  const group = levelGroup(w);
-  const part = (
-    id: string,
-    box: Box & { outline?: Vec2[] },
-    finish: ResolvedFinish,
-    only: FacePart,
-  ) => {
-    const common = { id, group };
-    const rest = { uv: w.uv };
-    return box.outline
-      ? profileItem(
-          common,
-          { ...box, depth: box.size[2], outline: box.outline },
-          finish,
-          rest,
-          only,
-        )
-      : boxItem(common, box, finish, rest, only);
-  };
-  return [
-    ...(w.cutTop
-      ? [part(w.id, w, w.finish, 'rest'), part(`${w.id}/top`, w, CUT_FINISH, 'top')]
-      : [part(w.id, w, w.finish, 'core')]),
-    ...w.faces.map((f, i) => part(`${w.id}/face-${i}`, f, f.finish, f.side > 0 ? 'front' : 'back')),
-  ];
-}
+const wallFaceItem = (f: WallFace): DrawItem =>
+  solid(
+    { id: f.id, group: levelGroup(f, f.part === 'top' ? 'cut' : 'level') },
+    { kind: 'polygon', outline: f.outline, holes: f.holes },
+    transform(f.center, f.rotationY),
+    f.finish,
+    { uv: f.uv, closed: false },
+  );
+
+/**
+ * The walls as closed solids: what a section counts to cap them (§7.2). They are not drawn; a
+ * wall is drawn as its faces, which have no inside.
+ */
+export const wallSolidItems = (scene: Pick<HomeScene, 'walls'>): DrawItem[] =>
+  scene.walls.map((w) => {
+    const common = { id: w.id, group: levelGroup(w) };
+    return w.outline
+      ? profileItem(common, { ...w, depth: w.size[2], outline: w.outline }, CUT_FINISH)
+      : boxItem(common, w, CUT_FINISH);
+  });
 
 const prismItem = (common: Common, p: Prism, finish: ResolvedFinish) =>
   solid(
@@ -357,8 +342,11 @@ const surfaceItem = (
   closed: false,
 });
 
-const levelGroup = (item: { levelId: string; apartmentId?: string }): DrawGroup => ({
-  kind: 'level',
+const levelGroup = (
+  item: { levelId: string; apartmentId?: string },
+  kind: 'level' | 'cut' = 'level',
+): DrawGroup => ({
+  kind,
   levelId: item.levelId,
   ...(item.apartmentId !== undefined && { apartmentId: item.apartmentId }),
 });
@@ -517,11 +505,18 @@ export function shellItems(scene: HomeScene, options: ShellOptions = {}): DrawIt
         options.planColours ? planColor(i) : r.finish,
       ),
     ),
-    ...scene.walls.flatMap(wallItems),
+    ...scene.wallFaces.map(wallFaceItem),
+    ...scene.skirting.map((b) => boxItem({ id: b.id, group: levelGroup(b) }, b, b.finish)),
+    ...scene.doorReveals.flatMap((d) =>
+      d.parts.map((part) => boxItem({ id: part.id, group: levelGroup(d) }, part, part.finish)),
+    ),
     ...scene.roofPlanes.map((r) =>
       profileItem({ id: r.id, group: { kind: 'roof', levelId: r.levelId } }, r, r.finish, {
         uv: r.uv,
       }),
+    ),
+    ...scene.roofTrim.map((r) =>
+      profileItem({ id: r.id, group: { kind: 'roof', levelId: r.levelId } }, r, r.finish),
     ),
     ...scene.stairs.flatMap((s) =>
       s.steps.map((step) => boxItem({ id: step.id, group: levelGroup(s) }, step, s.finish)),
@@ -592,6 +587,7 @@ export function drawList(
 export const groupKey = (g: DrawGroup): string => {
   switch (g.kind) {
     case 'level':
+    case 'cut':
     case 'ceiling':
       return `${g.kind}:${g.levelId}:${g.apartmentId ?? ''}`;
     case 'slab':
@@ -626,13 +622,15 @@ export function groupShown(
       return levelShown(group.levelId) && apartmentShown(group.apartmentId);
     case 'slab':
       return levelShown(group.levelId) && (!group.roof || showRoof);
+    case 'cut':
     case 'ceiling': {
       const index = scene.levels.find((l) => l.id === group.levelId)?.index;
       const above = scene.levels.find((l) => l.index === (index ?? Infinity) + 1);
+      const covered = above ? levelShown(above.id) : showRoof;
       return (
         levelShown(group.levelId) &&
         apartmentShown(group.apartmentId) &&
-        (above ? levelShown(above.id) : showRoof)
+        covered === (group.kind === 'ceiling')
       );
     }
     case 'roof':

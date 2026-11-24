@@ -64,12 +64,14 @@ describe('a tile of 60 cm measures 60 cm', () => {
   });
 
   it('on a wall: along the wall and up, from the wall’s start at its floor', () => {
-    const wall = scene.walls.find((w) => w.faces.some((f) => f.roomId === 'souterrain-kitchen'))!;
-    const index = wall.faces.findIndex((f) => f.roomId === 'souterrain-kitchen');
-    const face = items.find((i) => i.id === `${wall.id}/face-${index}`)!;
+    // The kitchen's wall to the bath room: one rectangle, without an opening.
+    const wall = scene.wallFaces.find(
+      (f) => f.roomId === 'souterrain-kitchen' && f.wallId === 'souterrain-wall-bath-room-kitchen',
+    )!;
+    const face = items.find((i) => i.id === wall.id)!;
     expect(face.finish).toBe('tile.light-60');
     const vertices = drawn(face);
-    expect(vertices).toHaveLength(6);
+    expect(vertices).toHaveLength(4);
     const [ox, oy, oz] = wall.uv.origin;
     /** How far along the wall a point is, from the wall's start. */
     const along = (p: readonly [number, number, number]) =>
@@ -81,7 +83,7 @@ describe('a tile of 60 cm measures 60 cm', () => {
     }
     const height = span(vertices.map((v) => v.p[1]));
     const length = span(vertices.map((v) => along(v.p)));
-    expect(length).toBeCloseTo(face.shape.kind === 'box' ? face.shape.size[0] : NaN, 5);
+    expect(length).toBeCloseTo(3.205, 5);
     expect(span(vertices.map((v) => v.uv[1]))).toBeCloseTo(height, 5);
     expect(span(vertices.map((v) => v.uv[0]))).toBeCloseTo(length, 5);
     const tilesUp = (span(vertices.map((v) => v.uv[1])) / TILE.tileSize!) * TILES_PER_REPEAT;
@@ -89,10 +91,12 @@ describe('a tile of 60 cm measures 60 cm', () => {
   });
 
   it('both faces of a wall count from the same start, so they line up', () => {
-    const wall = scene.walls.find(
-      (w) => w.faces.some((f) => f.side === 1) && w.faces.some((f) => f.side === -1),
-    )!;
-    const frames = items.filter((i) => i.id.startsWith(`${wall.id}/face-`)).map((i) => i.uv);
+    const frames = items
+      .filter(
+        (i) => i.id.startsWith('souterrain-wall-bath-room-kitchen/') && i.shape.kind === 'polygon',
+      )
+      .map((i) => i.uv);
+    expect(frames.length).toBeGreaterThanOrEqual(3);
     expect(new Set(frames.map((f) => JSON.stringify(f))).size).toBe(1);
   });
 });
@@ -150,31 +154,25 @@ describe('texture coordinates', () => {
   });
 
   it('do not smear on the faces of a wall that are at right angles to its frame', () => {
-    // The parapet under a window of an exterior wall: its top is the sill of the reveal, its
-    // ends are inside the wall. The core of a wall segment is everything but its two long faces.
-    const walls = scene.walls.filter((w) => w.kind === 'exterior' && !w.outline);
-    const below = walls.find((w) => w.id.endsWith(':below'))!;
-    const full = walls.find((w) => w.id.endsWith(':full'))!;
-    for (const wall of [below, full]) {
-      const core = items.find((i) => i.id === wall.id)!;
-      expect(core.finish).toBe('render.facade');
-      const [length, height, thickness] = wall.size;
-      // The top of a full-height segment is a cut face, an item of its own (§7.2): the same
-      // faces either way.
-      const whole = { ...core, shape: { ...core.shape, only: 'core' } } as DrawItem;
-      const vertices = drawn(whole);
-      // Six vertices a face, in the order of the box's faces without the two long ones:
-      // the two ends, then the top and the bottom.
-      const face = (n: number) => vertices.slice(n * 6, n * 6 + 6);
-      for (const end of [face(0), face(1)]) {
-        // An end (and so the jamb of a reveal): the wall's thickness across, its height up.
-        expect(span(end.map((x) => x.uv[0]))).toBeCloseTo(thickness, 5);
-        expect(span(end.map((x) => x.uv[1]))).toBeCloseTo(height, 5);
-      }
-      for (const flat of [face(2), face(3)]) {
-        // A top (and so the sill of a reveal): the length along, the thickness across.
-        expect(span(flat.map((x) => x.uv[0]))).toBeCloseTo(length, 5);
-        expect(span(flat.map((x) => x.uv[1]))).toBeCloseTo(thickness, 5);
+    // A window in an outer wall: the jambs, the head and the sill of its reveal, outdoors.
+    const window = scene.wallFaces.filter(
+      (f) =>
+        f.openingId === 'window-souterrain-kitchen-north' && f.finish.finish === 'render.facade',
+    );
+    expect(window).toHaveLength(4);
+    for (const face of window) {
+      const vertices = drawn(items.find((i) => i.id === face.id)!);
+      const size = (axis: 0 | 1 | 2) => span(face.outline.map((p) => p[axis]));
+      const [length, height, depth] = [size(0), size(1), size(2)];
+      if (length === 0) {
+        // A jamb: the wall's depth across, its height up.
+        expect(span(vertices.map((x) => x.uv[0]))).toBeCloseTo(depth, 5);
+        expect(span(vertices.map((x) => x.uv[1]))).toBeCloseTo(height, 5);
+      } else {
+        // A top, a head or a sill: the length along, the depth across.
+        expect(height).toBe(0);
+        expect(span(vertices.map((x) => x.uv[0]))).toBeCloseTo(length, 5);
+        expect(span(vertices.map((x) => x.uv[1]))).toBeCloseTo(depth, 5);
       }
     }
   });
@@ -219,45 +217,23 @@ describe('texture coordinates', () => {
   });
 });
 
-describe('the parts of a wall', () => {
+describe('the faces of a wall', () => {
   const scene = buildHome(model());
   const items = shellItems(scene);
-  const triangles = (item: DrawItem) => {
-    const g = shapeGeometry(item.shape);
-    return (g.index ? g.index.count : g.getAttribute('position').count) / 3;
-  };
 
-  it('core, front and back together have the triangles of the whole box or profile', () => {
-    for (const wall of scene.walls) {
-      const own = items.filter((i) => i.id === wall.id || i.id.startsWith(`${wall.id}/face-`));
-      // The core, whether it is one item or its top and the rest (a cut face, §7.2).
-      const core = { ...own[0]!, shape: { ...own[0]!.shape, only: 'core' } } as DrawItem;
-      const whole = { ...core, shape: { ...core.shape, only: undefined } } as DrawItem;
-      const faces = own.slice(1);
-      if (wall.outline) {
-        // The caps of a profile are triangulated per stretch; its sides are the core's.
-        expect(triangles(core)).toBe(triangles(whole) - 2 * (wall.outline.length - 2));
-      } else {
-        expect(triangles(core)).toBe(8);
-        expect(faces.every((f) => triangles(f) === 2)).toBe(true);
-        expect(triangles(whole)).toBe(12);
-      }
-    }
-  });
-
-  it('a face is flat and looks along the segment’s local z', () => {
-    const wall = scene.walls.find((w) => !w.outline)!;
-    const faces = items.filter((i) => i.id.startsWith(`${wall.id}/face-`));
-    for (const face of faces) {
-      const g = shapeGeometry(face.shape);
+  it('a long face is flat and looks along the wall’s local z', () => {
+    const faces = scene.wallFaces.filter((f) => f.part === 'front' || f.part === 'back');
+    for (const face of faces.slice(0, 40)) {
+      const g = shapeGeometry(items.find((i) => i.id === face.id)!.shape);
       const normal = g.getAttribute('normal');
-      const want = (face.shape as { only: string }).only === 'front' ? 1 : -1;
+      const want = face.part === 'front' ? 1 : -1;
       for (let i = 0; i < normal.count; i++) expect(normal.getZ(i)).toBe(want);
     }
   });
 
   it('faces of one finish on one level share a batch, whatever room they border', () => {
-    const faces = items.filter((i) => i.id.includes('/face-') && i.finish === 'paint.plain');
+    const ids = new Set(scene.wallFaces.filter((f) => f.part !== 'top').map((f) => f.id));
+    const faces = items.filter((i) => ids.has(i.id) && i.finish === 'paint.plain');
     const keys = new Set(faces.map(batchKey));
     expect(faces.length).toBeGreaterThan(50);
     expect(keys.size).toBeLessThanOrEqual(2);

@@ -407,7 +407,12 @@ describe('visibleScene', () => {
   });
 
   it('shows everything when whole', () => {
-    expect(visibleScene(scene, wholeVisibility(scene))).toEqual(scene);
+    // All but the tops of the walls, which are cut faces: nothing is cut in the whole house.
+    expect(visibleScene(scene, wholeVisibility(scene))).toEqual({
+      ...scene,
+      wallFaces: scene.wallFaces.filter((f) => f.part !== 'top'),
+    });
+    expect(scene.wallFaces.some((f) => f.part === 'top')).toBe(true);
   });
 
   it('shows the roof only above the top level, so the top level can be looked into', () => {
