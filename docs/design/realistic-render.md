@@ -671,7 +671,8 @@ This becomes a section of the `my-home-photo-modelling` skill when step 3 of the
    photos and use a value both agree on.
 4. **Record** the finish use with `source: estimated-from-photo` and the photo ids.
 5. **Missing finish:** when nothing in the library fits, add one in its own PR from a CC0 source.
-6. **Unsure:** ask for a photo (`photo-requests.sh`) instead of guessing.
+6. **Unsure:** ask for a photo (`photo-requests.sh`) instead of guessing. Until it arrives the surface keeps its default,
+   by leaving the field out or as the default finish with `source: mock` and a note that names the request (D50).
 
 Two rules hold throughout. **Photos are referenced by id and never uploaded or committed.** And **no texture is
 ever made from a photo:** a texture cut from the owner's photo would put the photo into git.
@@ -1323,6 +1324,7 @@ All seven proposed defaults were accepted.
 | D47 | "Plan colours" draws room floors as `floor.neutral` tinted with the old room colours; walls and the rest keep finishes | The option exists to tell rooms apart (Q2); the renderer never invents a material (§5.1) (#112)                                                                                                                                                        |
 | D48 | A face at right angles to its UV frame is projected along the frame's third axis                                       | A wall's frame is right for its two long faces, a roof plane's for its top. On the wall's top, ends and reveals, and on the roof's verges and eave edge, one coordinate would be constant and the texture a streak. Found in the review of #141 (#112) |
 | D49 | `stone.rubble` (Poly Haven `broken_wall`, colour and relief) joins the library, for rubble walls                       | The photos show the patio entrance's side walls as dry-stacked grey boulders; the library had only `concrete.screed` for an embankment. Budgets: 1.11 and 4.55 MB to download, 35 and 179 MB of memory (#113)                                          |
+| D50 | A surface no photo shows may be written as its default finish with `source: mock` and a note naming the photo request  | §5.5 says a missing field means the default. The explicit entry also says that the surface was looked for and which request will settle it; the builder draws the same either way (#113)                                                               |
 
 ## 14. Open questions
 
