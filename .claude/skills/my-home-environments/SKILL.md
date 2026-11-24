@@ -131,7 +131,13 @@ $S/seed.sh staging diff                                # drift between git's see
   **Copy** is clicked once per device at rest: the clipboard holds the markdown table (commit, mode, viewport,
   browser, this device's budgets), the button says "Copied", nothing is drawn, and the copied idle count is 0; the
   table is printed, to paste into a pull request. A build
-  before #110 skips the frame loop, one before #111 the lamps, one before #123 the copy. Read-only: every
+  before #110 skips the frame loop, one before #111 the lamps, one before #123 the copy. Then the **named views**
+  (`docs/views.md`), on a phone and on a desktop: `?view=cutaway` and `?view=eye` open from their links, settle,
+  keep their address and show no room names; `?view=section` stays within the whole house's draw-call budget,
+  also with its cut moved by the slider (the address follows), and switching it off ("Free") and on again
+  compiles no shader; and **Save image** downloads `my-home-section-<date>-<time>.png` at twice the canvas size
+  with `quality=fast` in the address, after which the canvas has its own size again. A build before #114 skips
+  them, one without the section its part. Read-only: every
   placement write is **answered inside the browser** (as the api would, merged into the placement reads), every
   other write is refused there.
 - `catalog-smoke.sh <env> [--out file.png] [--home ID]`: the catalogue pages (`docs/catalog.md`) at 1440x900 and
