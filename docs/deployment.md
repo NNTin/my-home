@@ -131,6 +131,48 @@ seed). A rollback deploys the older commit's seed too (§ Roll back production).
   `gh api repos/NNTin/my-home/deployments?environment=staging --jq '.[0] | {ref, sha, created_at}'`.
 - The running commit: `curl -s https://home-staging.nntin.xyz/api/health/live`.
 
+## Checks on staging
+
+After a pull request (or a tag, or a dispatch) is deployed to staging, the CI job **`staging-checks`** runs the
+browser checks against it, one runner each, in headless Chromium:
+
+| Check         | Runs                                                 | Passes when                                                                             |
+| ------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `walk`        | `walk-smoke.sh staging`                              | the smoke passes                                                                        |
+| `mobile`      | `mobile-smoke.sh staging`                            | the smoke passes: phone layout, frame loop, budgets, named views, section, "Save image" |
+| `visual-diff` | `visual-diff.sh staging shoot`, twice, and `compare` | every view is byte-identical in both shoots (`orbit-180`, a drag view, may differ)      |
+
+- Each is `staging-checks.sh <check> <commit>` of the `my-home-environments` skill. All are read-only.
+- **Results:** the run's summary page has a section per check (the smoke's failed checks, or the comparison
+  table); the full output is the job's log. `visual-diff` uploads its two sets of canvas shots and the table
+  as the artifact `visual-diff-<commit>` (kept 14 days): renders of the model only, no UI and no photo.
+- **Staging is shared and the latest deploy wins.** A check counts only if staging ran the commit before and
+  after it. If another deploy came first, the job fails and says so: run it again once the commit is deployed
+  (`gh run rerun <run-id> --failed`, or push again).
+- A pull request from a fork is not deployed and so not checked.
+- **Agents do not run these checks from their own machine** for a pull request: they read the job
+  (`gh pr checks <n>`, `gh run view <run-id>`, `gh run download <run-id> -n visual-diff-<commit>`). The scripts
+  stay usable by hand for debugging one failing check.
+
+### The secret `NNTIN_BOT_TOKEN`
+
+Staging is behind SSO. The checks pass it as agents do: a GitHub token of the **nntin-bot** account is exchanged
+at `POST /agent-auth/token` for a site token (the skill's `site-curl.sh`). CI needs that GitHub token as the
+repository secret `NNTIN_BOT_TOKEN`; the workflow's own `GITHUB_TOKEN` belongs to another account and is
+refused. Without the secret the three jobs pass with a warning and check nothing.
+
+To set it (the owner, once, and again when the token expires):
+
+1. Sign in to GitHub as **nntin-bot** and create a personal access token (classic) under
+   Settings → Developer settings → Personal access tokens, **without any scope**, with an expiry. The scripts
+   and the exchange only ask GitHub who the token belongs to.
+2. In NNTin/my-home: Settings → Secrets and variables → Actions → New repository secret, name
+   `NNTIN_BOT_TOKEN`, value the token. Or `gh secret set NNTIN_BOT_TOKEN --repo NNTin/my-home` and paste it.
+3. Re-run the `staging-checks` jobs of an open pull request, or push to one.
+
+The token is given to the one step that runs the check, never printed (the scripts redact it), and is not
+available to pull requests from forks or from Dependabot.
+
 ## Deploy something to staging
 
 - **Reset staging to `main`**: `gh workflow run ci.yml -R NNTin/my-home --ref main`.

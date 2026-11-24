@@ -41,6 +41,11 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - **No Docker locally.** Without `DATABASE_URL` the api uses PGlite (`apps/api/.data/`, in-memory in tests).
   Dockerfiles, compose and real Postgres are verified only in CI (`.github/workflows/ci.yml`).
 - Run `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test` before pushing.
+- **The browser checks on staging run in CI, not on the agents' machine.** After a pull request is deployed, the
+  job `staging-checks` runs `walk-smoke`, `mobile-smoke` and `visual-diff` (shot twice) against it
+  (`docs/deployment.md` § Checks on staging). Read its result (`gh pr checks <n>`, the run's summary, the
+  `visual-diff-<commit>` artifact) and put that in the pull request; do not run those scripts yourself for a
+  pull request. If the jobs say the secret `NNTIN_BOT_TOKEN` is not set, tell the owner.
 - API request/response shapes live in `packages/shared`; validate with them on both sides.
 - api tests use `fastify.inject` and must also pass against real Postgres (CI `test-postgres`).
 - web tests run in jsdom: mock the R3F canvas, never require WebGL.
