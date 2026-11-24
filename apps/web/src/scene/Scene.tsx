@@ -14,7 +14,7 @@ import { PerfReadout, perfRequested } from '../quality/PerfReadout';
 import { perfView } from '../quality/perfReport';
 import type { Quality } from '../quality/setting';
 import { onCanvas } from './canvasEvent';
-import { DPR, FrameLoop, NEAR, PHONE_DPR } from './Frame';
+import { DPR, FrameLoop, NEAR, PHONE_DPR, useFrameControl } from './Frame';
 import { FurnitureLayer, type FurnitureHandlers, type FurnitureView } from './FurnitureLayer';
 import type { FrameRequest } from '../placements/focus';
 import { ShellMeshes, type PieceHandlers } from './ShellMeshes';
@@ -240,14 +240,20 @@ function applyFrame(state: RootState, frame: FrameRequest) {
  */
 function FrameView({ frame }: { frame: (FrameRequest & { key: number }) | undefined }) {
   const get = useThree((s) => s.get);
+  const control = useFrameControl();
   const key = frame?.key;
   useEffect(() => {
     if (!frame) return;
     // With the controls there, at once: no frame is drawn from the old place under the new
     // view's light. On the first render the camera and controls are still being set up: a
     // frame later.
-    if (get().controls) return applyFrame(get(), frame);
-    const id = requestAnimationFrame(() => applyFrame(get(), frame));
+    const apply = () => {
+      applyFrame(get(), frame);
+      // The lamps gather around the new place, not around where the camera happened to be.
+      control?.cameraJumped();
+    };
+    if (get().controls) return apply();
+    const id = requestAnimationFrame(apply);
     return () => cancelAnimationFrame(id);
     // Only a new request frames: the same one must not pull the camera back on a re-render.
     // eslint-disable-next-line react-hooks/exhaustive-deps

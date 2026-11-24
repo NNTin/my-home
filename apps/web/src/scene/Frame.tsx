@@ -40,6 +40,12 @@ export interface FrameControl {
   finishes: FinishMaterials;
   /** A finish is drawn: its texture files are asked for, once, in this device's size (§5.3). */
   finishShown(finish: string): void;
+  /**
+   * The camera was put somewhere else at once (a named view, `?focus=`): the lamp pool gathers
+   * afresh around the new place, so what is lit and shadowed there does not depend on where the
+   * camera was before (§6.4, §6.7).
+   */
+  cameraJumped(): void;
   /** A section is cut: the frame's targets get a stencil buffer for its caps (§7.2). */
   useStencil(): void;
   /**
@@ -192,6 +198,10 @@ export function FrameLoop({
         // The view has not settled while a texture is on its way: a capture waits for it.
         governor.setMoving('textures', finishSet.textures.pending > 0);
       },
+      cameraJumped() {
+        lights.regather();
+        invalidate();
+      },
       useStencil() {
         output.useStencil();
         invalidate();
@@ -199,7 +209,7 @@ export function FrameLoop({
       beautifulReady: () => still.current.ready(),
       drawNow: (tier) => still.current.draw(tier),
     }),
-    [governor, invalidate, finishSet, output],
+    [governor, invalidate, finishSet, output, lights],
   );
 
   // A texture arrives: the next frame draws with it, and compiles nothing (§4.5). One that fails
