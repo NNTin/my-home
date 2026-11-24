@@ -1,6 +1,8 @@
 import {
   DepthFormat,
+  DepthStencilFormat,
   DepthTexture,
+  UnsignedInt248Type,
   UnsignedIntType,
   BufferAttribute,
   BufferGeometry,
@@ -161,6 +163,8 @@ export class FrameOutput {
   private readonly outputQuad = fullScreenTriangle(this.outputMaterial);
   private readonly fxaaQuad = fullScreenTriangle(this.fxaaMaterial);
   private readonly size = new Vector2();
+  /** Whether the targets have a stencil buffer: from the first section on. */
+  private stencil = false;
 
   /**
    * Linear light needs more than 8 bits. Every WebGL 2 device we know draws into half floats; one
@@ -183,15 +187,18 @@ export class FrameOutput {
     const { width, height } = this.renderer.getDrawingBufferSize(this.size);
     let target = this.targets.get(tier);
     if (!target) {
+      const { stencil } = this;
       target = new WebGLRenderTarget(width, height, {
         type: this.targetType,
         samples: targetSamples(tier, this.phone),
         depthBuffer: true,
+        stencilBuffer: stencil,
       });
       // The occlusion pass reads the frame's depth.
       if (tier === 'beautiful') {
-        target.depthTexture = new DepthTexture(width, height, UnsignedIntType);
-        target.depthTexture.format = DepthFormat;
+        const type = stencil ? UnsignedInt248Type : UnsignedIntType;
+        target.depthTexture = new DepthTexture(width, height, type);
+        target.depthTexture.format = stencil ? DepthStencilFormat : DepthFormat;
       }
       this.targets.set(tier, target);
     } else if (target.width !== width || target.height !== height) {
@@ -226,6 +233,17 @@ export class FrameOutput {
       this.shaded.setSize(width, height);
     }
     return this.shaded;
+  }
+
+  /**
+   * From now on the frame's targets have a stencil buffer: a section's caps are drawn with it
+   * (§7.2). The targets are made again; no program depends on them.
+   */
+  useStencil() {
+    if (this.stencil) return;
+    this.stencil = true;
+    for (const target of this.targets.values()) target.dispose();
+    this.targets.clear();
   }
 
   /** Whether beautiful frames can be drawn: the lazy chunk's occlusion pass is here and compiled. */

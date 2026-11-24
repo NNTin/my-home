@@ -141,8 +141,9 @@ On a phone (the same condition as the phone layout) the 3D view also:
 - draws its frames **without multisampling** and smooths the edges with one **FXAA** step after the output pass
   (a desktop's frames have 4 samples).
 
-The **Views** control of the View tab opens the named views (the isometric cutaway, eye level in a room) and
-chooses the backdrop; **Reset view** goes back to the free view (`docs/views.md`).
+The **Views** control of the View tab opens the named views (the isometric cutaway, the cross-section with its
+slider, eye level in a room), chooses the backdrop and saves the view as an image; **Reset view** goes back to
+the free view (`docs/views.md`).
 
 The **Quality** control of the View tab (`fast`, `auto`, `beautiful`: "Fast", "Automatic", "Always beautiful")
 says which tier is drawn when; a phone starts on "Automatic". It is remembered on the device

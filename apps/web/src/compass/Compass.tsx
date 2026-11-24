@@ -144,7 +144,8 @@ export function CompassMarkers({
   hidden?: boolean;
 }) {
   return (
-    <group visible={!hidden}>
+    // Not part of an exported image (§7.4).
+    <group visible={!hidden} userData={{ overlay: true }}>
       {markers.map((m) => (
         <MarkerSprite key={m.label} marker={m} />
       ))}

@@ -859,10 +859,17 @@ URL and from the View panel.
 - **Section:** one clipping plane cuts every material. Cut solids are closed with a **stencil cap**: the back
   and front faces of closed solids write the stencil, and a quad on the cut plane is drawn where a solid is
   open.
-- **One stencil bit and one quad per cap material.** There are two cap materials, `cut.dark` for building
-  parts and furniture and `soil.plain` for terrain. Each has its own stencil bit, written only by the solids
-  that take that cap, and its own quad that tests only that bit. The building's quad is drawn after the
-  terrain's, so where a wall stands in soil the wall's cap wins.
+- **One count and one quad per cap material.** There are two cap materials, `cut.dark` for building
+  parts and furniture and `soil.plain` for terrain. The solids of a cap are counted in the stencil buffer: a
+  back face adds one, a front face takes one away, so the buffer holds, per pixel, how many solids the cut
+  plane is inside of. The cap's quad is drawn where that is not zero, and the count starts again for the next
+  cap. The building's quad is drawn after the terrain's, so where a wall stands in soil the wall's cap wins
+  (D57).
+- The counting meshes are the closed solids again, positions only, merged by what is shown and hidden together
+  (a level and apartment, a slab, the roof, the terrain; fences, outbuildings and furniture as one each): about
+  fifteen meshes at two draw calls each, built when a section is first cut. What is hidden is not capped.
+- Glass and wire mesh are cut and stay open (D58). The cut lies 3 mm behind the position asked for, so it is
+  never exactly in a wall face (D59). The frame's targets get their stencil buffer with the first section.
 - Stencil caps do not depend on how solids overlap, which is what broke the back-face trick in #107's spike at
   wall openings.
 - Every draw item says whether it is a closed solid. Flat polygons (floors, lawns) are cut and need no cap.
@@ -877,7 +884,9 @@ foot of the ground block and belongs to the named views; the free view is as it 
 
 - "Save image" in the View panel draws the current view once, at twice the canvas size up to 3840 px wide, in
   the beautiful tier, without labels, letters or handles, and downloads a PNG named
-  `my-home-<view>-<yyyymmdd-hhmm>.png`.
+  `my-home-<view>-<yyyymmdd-hhmm>.png`. `<view>` is `cutaway`, `section`, `eye` or `free`. The beautiful
+  tier's chunk is asked for if the setting is `fast`. The canvas takes the export's size for that one frame and
+  its own again in the same task, so the page never shows it (D60).
 - In render mode it saves the traced image (§9).
 - An exported image is a render of the model. It may be posted on GitHub; it contains no photo and no location.
 
@@ -1344,6 +1353,10 @@ All seven proposed defaults were accepted.
 | D54 | While a named view's look is on, the camera's near plane moves out with the camera                                     | At 20 and 25 degrees the camera stands 40 to 120 m away; with a near plane of 10 cm the depth buffer's steps there are millimetres to a centimetre, and floors a centimetre over their slab would flicker (#114)                                       |
 | D55 | The eye stands back from its room's middle and looks to the farthest corner by default                                 | From the middle of a small room 70 degrees shows the nearest cabinet. §7.1 fixes the height and the field of view, not the spot (#114)                                                                                                                 |
 | D56 | "Free" in the Views control is "Reset view"; with `?walk=` the view waits for the walk to end                          | A desktop has no "Reset view" button. Walk mode sets the camera, its field of view and the light itself: the two cannot be on at once (#114)                                                                                                           |
+| D57 | A cap's solids are counted in the whole stencil buffer, one cap after the other, not in one bit each                   | One bit can only hold a parity, and two solids that overlap (walls at every corner) would cancel out: a hole in the cap. A count has no such case. §7.2 asked for a bit per cap; the buffer is cleared between the two caps instead (#114)             |
+| D58 | A section does not cap translucent solids: glass panes, the wire mesh of a fence                                       | A dark slab in a window pane would be no pane (#114)                                                                                                                                                                                                   |
+| D59 | The cut lies 3 mm behind the position asked for                                                                        | Wall faces stand at whole centimetres. A cut exactly in a face leaves it to rounding which of its pixels are drawn (#114)                                                                                                                              |
+| D60 | The image export draws on the canvas itself, at the export's pixel ratio, and puts the canvas back in the same task    | One path for every frame: the output pass ends on the canvas. A second set of targets and a read-back would be more code for the same pixels (#114)                                                                                                    |
 
 ## 14. Open questions
 

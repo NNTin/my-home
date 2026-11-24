@@ -14,7 +14,7 @@ import { PerfReadout, perfRequested } from '../quality/PerfReadout';
 import { perfView } from '../quality/perfReport';
 import type { Quality } from '../quality/setting';
 import { onCanvas } from './canvasEvent';
-import { DPR, FrameLoop, PHONE_DPR } from './Frame';
+import { DPR, FrameLoop, NEAR, PHONE_DPR } from './Frame';
 import { FurnitureLayer, type FurnitureHandlers, type FurnitureView } from './FurnitureLayer';
 import type { FrameRequest } from '../placements/focus';
 import { ShellMeshes, type PieceHandlers } from './ShellMeshes';
@@ -339,7 +339,7 @@ export function Scene({
   return (
     <>
       <Canvas
-        camera={{ position: initialCamera(scene.bounds), fov: ORBIT_FOV, near: 0.1, far: 500 }}
+        camera={{ position: initialCamera(scene.bounds), fov: ORBIT_FOV, near: NEAR, far: 500 }}
         // A phone has more pixels per inch than it can fill at a steady rate: a capped pixel ratio.
         dpr={touch ? PHONE_DPR : DPR}
         // On every device a new frame is drawn only when something changed (docs/mobile.md).
@@ -403,17 +403,20 @@ export function Scene({
           />
           {walk && <WalkRig figure={walk.figure} view={walk.view} rose={rose} />}
           {viewpoint && <ViewpointRig viewpoint={viewpoint} rose={rose} />}
-          <PhotoMarkers
-            markers={photoMarkers}
-            touch={touch}
-            onSelect={(id) => onSelectPhoto?.(id)}
-          />
+          {/* Markers are not part of an exported image (§7.4). */}
+          <group userData={{ overlay: true }}>
+            <PhotoMarkers
+              markers={photoMarkers}
+              touch={touch}
+              onSelect={(id) => onSelectPhoto?.(id)}
+            />
+            <RequestGhosts ghosts={requestGhosts} />
+          </group>
           {resetViewRef && (
             <ViewReset bounds={scene.bounds} target={target} resetRef={resetViewRef} />
           )}
           <FrameView frame={frame} />
           {stage}
-          <RequestGhosts ghosts={requestGhosts} />
           <CompassTracker northBearing={northBearing} roseRef={roseRef} northUpRef={northUpRef} />
         </FrameLoop>
       </Canvas>

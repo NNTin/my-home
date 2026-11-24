@@ -42,7 +42,7 @@ $S/screenshot.sh staging --click 'label:has-text("Souterrain")' --drag -300,0   
 $S/screenshot.sh staging --viewport 390x844 --path '/?walk=first' --pad 0,-44,2000   # walk, then shoot
 $S/screenshot.sh staging --viewport 390x844 --touch --path '/?panel=furniture'   # phone layout, a panel open
 $S/screenshot.sh staging --canvas --out /tmp/view.png   # the 3D canvas only, no UI text
-$S/screenshot.sh staging --canvas --path '/?view=cutaway&hints=off'   # a named view (docs/views.md): cutaway, eye
+$S/screenshot.sh staging --canvas --path '/?view=cutaway&hints=off'   # a named view (docs/views.md): cutaway, section, eye
 $S/visual-diff.sh staging shoot --out /tmp/vd-main         # 8 fixed canvas views + manifest (commit)
 $S/visual-diff.sh compare /tmp/vd-main /tmp/vd-pr          # identical, or differing pixels + diff PNGs
 $S/walk-smoke.sh staging                                 # phone-sized smoke test of walk mode
@@ -87,7 +87,9 @@ $S/seed.sh staging diff                                # drift between git's see
   `quality=beautiful` in `--path` also for the beautiful tier (`data-tier="beautiful"`), which arrives with a
   lazy chunk. Under software rendering a beautiful frame takes many seconds, and the viewer **steps down** to a
   faster setting by itself: add `&stepdown=off` to shoot the tier you asked for.
-- **Named views** (`docs/views.md`) open by URL: `?view=cutaway&level=<levelId>` (the isometric cutaway) and
+- **Named views** (`docs/views.md`) open by URL: `?view=cutaway&level=<levelId>` (the isometric cutaway),
+  `?view=section&look=north|east|south|west&at=<m>` (the cross-section: where the camera looks, and the cut's
+  distance from the building's near face) and
   `?view=eye&room=<roomId>&look=<degrees>` (eye level in a room, degrees clockwise from plan north);
   `?backdrop=sky|studio-light|studio-dark` chooses the backdrop for a visit. They combine with `?quality=`. A
   shot waits until the view has opened (it comes with a lazy chunk) and settled.
@@ -100,8 +102,8 @@ $S/seed.sh staging diff                                # drift between git's see
   `souterrain`, `ground-floor` and `first-floor`, `orbit-180` (`--drag 600,0`), `steep` (`--drag 0,250`, from above),
   phone 390x844: `phone`; all with `hints=off&quality=fast`; then, with `stepdown=off`, the tiers
   (`default-beautiful`, `walk-fast`: walk mode's first room at eye level, `phone-auto`: the refined frame) and the
-  named views in both tiers (`cutaway-fast`, `cutaway-beautiful`: `?view=cutaway`; `eye-fast`, `eye-beautiful`:
-  `?view=eye` in the kitchen)) into `DIR/<view>.png` plus `DIR/manifest.json`
+  named views in both tiers (`cutaway-fast`, `cutaway-beautiful`: `?view=cutaway`; `section-fast`,
+  `section-beautiful`: `?view=section`; `eye-fast`, `eye-beautiful`: `?view=eye` in the kitchen)) into `DIR/<view>.png` plus `DIR/manifest.json`
   (deployed commit, view arguments, sha256). It reads the deployed commit before and after and fails if a
   deploy happened in between. `visual-diff.sh compare DIR_A DIR_B` prints a Markdown table per view:
   identical (same sha256) or the number of differing pixels, how many of them differ by more than 2 levels of

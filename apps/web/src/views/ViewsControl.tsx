@@ -39,6 +39,9 @@ export interface ViewsControlProps {
   onBackdrop(backdrop: Backdrop): void;
   /** The level a cutaway opens on: the one being looked into. */
   levelId?: string | undefined;
+  /** "Save image" (§7.4); `saving` while one is being drawn. */
+  onSave(): void;
+  saving: boolean;
 }
 
 export function ViewsControl({
@@ -48,6 +51,8 @@ export function ViewsControl({
   backdrop,
   onBackdrop,
   levelId,
+  onSave,
+  saving,
 }: ViewsControlProps) {
   const open = (kind: ViewKind) => {
     const next = defaultView(scene, kind, kind === 'cutaway' ? levelId : undefined);
@@ -153,6 +158,11 @@ export function ViewsControl({
           ))}
         </select>
       </label>
+      <div className="buttons">
+        <button type="button" onClick={onSave} disabled={saving}>
+          {saving ? 'Saving…' : 'Save image'}
+        </button>
+      </div>
     </fieldset>
   );
 }
