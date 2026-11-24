@@ -44,6 +44,11 @@ gh run rerun <run-id> --repo NNTin/my-home --failed        # after "another depl
 
 - "skipped, the secret NNTIN_BOT_TOKEN is not set": nothing was checked; tell the owner (the same section says
   how to set it).
+- "answered 504 for the page" (or another status of 400 and above): staging itself failed that request; the
+  view was not looked at. It is a matter for `env-status.sh`, not for the pull request's code.
+- Cloudflare's own requests on the environment's host (`/cdn-cgi/*`, its analytics beacon, which GitHub's
+  runners get on every page) are answered inside the browser by every script (`scripts/infrastructure.mjs`):
+  they are no write and no error of the app. Every other write is still refused and reported.
 - "another deploy came first" (exit 6): staging ran another commit before or after the check; run it again.
 - For a before/after of a renderer change, download the artifact of the pull request's run and of a run on
   `main`'s tree and `visual-diff.sh compare` the two folders (it reads files only).

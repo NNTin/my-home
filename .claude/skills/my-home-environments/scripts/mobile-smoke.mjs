@@ -12,6 +12,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { answeredInfrastructure } from './infrastructure.mjs';
 
 const require = createRequire(path.join(process.env.MY_HOME_PLAYWRIGHT_DIR, 'package.json'));
 const { chromium } = require('playwright');
@@ -83,6 +84,8 @@ async function frameChecks(browser, { device, base, host, homeId }) {
   await context.route('**/*', (route) => {
     const request = route.request();
     if (new URL(request.url()).host !== host) return route.continue();
+    // Cloudflare's own requests (its analytics beacon) are answered here: no write, no error.
+    if (answeredInfrastructure(route, host)) return;
     if (!['GET', 'HEAD'].includes(request.method())) return route.abort();
     return route.continue({ headers: { ...request.headers(), authorization: `Bearer ${token}` } });
   });
@@ -431,6 +434,8 @@ async function textureChecks(browser, { device, base, host, homeId }) {
     const request = route.request();
     const url = new URL(request.url());
     if (url.host !== host) return route.continue();
+    // Cloudflare's own requests (its analytics beacon) are answered here: no write, no error.
+    if (answeredInfrastructure(route, host)) return;
     if (!['GET', 'HEAD'].includes(request.method())) return route.abort();
     // The files themselves, not a dev server's modules that only name them.
     if (url.pathname.endsWith('.webp') && ['fetch', 'image'].includes(request.resourceType())) {
@@ -536,6 +541,8 @@ async function viewChecks(browser, { device, base, host, homeId }) {
   await context.route('**/*', (route) => {
     const request = route.request();
     if (new URL(request.url()).host !== host) return route.continue();
+    // Cloudflare's own requests (its analytics beacon) are answered here: no write, no error.
+    if (answeredInfrastructure(route, host)) return;
     if (!['GET', 'HEAD'].includes(request.method())) return route.abort();
     return route.continue({ headers: { ...request.headers(), authorization: `Bearer ${token}` } });
   });
@@ -777,6 +784,8 @@ async function smoke(out, homeId) {
       const request = route.request();
       const url = new URL(request.url());
       if (url.host !== host) return route.continue();
+      // Cloudflare's own requests (its analytics beacon) are answered here: no write, no error.
+      if (answeredInfrastructure(route, host)) return;
       const method = request.method();
       const headers = { ...request.headers(), authorization: `Bearer ${token}` };
       const json = (status, body) =>

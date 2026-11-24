@@ -149,6 +149,8 @@ browser checks against it, one runner each, in headless Chromium:
 - **Staging is shared and the latest deploy wins.** A check counts only if staging ran the commit before and
   after it. If another deploy came first, the job fails and says so: run it again once the commit is deployed
   (`gh run rerun <run-id> --failed`, or push again).
+- Cloudflare adds its analytics beacon (`POST /cdn-cgi/rum`) to pages it serves to GitHub's runners. The
+  scripts answer `/cdn-cgi/*` inside the browser: it is no write to my-home and no error of the page.
 - A pull request from a fork is not deployed and so not checked.
 - **Agents do not run these checks from their own machine** for a pull request: they read the job
   (`gh pr checks <n>`, `gh run view <run-id>`, `gh run download <run-id> -n visual-diff-<commit>`). The scripts

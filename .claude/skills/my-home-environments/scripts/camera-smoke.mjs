@@ -8,6 +8,7 @@
 /* global window, document */
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { answeredInfrastructure } from './infrastructure.mjs';
 
 const require = createRequire(path.join(process.env.MY_HOME_PLAYWRIGHT_DIR, 'package.json'));
 const { chromium } = require('playwright');
@@ -126,6 +127,8 @@ async function open(browser, label, { denyCamera = false } = {}) {
   await context.route('**/*', (route) => {
     const request = route.request();
     if (new URL(request.url()).host !== host) return route.continue();
+    // Cloudflare's own requests (its analytics beacon) are answered here: no write, no error.
+    if (answeredInfrastructure(route, host)) return;
     if (request.method() === 'POST' && /\/api\/homes\/[^/]+\/photos$/.test(request.url())) {
       const homeId = decodeURIComponent(request.url().split('/').at(-2));
       const photo = checkUpload(`${label} #${uploads.length + 1}`, request, homeId);
