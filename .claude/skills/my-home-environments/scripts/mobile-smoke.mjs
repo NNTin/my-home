@@ -568,7 +568,7 @@ async function viewChecks(browser, { device, base, host, homeId }) {
     });
     await page.waitForSelector('canvas', { timeout: 30_000 });
   };
-  const views = page.getByRole('group', { name: 'Views' });
+  const views = page.getByRole('group', { name: 'Views', exact: true });
   const press = async (name) => {
     const button = views.getByRole('button', { name, exact: true });
     await button.scrollIntoViewIfNeeded();
@@ -579,12 +579,9 @@ async function viewChecks(browser, { device, base, host, homeId }) {
   const where = `on a ${device}`;
   try {
     await open('view=cutaway');
-    if (
-      !(await views.waitFor({ timeout: 30_000 }).then(
-        () => true,
-        () => false,
-      ))
-    ) {
+    // The control comes with a lazy chunk, a moment after the page. A build before #114 has none.
+    await page.waitForSelector('.views-control', { timeout: 30_000 }).catch(() => undefined);
+    if ((await page.locator('.views-control').count()) === 0) {
       console.log(`skip  the named views ${where}: a build before #114 (no Views control)`);
       return;
     }

@@ -57,7 +57,7 @@ export function ViewsControl({
   return (
     <fieldset className="views-control">
       <legend>Views</legend>
-      <div className="buttons" role="group" aria-label="Named views">
+      <div className="buttons">
         <button type="button" aria-pressed={!view} onClick={() => onView(undefined)}>
           Free
         </button>
