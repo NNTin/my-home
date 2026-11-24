@@ -51,7 +51,7 @@ describe('the texture loader', () => {
   it('a phone requests the 512 px colour and normal maps of each set, and never a 1024 px file', () => {
     const { textures, requests } = fake('phone');
     for (const finish of finishes.finishes) textures.request(finish.id);
-    expect(requests).toHaveLength(23);
+    expect(requests).toHaveLength(25);
     expect(requests.every((url) => url.endsWith('-512.webp'))).toBe(true);
     expect(requests.some((url) => url.includes('1024') || url.includes('roughness'))).toBe(false);
     expect(new Set(requests).size).toBe(requests.length);
@@ -60,7 +60,7 @@ describe('the texture loader', () => {
   it('a desktop requests the 1024 px maps with the roughness maps, and never a 512 px file', () => {
     const { textures, requests } = fake('desktop');
     for (const finish of finishes.finishes) textures.request(finish.id);
-    expect(requests).toHaveLength(30);
+    expect(requests).toHaveLength(32);
     expect(requests.every((url) => url.endsWith('-1024.webp'))).toBe(true);
     expect(requests.some((url) => url.includes('512'))).toBe(false);
     expect(requests.filter((url) => url.includes('roughness'))).toHaveLength(7);
