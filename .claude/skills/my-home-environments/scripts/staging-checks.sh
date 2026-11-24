@@ -7,17 +7,19 @@
 #   walk         walk-smoke.sh
 #   mobile       mobile-smoke.sh (phone layout, frame loop and budgets, named views, section, "Save image")
 #   visual-diff  visual-diff.sh shoot, twice, and compare: every view must come out byte-identical both times,
-#                except orbit-180 (a drag view whose camera angle is known to vary now and then)
+#                except orbit-180 (a drag view whose camera angle is known to vary now and then). It counts only
+#                if the placements, overrides and notes on staging (the seed export) stayed the same meanwhile
 # The canvas shots and the smoke's screenshot go to DIR (default: a new temp directory); with GITHUB_STEP_SUMMARY
 # set, the result is appended to it as Markdown.
-# Exit 0 passed, 1 the check failed or a tool is missing, 6 staging ran another commit before or after.
+# Exit 0 passed, 1 the check failed or a tool is missing, 6 not counted: staging ran another commit before or
+# after, or its data was edited during a visual-diff.
 set -euo pipefail
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=lib.sh
 source "$script_dir/lib.sh"
 
 usage() {
-  sed -n '2,13s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,15s/^# \{0,1\}//p' "$0" >&2
   exit 1
 }
 
@@ -63,7 +65,28 @@ same_commit() {
   exit 6
 }
 
+# data_mark: a fingerprint of what the environment draws besides the commit: the placements, overrides and notes.
+# The owner and agents edit them on staging; a shot before and one after such an edit differ, and not by the code.
+data_mark() {
+  "$checks_dir/seed.sh" staging export | sha256sum | cut -d' ' -f1
+}
+
+# same_data <mark>: exits 6 when the environment's data changed since <mark> was taken.
+same_data() {
+  local now
+  now=$(data_mark) || now=
+  [[ -n $now && $now == "$1" ]] && return 0
+  printf '### %s on staging: not counted\n\nThe placements, overrides or notes on staging were changed while the views were shot (someone edited them there), so the two shoots show different data. Run the job again.\n' \
+    "$check" | summary
+  warn "the placements, overrides or notes on staging changed during the check: not counted, run it again"
+  exit 6
+}
+
 same_commit before
+mark=''
+if [[ $check == visual-diff ]]; then
+  mark=$(data_mark) || die "could not read the seed of staging"
+fi
 log="$out/$check.log"
 status=0
 case "$check" in
@@ -85,6 +108,7 @@ case "$check" in
 esac
 cat "$log"
 same_commit after
+[[ -z $mark ]] || same_data "$mark"
 
 verdict=passed
 [[ $status -eq 0 ]] || verdict=FAILED

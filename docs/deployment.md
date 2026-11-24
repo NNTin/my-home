@@ -151,6 +151,9 @@ browser checks against it, one runner each, in headless Chromium:
   (`gh run rerun <run-id> --failed`, or push again).
 - Cloudflare adds its analytics beacon (`POST /cdn-cgi/rum`) to pages it serves to GitHub's runners. The
   scripts answer `/cdn-cgi/*` inside the browser: it is no write to my-home and no error of the page.
+- **The data on staging is shared too.** `visual-diff` also counts only if the placements, overrides and notes
+  (the seed export) were the same before and after its two shoots: when someone moves a piece of furniture on
+  staging meanwhile, the shoots show different data, and the job says "not counted", not "failed". Run it again.
 - A pull request from a fork is not deployed and so not checked.
 - **Agents do not run these checks from their own machine** for a pull request: they read the job
   (`gh pr checks <n>`, `gh run view <run-id>`, `gh run download <run-id> -n visual-diff-<commit>`). The scripts

@@ -50,6 +50,9 @@ gh run rerun <run-id> --repo NNTin/my-home --failed        # after "another depl
   runners get on every page) are answered inside the browser by every script (`scripts/infrastructure.mjs`):
   they are no write and no error of the app. Every other write is still refused and reported.
 - "another deploy came first" (exit 6): staging ran another commit before or after the check; run it again.
+- "the placements, overrides or notes on staging were changed while the views were shot" (exit 6, `visual-diff`):
+  someone edited them on staging between the two shoots (the owner works there). Not the code: run it again,
+  and never "fix" it by importing the seed over their draft.
 - For a before/after of a renderer change, download the artifact of the pull request's run and of a run on
   `main`'s tree and `visual-diff.sh compare` the two folders (it reads files only).
 - By hand, the scripts are for debugging one failing check, and `screenshot.sh` for a render to show.
@@ -217,7 +220,8 @@ $S/seed.sh staging diff                                # drift between git's see
   `screenshot.sh --check` installs them if missing and verifies a headless launch.
 - `staging-checks.sh <walk|mobile|visual-diff> <commit> [--out DIR]`: what CI's `staging-checks` job runs. One
   check, counted only if staging ran `<commit>` (full sha) before and after it (exit 6 otherwise). `visual-diff`
-  shoots every view twice and fails if any but `orbit-180` differs. Appends a Markdown result to
+  shoots every view twice and fails if any but `orbit-180` differs; it is not counted either when the seed
+  export of staging changed between the shoots. Appends a Markdown result to
   `GITHUB_STEP_SUMMARY` when set.
 - `raise-env-issue.sh [--dry-run] [--force] <env> <summary> [details-file]`: refuses (exit 3) unless
   `env-status.sh` reports BROKEN; then comments on the open `environment`-labelled issue titled

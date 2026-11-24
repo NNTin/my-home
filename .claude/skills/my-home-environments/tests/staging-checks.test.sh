@@ -34,6 +34,15 @@ cat "$STUB_TABLE"
 grep -q DIFFERS "$STUB_TABLE" && exit 5
 exit 0
 STUB
+# seed.sh export: the seeds in $STUB_SEEDS, one per call (the last one from then on).
+cat >"$work/seed.sh" <<'STUB'
+#!/usr/bin/env bash
+calls=$(cat "$STUB_DIR/seed-calls" 2>/dev/null || echo 0)
+echo $((calls + 1)) >"$STUB_DIR/seed-calls"
+read -r -a seeds <<<"${STUB_SEEDS:-same}"
+at=$((calls < ${#seeds[@]} ? calls : ${#seeds[@]} - 1))
+printf '{"placements":"%s"}\n' "${seeds[$at]}"
+STUB
 cp "$work/smoke" "$work/walk-smoke.sh"
 cp "$work/smoke" "$work/mobile-smoke.sh"
 chmod +x "$work"/site-curl "$work"/*.sh
@@ -56,7 +65,7 @@ check() {
 run() {
   local commits=$1
   shift
-  rm -f "$work/calls" "$work/summary"
+  rm -f "$work/calls" "$work/seed-calls" "$work/summary"
   code=0
   STUB_COMMITS=$commits GITHUB_STEP_SUMMARY="$work/summary" \
     "$scripts/staging-checks.sh" "$@" --out "$work/shots" >"$work/out" 2>&1 || code=$?
@@ -88,6 +97,13 @@ check 'the summary holds the table' grep -q '^| default | identical' "$work/summ
 printf '| View | Result | Detail |\n| --- | --- | --- |\n| default | DIFFERS | 3 pixels |\n| orbit-180 | identical | sha256 2 |\n' >"$work/table.md"
 run 'abc abc' visual-diff abc
 check 'any other view that differs between the shoots fails' test "$code" -eq 1
+
+printf '| View | Result | Detail |\n| --- | --- | --- |\n| default | DIFFERS | 128 pixels |\n' >"$work/table.md"
+STUB_SEEDS='before moved' run 'abc abc' visual-diff abc
+check 'placements edited on staging during the shoots: not counted (exit 6), not failed' test "$code" -eq 6
+check 'the summary says the data changed' grep -q 'someone edited them there' "$work/summary"
+run 'abc abc' walk abc
+check 'a smoke does not read the seed' test ! -e "$work/seed-calls"
 
 : >"$work/table.md"
 run 'abc abc' visual-diff abc
