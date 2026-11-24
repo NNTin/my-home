@@ -29,8 +29,9 @@ panel, the phone's View tab) and in the address.
 direction, in metres (the middle when omitted). The **Cut at** slider of the Views control moves it; the camera
 stays. Looking from another side keeps the cut the same share of the way through the house.
 
-- One clipping plane cuts every material of the home, shadows included. Its programs are compiled ahead the
-  first time, while the frame before stays on screen; switching the section off and on again compiles nothing.
+- One clipping plane cuts every material of the home, shadows included. The programs with the cut and those
+  without are each compiled ahead the first time they are needed, while the frame before stays on screen (a
+  section link compiles the cut ones first); after that, switching the section off and on compiles nothing.
 - **Caps:** what the plane cuts open is closed by a stencil cap: `cut.dark` for walls, slabs, the roof, stairs,
   fences, outbuildings and furniture, `soil.plain` for the terrain. Where a wall stands in soil the wall's cap
   wins. Glass is cut and stays open; floors and lawns are flat and need no cap. A level that is hidden is not

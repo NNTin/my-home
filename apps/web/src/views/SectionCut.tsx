@@ -123,8 +123,9 @@ export function SectionCut({
   const { normal, constant } = sectionPlane(scene, view);
   const [nx, ny, nz] = normal;
 
-  // The plane goes into every material of the home. The first time, their clipped variants are
-  // compiled ahead while the frame before stays on screen; taking it out compiles nothing.
+  // The plane goes into every material of the home. Their variants with and without the cut are
+  // each compiled ahead the first time they are needed, while the frame before stays on screen;
+  // after that, putting the plane in and taking it out compiles nothing.
   useLayoutEffect(() => {
     cut.move([nx, ny, nz], constant);
     cut.on(gl);
@@ -133,6 +134,9 @@ export function SectionCut({
     frame?.castersChanged();
     return () => {
       cut.off(gl);
+      // Ahead in this direction too: a view opened on a section link has only ever compiled the
+      // cut variants, and the first frame without the cut must not stall on the others.
+      frame?.materialsChanged();
       frame?.castersChanged();
     };
     // Only when the cut comes and goes: moving it is the effect below.
