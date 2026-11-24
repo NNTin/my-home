@@ -44,4 +44,6 @@ out=${out:-${TMPDIR:-/tmp}/my-home-$SITE_ENV-mobile-$(date +%Y%m%d-%H%M%S).png}
 export MY_HOME_PLAYWRIGHT_DIR=${MY_HOME_PLAYWRIGHT_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/my-home-environments/playwright}
 node_cmd=(node)
 command -v ao-heavy >/dev/null 2>&1 && [[ ${AO_HEAVY_ACTIVE:-} != 1 ]] && node_cmd=(ao-heavy node)
-"$script_dir/with-site-token.sh" "$SITE_ENV" -- "${node_cmd[@]}" "$script_dir/mobile-smoke.mjs" "$out" ${home:+"$home"}
+# The run takes longer than a token is promised to live by default: ask for one that lasts.
+SITE_TOKEN_MIN_TTL=${SITE_TOKEN_MIN_TTL:-2700} \
+  "$script_dir/with-site-token.sh" "$SITE_ENV" -- "${node_cmd[@]}" "$script_dir/mobile-smoke.mjs" "$out" ${home:+"$home"}

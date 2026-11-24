@@ -130,7 +130,8 @@ $S/seed.sh staging diff                                # drift between git's see
   other write is refused there.
 - `catalog-smoke.sh <env> [--out file.png] [--home ID]`: the catalogue pages (`docs/catalog.md`) at 1440x900 and
   at 390x844 with touch. The control-panel or top-bar entry opens `/catalog`; both kinds are shown, every card
-  has its number of uses, thumbnails are rendered and kept in the Cache Storage, and search filters. A card
+  has its number of uses, the finishes are listed (each textured one with a CC0 source), thumbnails are rendered
+  and kept in the Cache Storage, and search filters. A card
   opens its piece page, and the back button returns to `/catalog`, then to `/`. A deep link to
   `/catalog/furniture/furniture.bed` loads in a fresh browser and survives a reload. It also checks: no console
   or page errors, every control and link has a name, and on the phone one column, touch targets of at least

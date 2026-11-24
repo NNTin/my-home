@@ -278,6 +278,27 @@ async function smoke(out, homeId) {
         counted.length === total && counted.every((t) => /^\d+ uses?$/.test(t)),
         counted.slice(0, 4).join(', '),
       );
+      // The finishes of the library, after the kinds (a build before #112 has none).
+      const finishCards = page.locator('[data-finish-id]');
+      const finishCount = await finishCards.count();
+      if (finishCount === 0) console.log(`skip  ${label}: finishes (a build before #112)`);
+      else {
+        const sources = await finishCards.locator('.finish-source').allTextContents();
+        const textured = sources.filter((t) => t.startsWith('Texture:'));
+        check(
+          `${label}: the finishes are listed, each textured one with a CC0 source`,
+          finishCount >= 20 &&
+            sources.length === finishCount &&
+            textured.length >= 12 &&
+            textured.every((t) => t.includes('licence CC0-1.0')) &&
+            (await finishCards.locator('.finish-source a').count()) === textured.length,
+          `${finishCount} finishes, ${textured.length} textured`,
+        );
+        const wide = await page.evaluate(
+          () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+        );
+        check(`${label}: the finishes do not make the page scroll sideways`, !wide);
+      }
       const bedName = await page
         .locator(`a[data-type-id="furniture.bed"]`)
         .getAttribute('aria-label');

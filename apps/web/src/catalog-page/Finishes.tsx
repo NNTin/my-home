@@ -59,7 +59,7 @@ function FinishCard({ finish, device }: { finish: Finish; device: DeviceClass })
           <span className="catalog-name">{finish.name}</span>
           <code className="finish-id">{finish.id}</code>
           <span className="catalog-description">{finish.description}</span>
-          <span className="catalog-uses">
+          <span className="finish-for">
             {surfacesText(finish)}
             {finish.tintable ? ' · can be tinted' : ''}
             {finish.tileSize !== undefined ? ` · one repeat covers ${finish.tileSize} m` : ''}

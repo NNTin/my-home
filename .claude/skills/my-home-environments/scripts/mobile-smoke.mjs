@@ -272,7 +272,8 @@ async function copyReadout(page, { device, where, draws, perf }) {
     copied === 1 &&
       lines[0] === `| \`?perf=1\` | Measured | Budget (${device}) |` &&
       lines[1] === '| --- | --- | --- |' &&
-      lines.length === 24 &&
+      // One row more from #112 on: "Texture files".
+      lines.length === (row('Texture files') ? 25 : 24) &&
       lines.every((line) => line.startsWith('| ') && line.endsWith(' |')),
     `${lines.length} lines, "${lines[0] ?? ''}"`,
   );
@@ -622,6 +623,19 @@ async function smoke(out, homeId) {
     const sheet = page.locator('.sheet');
     await sheet.waitFor({ timeout: 30_000 });
     await page.waitForTimeout(3000);
+    /**
+     * Waits until the view has settled (a build from #110 on marks the canvas): the first frames
+     * and, from #112 on, the finish textures take seconds under software rendering, and a check
+     * that the view rests, or a drag, must not start in the middle of them.
+     */
+    const atRest = async () => {
+      const canvas = page.locator('canvas').first();
+      if ((await canvas.getAttribute('data-frame').catch(() => null)) === null) return;
+      await page
+        .waitForSelector('canvas[data-frame="settled"]', { timeout: 240_000 })
+        .catch(() => {});
+    };
+    await atRest();
 
     const box = (selector) => page.locator(selector).first().boundingBox();
     const snap = async () =>
@@ -720,6 +734,7 @@ async function smoke(out, homeId) {
 
     // At rest nothing is drawn: the phone renders a frame only when something changed.
     const draws = () => page.evaluate(() => window.__draws);
+    await atRest();
     await page.waitForTimeout(3000);
     const resting = await draws();
     await page.waitForTimeout(2000);
