@@ -43,15 +43,17 @@ export function wallStub(ctx: PieceContext): Part[] {
 function cutDepth(part: Part): [number, number] | undefined {
   const [cx, , cz] = part.center;
   const [sx, , sz] = part.size;
-  if (part.shape === 'cylinder') {
-    // An upright (elliptic) cylinder: the chord of its ellipse at x = 0.
+  if (part.shape === 'cylinder' || part.shape === 'lathe') {
+    // An upright (elliptic) cylinder, or the cylinder around a lathed part: the chord of its
+    // ellipse at x = 0.
     const [rx, rz] = [sx / 2, sz / 2];
     const t = 1 - (cx / rx) ** 2;
     if (t <= EPS) return undefined;
     const half = rz * Math.sqrt(t);
     return [cz - half, cz + half];
   }
-  // A box turned by rotationY (three.js: local (x, z) lands at (x cos + z sin, -x sin + z cos)).
+  // A box, or the bounding box of a rounded or extruded part (a module that wants more gives its
+  // own section), turned by rotationY (three.js: local (x, z) lands at (x cos + z sin, -x sin + z cos)).
   const [c, s] = [Math.cos(part.rotationY), Math.sin(part.rotationY)];
   const corners = [
     [-1, -1],

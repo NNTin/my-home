@@ -1,10 +1,30 @@
-import { box, colorParam, dimension, numberParam } from '../../parts';
+import type { Vec2 } from '../../../builder/buildHome';
+import { box, colorParam, dimension, extrude, numberParam } from '../../parts';
 import type { Part } from '../../types';
 import { definePiece } from '../../types';
 import { sizeOf } from '../../furniture/size';
 
 /** Hooks along the rail, about this far apart. */
 const HOOK_SPACING = 0.15;
+
+/** A hook is a strip of metal this wide and this thick. */
+const HOOK_WIDTH = 0.005;
+const HOOK_GAUGE = 0.004;
+
+/**
+ * A hook seen from its side, x away from the wall and y up from where it hangs over the rail:
+ * down 5 cm, forward 2.2 cm, and up again by a short lip.
+ */
+const HOOK: Vec2[] = [
+  [0, 0],
+  [0, -0.05],
+  [0.022, -0.05],
+  [0.022, -0.036],
+  [0.022 - HOOK_GAUGE, -0.036],
+  [0.022 - HOOK_GAUGE, -0.05 + HOOK_GAUGE],
+  [HOOK_GAUGE, -0.05 + HOOK_GAUGE],
+  [HOOK_GAUGE, 0],
+];
 
 /**
  * An open shelf board on hidden brackets, its back against the wall (-z); the frame starts at the
@@ -29,7 +49,10 @@ export default definePiece({
       const hooks = Math.max(1, Math.floor(length / HOOK_SPACING));
       for (let i = 0; i < hooks; i++) {
         const x = -length / 2 + (length / hooks) * (i + 0.5);
-        parts.push(box([x, y - 0.03, z + 0.008], [0.005, 0.05, 0.005], rail, 'detail'));
+        // The side view runs out from the wall: the outline's x along the piece's z.
+        parts.push(
+          extrude([x, y - 0.005, z + 0.006], HOOK, HOOK_WIDTH, rail, 'detail', -Math.PI / 2),
+        );
       }
     }
     return parts;

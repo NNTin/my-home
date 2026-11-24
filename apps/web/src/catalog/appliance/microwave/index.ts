@@ -1,9 +1,12 @@
-import { box, colorParam, shade } from '../../parts';
+import { box, colorParam, roundedBox, shade } from '../../parts';
 import { definePiece } from '../../types';
 import { furnitureDimensions, sizeOf } from '../../furniture/size';
 
+/** How far the body's edges and corners are rounded. */
+const CORNER = 0.012;
+
 /**
- * A freestanding microwave: the body on four feet, the door window on the left of its front and the
+ * A freestanding microwave: the body with rounded edges on four feet, the door window on the left of its front and the
  * control panel on the right. It stands on a worktop: its frame starts there (the type's elevation
  * is the worktop height).
  */
@@ -26,7 +29,7 @@ export default definePiece({
           ),
         ),
       ),
-      box([0, foot + (h - foot) / 2, 0], [w, h - foot, d], color, 'body'),
+      roundedBox([0, foot + (h - foot) / 2, 0], [w, h - foot, d], CORNER, color, 'body'),
       box(
         [-panel / 2 - 0.01, foot + (h - foot) / 2, face + 0.002],
         [w - panel - 0.06, (h - foot) * 0.7, 0.004],

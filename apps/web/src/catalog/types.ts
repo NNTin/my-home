@@ -1,5 +1,5 @@
 import type { ParamValues, TypeId } from '@my-home/shared';
-import type { Vec3 } from '../builder/buildHome';
+import type { Vec2, Vec3 } from '../builder/buildHome';
 
 /**
  * The contract of a piece module: how one catalogue type (`@my-home/shared` `catalog`) is drawn.
@@ -59,11 +59,14 @@ export interface PartMaterial {
   receiveShadow?: boolean;
 }
 
-/** One solid of a piece, in its local frame. */
-export interface Part {
-  shape: 'box' | 'cylinder';
+interface PartBase {
+  /** The middle of the part's bounding box. */
   center: Vec3;
-  /** Box: [x, y, z] extents. Cylinder: [diameter, height, diameter]; unequal x/z make it elliptic. */
+  /**
+   * The part's bounding box before it is turned: a box's [x, y, z] extents; a cylinder's
+   * [diameter, height, diameter], where unequal x/z make it elliptic. The piece page frames the
+   * part and cuts its section by this box, whatever the shape.
+   */
   size: Vec3;
   rotationY: number;
   /**
@@ -75,6 +78,26 @@ export interface Part {
   material?: PartMaterial;
   role: PartRole;
 }
+
+/**
+ * What a part is (docs/design/realistic-render.md §8.2); build one with the helpers of
+ * `parts.ts`, which work out `center` and `size`.
+ * - `box`, `cylinder`: `size` says it all.
+ * - `roundedBox`: a box of `size` whose edges and corners are rounded by `radius`.
+ * - `extrude`: a closed `profile` in the part's x/y, about `center`, extruded through `size[2]`
+ *   and centred on it.
+ * - `lathe`: a `profile` of [radius, y] points, y about `center`, turned about the part's y axis.
+ *   It runs from the bottom up along the outside; a point given twice is a sharp edge. A profile
+ *   that neither starts and ends on the axis nor ends where it starts is an open skin, drawn
+ *   from both sides.
+ */
+export type PartShape =
+  | { shape: 'box' | 'cylinder' }
+  | { shape: 'roundedBox'; radius: number }
+  | { shape: 'extrude' | 'lathe'; profile: Vec2[] };
+
+/** One solid of a piece, in its local frame. */
+export type Part = PartBase & PartShape;
 
 /** A dimension to show next to the piece, in its local frame. */
 export interface DimensionLine {

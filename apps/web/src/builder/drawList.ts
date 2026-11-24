@@ -31,6 +31,13 @@ export type DrawShape =
   | { kind: 'cylinder'; diameter: number; height: number }
   /** A closed outline in local x/y, extruded through `depth` along z and centred on it. */
   | { kind: 'profile'; outline: Vec2[]; depth: number }
+  /** Centred, [x, y, z] extents, its edges and corners rounded by `radius` (§8.2). */
+  | { kind: 'roundedBox'; size: Vec3; radius: number }
+  /**
+   * A profile of [radius, y] points turned about local y, drawn with `CYLINDER_SEGMENTS` sides
+   * (§8.2). The profile runs from the bottom up along the outside.
+   */
+  | { kind: 'lathe'; profile: Vec2[] }
   /**
    * A plan polygon extruded from `bottom` up to `top` (or to its slope). Local (x, y) is plan
    * (x, z) and local z runs down from the top face, which the matrix puts at `top`.
@@ -54,8 +61,10 @@ export type DrawShape =
    */
   | { kind: 'polygon'; outline: Vec3[]; holes: Vec3[][] };
 
-/** Cylinders are drawn with this many sides. */
+/** Cylinders and lathed shapes are drawn with this many sides. */
 export const CYLINDER_SEGMENTS = 24;
+/** A rounded box's quarter-round edge is drawn in twice this many steps: 300 triangles a box. */
+export const ROUNDED_SEGMENTS = 2;
 
 /** Surface settings of an item beyond its finish; each is three.js' default when omitted. */
 export interface DrawMaterial {
@@ -352,6 +361,51 @@ const levelGroup = (
 });
 
 /**
+ * Whether a lathe's profile bounds a solid: it starts and ends on the axis, or ends where it
+ * starts (a ring). Any other profile is an open skin: a bowl, a lamp shade.
+ */
+const latheClosed = (profile: readonly Vec2[]) => {
+  const [first, last] = [profile[0], profile.at(-1)];
+  if (!first || !last) return false;
+  return (first[0] === 0 && last[0] === 0) || (first[0] === last[0] && first[1] === last[1]);
+};
+
+/**
+ * The solid a part is drawn as, in the part's own frame (`partTransform` puts it into the
+ * piece's), and whether it is closed: an open lathe is a skin, drawn from both sides.
+ */
+export function partShape(part: Part): { shape: DrawShape; closed: boolean } {
+  const [sx, sy, sz] = part.size;
+  switch (part.shape) {
+    case 'box':
+      return { shape: { kind: 'box', size: part.size }, closed: true };
+    case 'cylinder':
+      return { shape: { kind: 'cylinder', diameter: sx, height: sy }, closed: true };
+    case 'roundedBox':
+      return {
+        shape: { kind: 'roundedBox', size: part.size, radius: part.radius },
+        closed: true,
+      };
+    case 'extrude':
+      return { shape: { kind: 'profile', outline: part.profile, depth: sz }, closed: true };
+    case 'lathe':
+      return {
+        shape: { kind: 'lathe', profile: part.profile },
+        closed: latheClosed(part.profile),
+      };
+  }
+}
+
+/** A part's own frame in its piece's; an elliptic cylinder is a round one scaled along z. */
+export const partTransform = (part: Part): Matrix =>
+  transform(
+    part.center,
+    part.rotationY,
+    part.rotationX ?? 0,
+    part.shape === 'cylinder' ? [1, 1, part.size[2] / part.size[0]] : [1, 1, 1],
+  );
+
+/**
  * The parts of a piece as draw items in the piece's local frame (`matrix` = `IDENTITY`) or in
  * the world. The order is the parts' order: it is the draw order of transparent glass.
  */
@@ -363,30 +417,26 @@ export function partItems(
 ): DrawItem[] {
   return parts.map((part, i): DrawItem => {
     const { castShadow = true, receiveShadow = true, ...material } = part.material ?? {};
+    const { shape, closed } = partShape(part);
     // Only what the part sets: anything else stays at three.js' default.
     const settings = Object.fromEntries(
-      Object.entries(material).filter(([, value]) => value !== undefined),
+      Object.entries({ ...material, ...(!closed && { doubleSided: true }) }).filter(
+        ([, value]) => value !== undefined,
+      ),
     ) as DrawMaterial;
-    const [sx, sy, sz] = part.size;
-    const local =
-      part.shape === 'box'
-        ? transform(part.center, part.rotationY, part.rotationX ?? 0)
-        : transform(part.center, part.rotationY, part.rotationX ?? 0, [1, 1, sz / sx]);
+    const local = partTransform(part);
     return {
       id: `${piece}/${i}`,
       group,
       piece,
-      shape:
-        part.shape === 'box'
-          ? { kind: 'box', size: part.size }
-          : { kind: 'cylinder', diameter: sx, height: sy },
+      shape,
       matrix: matrix === IDENTITY ? local : multiply(matrix, local),
       finish: PART_FINISH,
       tint: part.color,
       ...(Object.keys(settings).length > 0 && { material: settings }),
       castShadow,
       receiveShadow,
-      closed: true,
+      closed,
     };
   });
 }
