@@ -581,6 +581,21 @@ async function viewChecks(browser, { device, base, host, homeId }) {
     await button.scrollIntoViewIfNeeded();
     await (phone ? button.tap() : button.click());
   };
+  /**
+   * Presses a button of the control and waits for the view it leads to: a frame drawn after the
+   * press, then the settled one. The canvas is still marked settled from before the press, so
+   * waiting for that mark alone would read the old view's numbers.
+   */
+  const switchTo = async (name) => {
+    const frames = (await perf())?.frames ?? 0;
+    await press(name);
+    await page
+      .waitForFunction((n) => (window.__myHomePerf?.().frames ?? 0) > n, frames, {
+        timeout: 240_000,
+      })
+      .catch(() => undefined);
+    return settled('fast');
+  };
   const pressed = (name) =>
     views.getByRole('button', { name, exact: true }).getAttribute('aria-pressed');
   const where = `on a ${device}`;
@@ -617,8 +632,7 @@ async function viewChecks(browser, { device, base, host, homeId }) {
     let came = await settled('fast');
     const compiled = [];
     for (const name of ['Free', 'Cutaway', 'Free', 'Cutaway']) {
-      await press(name);
-      came &&= await settled('fast');
+      came &&= await switchTo(name);
       compiled.push((await perf()).compiles);
     }
     check(
@@ -685,16 +699,16 @@ async function viewChecks(browser, { device, base, host, homeId }) {
       turned && moving.frames > after.frames && moving.drawCalls > 0 && moving.drawCalls <= budget,
       `${moving.drawCalls} draw calls, budget ${budget}`,
     );
-    // Off and on again, twice. The first round may still meet a state for the first time (the
-    // shadow pass's own small program, with and without the cut); the second compiles nothing.
+    // Off and on again, twice. The first round may still meet a state for the first time: opened
+    // on a section link, the home's materials have only been compiled with the cut, and their
+    // variants without it are compiled (ahead) when the section is first switched off. The second
+    // round compiles nothing.
     const counts = [];
     let rounds = true;
     for (let round = 0; round < 2; round++) {
-      await press('Free');
-      rounds &&= await settled('fast');
+      rounds &&= await switchTo('Free');
       counts.push((await perf()).compiles);
-      await press('Section');
-      rounds &&= (await settled('fast')) && (await pressed('Section')) === 'true';
+      rounds &&= (await switchTo('Section')) && (await pressed('Section')) === 'true';
       counts.push((await perf()).compiles);
     }
     check(`${where}: the section switches off and on again and each settles`, rounds);
