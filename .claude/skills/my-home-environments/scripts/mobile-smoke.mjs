@@ -605,6 +605,21 @@ async function viewChecks(browser, { device, base, host, homeId }) {
       (await settled('fast')) && (await pressed('Eye level')) === 'true',
     );
 
+    // A named view goes and comes back without a compile, once both were drawn (§4.5).
+    await open('view=cutaway');
+    let came = await settled('fast');
+    const compiled = [];
+    for (const name of ['Free', 'Cutaway', 'Free', 'Cutaway']) {
+      await press(name);
+      came &&= await settled('fast');
+      compiled.push((await perf()).compiles);
+    }
+    check(
+      `${where}: "Free" and "Cutaway" switch the view, and the second round compiles no shader`,
+      came && compiled[2] === compiled[1] && compiled[3] === compiled[1],
+      `${compiled.join(', ')} compiled (free, cutaway, free, cutaway)`,
+    );
+
     if ((await views.getByRole('button', { name: 'Section', exact: true }).count()) === 0) {
       console.log(`skip  the section and "Save image" ${where}: a build before the section`);
       return;

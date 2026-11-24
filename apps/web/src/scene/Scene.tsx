@@ -42,6 +42,8 @@ export interface SceneProps {
   northBearing: number;
   /** N/E/S/W letters on the ground. */
   markers: CompassMarker[];
+  /** The letters are not drawn for now: a named view shows the model alone (§7.1). */
+  lettersHidden?: boolean;
   /** Room names shown over their floors. */
   labels: RoomLabel[];
   /** Set while walking: the figure to draw and whose eyes or overview the camera takes. */
@@ -259,6 +261,7 @@ export function Scene({
   handlers,
   northBearing,
   markers,
+  lettersHidden = false,
   labels,
   walk,
   photoMarkers = [],
@@ -379,7 +382,7 @@ export function Scene({
             toolbar={toolbar}
             editable={editable}
           />
-          <CompassMarkers markers={markers} />
+          <CompassMarkers markers={markers} hidden={lettersHidden} />
           <RoomLabelTracker labels={labels} layerRef={labelsRef} />
           <OrbitControls
             makeDefault

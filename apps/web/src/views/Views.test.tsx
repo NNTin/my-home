@@ -40,6 +40,7 @@ describe('named views in the viewer', () => {
     expect(lastScene).toMatchObject({ rigView: undefined, backdrop: undefined, busy: false });
     expect(lastScene?.stage).toBeFalsy();
     expect(lastScene?.markers).toHaveLength(4);
+    expect(lastScene?.lettersHidden).toBe(false);
     expect(lastScene?.labels.length).toBeGreaterThan(0);
     expect(views.getByLabelText('Backdrop')).toHaveValue('sky');
     expect(window.location.search).toBe('');
@@ -51,7 +52,7 @@ describe('named views in the viewer', () => {
     expect(lastScene).toMatchObject({
       rigView: { kind: 'cutaway' },
       backdrop: 'studio-light',
-      markers: [],
+      lettersHidden: true,
       labels: [],
       busy: false,
       quality: 'fast',
@@ -78,7 +79,7 @@ describe('named views in the viewer', () => {
     const before = lastScene?.frame?.key;
     act(() => lastScene?.onOrbit?.());
     expect(query()).toEqual({ hints: 'off' });
-    expect(lastScene?.markers).toHaveLength(4);
+    expect(lastScene?.lettersHidden).toBe(false);
     expect(lastScene?.labels.length).toBeGreaterThan(0);
     // The backdrop and the light of the view are kept, and the camera is not moved.
     expect(lastScene).toMatchObject({ rigView: { kind: 'cutaway' }, backdrop: 'studio-light' });

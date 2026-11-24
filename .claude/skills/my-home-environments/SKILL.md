@@ -133,7 +133,7 @@ $S/seed.sh staging diff                                # drift between git's see
   table is printed, to paste into a pull request. A build
   before #110 skips the frame loop, one before #111 the lamps, one before #123 the copy. Then the **named views**
   (`docs/views.md`), on a phone and on a desktop: `?view=cutaway` and `?view=eye` open from their links, settle,
-  keep their address and show no room names; `?view=section` stays within the whole house's draw-call budget,
+  keep their address and show no room names, and "Free" and "Cutaway" switch back and forth without a compile; `?view=section` stays within the whole house's draw-call budget,
   also with its cut moved by the slider (the address follows), and switching it off ("Free") and on again
   compiles no shader; and **Save image** downloads `my-home-section-<date>-<time>.png` at twice the canvas size
   with `quality=fast` in the address, after which the canvas has its own size again. A build before #114 skips

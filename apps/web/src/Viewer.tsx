@@ -911,7 +911,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
             resetViewRef={resetView}
             northBearing={northBearing}
             // A named view shows the model alone: no compass letters, no room names (§7.1).
-            markers={named ? NONE : markers}
+            markers={markers}
+            lettersHidden={named !== undefined}
             labels={named ? NONE : labels}
             rigView={presented && views?.viewRig(presented.view)}
             backdrop={backdrop}

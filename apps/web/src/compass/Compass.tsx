@@ -132,9 +132,19 @@ function MarkerSprite({ marker }: { marker: CompassMarker }) {
   );
 }
 
-export function CompassMarkers({ markers }: { markers: CompassMarker[] }) {
+export function CompassMarkers({
+  markers,
+  hidden = false,
+}: {
+  markers: CompassMarker[];
+  /**
+   * Not drawn for now (a named view). They stay in the scene: taking them out would free their
+   * shader program, and bringing them back would compile it again (§4.5).
+   */
+  hidden?: boolean;
+}) {
   return (
-    <group>
+    <group visible={!hidden}>
       {markers.map((m) => (
         <MarkerSprite key={m.label} marker={m} />
       ))}
