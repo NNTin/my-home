@@ -159,7 +159,8 @@ git. `apps/web/src/catalog-page/thumbnails.ts`:
   draws each type's `parts(defaultParams(type), preview)` with a fixed light and a three-quarter camera, **one
   at a time**. There is never a canvas per card: phones allow only a few WebGL contexts per page. Furniture is
   drawn at its default size, an opening in its type's `preview` hole. Each part is drawn with the viewer's own
-  geometry of its shape (`shapeGeometry` in `scene/batches.ts`).
+  geometry of its shape (`shapeGeometry` in `scene/batches.ts`). A part that names a finish is drawn with the finish's
+  material; the thumbnail waits up to 10 s for its texture (the 512 px files) and draws the tint if none comes.
 - **Lazy.** A card asks for its thumbnail when it comes near the screen (an `IntersectionObserver` per card),
   and shows the type's icon until it is ready, or for good where WebGL is missing.
 - **Cached.** Each image is kept in the Cache Storage API (cache `my-home-thumbnails`) under

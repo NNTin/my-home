@@ -134,6 +134,38 @@ jobs:
           # The named layouts are gone (#56): their routes are the api's 404.
           test "$(curl -sS -o /dev/null -w '%{http_code}' "$base/homes/home/layouts")" = 404
           test "$(curl -sS -o /dev/null -w '%{http_code}' "$base/layouts/some-id")" = 404
+      - name: Smoke test a finish choice through the seed
+        run: |
+          set -euo pipefail
+          base=http://localhost:8080/api
+          json=(-H 'content-type: application/json')
+          # A finish chosen for a placement (#116): set, exported in the seed, imported again, unchanged.
+          shelf='{"typeId":"kitchen.wall-shelf","levelId":"souterrain","position":{"x":9.685,"z":-8.985},
+            "rotationY":1.5707963267948966,"mounting":"wall","elevation":1.52,"params":{"finish":"wood.veneer"}}'
+          placed=$(curl -fsS -X POST "$base/homes/home/placements" "${json[@]}" -d "$shelf")
+          id=$(jq -r '.id' <<<"$placed")
+          jq -e '.params == {finish: "wood.veneer"}' <<<"$placed"
+          curl -fsS "$base/homes/home/seed" -o seed.json
+          jq -e --arg id "$id" '.placements | map(select(.id == $id))[0].params == {finish: "wood.veneer"}' seed.json
+          # Changed after the export, the import puts the exported choice back.
+          version=$(jq -r '.version' <<<"$placed")
+          curl -fsS -X PATCH "$base/homes/home/placements/$id" "${json[@]}" \
+            -d "{\"version\":$version,\"params\":{\"finish\":\"plastic.matt\"}}" \
+            | jq -e '.params == {finish: "plastic.matt"}'
+          curl -fsS -X PUT "$base/homes/home/seed" "${json[@]}" --data-binary @seed.json \
+            | jq -e --arg id "$id" '.homes[0].placements.updated == [$id]'
+          curl -fsS "$base/homes/home/placements" \
+            | jq -e --arg id "$id" '.items | map(select(.id == $id))[0].params == {finish: "wood.veneer"}'
+          curl -fsS "$base/homes/home/seed" | cmp - seed.json
+          # A finish that is no option of the type (a floor finish, an unknown one) is refused.
+          for finish in wood.oak-laminate wood.mahogany; do
+            test "$(curl -sS -o /dev/null -w '%{http_code}' -X POST "$base/homes/home/placements" "${json[@]}" \
+              -d "${shelf/wood.veneer/$finish}")" = 400
+          done
+          # Leave the stack as it was for the steps that follow.
+          jq '.placements |= map(select(.id != "'"$id"'"))' seed.json > empty.json
+          curl -fsS -X PUT "$base/homes/home/seed" "${json[@]}" --data-binary @empty.json >/dev/null
+          curl -fsS "$base/homes/home/placements" | jq -e --arg id "$id" '.items | all(.id != $id)'
       - name: Smoke test photos
         run: |
           set -euo pipefail

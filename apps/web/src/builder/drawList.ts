@@ -1,4 +1,10 @@
-import { CUT_FINISH, resolveFinish, TERRAIN_FINISH, type ResolvedFinish } from '@my-home/shared';
+import {
+  CUT_FINISH,
+  finishes,
+  resolveFinish,
+  TERRAIN_FINISH,
+  type ResolvedFinish,
+} from '@my-home/shared';
 import type { Part } from '../catalog/types';
 import type {
   Box,
@@ -112,8 +118,9 @@ export interface DrawItem {
   /** Local frame to world. */
   matrix: Matrix;
   /**
-   * The finish: an id of the finish library (`packages/shared/src/finishes`), or `part` for the
-   * parts of a catalogue piece, which draw with their own colour, roughness and metalness.
+   * The finish: an id of the finish library (`packages/shared/src/finishes`), or `part` for a
+   * part of a catalogue piece that names none: it draws with its own colour, roughness and
+   * metalness.
    */
   finish: string;
   /** The colour written into the vertices: differently tinted items share a batch. */
@@ -131,7 +138,7 @@ export interface DrawItem {
   closed: boolean;
 }
 
-/** The finish of every part of a catalogue piece, until parts name finishes (§5.7). */
+/** The finish of a part that names none (§5.7): its own colour, roughness and metalness. */
 export const PART_FINISH = 'part';
 
 // --- transforms ---------------------------------------------------------------------------------
@@ -416,7 +423,14 @@ export function partItems(
   matrix: Matrix = IDENTITY,
 ): DrawItem[] {
   return parts.map((part, i): DrawItem => {
-    const { castShadow = true, receiveShadow = true, ...material } = part.material ?? {};
+    const { castShadow = true, receiveShadow = true, finish, ...material } = part.material ?? {};
+    // A finish the library does not have draws as a plain part.
+    const named = finish === undefined ? undefined : finishes.get(finish);
+    if (named) {
+      // The finish says how rough and how metallic the surface is (§5.7).
+      delete material.roughness;
+      delete material.metalness;
+    }
     const { shape, closed } = partShape(part);
     // Only what the part sets: anything else stays at three.js' default.
     const settings = Object.fromEntries(
@@ -431,8 +445,8 @@ export function partItems(
       piece,
       shape,
       matrix: matrix === IDENTITY ? local : multiply(matrix, local),
-      finish: PART_FINISH,
-      tint: part.color,
+      finish: named ? named.id : PART_FINISH,
+      tint: named && !named.tintable ? named.tint : part.color,
       ...(Object.keys(settings).length > 0 && { material: settings }),
       castShadow,
       receiveShadow,

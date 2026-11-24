@@ -59,6 +59,11 @@ export const lamp = defineType({
 closed', 0)`: 0 to 1 in 5 % steps, shown in %) and **choices** (`choice('Curtain', { none: 'None',
 both: 'Both sides' })`: one of a fixed list, the first the default). Both are basic; the playground
   and the per-use editor give them a slider and a drop-down list.
+- A **choice of finish** (`finishChoice('Finish', ['plastic.matt', 'wood.veneer'])`) is a choice whose values are
+  finish ids, labelled with the finishes' names, the first the default. `catalog` refuses, at import, an id the
+  finish library does not have and a finish that is not for parts (its `surfaces` lack `part`). Like every basic
+  parameter it is stored per use, in the seed, only where a use changes it; the api takes the type's options and
+  nothing else. The piece module passes the value to its parts as `material.finish` (`kitchen.wall-shelf`).
 - **Mounting** (furniture and fixtures): `floor` (the default), `wall` (a wall cabinet, the shelf, the radiator)
   or `ceiling` (a downlight), and an optional `elevation`: the default height of the piece's bottom above the
   floor (a wall cabinet 1.33, the microwave on the worktop 0.90). A ceiling piece has none. A new placement
@@ -144,6 +149,19 @@ export default definePiece({
     type at its default size is recorded in `apps/web/src/catalog/__golden__/triangles.json` and checked by
     `catalog/shapes.test.ts`; a design change updates it with the other goldens.
 
+- **Finishes** (`docs/design/realistic-render.md` §5.7): a part may name a finish of the library that is for
+  parts, `material: { finish: 'wood.veneer' }` (`wood.veneer`, `fabric.weave`, `metal.brushed`, `ceramic.white`,
+  `plastic.matt`, `glass.clear`; the catalogue page lists them).
+  - The part's colour is the **tint**: the texture is multiplied by it, so a white part shows the finish as it
+    is. A finish that is not tintable (`ceramic.white`) keeps its own colour.
+  - The finish gives the roughness and the metalness; the part's own are ignored. `transparent`, `opacity`,
+    `depthWrite` and the shadow flags still count (`glass.clear`).
+  - A texture is laid on by a box projection **in the part's own frame**, in metres: it turns and tilts with the
+    part, and two parts of the same size show the same piece of it. Around a cylinder or a lathe it is poor: use a
+    plain finish there.
+  - The parts of one finish are one mesh; a part without a finish draws as before.
+  - `catalog/partFinishes.test.ts` fails for a part of any type, at any of its choices, that names a finish the
+    library does not have or one that is not for parts. In the app such a part draws plain.
 - `dimensions(values, ctx)` lists the measurements the piece page shows: lines in the local frame
   with a `value` in metres, a `label` in cm with one decimal and a `name` ("Width", "Sill height"),
   built with `dimension(from, to, value, name)`. At most 8 lines (the piece page labels at most 8 in

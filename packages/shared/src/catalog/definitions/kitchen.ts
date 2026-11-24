@@ -1,5 +1,5 @@
 import { defineType } from '../types';
-import { choice, color, count, fixedLength, length, number } from './specs';
+import { choice, color, count, finishChoice, fixedLength, length, number } from './specs';
 
 // Drawn by the piece modules in apps/web/src/catalog/kitchen/<name>/index.ts. Sizes from the
 // corridor survey (#60): the souterrain kitchen's units, wall cabinets, shelf and glass cabinet.
@@ -86,6 +86,8 @@ export const wallShelf = defineType({
   elevation: 1.52,
   params: {
     color: color('Colour', '#3d2c20'),
+    // The board's finish, tinted with its colour: lacquer as it has always looked, or oak veneer.
+    finish: finishChoice('Finish', ['plastic.matt', 'wood.veneer']),
     width: length('Length', 3.0, 0.3, MAX_RUN),
     depth: length('Depth', 0.25, 0.12, 0.4),
     height: length('Thickness', 0.03, 0.018, 0.06),

@@ -27,14 +27,19 @@ const HOOK: Vec2[] = [
 ];
 
 /**
- * An open shelf board on hidden brackets, its back against the wall (-z); the frame starts at the
+ * An open shelf board, lacquered or of oak veneer, on hidden brackets, its back against the wall (-z); the frame starts at the
  * board's bottom. An optional rail with hooks hangs `railDrop` below it on the wall.
  */
 export default definePiece({
   id: 'kitchen.wall-shelf',
   parts: (values) => {
     const { width: w, depth: d, height: t } = sizeOf(values);
-    const parts: Part[] = [box([0, t / 2, 0], [w, t, d], colorParam(values, 'color'), 'board')];
+    // The board has the finish the use chose, tinted with its colour.
+    const parts: Part[] = [
+      box([0, t / 2, 0], [w, t, d], colorParam(values, 'color'), 'board', {
+        finish: String(values.finish),
+      }),
+    ];
     if (String(values.rail) === 'hooks') {
       const rail = colorParam(values, 'railColor');
       const y = -numberParam(values, 'railDrop');
