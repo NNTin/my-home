@@ -1,4 +1,5 @@
 import { Composition, registerRoot } from 'remotion';
+import timeline from '../timeline.json';
 import { MyHomeReel, reelFrames } from './reel';
 
 function Root() {
@@ -7,9 +8,9 @@ function Root() {
       id="MyHomeReel"
       component={MyHomeReel}
       durationInFrames={reelFrames}
-      fps={30}
-      width={1080}
-      height={1920}
+      fps={timeline.fps}
+      width={timeline.size}
+      height={timeline.size}
     />
   );
 }

@@ -1,0 +1,15 @@
+{
+  "fps": 30,
+  "size": 1080,
+  "shots": [
+    { "id": "mock", "frames": 60, "still": true },
+    { "id": "house", "frames": 60, "still": true },
+    { "id": "garden", "frames": 210 },
+    { "id": "early", "frames": 90, "label": "Early render" },
+    { "id": "lighting", "frames": 90, "label": "Daylight and downlights" },
+    { "id": "shadows", "frames": 75, "label": "Softer shadows" },
+    { "id": "materials", "frames": 75, "label": "Textured finishes" },
+    { "id": "walk", "frames": 150 },
+    { "id": "section", "frames": 90 }
+  ]
+}

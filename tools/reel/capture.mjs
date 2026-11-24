@@ -1,76 +1,43 @@
 import { execFileSync, spawn } from 'node:child_process';
-import { copyFile, mkdir, readFile, realpath, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, realpath, rename, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import ffmpeg from '@ffmpeg-installer/ffmpeg';
 import { chromium } from 'playwright';
+import timeline from './timeline.json' with { type: 'json' };
 
-const [tempDir, referenceFile, ...only] = process.argv.slice(2);
-if (!tempDir || !referenceFile) {
-  throw new Error(
-    'Usage: npm run capture -- <temporary directory> <photo metadata JSON> [shot...]',
-  );
-}
+const [tempDir, ...only] = process.argv.slice(2);
+if (!tempDir) throw new Error('Usage: npm run capture -- <temporary directory> [shot...]');
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 const temp = await realpath(tempDir);
 if (temp === path.resolve(repo) || temp.startsWith(repo)) {
   throw new Error('Keep reel media outside the repository.');
 }
-const out = path.join(temp, 'assets');
+const out = path.join(temp, 'frames');
+const revisions = process.env.REEL_REVISIONS_DIR ?? path.join(temp, 'revisions');
 const readJson = async (file) => JSON.parse(await readFile(file, 'utf8'));
-const photo = await readJson(referenceFile);
-const reference = referenceFile.replace(/\.json$/, '.webp');
 const date = '2026-01-01T00:00:00.000Z';
 const port = 43153;
 const base = 'http://127.0.0.1:' + port;
-const width = Number(process.env.REEL_CAPTURE_WIDTH ?? 960);
-const height = width * (3 / 4);
-const fps = Number(process.env.REEL_CAPTURE_FPS ?? 6);
-if (!Number.isInteger(fps) || fps < 4 || fps > 30)
-  throw new Error('Use a capture rate from 4 to 30 fps.');
+const { size, fps, shots } = timeline;
+const shotFrames = (id) => shots.find((shot) => shot.id === id).frames;
+const sample = process.env.REEL_SAMPLE_FRAMES?.split(',').map(Number);
+if (sample?.some((frame) => !Number.isInteger(frame) || frame < 0)) {
+  throw new Error('Pass comma-separated nonnegative frame indices in REEL_SAMPLE_FRAMES.');
+}
+const names = shots.map(({ id }) => id);
+if (only.some((name) => !names.includes(name))) throw new Error('Unknown shot: ' + only.join(', '));
 const withShot = (name) => only.length === 0 || only.includes(name);
+const cameraHook = await readFile(new URL('./capture/ReelCamera.tsx', import.meta.url), 'utf8');
 
 await mkdir(out, { recursive: true, mode: 0o700 });
-if (withShot('match')) await copyFile(reference, path.join(out, 'reference.webp'));
-
-const hook = [
-  "import { useFrame as useReelFrame, useThree as useReelThree } from '@react-three/fiber';",
-  "import { useEffect as useReelEffect } from 'react';",
-  "import type { PerspectiveCamera as ReelPerspectiveCamera } from 'three';",
-  '',
-  'type ReelPose = { x: number; y: number; z: number; yaw: number; pitch: number; fov: number };',
-  'let reelPose: ReelPose | null = null;',
-  'function ReelCamera() {',
-  '  const invalidate = useReelThree((state) => state.invalidate);',
-  '  useReelEffect(() => {',
-  '    Object.assign(window, { __reelSetPose: (pose: ReelPose | null) => {',
-  '      reelPose = pose;',
-  '      invalidate();',
-  '    } });',
-  '  }, [invalidate]);',
-  '  useReelFrame(({ camera }) => {',
-  '    if (!reelPose) return;',
-  '    const { x, y, z, yaw, pitch, fov } = reelPose;',
-  '    const view = camera as ReelPerspectiveCamera;',
-  '    view.position.set(x, y, z);',
-  "    view.rotation.set(pitch, yaw, 0, 'YXZ');",
-  '    if (view.fov !== fov) {',
-  '      view.fov = fov;',
-  '      view.updateProjectionMatrix();',
-  '    }',
-  '  });',
-  '  return null;',
-  '}',
-  '',
-].join('\n');
 
 function shell(command, args, cwd) {
   return execFileSync(command, args, { cwd, encoding: 'utf8', stdio: 'inherit' });
 }
 
 async function checkout(rev) {
-  const dir = path.join(temp, 'revisions', rev);
+  const dir = path.join(revisions, rev);
   await mkdir(dir, { recursive: true });
   const archived = execFileSync(
     'git',
@@ -97,10 +64,83 @@ async function checkout(rev) {
   }
   const scene = path.join(web, 'src/scene/Scene.tsx');
   const source = await readFile(scene, 'utf8');
-  const anchor = source.includes('<FrameView frame={frame} />')
-    ? '<FrameView frame={frame} />'
-    : '</Canvas>';
-  await writeFile(scene, hook + source.replace(anchor, '<ReelCamera />\n          ' + anchor));
+  const frameLoop = source.includes('<FrameLoop');
+  const anchor = frameLoop ? '<FrameView frame={frame} />' : '</Canvas>';
+  const withoutMarkers = source.replace(/<CompassMarkers[\s\S]*?\/>/, '');
+  await writeFile(path.join(web, 'src/scene/ReelCamera.tsx'), cameraHook);
+  await writeFile(
+    scene,
+    "import { ReelCamera } from './ReelCamera';\n" +
+      withoutMarkers.replace(
+        anchor,
+        '<ReelCamera frameLoop={' + frameLoop + '} />\n          ' + anchor,
+      ),
+  );
+  if (frameLoop) {
+    const file = path.join(web, 'src/scene/Frame.tsx');
+    const code = await readFile(file, 'utf8');
+    const draw = 'output.render(scene, camera, tier);';
+    const pending = code.includes('finishSet.textures.pending')
+      ? ', finishSet.textures.pending'
+      : '';
+    if (!code.includes(draw)) throw new Error('Could not locate the archived frame renderer.');
+    await writeFile(
+      file,
+      "import { recordReelDraw } from './ReelCamera';\n" +
+        code.replace(draw, draw + '\n    recordReelDraw(tier' + pending + ');'),
+    );
+  }
+  if (frameLoop) {
+    // Use the viewer's FXAA path when capturing on the software GPU. Geometry and textures
+    // still render at the delivery size, with the archived lighting and occlusion pass.
+    const outputFile = path.join(web, 'src/scene/output.ts');
+    const output = await readFile(outputFile, 'utf8');
+    await writeFile(outputFile, output.replace("tier === 'fast' && phone ? 0 : 4", '0'));
+    if (rev === 'e49f812' || rev === '6820266') {
+      const aoFile = path.join(web, 'src/beautiful/render-beautiful.ts');
+      const ao = await readFile(aoFile, 'utf8');
+      await writeFile(
+        aoFile,
+        ao
+          .replace('halfRes = phone', 'halfRes = true')
+          .replace('aoSamples = SAMPLES', 'aoSamples = 16')
+          .replace('denoiseSamples = DENOISE_SAMPLES', 'denoiseSamples = 8'),
+      );
+    }
+  }
+  if (rev === '6820266') {
+    const sectionFile = path.join(web, 'src/views/SectionCut.tsx');
+    const section = await readFile(sectionFile, 'utf8');
+    const move = '    cut.move([nx, ny, nz], constant);\n    frame?.castersChanged();';
+    if (!section.includes(move)) throw new Error('Could not locate the section plane update.');
+    await writeFile(
+      sectionFile,
+      section.replace(
+        move,
+        move + '\n    document.documentElement.dataset.reelSectionAt = String(view.at);',
+      ),
+    );
+  }
+  if (['287cc95', 'e49f812', '6820266'].includes(rev)) {
+    const file = path.join(web, 'src/lighting/sceneLights.ts');
+    const light = await readFile(file, 'utf8');
+    const mode = "const reelMode = new URLSearchParams(location.search).get('reelMode');\n";
+    const tune = light
+      .replace(
+        'const casting = shadowLamps(phone);',
+        "const casting = reelMode === 'outdoor' ? 0 : shadowLamps(phone);",
+      )
+      .replace(
+        'length: poolSize(phone)',
+        "length: reelMode === 'outdoor' ? 0 : reelMode === 'walk' ? 9 : 4",
+      )
+      .replace(
+        'const inSight = eye',
+        "const inSight = reelMode === 'walk' ? " +
+          "(e: Emitter) => e.roomId === 'souterrain-kitchen' || e.roomId === 'souterrain-corridor' : eye",
+      );
+    await writeFile(file, mode + tune);
+  }
   return { dir, web, vite };
 }
 
@@ -127,10 +167,12 @@ async function withViewer(rev, modelFile, run) {
   server.stderr.on('data', (chunk) => {
     startup += chunk;
   });
-  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1 });
+  const context = await browser.newContext({
+    viewport: { width: size, height: size },
+    deviceScaleFactor: 1,
+  });
   const page = await context.newPage();
   page.on('pageerror', (error) => console.log(rev + ' page error: ' + error.message));
-  const cdp = await context.newCDPSession(page);
   const canvas = page.locator('canvas').first();
 
   await page.route('**/api/**', (route) => {
@@ -199,58 +241,26 @@ async function withViewer(rev, modelFile, run) {
     }
     await page.goto(base + '/?hints=off&stepdown=off&' + query, { waitUntil: 'networkidle' });
     try {
-      await page.waitForFunction(() => typeof globalThis.__reelSetPose === 'function', {
-        timeout: 25_000,
+      await page.waitForFunction(() => typeof globalThis.__reelCapture === 'function', null, {
+        timeout: 60_000,
       });
     } catch (error) {
       console.log((await page.locator('body').innerText()).slice(0, 700));
       throw error;
     }
-    if (rev === 'e49f812' || rev === '6820266') {
-      const tier = query.includes('beautiful') ? 'beautiful' : 'fast';
-      try {
-        await page.locator('canvas[data-tier="' + tier + '"]').waitFor({
-          state: 'attached',
-          timeout: 80_000,
-        });
-        await page.waitForLoadState('networkidle');
-        await draw();
-      } catch (error) {
-        console.log('Viewer frame state', await canvas.evaluate((node) => ({ ...node.dataset })));
-        throw error;
-      }
+    const dimensions = await canvas.evaluate((node) => [node.width, node.height]);
+    if (dimensions.some((value) => value !== size)) {
+      throw new Error('Unexpected canvas dimensions: ' + dimensions.join('×'));
     }
   }
 
-  async function hideUi() {
-    await page.addStyleTag({
-      content: '* { visibility: hidden !important; } canvas { visibility: visible !important; }',
-    });
-  }
-
-  async function draw() {
-    await page.evaluate(
-      () =>
-        new Promise((resolve) =>
-          globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(resolve)),
-        ),
+  async function shot(file, { pose = null, tier = 'fast', time = 0 } = {}) {
+    const data = await page.evaluate(
+      ({ pose, tier, size, time }) => globalThis.__reelCapture(pose, tier, size, time),
+      { pose, tier, size, time },
     );
-  }
-
-  async function pose(value) {
-    await page.evaluate((next) => globalThis.__reelSetPose(next), value);
-    await draw();
-  }
-
-  async function shot(file) {
-    const box = await canvas.boundingBox();
-    if (!box) throw new Error('Viewer canvas is missing.');
-    const { data } = await cdp.send('Page.captureScreenshot', {
-      format: 'jpeg',
-      quality: 93,
-      clip: { ...box, scale: 1 },
-    });
-    await writeFile(file, Buffer.from(data, 'base64'));
+    await writeFile(file + '.partial', Buffer.from(data, 'base64'));
+    await rename(file + '.partial', file);
   }
 
   try {
@@ -266,7 +276,7 @@ async function withViewer(rev, modelFile, run) {
       await new Promise((resolve) => setTimeout(resolve, 250));
     }
     if (!ready) throw new Error('Vite failed to start for ' + rev + '\n' + startup);
-    await run({ page, open, hideUi, draw, pose, shot });
+    await run({ page, open, shot });
   } finally {
     try {
       if (browser.isConnected()) await context.close();
@@ -279,166 +289,88 @@ async function withViewer(rev, modelFile, run) {
   }
 }
 
-async function motion(name, seconds, step, shot) {
-  const dir = path.join(temp, 'frames', name + '-' + width + '-' + fps);
+async function motion(name, frames, at) {
+  const dir = path.join(out, name);
   await mkdir(dir, { recursive: true });
-  const frames = Math.round(seconds * fps);
+  const began = Date.now();
+  let written = 0;
   for (let i = 0; i < frames; i++) {
-    const file = path.join(dir, String(i).padStart(3, '0') + '.jpg');
+    if (sample && !sample.includes(i)) continue;
+    const file = path.join(dir, String(i).padStart(3, '0') + '.png');
     if ((await stat(file).catch(() => null))?.size > 0) continue;
-    await step(i, i / fps, i / (frames - 1));
-    await shot(file);
-    if (i % fps === 0) console.log(name + ' ' + i + '/' + frames);
+    await at(file, i, i / fps);
+    written++;
+    if (written === 1 || written % 15 === 0) {
+      console.log(
+        name +
+          ' frame ' +
+          i +
+          '/' +
+          frames +
+          ' (' +
+          ((Date.now() - began) / 1000).toFixed(1) +
+          's)',
+      );
+    }
   }
-  shell(
-    ffmpeg.path,
-    [
-      '-hide_banner',
-      '-loglevel',
-      'error',
-      '-y',
-      '-framerate',
-      String(fps),
-      '-i',
-      path.join(dir, '%03d.jpg'),
-      '-vf',
-      name === 'section'
-        ? 'pad=ceil(iw/2)*2:ceil(ih/2)*2,fps=30'
-        : 'pad=ceil(iw/2)*2:ceil(ih/2)*2,tpad=stop_mode=clone:stop_duration=0.5,minterpolate=fps=30:mi_mode=mci:mc_mode=aobmc',
-      '-frames:v',
-      String(seconds * 30),
-      '-c:v',
-      'libx264',
-      '-crf',
-      '16',
-      '-pix_fmt',
-      'yuv420p',
-      '-threads',
-      '2',
-      '-movflags',
-      '+faststart',
-      path.join(out, name + '.mp4'),
-    ],
-    repo,
-  );
 }
 
-const position = photo.pose.position;
-const match = {
-  ...position,
-  yaw: photo.pose.yaw,
-  pitch: photo.pose.pitch,
-  fov: (2 * Math.atan(Math.tan(photo.pose.fovH / 2) / (width / height)) * 180) / Math.PI,
-};
-const figureAt = (pose) => ({ ...pose, y: pose.y - 1.6 });
 const eased = (value) => value * value * (3 - 2 * value);
-const rotation = (time) => {
-  const share = eased(time / 13);
+const phase = (time, from, duration) => eased(Math.max(0, Math.min(1, (time - from) / duration)));
+const eye = { x: 12.1, y: -2.6, z: -7.6, yaw: 1.23, pitch: -0.13 };
+const kitchenPose = (time) => {
+  const share = phase(time, 0, 11);
   return {
-    x: match.x + 0.18 * share,
-    y: match.y,
-    z: match.z - 0.22 * share,
-    yaw: match.yaw - 0.8 * share,
-    pitch: match.pitch - 0.2 * share,
-    fov: match.fov,
+    position: [eye.x + 0.15 * share, -1, eye.z - 0.18 * share],
+    yaw: eye.yaw - 0.9 * share,
+    pitch: eye.pitch - 0.11 * share,
+    fov: 69,
+  };
+};
+const gardenPose = (time) => {
+  const share = phase(time, 0, 6.25);
+  const azimuth = 0.6 + 1.05 * share;
+  const elevation = ((69 - 55 * share) * Math.PI) / 180;
+  const target = [5.5, -1, -3.4];
+  const radius = 49;
+  const run = radius * Math.cos(elevation);
+  return {
+    target,
+    position: [
+      target[0] + run * Math.sin(azimuth),
+      target[1] + radius * Math.sin(elevation),
+      target[2] + run * Math.cos(azimuth),
+    ],
+    fov: 39,
+  };
+};
+const walkStart = { x: 8.5, y: -2.6, z: -6.61, yaw: -Math.PI / 2, pitch: -0.07 };
+const walkPose = (time) => {
+  const corridor = phase(time, 0, 2.6);
+  const turn = phase(time, 1.8, 1.6);
+  const kitchen = phase(time, 2.15, 2.7);
+  return {
+    position: [8.5 + 2.55 * corridor, -1, -6.61 - 1.3 * kitchen],
+    yaw: (-Math.PI / 2) * (1 - turn) + 0.15 * turn,
+    pitch: -0.07 - 0.07 * kitchen,
+    fov: 66,
   };
 };
 
-async function floorPlan() {
-  const doc = JSON.parse(
-    execFileSync('git', ['show', '982af73:data/homes/home.json'], { cwd: repo, encoding: 'utf8' }),
-  );
-  const rooms = doc.rooms.filter((room) => room.levelId === 'souterrain');
-  const kitchen = rooms.find((room) => room.id === 'souterrain-kitchen');
-  const val = (point) => [point.x.value, point.z.value];
-  const xs = rooms.flatMap((room) => room.outline.map((point) => point.x.value));
-  const zs = rooms.flatMap((room) => room.outline.map((point) => point.z.value));
-  const minX = Math.min(...xs) - 0.7;
-  const minZ = Math.min(...zs) - 0.7;
-  const planWidth = Math.max(...xs) - minX + 0.7;
-  const planHeight = Math.max(...zs) - minZ + 0.7;
-  const walls = doc.walls.filter((wall) => wall.levelId === 'souterrain');
-  const lines = walls
-    .flatMap((wall) => {
-      const [x, z] = val(wall.start);
-      const [x2, z2] = val(wall.end);
-      const length = Math.hypot(x2 - x, z2 - z);
-      const edge = (a, b) =>
-        a < b
-          ? '<path d="M ' +
-            (x + ((x2 - x) * a) / length) +
-            ' ' +
-            (z + ((z2 - z) * a) / length) +
-            ' L ' +
-            (x + ((x2 - x) * b) / length) +
-            ' ' +
-            (z + ((z2 - z) * b) / length) +
-            '"/>'
-          : '';
-      const cuts = doc.openings
-        .filter((opening) => opening.wallId === wall.id)
-        .sort((a, b) => a.offset.value - b.offset.value);
-      let start = 0;
-      const paths = [];
-      for (const opening of cuts) {
-        paths.push(edge(start, opening.offset.value));
-        start = opening.offset.value + opening.width.value;
-      }
-      paths.push(edge(start, length));
-      return paths;
-    })
-    .join('');
-  const shapes = rooms
-    .map(
-      (room) =>
-        '<polygon fill="' +
-        (room === kitchen ? '#e2e9ad' : '#2b3630') +
-        '" points="' +
-        room.outline.map((point) => val(point).join(',')).join(' ') +
-        '"/>',
-    )
-    .join('');
-  const center = kitchen.outline.reduce(
-    (a, p) => [
-      a[0] + p.x.value / kitchen.outline.length,
-      a[1] + p.z.value / kitchen.outline.length,
-    ],
-    [0, 0],
-  );
-  const scale = Math.min(860 / planWidth, 640 / planHeight);
-  const left = (960 - planWidth * scale) / 2 - minX * scale;
-  const top = (720 - planHeight * scale) / 2 - minZ * scale;
-  const transform = 'translate(' + left + ' ' + top + ') scale(' + scale + ')';
-  const labelX = left + center[0] * scale;
-  const labelY = top + center[1] * scale + 7;
-  await writeFile(
-    path.join(out, 'plan.svg'),
-    [
-      '<svg xmlns="http://www.w3.org/2000/svg" width="960" height="720" viewBox="0 0 960 720">',
-      '<rect width="960" height="720" fill="#202b25"/>',
-      '<g transform="' + transform + '">',
-      shapes,
-      '<g fill="none" stroke="#adb8ac" stroke-width="0.085">' + lines + '</g>',
-      '</g>',
-      '<text x="' +
-        labelX +
-        '" y="' +
-        labelY +
-        '" font-family="DejaVu Sans, sans-serif" font-weight="700" font-size="24" text-anchor="middle" fill="#17211b">Kitchen</text>',
-      '</svg>',
-    ].join(''),
-  );
-}
-
-if (withShot('plan')) await floorPlan();
-if (only.length === 1 && only[0] === 'plan') process.exit(0);
-
+const mesa = process.env.REEL_GL === 'mesa';
 const browser = await chromium.launch({
+  headless: !mesa,
   args: [
-    '--use-angle=swiftshader',
-    '--enable-unsafe-swiftshader',
+    ...(mesa
+      ? [
+          '--use-gl=angle',
+          '--use-angle=gl',
+          '--ignore-gpu-blocklist',
+          '--enable-webgl',
+          '--disable-gpu-sandbox',
+        ]
+      : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader']),
     '--disable-dev-shm-usage',
-    '--disable-gpu-watchdog',
     '--disable-gpu-watchdog',
   ],
 });
@@ -449,98 +381,76 @@ try {
     ['house', 'bff323b', 'home.json'],
   ]) {
     if (!withShot(name)) continue;
-    console.log(name + ' ' + rev);
-    await withViewer(rev, model, async ({ open, hideUi, draw, shot }) => {
+    await withViewer(rev, model, async ({ open, shot }) => {
       await open();
-      await hideUi();
-      await draw();
-      await shot(path.join(out, name + '.jpg'));
+      await shot(path.join(out, name + '.png'));
+      console.log(name + ' still');
     });
   }
 
   const passes = [
-    ['early', '1da8338', 0, 3, 'fast'],
-    ['lighting', '287cc95', 3, 3, 'fast'],
-    ['shadows', 'e49f812', 6, 3, 'beautiful'],
-    ['materials', '6820266', 9, 4, 'beautiful'],
+    ['early', '1da8338', 'fast'],
+    ['lighting', '287cc95', 'fast'],
+    ['shadows', 'e49f812', 'beautiful'],
+    ['materials', '6820266', 'beautiful'],
   ];
-  for (const [name, rev, start, duration, quality] of passes) {
+  let kitchenStart = 0;
+  for (const [name, rev, tier] of passes) {
+    const start = kitchenStart;
+    const frames = shotFrames(name);
+    kitchenStart += frames;
     if (!withShot(name)) continue;
-    console.log(name + ' ' + rev);
-    await withViewer(rev, 'home.json', async ({ open, hideUi, pose, shot }) => {
-      await open('walk=first&quality=' + quality, figureAt(match));
-      await hideUi();
-      await motion(name, duration, (_, time) => pose(rotation(start + time)), shot);
+    await withViewer(rev, 'home.json', async ({ open, shot }) => {
+      await open('walk=first&reelMode=kitchen&quality=' + tier, eye);
+      await motion(name, frames, (file, i, time) =>
+        shot(file, { pose: kitchenPose((start + i) / fps), tier, time }),
+      );
     });
   }
 
-  if (withShot('match')) {
-    await withViewer('1da8338', 'home.json', async ({ open, hideUi, pose, shot }) => {
-      await open('walk=first&quality=fast', figureAt(match));
-      await hideUi();
-      await pose(match);
-      await shot(path.join(out, 'match.jpg'));
+  if (withShot('garden')) {
+    await withViewer('6820266', 'home.json', async ({ open, shot }) => {
+      await open('view=cutaway&level=souterrain&quality=beautiful&reelMode=outdoor');
+      await motion('garden', shotFrames('garden'), (file, _, time) =>
+        shot(file, { pose: gardenPose(time), tier: 'beautiful', time }),
+      );
     });
   }
 
-  if (['walk', 'section'].some(withShot)) {
-    await withViewer('6820266', 'home.json', async ({ page, open, hideUi, pose, draw, shot }) => {
-      if (withShot('section')) {
-        await open('view=section&look=east&at=1.5&quality=fast&panel=view');
-        const slider = page.getByRole('slider', { name: 'Cut at' });
-        const handle = await slider.elementHandle();
-        await hideUi();
-        await motion(
-          'section',
-          2,
-          async (_, __, share) => {
-            await handle.evaluate(
-              (input, fraction) => {
-                const set = Object.getOwnPropertyDescriptor(
-                  globalThis.HTMLInputElement.prototype,
-                  'value',
-                ).set;
-                set.call(input, String(Number(input.max) * fraction));
-                input.dispatchEvent(new Event('input', { bubbles: true }));
-              },
-              0.12 + 0.45 * eased(share),
-            );
-            await draw();
-          },
-          shot,
-        );
-      }
+  if (withShot('walk')) {
+    await withViewer('6820266', 'home.json', async ({ open, shot }) => {
+      await open('walk=first&quality=beautiful&reelMode=walk', walkStart);
+      await motion('walk', shotFrames('walk'), (file, _, time) =>
+        shot(file, { pose: walkPose(time), tier: 'beautiful', time }),
+      );
+    });
+  }
 
-      if (withShot('walk')) {
-        await open('walk=first&quality=fast', {
-          x: 8.5,
-          y: -2.6,
-          z: -6.61,
-          yaw: -Math.PI / 2,
-          pitch: -0.07,
-        });
-        await hideUi();
-        const phase = (time, from, duration) =>
-          eased(Math.max(0, Math.min(1, (time - from) / duration)));
-        await motion(
-          'walk',
-          4,
-          (_, time) => {
-            const corridor = phase(time, 0, 2.35);
-            const turn = phase(time, 1.4, 1.35);
-            const kitchen = phase(time, 1.85, 1.9);
-            return pose({
-              x: 8.5 + 2.55 * corridor,
-              y: -1,
-              z: -6.61 - 1.3 * kitchen,
-              yaw: (-Math.PI / 2) * (1 - turn) + 0.15 * turn,
-              pitch: -0.04 - 0.07 * kitchen,
-              fov: 64,
-            });
-          },
-          shot,
+  if (withShot('section')) {
+    await withViewer('6820266', 'home.json', async ({ page, open, shot }) => {
+      await open('view=section&look=east&at=1.5&quality=beautiful&panel=view&reelMode=outdoor');
+      const slider = page.getByRole('slider', { name: 'Cut at' });
+      const total = Number(await slider.getAttribute('max'));
+      await motion('section', shotFrames('section'), async (file, frame, time) => {
+        const distance =
+          Math.round((total * (0.1 + (0.62 * frame) / (shotFrames('section') - 1))) / 0.05) * 0.05;
+        await slider.evaluate((input, next) => {
+          const range = input;
+          const set = Object.getOwnPropertyDescriptor(
+            globalThis.HTMLInputElement.prototype,
+            'value',
+          ).set;
+          set.call(range, String(next));
+          range.dispatchEvent(new Event('input', { bubbles: true }));
+        }, distance);
+        await page.waitForFunction(
+          (next) =>
+            Math.abs(Number(globalThis.document.documentElement.dataset.reelSectionAt) - next) <
+            0.001,
+          distance,
         );
-      }
+        await shot(file, { tier: 'beautiful', time });
+      });
     });
   }
 } finally {

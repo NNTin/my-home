@@ -19,7 +19,9 @@ actual opening and ending frame before recording motion. Keep captions short eno
   [photo-modelling skill](../my-home-photo-modelling/SKILL.md) to obtain private reference photos.
 - For cutaways, sections, and eye-level footage, use the actual [viewer controls](../../../docs/views.md).
   Preview the first and last capture frames and check that the viewport and the captured canvas have the
-  intended framing. Check that textures and the requested render tier have drawn before recording.
+  intended framing. A mobile controls sheet can resize the canvas even when its contents are hidden. Check
+  the pixel dimensions of the exported canvas. For motion, drive each frame from the composition clock and
+  export from the drawing buffer after the requested frame has rendered.
 
 ## Capture and edit
 

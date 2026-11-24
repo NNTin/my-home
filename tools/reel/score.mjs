@@ -1,11 +1,12 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
+import timeline from './timeline.json' with { type: 'json' };
 
 const [dir] = process.argv.slice(2);
 if (!dir) throw new Error('Usage: node score.mjs <temporary media directory>');
 
 const rate = 48_000;
-const duration = 30;
+const duration = timeline.shots.reduce((total, shot) => total + shot.frames, 0) / timeline.fps;
 const samples = rate * duration;
 const score = new Float32Array(samples);
 const chords = [
@@ -51,7 +52,10 @@ for (let bar = 0; bar < 13; bar++) {
   }
 }
 
-for (const at of [0, 2, 4, 7, 11, 14, 17, 20, 24, 28]) {
+let beat = 0;
+for (const shot of timeline.shots) {
+  const at = beat / timeline.fps;
+  beat += shot.frames;
   add(
     at,
     0.35,
