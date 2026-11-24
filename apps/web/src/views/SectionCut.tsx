@@ -216,7 +216,8 @@ export function SectionCut({
           geometry={q.geometry}
           material={q.material}
           renderOrder={ORDER[q.kind].quad}
-          receiveShadow
+          // A cut face takes no shadow: what could cast one on it is cut away, and the edges of
+          // what stands right behind it would graze it.
           onBeforeRender={(_renderer, _scene, camera) => {
             // A texture that arrived went to the finish's own material: the cap follows it.
             syncMaps(q.source, q.material);

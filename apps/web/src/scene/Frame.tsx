@@ -290,6 +290,12 @@ export function FrameLoop({
     pending.current.shadow = true;
     invalidate();
   }, [lights, output, rig, eye, invalidate]);
+  // Into a room or out of one: the pool gathers afresh around the eye or the orbit target, so
+  // which lamps cast shadows does not depend on the view before (§6.4, §6.7).
+  useLayoutEffect(() => {
+    lights.regather();
+    invalidate();
+  }, [lights, eye, invalidate]);
   // Lamps are assigned by the frame: one is drawn when they changed.
   useEffect(() => invalidate(), [emitters, rooms, invalidate]);
 

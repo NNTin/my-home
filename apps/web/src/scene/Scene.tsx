@@ -243,7 +243,10 @@ function FrameView({ frame }: { frame: (FrameRequest & { key: number }) | undefi
   const key = frame?.key;
   useEffect(() => {
     if (!frame) return;
-    // A frame later: on the first render the camera and controls are still being set up.
+    // With the controls there, at once: no frame is drawn from the old place under the new
+    // view's light. On the first render the camera and controls are still being set up: a
+    // frame later.
+    if (get().controls) return applyFrame(get(), frame);
     const id = requestAnimationFrame(() => applyFrame(get(), frame));
     return () => cancelAnimationFrame(id);
     // Only a new request frames: the same one must not pull the camera back on a re-render.

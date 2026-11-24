@@ -114,6 +114,16 @@ export class SceneLights {
     this.lampIntensity = rig.lamps.on ? rig.lamps.intensity : 0;
   }
 
+  /**
+   * Forgets which light is at which emitter: the next frame assigns the pool afresh, the nearest
+   * emitters first, which on a desktop get the lights that cast shadows. For a change of view
+   * that is a cut (in or out of a room): nothing is seen to jump, and what the view shows does
+   * not depend on where the camera was before.
+   */
+  regather() {
+    this.slots = this.slots.map(() => undefined);
+  }
+
   /** Assigns the pool for a frame and moves its lights. The same for every tier. */
   update(frame: LampFrame): LampState {
     const { eye } = frame;

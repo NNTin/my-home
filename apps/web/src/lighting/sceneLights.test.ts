@@ -121,6 +121,31 @@ describe('the scene lights', () => {
     expect(lamp.shadow.needsUpdate).toBe(true);
   });
 
+  it('gathers afresh on a change of view: the lamps nearest the eye cast the shadows, whatever was lit before', () => {
+    const l = lights(false);
+    const shadowed = () =>
+      l.assignment
+        .slice(0, 4)
+        .filter((id) => id !== undefined)
+        .sort();
+    // An overview first: the pool fills from room b's side, so room a's far lamps get the
+    // lights that cast no shadow.
+    l.update({ emitters, focus: [13, 0, 2] });
+    expect(shadowed()).toEqual(['b0', 'b1', 'b2', 'b3']);
+    // Then the eye stands in room a. Its lamps are in sight and keep their lights: no shadow.
+    const eye = { emitters, focus: [0, 1.6, 2] as [number, number, number] };
+    const inA = { ...eye, eye: { position: eye.focus, roomId: 'a' } };
+    l.update(inA);
+    expect(shadowed().some((id) => id.startsWith('a'))).toBe(false);
+    // Gathered afresh, the four lamps nearest the eye cast them: the same as on a first visit.
+    l.regather();
+    l.update(inA);
+    expect(shadowed()).toEqual(['a0', 'a1', 'a2', 'a3']);
+    const first = lights(false);
+    first.update(inA);
+    expect(first.assignment).toEqual(l.assignment);
+  });
+
   it('lights the head lamp only at the eye in a room without an emitter', () => {
     const l = lights(true);
     l.update({ emitters, focus: [0, 0, 2] });
