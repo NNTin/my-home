@@ -17,6 +17,7 @@ import {
   stairFinish,
   TERRAIN_FINISH,
   textureFiles,
+  withoutFinishes,
   type Finish,
   type FinishSurface,
   type ResolvedFinish,
@@ -171,8 +172,9 @@ describe('default finishes', () => {
     expect(resolved.tint, what).toMatch(/^#[0-9a-f]{6}$/);
   };
 
-  it('resolves for every surface of the real home, which names no finish', () => {
-    const home = realHome();
+  it('resolves for every surface of the real home when it names no finish', () => {
+    const home = withoutFinishes(realHome());
+    expect(JSON.stringify(home)).not.toContain('"finish');
     expect(interiorLevelId(home)).toBe('souterrain');
     for (const room of home.rooms) {
       const f = roomFinishes(home, room);
@@ -198,6 +200,33 @@ describe('default finishes', () => {
       expectFits(outbuildingFinishes(b).roof, 'facade', `${b.id} roof`);
     }
     for (const stair of home.stairs ?? []) expectFits(stairFinish(stair), 'floor', stair.id);
+  });
+
+  it('resolves the real home’s own finishes, each for its kind of surface', () => {
+    const home = realHome();
+    for (const room of home.rooms) {
+      const f = roomFinishes(home, room);
+      if (room.levelId !== 'souterrain') expect(f, room.id).toBe(SHELL_FINISHES);
+      expectFits(f.floor, 'floor', room.id);
+      expectFits(f.walls, 'wall', room.id);
+      expectFits(f.ceiling, 'ceiling', room.id);
+    }
+    expect(
+      roomFinishes(
+        home,
+        home.rooms.find((r) => r.id === 'souterrain-kitchen')!,
+      ),
+    ).toEqual({
+      floor: { finish: 'wood.oak-laminate', tint: '#edd5b0', rotation: 0 },
+      walls: { finish: 'paint.plain', tint: '#f2efe8', rotation: 0 },
+      ceiling: { finish: 'paint.plain', tint: '#f2efe8', rotation: 0 },
+    });
+    const building = buildingFinishes(home.building);
+    expectFits(building.facade, 'facade', 'facade');
+    expectFits(building.roof, 'roof', 'roof');
+    for (const area of home.outdoorAreas) expectFits(outdoorAreaFinish(area), 'ground', area.id);
+    const rubble = home.outdoorAreas.filter((a) => outdoorAreaFinish(a).finish === 'stone.rubble');
+    expect(rubble.map((a) => a.kind)).toEqual(Array(14).fill('embankment'));
   });
 
   it('has a default for every kind of outdoor area and outbuilding', () => {

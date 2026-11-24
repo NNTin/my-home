@@ -386,6 +386,9 @@ A **finish use** is:
 - **The ground itself** (terrain where no area covers it) is `soil.plain`, and cut faces are `cut.dark`. Neither
   is in the model; `cut.dark` cannot be named by a home.
 - **Editing:** by a pull request to `data/homes/home.json`. The app has no editor for finishes.
+- **Choosing them from photos** (material, tint from two photos, provenance, when to ask for a photo): the
+  `my-home-photo-modelling` skill, § Finishes from photos. A surface no photo shows keeps its default, either by
+  leaving the field out or as the default finish with `source: "mock"` and a note that names the photo request.
 
 Which finishes exist, with their surfaces, tints and sources, is listed on the catalogue page (`/catalog`,
 section "Finishes") and in the definitions. A textured finish has files under

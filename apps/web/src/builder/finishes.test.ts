@@ -1,4 +1,4 @@
-import { finishes, HomeModel } from '@my-home/shared';
+import { finishes, HomeModel, withoutFinishes } from '@my-home/shared';
 import { describe, expect, it } from 'vitest';
 import realHomeJson from '../../../../data/homes/home.json';
 import mockHomeJson from '../../../../packages/shared/test-fixtures/mock-home.json';
@@ -10,7 +10,8 @@ import { toOutline } from './plan';
 // Finishes in the builder and the draw list (docs/design/realistic-render.md §5.4, §5.5): defaults
 // by kind, wall faces by room, UV frames, and "Plan colours".
 
-const realModel = () => HomeModel.parse(structuredClone(realHomeJson));
+/** The real home as its defaults draw it: its own finishes are taken out. */
+const realModel = () => withoutFinishes(HomeModel.parse(structuredClone(realHomeJson)));
 const mockModel = () => HomeModel.parse(structuredClone(mockHomeJson));
 const home = buildHome(realModel());
 const mock = buildHome(mockModel());
@@ -254,6 +255,61 @@ describe('finishes of the home model', () => {
       v: [-1, 0, 0],
     });
     expect(items.find((i) => i.id === 'souterrain-kitchen:floor')!.uv).toBeUndefined();
+  });
+});
+
+describe('the finishes of the real home (#113)', () => {
+  const real = buildHome(HomeModel.parse(structuredClone(realHomeJson)));
+  const items = shellItems(real);
+  const item = (id: string) => items.find((i) => i.id === id)!;
+
+  it('draws the oak floor in the rooms, tiles in the bath room and concrete in the boiler room', () => {
+    for (const room of ['corridor', 'kitchen', 'living-room', 'bed-room', 'work-room']) {
+      expect(item(`souterrain-${room}:floor`), room).toMatchObject({
+        finish: 'wood.oak-laminate',
+        tint: '#edd5b0',
+      });
+      // Planks run east-west, along the corridor: no quarter turn.
+      expect(item(`souterrain-${room}:floor`).uv, room).toBeUndefined();
+    }
+    const faces = real.walls.flatMap((w) => w.faces);
+    const walls = (room: string) =>
+      new Set(faces.filter((f) => f.roomId === `souterrain-${room}`).map((f) => f.finish.finish));
+    expect(walls('bath-room')).toEqual(new Set(['tile.light-60']));
+    expect(walls('corridor')).toEqual(new Set(['plaster.fine']));
+    expect(walls('kitchen')).toEqual(new Set(['paint.plain']));
+    expect(item('souterrain-boiler-room:floor').finish).toBe('concrete.screed');
+    expect(item('souterrain-boiler-room:ceiling')).toMatchObject({
+      finish: 'paint.plain',
+      tint: '#b8b7b3',
+    });
+  });
+
+  it('keeps the defaults where no photo shows the surface', () => {
+    expect(item('souterrain-stair-hall:floor').finish).toBe('floor.neutral');
+    expect(item('souterrain-stair-hall:ceiling').finish).toBe('paint.plain');
+    expect(item('souterrain-bath-room:floor').finish).toBe('floor.neutral');
+    expect(new Set(real.roofPlanes.map((r) => r.finish.finish))).toEqual(
+      new Set(['roof.clay-tile']),
+    );
+  });
+
+  it('draws the facade in its own tint and the walls of the patio entrance as rubble', () => {
+    const facade = items.filter((i) => i.finish === 'render.facade' && i.group.kind === 'level');
+    expect(facade.length).toBeGreaterThan(10);
+    expect(new Set(facade.map((i) => i.tint))).toEqual(new Set(['#e5e3de']));
+    const rubble = real.outdoorAreas.filter((a) => a.finish.finish === 'stone.rubble');
+    expect(rubble).toHaveLength(14);
+    expect(new Set(rubble.map((a) => a.kind))).toEqual(new Set(['embankment']));
+    expect(item('patio-souterrain').finish).toBe('paving.concrete-slab');
+    expect(item('garden-souterrain').finish).toBe('grass.lawn');
+  });
+
+  it('leaves the levels above as neutral shells', () => {
+    expect(item('ground-floor-interior:floor').finish).toBe('shell.neutral');
+    expect(item('ground-floor-interior:ceiling').finish).toBe('shell.neutral');
+    // The attic is under the roof: it has a floor and no ceiling surface.
+    expect(item('first-floor-interior:floor').finish).toBe('shell.neutral');
   });
 });
 

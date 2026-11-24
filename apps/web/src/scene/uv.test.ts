@@ -1,4 +1,4 @@
-import { finishes, HomeModel } from '@my-home/shared';
+import { finishes, HomeModel, withoutFinishes } from '@my-home/shared';
 import { describe, expect, it } from 'vitest';
 import realHomeJson from '../../../../data/homes/home.json';
 import { buildHome } from '../builder/buildHome';
@@ -11,7 +11,8 @@ const TILE = finishes.get('tile.light-60')!;
 /** One repeat of the texture is four tiles each way (the finish's definition). */
 const TILES_PER_REPEAT = 4;
 
-const model = () => HomeModel.parse(structuredClone(realHomeJson));
+/** The real home with its own finishes taken out: these tests choose theirs. */
+const model = () => withoutFinishes(HomeModel.parse(structuredClone(realHomeJson)));
 const chosen = (finish: string, rest: Record<string, unknown> = {}) => ({
   finish,
   source: 'mock' as const,

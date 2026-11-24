@@ -148,3 +148,17 @@ export const stairFinish = (stair: Pick<Stair, 'finish'>): ResolvedFinish =>
 
 export const TERRAIN_FINISH = plain(DEFAULT_FINISHES.terrain);
 export const CUT_FINISH = plain(DEFAULT_FINISHES.cut);
+
+/**
+ * A copy of a home that names no finish: every surface then draws the default of its kind. For
+ * telling what a home's own choices change, and for tests of the defaults.
+ */
+export function withoutFinishes(model: HomeModel): HomeModel {
+  const bare = structuredClone(model);
+  delete bare.building.finishes;
+  for (const room of bare.rooms) delete room.finishes;
+  for (const area of bare.outdoorAreas) delete area.finish;
+  for (const outbuilding of bare.outbuildings ?? []) delete outbuilding.finish;
+  for (const stair of bare.stairs ?? []) delete stair.finish;
+  return bare;
+}

@@ -4,11 +4,11 @@ description: >-
   Turn the owner's photos into model values for my-home: find and download photos by id, compare them with the
   model ("view from here" + overlay), measure positions and sizes from perspective (vanishing points, scale
   references, a calibrated camera), judge German windows and doors, decide when to ask for a photo instead of
-  guessing, and record results with provenance in home.json (inside only) or in the seed (placements, overrides:
-  place on staging, export, PR). Use for any
-  refinement of rooms, walls, doors, windows, furniture or fixtures from photos, and for extending the catalogue
-  from photos (identify objects, reuse or add a catalogue type, place them through the seed), indoors and on the
-  patio and garden.
+  guessing, choose surface finishes (floors, walls, ceilings, facade, ground) and their tints, and record results
+  with provenance in home.json (inside, and finishes) or in the seed (placements, overrides: place on staging,
+  export, PR). Use for any refinement of rooms, walls, doors, windows, finishes, furniture or fixtures from
+  photos, and for extending the catalogue from photos (identify objects, reuse or add a catalogue type, place them
+  through the seed), indoors and on the patio and garden.
 ---
 
 # my-home photo modelling
@@ -60,6 +60,45 @@ $P/pose.sh staging history <photo-id>               # who changed the pose, when
    add one in its own PR, then place them through the seed:
    [catalogue-from-photos.md](references/catalogue-from-photos.md).
 8. **Clean up:** `rm -rf` every temp dir (photos, grids, overlays). Never delete photos or requests in the store.
+
+## Finishes from photos
+
+A **finish** is a named surface material from the library in git (`docs/home-model.md` § Finishes; the list is on
+`/catalog`, section "Finishes"). A room of the souterrain names one for its floor, its walls and its ceiling; the
+building for its facade and roof; an outdoor area for its ground. Choosing one changes appearance only: the
+geometry rules are untouched. Upper floors take no finishes.
+
+1. **Collect** the photos of the room or surface, as for any refinement (`fetch.sh … -- --room <id>`, and
+   `--near` for photos taken from next door). Outside, only photos taken from the owner's garden, patio or the street.
+2. **Choose** the library finish that matches the **material and pattern**, not the lighting: a floor in lamp light
+   and in daylight is the same floor. Zoom in (`grid.sh --crop`) before calling a wall plain or grained. One finish
+   covers all walls of a room: take the one that covers most of them and say in the `note` what differs (a tiled
+   strip, one coloured wall).
+3. **Tint,** only where the finish is `tintable`: measure a **lit, unshadowed** patch of the surface in **two**
+   photos and use a value both agree on.
+   - `convert <id>.webp -crop 300x150+X+Y +repage -scale 1x1! -format '%[fx:int(255*r)] %[fx:int(255*g)] %[fx:int(255*b)]' info:`
+     gives a patch's mean colour. Look at the cropped patch first: it must show only the surface.
+   - A photo gives hue and saturation well and lightness badly (exposure). Compare with something white in the
+     same light (a window frame, a tank, a painted wall) to place the lightness.
+   - The tint **multiplies** the texture. For a finish with a colour map, divide the colour you want by the mean
+     colour of its `color-1024.webp` (the same command), channel by channel, and cap each at 1.
+   - A white wall keeps the finish's own white: no photo separates a faint tint from the colour of the lamps.
+4. **Direction:** a room's floor may be turned a quarter (`rotation: 90`). At `0` planks run along plan x
+   (east-west). Leave it out when the photos do not show the direction, and say so in the `note`.
+5. **Record** the finish use in `data/homes/home.json` with `source: "estimated-from-photo"`, the `photos` (ids of
+   the photos the choice and the tint were made from) and a `note` (what the surface is, where the tint comes
+   from, what the finish does not show). It is a PR to `data/homes`, like every change to the house.
+6. **Missing finish:** when nothing in the library fits the material, add one in its own PR from a CC0 library
+   (the definition, then `pnpm finishes:fetch <id>`; the manifest test holds the budgets), and name the photo ids
+   that called for it. A near match with a note is better than a new finish for a small difference.
+7. **Unsure, or not in any photo:** ask for a photo (`photo-requests.sh`, one surface per request, light on,
+   what must be in the frame) instead of guessing. Until it arrives the surface keeps its default: write the
+   default finish with `source: "mock"` and a `note` that names the request, or leave the field out.
+8. **Check** the render on staging against the photos, side by side on your machine, and adjust a tint that reads
+   wrong. PRs show renders of the model only.
+
+**Photos are named by id and never uploaded or committed. No texture is ever made from a photo:** a texture cut
+from the owner's photo would put the photo into git.
 
 ## Rules
 
