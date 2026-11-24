@@ -177,12 +177,33 @@ const boxProjection: Project = (px, py, pz, nx, ny, nz) => {
   return ax >= az ? [pz, py] : [px, py];
 };
 
-const planar =
-  ({ origin: [ox, oy, oz], u, v }: UvFrame): Project =>
-  (px, py, pz) => {
+/**
+ * A surface's frame (§5.4): a vertex's distances from the origin along `u` and along `v`. That is
+ * right for the faces that lie in the frame's plane: a wall's long faces, a roof plane's top and
+ * underside. A solid has other faces too (a wall's top, its ends, the reveals of its openings;
+ * a roof plane's verges and eave edge), and on a face at right angles to the plane one of the two
+ * distances is the same all across it, which would draw the texture as streaks. Such a face is
+ * projected along the frame's third axis instead: a box projection in the frame's own axes, so
+ * it is in metres whichever way the wall runs.
+ */
+const planar = ({ origin: [ox, oy, oz], u, v }: UvFrame): Project => {
+  // The frame's normal: u x v, both unit and at right angles.
+  const w: [number, number, number] = [
+    u[1] * v[2] - u[2] * v[1],
+    u[2] * v[0] - u[0] * v[2],
+    u[0] * v[1] - u[1] * v[0],
+  ];
+  const along = (a: readonly number[], x: number, y: number, z: number) =>
+    x * a[0]! + y * a[1]! + z * a[2]!;
+  return (px, py, pz, nx, ny, nz) => {
     const [x, y, z] = [px - ox, py - oy, pz - oz];
-    return [x * u[0] + y * u[1] + z * u[2], x * v[0] + y * v[1] + z * v[2]];
+    const [pu, pv, pw] = [along(u, x, y, z), along(v, x, y, z), along(w, x, y, z)];
+    if (Math.abs(along(w, nx, ny, nz)) >= 0.5) return [pu, pv];
+    // Facing along `u` (an end, a jamb): its depth and the height. Facing along `v` (a top, a
+    // sill): the length and its depth.
+    return Math.abs(along(u, nx, ny, nz)) >= Math.abs(along(v, nx, ny, nz)) ? [pw, pv] : [pu, pw];
   };
+};
 
 /** The texture coordinates of a geometry's vertices, in metres. */
 function projectUvs(g: BufferGeometry, project: Project): Float32Array {

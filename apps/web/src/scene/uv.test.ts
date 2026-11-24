@@ -142,7 +142,64 @@ describe('texture coordinates', () => {
       const slope = Math.hypot(a[0] - b[0], a[1] - b[1]);
       expect(Math.max(...vertices.map((x) => x.uv[1]))).toBeCloseTo(slope, 5);
       expect(Math.max(...vertices.map((x) => x.uv[0]))).toBeCloseTo(plane.depth, 5);
-      expect(Math.min(...vertices.map((x) => x.uv[0]))).toBeCloseTo(0, 5);
+      // The eave starts at 0. (The verges and the eave edge are projected along the frame's
+      // third axis, so their coordinates are not part of this run.)
+      expect(vertices.some((x) => Math.abs(x.uv[0]) < 1e-5 && Math.abs(x.uv[1]) < 1e-5)).toBe(true);
+    }
+  });
+
+  it('do not smear on the faces of a wall that are at right angles to its frame', () => {
+    // The parapet under a window of an exterior wall: its top is the sill of the reveal, its
+    // ends are inside the wall. The core of a wall segment is everything but its two long faces.
+    const walls = scene.walls.filter((w) => w.kind === 'exterior' && !w.outline);
+    const below = walls.find((w) => w.id.endsWith(':below'))!;
+    const full = walls.find((w) => w.id.endsWith(':full'))!;
+    for (const wall of [below, full]) {
+      const core = items.find((i) => i.id === wall.id)!;
+      expect(core.finish).toBe('render.facade');
+      const [length, height, thickness] = wall.size;
+      const vertices = drawn(core);
+      // Six vertices a face, in the order of the box's faces without the two long ones:
+      // the two ends, then the top and the bottom.
+      const face = (n: number) => vertices.slice(n * 6, n * 6 + 6);
+      for (const end of [face(0), face(1)]) {
+        // An end (and so the jamb of a reveal): the wall's thickness across, its height up.
+        expect(span(end.map((x) => x.uv[0]))).toBeCloseTo(thickness, 5);
+        expect(span(end.map((x) => x.uv[1]))).toBeCloseTo(height, 5);
+      }
+      for (const flat of [face(2), face(3)]) {
+        // A top (and so the sill of a reveal): the length along, the thickness across.
+        expect(span(flat.map((x) => x.uv[0]))).toBeCloseTo(length, 5);
+        expect(span(flat.map((x) => x.uv[1]))).toBeCloseTo(thickness, 5);
+      }
+    }
+  });
+
+  it('do not smear on the edges of a roof plane', () => {
+    for (const plane of scene.roofPlanes) {
+      const vertices = drawn(items.find((i) => i.id === plane.id)!);
+      const { u, v } = plane.uv;
+      const w = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+      // Every triangle covers an area in texture space in proportion to its own: none is a line.
+      for (let i = 0; i < vertices.length; i += 3) {
+        const [a, b, c] = [vertices[i]!, vertices[i + 1]!, vertices[i + 2]!];
+        const e1 = [b.p[0] - a.p[0], b.p[1] - a.p[1], b.p[2] - a.p[2]];
+        const e2 = [c.p[0] - a.p[0], c.p[1] - a.p[1], c.p[2] - a.p[2]];
+        const cross = [
+          e1[1]! * e2[2]! - e1[2]! * e2[1]!,
+          e1[2]! * e2[0]! - e1[0]! * e2[2]!,
+          e1[0]! * e2[1]! - e1[1]! * e2[0]!,
+        ];
+        const area = Math.hypot(...cross) / 2;
+        const uvArea =
+          Math.abs(
+            (b.uv[0] - a.uv[0]) * (c.uv[1] - a.uv[1]) - (c.uv[0] - a.uv[0]) * (b.uv[1] - a.uv[1]),
+          ) / 2;
+        // In metres, and at most turned by the angle between the face and an axis of the frame.
+        expect(uvArea / area, `triangle ${i / 3}`).toBeGreaterThan(0.5);
+        expect(uvArea / area, `triangle ${i / 3}`).toBeLessThan(1.0001);
+      }
+      expect(Math.hypot(...w)).toBeCloseTo(1, 9);
     }
   });
 
