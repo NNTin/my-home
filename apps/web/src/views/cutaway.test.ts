@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import realHomeJson from '../../../../data/homes/home.json';
 import mockHomeJson from '../../../../packages/shared/test-fixtures/mock-home.json';
 import { buildHome } from '../builder/buildHome';
-import { shellItems, type DrawItem } from '../builder/drawList';
+import { shellItems } from '../builder/drawList';
 import { batches, shapeGeometry } from '../scene/batches';
 
 /**
@@ -14,54 +14,35 @@ import { batches, shapeGeometry } from '../scene/batches';
 const home = buildHome(HomeModel.parse(structuredClone(realHomeJson)));
 const mock = buildHome(HomeModel.parse(structuredClone(mockHomeJson)));
 
-const triangles = (item: DrawItem) => {
-  const g = shapeGeometry(item.shape);
-  return (g.index ? g.index.count : g.getAttribute('position').count) / 3;
-};
-
 describe('the tops of cut walls', () => {
   it.each([
     ['home', home],
     ['mock-home', mock],
   ])('in %s the top of every wall is a cut face, and a sill is not', (_name, scene) => {
     const items = new Map(shellItems(scene).map((i) => [i.id, i]));
-    expect(scene.walls.some((w) => !w.cutTop)).toBe(true);
-    for (const w of scene.walls) {
-      // Below a window the segment ends at the sill: the wall goes on above the opening.
-      expect(w.cutTop, w.id).toBe(!w.id.endsWith(':below'));
-      const top = items.get(`${w.id}/top`);
-      const rest = items.get(w.id)!;
-      if (!w.cutTop) {
-        expect(top).toBeUndefined();
-        expect(rest.shape).toMatchObject({ only: 'core' });
-        continue;
-      }
-      expect(top, w.id).toMatchObject({ finish: 'cut.dark', closed: true, group: rest.group });
-      expect(top!.shape).toMatchObject({ only: 'top' });
-      expect(rest.shape).toMatchObject({ only: 'rest' });
-      expect(rest.finish).not.toBe('cut.dark');
-    }
-  });
-
-  it('the top and the rest are the core: no triangle is lost or drawn twice', () => {
-    for (const w of home.walls.filter((x) => x.cutTop)) {
-      const items = shellItems({ ...home, walls: [w] }).filter((i) => i.id.startsWith(w.id));
-      const core = items.find((i) => i.id === w.id)!;
-      const top = items.find((i) => i.id === `${w.id}/top`)!;
-      const whole = { ...core, shape: { ...core.shape, only: 'core' } } as DrawItem;
-      expect(triangles(top), w.id).toBeGreaterThan(0);
-      expect(triangles(top) + triangles(core), w.id).toBe(triangles(whole));
+    const tops = scene.wallFaces.filter((f) => f.part === 'top');
+    expect(tops.length).toBeGreaterThan(0);
+    for (const f of tops) {
+      const top = items.get(f.id)!;
+      expect(top, f.id).toMatchObject({ finish: 'cut.dark', closed: false });
+      expect(top.group, f.id).toMatchObject({ kind: 'cut', levelId: f.levelId });
       // Every vertex of the top looks up.
       const normal = shapeGeometry(top.shape).getAttribute('normal');
       for (let i = 0; i < normal.count; i++) expect(normal.getY(i)).toBeGreaterThan(0.5);
     }
+    // Nothing else of a wall is dark: the sill of a window is the reveal's.
+    for (const f of scene.wallFaces.filter((x) => x.part !== 'top'))
+      expect(f.finish.finish, f.id).not.toBe('cut.dark');
+    expect(scene.wallFaces.some((f) => f.id.includes(':sill-'))).toBe(true);
   });
 
   it('costs one more mesh per level and apartment, not one per wall', () => {
     const caps = batches(shellItems(home)).filter((b) => b.finish === 'cut.dark');
     expect(caps.length).toBeGreaterThan(0);
     expect(caps.length).toBeLessThanOrEqual(home.levels.length * (home.apartments.length + 1));
-    expect(caps.reduce((n, b) => n + b.items, 0)).toBe(home.walls.filter((w) => w.cutTop).length);
+    expect(caps.reduce((n, b) => n + b.items, 0)).toBe(
+      home.wallFaces.filter((f) => f.part === 'top').length,
+    );
   });
 });
 
@@ -71,13 +52,10 @@ describe('the levels above the one modelled inside', () => {
     expect(upper.size).toBe(2);
     for (const f of [...home.roomFloors, ...home.roomCeilings, ...home.ceilings])
       if (upper.has(f.levelId)) expect(f.finish.finish, f.id).toBe('shell.neutral');
-    for (const w of home.walls.filter((x) => upper.has(x.levelId))) {
-      // A face that borders a room, and everything of an inner wall.
-      for (const face of w.faces)
-        if (face.roomId !== undefined || w.kind === 'interior')
-          expect(face.finish.finish, w.id).toBe('shell.neutral');
-      if (w.kind === 'interior') expect(w.finish.finish, w.id).toBe('shell.neutral');
-    }
+    // Every face of a wall that borders a room.
+    const inner = home.wallFaces.filter((f) => upper.has(f.levelId) && f.roomId !== undefined);
+    expect(inner.length).toBeGreaterThan(10);
+    for (const face of inner) expect(face.finish.finish, face.id).toBe('shell.neutral');
   });
 
   it('take no finishes in the model: the schema rejects them', () => {

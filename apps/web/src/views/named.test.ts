@@ -111,7 +111,9 @@ describe('what a named view shows and how', () => {
       { kind: 'eye', roomId: 'souterrain-kitchen', look: 0 },
     ] as const) {
       const v = viewVisibility(home, view);
-      for (const item of shellItems(home)) expect(groupShown(item.group, home, v)).toBe(true);
+      // All of it but the tops of the walls: cut faces, which only a cutaway shows.
+      for (const item of shellItems(home))
+        expect(groupShown(item.group, home, v)).toBe(item.group.kind !== 'cut');
     }
   });
 

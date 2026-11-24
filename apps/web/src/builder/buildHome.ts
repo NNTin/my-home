@@ -1,6 +1,7 @@
 import {
   buildingFinishes,
   catalog,
+  CUT_FINISH,
   DEFAULT_FINISHES,
   effectiveParams,
   interiorLevelId,
@@ -27,10 +28,23 @@ import { pieces } from '../catalog/registry';
 import type { Part } from '../catalog/types';
 import { pointInPolygon } from '../editor/geometry';
 import { fenceLine, fenceSpec } from './fence';
+import {
+  doorReveal,
+  gableRoofTrim,
+  wallSkirting,
+  type DetailWall,
+  type DoorRevealDescriptor,
+  type RoofTrimDescriptor,
+  type SkirtingDescriptor,
+} from './shellDetail';
+import { simplify, wallFaceShapes, wallUv, type WallEnd, type WallFaceShape } from './wallFaces';
 import { EPS, rotationFor, toOutline, toVec2 } from './plan';
 
 export { FENCE_BAY } from './fence';
 export { rotationFor } from './plan';
+export type { DoorRevealDescriptor, RoofTrimDescriptor, SkirtingDescriptor } from './shellDetail';
+export { SHELL_DETAIL } from './shellDetail';
+export type { WallFacePart } from './wallFaces';
 
 /**
  * Pure model -> render descriptor builder. No three.js or GPU here, so it is unit-tested directly;
@@ -72,21 +86,10 @@ export interface UvFrame {
 }
 
 /**
- * One long face of a wall segment, or the stretch of it that borders one room: the box (or the
- * `outline`) of that stretch, of which only the face on `side` is drawn. A face takes the wall
- * finish of the room it borders; a face that borders none is an outer face of the building and
- * takes the facade finish (§5.5).
+ * A solid stretch of a wall between and around its openings: a box, or under a pitched roof the
+ * `outline`. The stretches are the wall as closed solids, which a section caps (§7.2); what is
+ * drawn of a wall is its faces (`WallFace`).
  */
-export interface WallFace extends Box {
-  /** The face at the segment's local +z (1) or -z (-1). */
-  side: 1 | -1;
-  /** The room the face borders. */
-  roomId?: string;
-  finish: ResolvedFinish;
-  /** As `WallSegment.outline`, for this stretch. */
-  outline?: Vec2[];
-}
-
 export interface WallSegment extends Box {
   id: string;
   wallId: string;
@@ -94,20 +97,26 @@ export interface WallSegment extends Box {
   apartmentId?: string;
   kind: Wall['kind'];
   /**
-   * Set when the segment is trimmed by a pitched roof: draw this outline (local along-wall x and
+   * Set when the segment is trimmed by a pitched roof: this outline (local along-wall x and
    * height y, relative to `center`) extruded through the wall thickness instead of the box.
    */
   outline?: Vec2[];
-  /** The finish of everything but the two long faces: the top, the ends, the reveals of openings. */
-  finish: ResolvedFinish;
-  /**
-   * The segment's top is the top of its wall, not a window sill: it is a cut face when the level
-   * above is hidden, and under the level above (or the roof) otherwise (§7.2).
-   */
-  cutTop: boolean;
-  /** The two long faces, split where the room they border changes. */
-  faces: WallFace[];
-  /** Textures run along the wall from its start and up from its floor, on both faces. */
+}
+
+/**
+ * One flat face of a wall, as it is drawn (§8.1): a polygon in the wall's frame (`center` is the
+ * wall's start at its floor; x runs along the wall, y up, z across it). A long face is one
+ * polygon per room it borders, with the openings as holes, and takes that room's wall finish; a
+ * face that borders no room is an outer face of the building and takes the facade finish (§5.5).
+ * The top is a cut face (§7.2), the reveals take the finish of the long face they meet.
+ */
+export interface WallFace extends WallFaceShape {
+  wallId: string;
+  levelId: string;
+  apartmentId?: string;
+  center: Vec3;
+  rotationY: number;
+  /** Textures run along the wall from its start and up from its floor. */
   uv: UvFrame;
 }
 
@@ -350,7 +359,12 @@ export interface ApartmentInfo {
 export interface HomeScene {
   levels: LevelInfo[];
   apartments: ApartmentInfo[];
+  /** The walls as solids, and as the faces that are drawn. */
   walls: WallSegment[];
+  wallFaces: WallFace[];
+  /** Shell detail (§8.1): skirting boards, and the linings and thresholds of doors. */
+  skirting: SkirtingDescriptor[];
+  doorReveals: DoorRevealDescriptor[];
   openings: OpeningDescriptor[];
   slabs: SlabDescriptor[];
   ceilings: CeilingDescriptor[];
@@ -360,6 +374,8 @@ export interface HomeScene {
   outdoorAreas: OutdoorAreaDescriptor[];
   /** Planes of a pitched roof; a flat roof is a slab of kind `roof` instead. */
   roofPlanes: RoofPlaneDescriptor[];
+  /** The trim of a pitched roof: eaves boards, gutters, the ridge cap. */
+  roofTrim: RoofTrimDescriptor[];
   roofWindows: RoofWindowDescriptor[];
   outbuildings: OutbuildingDescriptor[];
   stairs: StairDescriptor[];
@@ -530,25 +546,6 @@ export function clipSpan(
   return simplify(points);
 }
 
-/** Drops repeated and collinear vertices of a closed polygon. */
-function simplify(points: Vec2[]): Vec2[] {
-  let result = points;
-  for (let changed = true; changed && result.length > 3;) {
-    changed = false;
-    for (let i = 0; i < result.length; i++) {
-      const [ax, ay] = result[(i + result.length - 1) % result.length]!;
-      const [bx, by] = result[i]!;
-      const [cx, cy] = result[(i + 1) % result.length]!;
-      if (Math.abs((bx - ax) * (cy - ay) - (by - ay) * (cx - ax)) < EPS * EPS) {
-        result = result.filter((_, j) => j !== i);
-        changed = true;
-        break;
-      }
-    }
-  }
-  return result;
-}
-
 interface Span {
   part: 'full' | 'below' | 'above';
   from: number;
@@ -602,6 +599,9 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
   const elevationOf = (levelId: string) => levelById.get(levelId)?.elevation.value ?? 0;
 
   const walls: WallSegment[] = [];
+  const wallFaces: WallFace[] = [];
+  const skirting: SkirtingDescriptor[] = [];
+  const doorReveals: DoorRevealDescriptor[] = [];
   const openings: OpeningDescriptor[] = [];
   const openingsByWall = new Map<string, Opening[]>();
   for (const o of model.openings)
@@ -622,6 +622,18 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
   }));
   const roomAt = (levelId: string, point: Vec2) =>
     rooms.find((r) => r.levelId === levelId && pointInPolygon(point, r.outline));
+
+  /** Whether a plan point lies in the body of another wall of the level than `own`. */
+  const inWall = (own: Wall, [x, z]: Vec2) =>
+    model.walls.some((w) => {
+      if (w === own || w.levelId !== own.levelId) return false;
+      const [ax, az] = toVec2(w.start);
+      const [bx, bz] = toVec2(w.end);
+      const l = Math.hypot(bx - ax, bz - az);
+      const along = ((x - ax) * (bx - ax) + (z - az) * (bz - az)) / l;
+      const across = ((x - ax) * (bz - az) - (z - az) * (bx - ax)) / l;
+      return along > -EPS && along < l + EPS && Math.abs(across) < w.thickness.value / 2 + EPS;
+    });
 
   // Which side of a wall opening is outdoors: windows put their board and curtain in the room.
   const plan = toOutline(model.building.footprint);
@@ -691,26 +703,6 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
       if (outline === null) return;
       const mid = (s.from + s.to) / 2;
       const midY = (s.bottom + s.top) / 2;
-      const faces: WallFace[] = [];
-      for (const side of [1, -1] as const) {
-        for (const run of runs[side]) {
-          const from = Math.max(run.from, s.from);
-          const to = Math.min(run.to, s.to);
-          if (to - from < EPS) continue;
-          const part = trim && clipSpan({ ...s, from, to }, trim.ceiling, trim.kinks);
-          if (part === null) continue;
-          const at0 = (from + to) / 2;
-          faces.push({
-            side,
-            ...(run.roomId !== undefined && { roomId: run.roomId }),
-            finish: run.finish,
-            center: at(at0, base + midY),
-            size: [to - from, s.top - s.bottom, thickness],
-            rotationY,
-            ...(part && { outline: part.map(([t, y]): Vec2 => [t - at0, y - midY]) }),
-          });
-        }
-      }
       walls.push({
         ...common,
         id: `${wall.id}:${i}:${s.part}`,
@@ -719,12 +711,86 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
         size: [s.to - s.from, s.top - s.bottom, thickness],
         rotationY,
         ...(outline && { outline: outline.map(([t, y]): Vec2 => [t - mid, y - midY]) }),
-        finish:
-          wall.kind === 'exterior' ? exteriorFinishes.facade : levelFinishes(wall.levelId).walls,
-        cutTop: s.part !== 'below',
-        faces,
-        uv: { origin: [sx, base, sz], u: [dx, 0, dz], v: [0, 1, 0] },
       });
+    });
+
+    // What is drawn: the wall's faces. An end that looks into a room takes that room's finish,
+    // unless it stands inside another wall.
+    const coreFinish =
+      wall.kind === 'exterior' ? exteriorFinishes.facade : levelFinishes(wall.levelId).walls;
+    const endOf = (along: number): WallEnd => {
+      const probe: Vec2 = [sx + dx * along, sz + dz * along];
+      if (inWall(wall, probe)) return { covered: true };
+      const room = roomAt(wall.levelId, probe);
+      return room ? { roomId: room.id, finish: room.finishes.walls } : {};
+    };
+    const start: Vec3 = [sx, base, sz];
+    const uv = wallUv(start, [dx, dz]);
+    const cuts = wallOpenings.map((o) => ({
+      id: o.id,
+      from: o.offset.value,
+      to: o.offset.value + o.width.value,
+      bottom: o.sill.value,
+      top: o.sill.value + o.height.value,
+    }));
+    const ends: [WallEnd, WallEnd] = [endOf(-FACE_PROBE), endOf(length + FACE_PROBE)];
+    for (const face of wallFaceShapes({
+      length,
+      height: wall.height.value,
+      thickness,
+      cuts,
+      chain: trim
+        ? topEdge(length, wall.height.value, trim.ceiling, trim.kinks)
+        : [
+            [0, wall.height.value],
+            [length, wall.height.value],
+          ],
+      runs,
+      ends,
+      finish: coreFinish,
+      cutFinish: CUT_FINISH,
+    })) {
+      wallFaces.push({
+        ...face,
+        ...common,
+        id: `${wall.id}/${face.id}`,
+        center: start,
+        rotationY,
+        uv,
+      });
+    }
+
+    // Shell detail (§8.1). Skirting and door linings are the inside of the level that is
+    // modelled inside; a threshold lies in every doorway.
+    const detail: DetailWall = {
+      id: wall.id,
+      levelId: wall.levelId,
+      ...(wall.apartmentId !== undefined && { apartmentId: wall.apartmentId }),
+      // The wall's local +z is (-dz, dx) on the plan.
+      at: (along, y, across = 0) => [
+        sx + dx * along - dz * across,
+        y,
+        sz + dz * along + dx * across,
+      ],
+      rotationY,
+      base,
+      length,
+      thickness,
+    };
+    const inside = wall.levelId === interiorLevel;
+    if (inside) skirting.push(...wallSkirting(detail, runs, ends, cuts, SURFACE_OFFSET));
+    wallOpenings.forEach((o, i) => {
+      if ((o.type !== 'door' && o.type !== 'french-door') || o.sill.value > EPS) return;
+      const frame = pieceUse(o.typeId, o.id, overrides).values.frameColor;
+      const lining = inside && wall.kind === 'interior';
+      doorReveals.push(
+        doorReveal(
+          detail,
+          cuts[i]!,
+          SURFACE_OFFSET,
+          lining ? { color: typeof frame === 'string' ? frame : '#ffffff' } : undefined,
+        ),
+      );
     });
 
     /** 1 when the opening's local +z, (-dz, dx) on the plan, leads out of the footprint. */
@@ -903,6 +969,9 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
     levels,
     apartments: model.apartments.map((a) => ({ id: a.id, name: a.name, levelIds: a.levelIds })),
     walls,
+    wallFaces,
+    skirting,
+    doorReveals,
     openings,
     slabs,
     ceilings,
@@ -911,6 +980,8 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
     terrain,
     outdoorAreas,
     roofPlanes,
+    roofTrim:
+      gable && roofPlanes[0] ? gableRoofTrim(gable, roofPlanes[0], exteriorFinishes.roof) : [],
     roofWindows,
     outbuildings,
     stairs,
@@ -932,6 +1003,35 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
       ),
     ]),
   };
+}
+
+/**
+ * The top edge of a wall under a pitched roof, from its start to its end: points along the wall
+ * with their height above its floor, never above `height`. A height below the floor means the
+ * roof is lower than the wall's foot there.
+ */
+export function topEdge(
+  length: number,
+  height: number,
+  ceiling: (t: number) => number,
+  kinks: number[],
+): Vec2[] {
+  const base = [0, ...kinks.filter((t) => t > EPS && t < length - EPS), length].sort(
+    (a, b) => a - b,
+  );
+  // The edge also bends where the roof crosses the wall's top or its foot.
+  const ts: number[] = [];
+  base.forEach((t, i) => {
+    ts.push(t);
+    const next = base[i + 1];
+    if (next === undefined) return;
+    for (const level of [0, height]) {
+      const a = ceiling(t) - level;
+      const b = ceiling(next) - level;
+      if (a * b < -EPS * EPS) ts.push(t + ((next - t) * a) / (a - b));
+    }
+  });
+  return ts.sort((a, b) => a - b).map((t): Vec2 => [t, Math.min(height, ceiling(t))]);
 }
 
 /**

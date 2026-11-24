@@ -137,3 +137,68 @@ describe('batchMaterial', () => {
     expect(plain.emissive.getHex()).toBe(0);
   });
 });
+
+describe('a flat polygon', () => {
+  /** A wall face of 4 m by 2.5 m at z = 0.12 with a window in it, seen from +z. */
+  const outline: [number, number, number][] = [
+    [0, 0, 0.12],
+    [4, 0, 0.12],
+    [4, 2.5, 0.12],
+    [0, 2.5, 0.12],
+  ];
+  const hole: [number, number, number][] = [
+    [1, 0.9, 0.12],
+    [1, 2.1, 0.12],
+    [2, 2.1, 0.12],
+    [2, 0.9, 0.12],
+  ];
+  const area = (g: BufferGeometry) => {
+    const p = g.getAttribute('position');
+    let sum = 0;
+    for (let i = 0; i < g.index!.count; i += 3) {
+      const [a, b, c] = [g.index!.getX(i), g.index!.getX(i + 1), g.index!.getX(i + 2)];
+      // Twice the signed area in (x, y): positive when the triangle is anticlockwise from +z.
+      sum +=
+        (p.getX(b) - p.getX(a)) * (p.getY(c) - p.getY(a)) -
+        (p.getX(c) - p.getX(a)) * (p.getY(b) - p.getY(a));
+    }
+    return sum / 2;
+  };
+
+  it('is its corners and nothing else: one vertex each, shared by its triangles', () => {
+    const g = shapeGeometry({ kind: 'polygon', outline, holes: [hole] });
+    expect(vertices(g)).toBe(8);
+    expect(triangles(g)).toBe(8);
+    expect(area(g)).toBeCloseTo(4 * 2.5 - 1.2, 6);
+    const normal = g.getAttribute('normal');
+    for (let i = 0; i < normal.count; i++)
+      expect([normal.getX(i), normal.getY(i), normal.getZ(i)]).toEqual([0, 0, 1]);
+  });
+
+  it('faces the side its outline is anticlockwise from, every triangle of it', () => {
+    const back = shapeGeometry({ kind: 'polygon', outline: [...outline].reverse(), holes: [] });
+    expect(back.getAttribute('normal').getZ(0)).toBe(-1);
+    expect(area(back)).toBeCloseTo(-10, 6);
+    // Lying down, facing up: a wall's top.
+    const top = shapeGeometry({
+      kind: 'polygon',
+      outline: [
+        [0, 2.5, 0.12],
+        [4, 2.5, 0.12],
+        [4, 2.5, -0.12],
+        [0, 2.5, -0.12],
+      ],
+      holes: [],
+    });
+    expect(top.getAttribute('normal').getY(0)).toBe(1);
+    expect(triangles(top)).toBe(2);
+  });
+
+  it('merges with the other items of its batch', () => {
+    const faces = items.filter((i) => i.shape.kind === 'polygon');
+    expect(faces.length).toBeGreaterThan(100);
+    const [batch] = batches(faces.filter((i) => batchKey(i) === batchKey(faces[0]!)));
+    expect(batch!.items).toBeGreaterThan(5);
+    expect(batch!.geometry.getAttribute('color').count).toBe(vertices(batch!.geometry));
+  });
+});

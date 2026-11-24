@@ -7,6 +7,7 @@ import {
   scenePieceDraws,
   shellItems,
   transform,
+  wallSolidItems,
   type DrawGroup,
   type DrawItem,
   type PlacementDraw,
@@ -49,21 +50,6 @@ export interface CapSolids {
  * cut and stay open: a dark slab in a window pane would be no pane.
  */
 export const capped = (item: DrawItem): boolean => item.closed && !item.material?.transparent;
-
-/**
- * The whole solid an item is drawn from, or undefined for an item that is only some faces of one
- * that is counted already. A wall is drawn as several items (its core, its top, the stretches of
- * its two long faces, §5.5): it is counted once, as the box or profile of its core.
- */
-function wholeSolid(item: DrawItem): DrawItem | undefined {
-  const { shape } = item;
-  if (shape.kind !== 'box' && shape.kind !== 'profile') return item;
-  if (shape.only === undefined) return item;
-  if (shape.only !== 'core' && shape.only !== 'rest') return undefined;
-  const whole = { ...shape };
-  delete whole.only;
-  return { ...item, shape: whole };
-}
 
 const matrix = new Matrix4();
 const box = new Box3();
@@ -116,9 +102,7 @@ function mergePositions(items: readonly DrawItem[]): BufferGeometry {
  */
 export function capSolids(items: readonly DrawItem[]): CapSolids[] {
   const byKey = new Map<string, { cap: CapKind; group?: DrawGroup; items: DrawItem[] }>();
-  for (const part of items.filter(capped)) {
-    const item = wholeSolid(part);
-    if (!item) continue;
+  for (const item of items.filter(capped)) {
     const cap: CapKind = item.finish === CAP_FINISH.soil ? 'soil' : 'dark';
     const always = item.group.kind === 'structure' || item.group.kind === 'placement';
     const key = `${cap}|${always ? item.group.kind : groupKey(item.group)}`;
@@ -139,6 +123,8 @@ export function capSolids(items: readonly DrawItem[]): CapSolids[] {
 export function homeItems(scene: HomeScene): DrawItem[] {
   return [
     ...shellItems(scene),
+    // A wall is drawn as faces, which have no inside: it is counted as its solid stretches.
+    ...wallSolidItems(scene),
     ...scenePieceDraws(scene).flatMap((p) =>
       partItems(p.parts, p.id, p.group, transform(p.position, p.rotationY, p.rotationX)),
     ),

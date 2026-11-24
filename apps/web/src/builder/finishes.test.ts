@@ -22,12 +22,18 @@ const chosen = (finish: string, rest: Record<string, unknown> = {}) => ({
   ...rest,
 });
 
-/** The plan point just in front of a face, where its room is. */
+/** The two long faces of walls: what borders a room or is the building's outside. */
+const longFaces = (scene: HomeScene) =>
+  scene.wallFaces.filter((f) => f.part === 'front' || f.part === 'back');
+
+/** The plan point just in front of a long face, where its room is. */
 function inFront(face: WallFace): [number, number] {
   const [x, , z] = face.center;
-  const reach = face.side * (face.size[2] / 2 + 0.05);
-  // The face's local +z on the plan, for a box turned by `rotationY` about y.
-  return [x + Math.sin(face.rotationY) * reach, z + Math.cos(face.rotationY) * reach];
+  const along = face.outline.reduce((sum, p) => sum + p[0], 0) / face.outline.length;
+  const across = face.outline[0]![2] + Math.sign(face.outline[0]![2]) * 0.05;
+  const [c, sn] = [Math.cos(face.rotationY), Math.sin(face.rotationY)];
+  // The wall's frame turned by `rotationY` about y.
+  return [x + along * c + across * sn, z - along * sn + across * c];
 }
 
 describe('default finishes of a home that names none', () => {
@@ -80,22 +86,21 @@ describe('default finishes of a home that names none', () => {
 });
 
 describe('wall faces', () => {
-  it('every segment has faces on both sides that cover its length', () => {
-    for (const scene of [home, mock]) {
-      for (const wall of scene.walls) {
-        for (const side of [1, -1] as const) {
-          const faces = wall.faces.filter((f) => f.side === side);
-          // A gable-trimmed stretch may lie wholly above the roof and have no face.
-          if (wall.outline) continue;
-          expect(faces.length, `${wall.id} side ${side}`).toBeGreaterThan(0);
-          const covered = faces.reduce((sum, f) => sum + f.size[0], 0);
-          expect(covered, `${wall.id} side ${side}`).toBeCloseTo(wall.size[0], 6);
-          for (const f of faces) {
-            expect(f.size[1]).toBe(wall.size[1]);
-            expect(f.size[2]).toBe(wall.size[2]);
-            expect(f.rotationY).toBe(wall.rotationY);
-          }
-        }
+  it('every wall has faces on both sides', () => {
+    for (const [scene, model] of [
+      [home, realModel()],
+      [mock, mockModel()],
+    ] as const) {
+      for (const wall of model.walls) {
+        const faces = longFaces(scene).filter((f) => f.wallId === wall.id);
+        expect(
+          faces.some((f) => f.part === 'front'),
+          wall.id,
+        ).toBe(true);
+        expect(
+          faces.some((f) => f.part === 'back'),
+          wall.id,
+        ).toBe(true);
       }
     }
   });
@@ -104,28 +109,31 @@ describe('wall faces', () => {
     const model = realModel();
     const rooms = model.rooms.map((r) => ({ ...r, plan: toOutline(r.outline) }));
     let bordering = 0;
-    for (const wall of home.walls) {
-      for (const face of wall.faces) {
-        const room = rooms.find(
-          (r) => r.levelId === wall.levelId && pointInPolygon(inFront(face), r.plan),
-        );
-        expect(face.roomId, `${wall.id}`).toBe(room?.id);
-        if (room) bordering += 1;
-      }
+    for (const face of longFaces(home)) {
+      const room = rooms.find(
+        (r) => r.levelId === face.levelId && pointInPolygon(inFront(face), r.plan),
+      );
+      expect(face.roomId, face.id).toBe(room?.id);
+      if (room) bordering += 1;
     }
-    expect(bordering).toBeGreaterThan(80);
+    // One face per room a wall borders: no longer one per stretch between openings.
+    expect(bordering).toBeGreaterThan(30);
   });
 
   it('a face that borders no room outside the footprint is an outer face: the facade', () => {
     const footprint = toOutline(realModel().building.footprint);
-    const outer = home.walls
-      .filter((w) => w.kind === 'exterior')
-      .flatMap((w) => w.faces)
-      .filter((f) => !f.roomId && !pointInPolygon(inFront(f), footprint));
-    expect(outer.length).toBeGreaterThan(40);
+    const exterior = new Set(
+      realModel()
+        .walls.filter((w) => w.kind === 'exterior')
+        .map((w) => w.id),
+    );
+    const outer = longFaces(home).filter(
+      (f) => exterior.has(f.wallId) && !f.roomId && !pointInPolygon(inFront(f), footprint),
+    );
+    expect(outer.length).toBeGreaterThanOrEqual(exterior.size);
     for (const face of outer) expect(face.finish.finish).toBe('render.facade');
     // No room is ever drawn with the facade.
-    for (const face of home.walls.flatMap((w) => w.faces).filter((f) => f.roomId)) {
+    for (const face of home.wallFaces.filter((f) => f.roomId)) {
       expect(face.finish.finish).not.toBe('render.facade');
     }
   });
@@ -136,7 +144,7 @@ describe('wall faces', () => {
     room('souterrain-kitchen').finishes = { walls: chosen('tile.light-60') };
     room('souterrain-bath-room').finishes = { walls: chosen('plaster.fine', { tint: '#dde6ee' }) };
     const scene = buildHome(model);
-    const faces = scene.walls.flatMap((w) => w.faces);
+    const faces = scene.wallFaces;
     const of = (id: string) => faces.filter((f) => f.roomId === id);
     expect(of('souterrain-kitchen').length).toBeGreaterThan(3);
     for (const f of of('souterrain-kitchen')) expect(f.finish.finish).toBe('tile.light-60');
@@ -146,35 +154,30 @@ describe('wall faces', () => {
     for (const f of of('souterrain-corridor')) expect(f.finish.finish).toBe('paint.plain');
     // Some wall has the kitchen on one side and another room on the other.
     expect(
-      scene.walls.some(
-        (w) =>
-          w.faces.some((f) => f.roomId === 'souterrain-kitchen') &&
-          w.faces.some((f) => f.roomId !== undefined && f.roomId !== 'souterrain-kitchen'),
-      ),
+      realModel().walls.some((w) => {
+        const own = longFaces(scene).filter((f) => f.wallId === w.id);
+        return (
+          own.some((f) => f.roomId === 'souterrain-kitchen') &&
+          own.some((f) => f.roomId !== undefined && f.roomId !== 'souterrain-kitchen')
+        );
+      }),
     ).toBe(true);
   });
 
-  it('a wall is drawn as its core and its faces, which together are the solid', () => {
-    const items = shellItems(home);
-    for (const wall of home.walls.slice(0, 40)) {
-      const own = items.filter((i) => i.id === wall.id || i.id.startsWith(`${wall.id}/`));
-      // A wall that ends in a cut face has its core in two items: the top and the rest (§7.2).
-      const core = wall.cutTop ? ['rest', 'top'] : ['core'];
-      expect(own).toHaveLength(core.length + wall.faces.length);
-      const only = own.map((i) => (i.shape as { only?: string }).only);
-      expect(only.slice(0, core.length)).toEqual(core);
-      expect(new Set(only.slice(core.length))).toEqual(new Set(['front', 'back']));
-      for (const item of own) {
-        expect(item.closed).toBe(true);
-        expect(item.castShadow).toBe(true);
-        expect(item.uv).toEqual(wall.uv);
-      }
-    }
+  it('the reveal of a window is the room’s wall indoors and the facade outdoors', () => {
+    const reveals = home.wallFaces.filter((f) => f.openingId === 'window-souterrain-kitchen-north');
+    expect(reveals).toHaveLength(8);
+    expect(new Set(reveals.filter((f) => f.roomId).map((f) => f.finish.finish))).toEqual(
+      new Set(['paint.plain']),
+    );
+    expect(new Set(reveals.filter((f) => !f.roomId).map((f) => f.finish.finish))).toEqual(
+      new Set(['render.facade']),
+    );
   });
 
   it('textures run along the wall from its start and up from its floor', () => {
     const model = realModel();
-    for (const wall of home.walls) {
+    for (const wall of home.wallFaces) {
       const source = model.walls.find((w) => w.id === wall.wallId)!;
       const level = model.levels.find((l) => l.id === wall.levelId)!;
       expect(wall.uv.origin).toEqual([
@@ -274,7 +277,7 @@ describe('the finishes of the real home (#113)', () => {
       // Planks run east-west, along the corridor: no quarter turn.
       expect(item(`souterrain-${room}:floor`).uv, room).toBeUndefined();
     }
-    const faces = real.walls.flatMap((w) => w.faces);
+    const faces = real.wallFaces;
     const walls = (room: string) =>
       new Set(faces.filter((f) => f.roomId === `souterrain-${room}`).map((f) => f.finish.finish));
     expect(walls('bath-room')).toEqual(new Set(['tile.light-60']));

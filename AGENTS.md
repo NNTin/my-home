@@ -46,6 +46,9 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - api tests use `fastify.inject` and must also pass against real Postgres (CI `test-postgres`).
 - web tests run in jsdom: mock the R3F canvas, never require WebGL.
 - Keep changes scoped; conventional commit messages.
+- A hairline in a render is geometry, not light: an edge that ends in the middle of another one, or a face lying
+  edge-on in a visible one (a wall's end or top under its neighbour). Look at a close-up, and at the closed house,
+  before and after touching the shell (`docs/home-model.md` § Rendering).
 - Never mention the house's address or location (coordinates, map links, tile IDs, place names) in the repo or on GitHub.
 - Photos (`docs/photos.md`) live in the `media` schema, and placements, opening overrides and their history
   (`docs/userdata.md`) in `userdata`; no deploy resets either. Their migrations (`apps/api/media-migrations/`,

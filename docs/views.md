@@ -53,10 +53,11 @@ image is a render of the model: it holds no photo and no location.
 
 ## Cut caps
 
-The top of a wall is a cut face: it is drawn with the `cut.dark` finish. It shows when the level above is hidden
-(a cutaway) and is covered by the level above or the roof otherwise, so nothing is rebuilt when the cutaway
-changes. A window sill is not a cut. The builder marks the tops (`WallSegment.cutTop`); the draw list gives each
-its own item (`<wall segment id>/top`).
+The top of a wall is a cut face: it is drawn with the `cut.dark` finish. It is drawn while the level above (or
+the roof) is hidden, a cutaway, and hidden under it: the tops are a draw group of their own (`cut`), so nothing
+is rebuilt when the cutaway changes. Drawn under the wall above, a dark top lay edge-on in the facade and
+showed there as a dotted line at every floor. A window sill is not a cut. The builder gives each wall its top
+faces (`WallFace` with `part: 'top'`, items `<wall id>/top-<n>`).
 
 ## Where the code is
 
@@ -70,7 +71,7 @@ its own item (`<wall segment id>/top`).
 | The image export                                   | `apps/web/src/views/exportImage.ts`, `views/ImageExport.tsx` |
 | The lazy chunk `render-views` (all of the above)   | `apps/web/src/views/render-views.ts`                         |
 | Opening, leaving and resetting a view, the address | `apps/web/src/Viewer.tsx`                                    |
-| Wall tops as cut faces                             | `apps/web/src/builder/buildHome.ts`, `builder/drawList.ts`   |
+| Wall tops as cut faces                             | `apps/web/src/builder/wallFaces.ts`, `builder/drawList.ts`   |
 
 The chunk is asked for when the viewer opens and is not part of the main chunk
 (`apps/web/bundle-budget.json`). Until it is here the viewer is complete without named views; a capture of a

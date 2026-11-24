@@ -77,6 +77,10 @@ export function visibleScene(scene: HomeScene, v: Visibility): HomeScene {
   return {
     ...scene,
     walls: scene.walls.filter(shown),
+    // The top of a wall is a cut face: it shows where the level above (or the roof) is hidden.
+    wallFaces: scene.wallFaces.filter((f) => shown(f) && (f.part !== 'top' || !ceilingShown(f))),
+    skirting: scene.skirting.filter(shown),
+    doorReveals: scene.doorReveals.filter(shown),
     openings: scene.openings.filter(shown),
     roomFloors: scene.roomFloors.filter(shown),
     stairs: scene.stairs.filter(shown),
@@ -85,6 +89,7 @@ export function visibleScene(scene: HomeScene, v: Visibility): HomeScene {
     ceilings: scene.ceilings.filter(ceilingShown),
     roomCeilings: scene.roomCeilings.filter(ceilingShown),
     roofPlanes: showRoof ? scene.roofPlanes.filter((r) => shownLevels.has(r.levelId)) : [],
+    roofTrim: showRoof ? scene.roofTrim.filter((r) => shownLevels.has(r.levelId)) : [],
     roofWindows: showRoof ? scene.roofWindows.filter((r) => shownLevels.has(r.levelId)) : [],
     terrain: v.showTerrain ? scene.terrain : [],
     outdoorAreas: scene.outdoorAreas.filter((a) => !v.hiddenOutdoorAreas.includes(a.id)),
