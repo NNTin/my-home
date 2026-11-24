@@ -9,10 +9,10 @@ from one of the owner's photos.
 
 | Device  | Fetches                            | Files | Download | Memory on the GPU |
 | ------- | ---------------------------------- | ----- | -------- | ----------------- |
-| phone   | 512 px: colour, normal             | 23    | 0.95 MB  | 32.08 MB          |
-| desktop | 1024 px: colour, normal, roughness | 30    | 4.10 MB  | 167.35 MB         |
+| phone   | 512 px: colour, normal             | 25    | 1.11 MB  | 34.87 MB          |
+| desktop | 1024 px: colour, normal, roughness | 32    | 4.55 MB  | 178.51 MB         |
 
-In the repository: 53 files, 5.05 MB.
+In the repository: 57 files, 5.66 MB.
 
 ## wood.oak-laminate
 
@@ -136,6 +136,17 @@ Soil. Source: [Poly Haven · dirt](https://polyhaven.com/a/dirt), licence CC0-1.
 | `soil-plain/normal-512.webp`  | 82.3 kB  | `9bb207a21d9ce3a4b7e93593f449627876fe81930cc97c458d08473fd4556c41` |
 | `soil-plain/color-1024.webp`  | 68.1 kB  | `0601df85316af093d00a10a4a6fd567429c73a1647f84081f26907b4a1f4ea8d` |
 | `soil-plain/normal-1024.webp` | 315.9 kB | `0eeff00912ea74f4f581f2d6692798982054aa9de243a6e45b0b6668d577f2fb` |
+
+## stone.rubble
+
+Rubble stone wall. Source: [Poly Haven · broken_wall](https://polyhaven.com/a/broken_wall), licence CC0-1.0, fetched 2026-11-24. One repeat covers 3 m.
+
+| File                            | Size     | SHA-256                                                            |
+| ------------------------------- | -------- | ------------------------------------------------------------------ |
+| `stone-rubble/color-512.webp`   | 66.1 kB  | `74a9c9e54f4beedd5fcec691cef6c00a1062b7820e5ce15f3c0fe9f5420aaa32` |
+| `stone-rubble/normal-512.webp`  | 91.6 kB  | `5a5239c50d562fb7d3822fe86d00655ca729b795a872312dad88d58e3c2cb7f4` |
+| `stone-rubble/color-1024.webp`  | 189.7 kB | `53910e27ec7b47e7d3a25406483c96384522fa4bde8620ca27bda5d0d2b7b33b` |
+| `stone-rubble/normal-1024.webp` | 255.9 kB | `b32841a0c4b6dc3240f0e7e6e78da0b7086bc0b062f8eddf6c4a57b9a3d4866c` |
 
 ## wood.veneer
 

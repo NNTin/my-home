@@ -488,15 +488,15 @@ catalogue. The api and CI read them to check that a home refers only to finishes
 
 The library starts with these finishes. Textured ones count against the budget; plain ones are free.
 
-| Kind            | Textured                                                                           | Plain                                                           |
-| --------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| Floors          | `wood.oak-laminate`, `tile.light-60`, `concrete.screed`                            | `floor.neutral`                                                 |
-| Walls, ceilings | `plaster.fine` (relief only)                                                       | `paint.plain`, `shell.neutral`                                  |
-| Exterior        | `render.facade` (relief only), `roof.clay-tile`                                    | `cut.dark`                                                      |
-| Ground          | `grass.lawn`, `paving.concrete-slab`, `gravel.fine`, `asphalt.plain`, `soil.plain` |                                                                 |
-| Parts           | `wood.veneer`, `fabric.weave` (relief only)                                        | `metal.brushed`, `ceramic.white`, `plastic.matt`, `glass.clear` |
+| Kind            | Textured                                                                                           | Plain                                                           |
+| --------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Floors          | `wood.oak-laminate`, `tile.light-60`, `concrete.screed`                                            | `floor.neutral`                                                 |
+| Walls, ceilings | `plaster.fine` (relief only)                                                                       | `paint.plain`, `shell.neutral`                                  |
+| Exterior        | `render.facade` (relief only), `roof.clay-tile`                                                    | `cut.dark`                                                      |
+| Ground          | `grass.lawn`, `paving.concrete-slab`, `gravel.fine`, `asphalt.plain`, `soil.plain`, `stone.rubble` |                                                                 |
+| Parts           | `wood.veneer`, `fabric.weave` (relief only)                                                        | `metal.brushed`, `ceramic.white`, `plastic.matt`, `glass.clear` |
 
-That is 13 textured sets, three of them relief only (D36). A new finish is its own PR, like a new piece type: the definition, the texture files,
+The library started with 13 textured sets, three of them relief only (D36); `stone.rubble` is the first one added from photos (D49). A new finish is its own PR, like a new piece type: the definition, the texture files,
 the manifest entry, and a note of which photo ids called for it.
 
 ### 5.3 Texture files
@@ -519,7 +519,7 @@ the manifest entry, and a note of which photo ids called for it.
   source, licence, size and SHA-256. A unit test fails when a file is not listed, a listed file is missing, a
   checksum differs or a budget of §10 is exceeded.
 - **In git:** the files are committed to the repository as plain files, not Git LFS. The manifest test caps the
-  folder at 16 MB; the thirteen sets take about 5 MB.
+  folder at 16 MB; the fourteen sets take about 5.7 MB.
 - **Tooling:** `tools/finishes/fetch.mjs` (download, verify, convert, write the manifest). It runs on a
   developer machine or in an agent session, not in CI; CI only checks the result.
 
@@ -972,8 +972,8 @@ viewer's own renderer instead, and the PR says so. Either way the tier's interfa
 
 Texture memory is computed, not measured: width × height × 4 bytes × 1.33 for each texture a device holds,
 summed. A device holds **one** size of each set in every tier (§5.3), so this is the real footprint: a phone
-holds thirteen sets at 512 px with two maps (one for a relief-only set), about 32 MB; a desktop holds them at
-1024 px, seven of them with a roughness map, about 167 MB. The shadow maps and the frame's targets are outside this budget.
+holds fourteen sets at 512 px with two maps (one for a relief-only set), about 35 MB; a desktop holds them at
+1024 px, seven of them with a roughness map, about 179 MB. The shadow maps and the frame's targets are outside this budget.
 
 ### 10.2 How each is enforced
 
@@ -1322,6 +1322,7 @@ All seven proposed defaults were accepted.
 | D46 | Texture files are decoded with `createImageBitmap`, off the main thread, and read bottom up (a negative `repeat.y`)    | A 1024 px image decoded on the main thread is a visible hitch on a phone. The renderer does not turn a bitmap upright, and not every browser does when asked to: reading the wrapped texture backwards is the same picture everywhere (#112)           |
 | D47 | "Plan colours" draws room floors as `floor.neutral` tinted with the old room colours; walls and the rest keep finishes | The option exists to tell rooms apart (Q2); the renderer never invents a material (§5.1) (#112)                                                                                                                                                        |
 | D48 | A face at right angles to its UV frame is projected along the frame's third axis                                       | A wall's frame is right for its two long faces, a roof plane's for its top. On the wall's top, ends and reveals, and on the roof's verges and eave edge, one coordinate would be constant and the texture a streak. Found in the review of #141 (#112) |
+| D49 | `stone.rubble` (Poly Haven `broken_wall`, colour and relief) joins the library, for rubble walls                       | The photos show the patio entrance's side walls as dry-stacked grey boulders; the library had only `concrete.screed` for an embankment. Budgets: 1.11 and 4.55 MB to download, 35 and 179 MB of memory (#113)                                          |
 
 ## 14. Open questions
 

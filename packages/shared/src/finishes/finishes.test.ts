@@ -52,7 +52,7 @@ const textured: Finish = {
 };
 
 describe('the finish library', () => {
-  it('starts with the finishes of the design, in library order', () => {
+  it('has the finishes of the design and those added from photos, in library order', () => {
     expect(finishes.finishes.map((f) => f.id)).toEqual([
       'wood.oak-laminate',
       'tile.light-60',
@@ -69,6 +69,7 @@ describe('the finish library', () => {
       'gravel.fine',
       'asphalt.plain',
       'soil.plain',
+      'stone.rubble',
       'wood.veneer',
       'fabric.weave',
       'metal.brushed',
@@ -76,7 +77,7 @@ describe('the finish library', () => {
       'plastic.matt',
       'glass.clear',
     ]);
-    expect(finishes.finishes.filter((f) => f.texture)).toHaveLength(13);
+    expect(finishes.finishes.filter((f) => f.texture)).toHaveLength(14);
     expect(finishes.get('paint.plain')?.tintable).toBe(true);
     expect(finishes.get('nope.nope')).toBeUndefined();
   });

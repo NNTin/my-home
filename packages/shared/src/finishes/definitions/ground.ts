@@ -67,4 +67,18 @@ export const ground: Finish[] = [
     metalness: 0,
     source: polyHaven('dirt'),
   },
+  {
+    id: 'stone.rubble',
+    name: 'Rubble stone wall',
+    description:
+      'Rough grey stones stacked dry: a rubble retaining wall or a bank of boulders in the garden.',
+    surfaces: ['ground'],
+    texture: { id: 'stone-rubble', maps: ['color', 'normal'] },
+    tileSize: 3,
+    tint: '#ffffff',
+    tintable: false,
+    roughness: 1,
+    metalness: 0,
+    source: polyHaven('broken_wall', '2026-11-24'),
+  },
 ];
