@@ -53,6 +53,7 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - Agents never delete or purge photos or photo requests, and never commit photos. Unsure about a wall, room, opening
   or furniture? Look at the photos, then ask for one (`photo-requests.sh`) instead of guessing.
 - Refining the model from photos (measuring, view from here, German windows): the `my-home-photo-modelling` skill.
+- Use the `my-home-video` skill when planning, capturing, or verifying a video of the viewer.
 
 ## Where tests run
 
