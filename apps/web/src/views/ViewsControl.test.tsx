@@ -1,5 +1,5 @@
 import { HomeModel } from '@my-home/shared';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import realHomeJson from '../../../../data/homes/home.json';
 import { buildHome } from '../builder/buildHome';
@@ -8,9 +8,10 @@ import { ViewsControl } from './ViewsControl';
 
 const home = buildHome(HomeModel.parse(structuredClone(realHomeJson)));
 
-function show(view?: NamedView) {
+function show(view?: NamedView, saving = false) {
   const onView = vi.fn();
   const onBackdrop = vi.fn();
+  const onSave = vi.fn();
   render(
     <ViewsControl
       scene={home}
@@ -19,10 +20,12 @@ function show(view?: NamedView) {
       backdrop={view ? 'studio-light' : 'sky'}
       onBackdrop={onBackdrop}
       levelId="ground-floor"
+      onSave={onSave}
+      saving={saving}
     />,
   );
   const group = within(screen.getByRole('group', { name: 'Views' }));
-  return { onView, onBackdrop, group };
+  return { onView, onBackdrop, onSave, group };
 }
 
 describe('the Views control', () => {
@@ -31,7 +34,12 @@ describe('the Views control', () => {
     expect(group.getByRole('button', { name: 'Free' })).toHaveAttribute('aria-pressed', 'true');
     fireEvent.click(group.getByRole('button', { name: 'Cutaway' }));
     expect(onView).toHaveBeenLastCalledWith({ kind: 'cutaway', levelId: 'ground-floor' });
-    expect(group.queryByRole('button', { name: 'Section' })).toBeNull();
+    fireEvent.click(group.getByRole('button', { name: 'Section' }));
+    expect(onView).toHaveBeenLastCalledWith({
+      kind: 'section',
+      look: 'north',
+      at: sectionRange(home, 'north').depth / 2,
+    });
     fireEvent.click(group.getByRole('button', { name: 'Eye level' }));
     expect(onView).toHaveBeenLastCalledWith(
       expect.objectContaining({ kind: 'eye', roomId: 'souterrain-stair-hall' }),
@@ -91,5 +99,14 @@ describe('the Views control', () => {
     ).toEqual(['Sky', 'Studio, light', 'Studio, dark']);
     fireEvent.change(backdrop, { target: { value: 'studio-dark' } });
     expect(onBackdrop).toHaveBeenLastCalledWith('studio-dark');
+  });
+
+  it('"Save image" saves the view, and waits while one is being drawn', () => {
+    const idle = show();
+    fireEvent.click(idle.group.getByRole('button', { name: 'Save image' }));
+    expect(idle.onSave).toHaveBeenCalledTimes(1);
+    cleanup();
+    const busy = show({ kind: 'cutaway', levelId: 'souterrain' }, true);
+    expect(busy.group.getByRole('button', { name: 'Saving…' })).toBeDisabled();
   });
 });

@@ -2,15 +2,18 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
 import { BufferAttribute, BufferGeometry, type PerspectiveCamera } from 'three';
 import type { HomeScene } from '../builder/buildHome';
-import { linearRgb } from '../builder/drawList';
+import { linearRgb, type PlacementDraw } from '../builder/drawList';
+import type { Visibility } from '../builder/visibility';
 import type { Backdrop } from '../lighting/rig';
 import { batchMaterial } from '../scene/batches';
-import { useFrameControl } from '../scene/Frame';
+import { NEAR, useFrameControl } from '../scene/Frame';
 import type { NamedView } from './named';
+import { SectionCut } from './SectionCut';
 
 /**
- * What a named view adds to the scene (docs/design/realistic-render.md §7.3): the neutral ground
- * the plot stands on, and a depth range that fits a camera standing far away.
+ * What a named view adds to the scene (docs/design/realistic-render.md §7.2, §7.3): the neutral
+ * ground the plot stands on, a depth range that fits a camera standing far away, and for a
+ * section its cut with its caps (`SectionCut.tsx`).
  */
 
 /** The ground's colour under each backdrop: neutral, a little darker than a light backdrop. */
@@ -23,8 +26,6 @@ const SEGMENTS = 64;
 /** The ground is solid out to this many plot radii, then fades into the backdrop until `FADE_END`. */
 const FADE_START = 1.05;
 const FADE_END = 2.4;
-/** The camera's near plane as the viewer sets it (`scene/Scene.tsx`). */
-const NEAR = 0.1;
 
 /** A disc that lies flat, solid to `inner` and fading to nothing at `outer`: colours with alpha. */
 export function groundGeometry(inner: number, outer: number, color: string): BufferGeometry {
@@ -85,10 +86,15 @@ export function Stage({
   scene,
   view,
   backdrop,
+  visibility,
+  furniture,
 }: {
   scene: HomeScene;
   view: NamedView;
   backdrop: Backdrop;
+  /** What is shown of the home, and the furniture that is drawn: a section caps what it cuts. */
+  visibility: Visibility;
+  furniture: readonly PlacementDraw[];
 }) {
   const place = useMemo(() => groundPlace(scene), [scene]);
   const ground = useMemo(
@@ -125,13 +131,18 @@ export function Stage({
   );
 
   return (
-    <mesh
-      geometry={ground}
-      // The material of every translucent part: nothing new to compile (§4.5).
-      material={batchMaterial({ transparent: true, depthWrite: false })}
-      position={place.center}
-      renderOrder={-1}
-      dispose={null}
-    />
+    <>
+      {view.kind === 'section' && (
+        <SectionCut scene={scene} view={view} visibility={visibility} furniture={furniture} />
+      )}
+      <mesh
+        geometry={ground}
+        // The material of every translucent part: nothing new to compile (§4.5).
+        material={batchMaterial({ transparent: true, depthWrite: false })}
+        position={place.center}
+        renderOrder={-1}
+        dispose={null}
+      />
+    </>
   );
 }

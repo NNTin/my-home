@@ -43,6 +43,11 @@ describe('the URL of a named view', () => {
       kind: 'cutaway',
       levelId: 'ground-floor',
     });
+    expect(parseView('?view=section&look=east&at=3.25', home)).toEqual({
+      kind: 'section',
+      look: 'east',
+      at: 3.25,
+    });
     expect(parseView('?view=eye&room=souterrain-kitchen&look=-90', home)).toEqual({
       kind: 'eye',
       roomId: 'souterrain-kitchen',
@@ -53,19 +58,29 @@ describe('the URL of a named view', () => {
   it('takes the defaults for what is missing or names nothing of this home', () => {
     expect(parseView('?view=cutaway', home)).toEqual({ kind: 'cutaway', levelId: 'souterrain' });
     expect(parseView('?view=cutaway&level=cellar', home)).toEqual(defaultView(home, 'cutaway'));
+    expect(parseView('?view=section&look=up&at=far', home)).toEqual({
+      kind: 'section',
+      look: 'north',
+      at: sectionRange(home, 'north').depth / 2,
+    });
     const eye = parseView('?view=eye&room=first-floor-interior', home);
     expect(eye).toMatchObject({ kind: 'eye', roomId: eyeRooms(home)[0]!.roomId });
+  });
+
+  it('keeps a cut inside the building', () => {
+    const { depth } = sectionRange(home, 'west');
+    expect(parseView('?view=section&look=west&at=99', home)).toMatchObject({ at: depth });
+    expect(parseView('?view=section&look=west&at=-2', home)).toMatchObject({ at: 0 });
   });
 
   it('is no view without ?view= or with an unknown one', () => {
     expect(parseView('', home)).toBeUndefined();
     expect(parseView('?view=plan&quality=fast', home)).toBeUndefined();
-    // The section opens once its cut is drawn (§7.2).
-    expect(parseView('?view=section&look=east', home)).toBeUndefined();
   });
 
   it.each<NamedView>([
     { kind: 'cutaway', levelId: 'ground-floor' },
+    { kind: 'section', look: 'south', at: 4.4 },
     { kind: 'eye', roomId: 'souterrain-bed-room', look: 135 },
   ])('writes $kind as it reads it', (view) => {
     const search = `?${new URLSearchParams(viewQuery(view))}`;

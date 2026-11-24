@@ -112,7 +112,9 @@ docker-compose.yml   postgres + api + web
 - Configuration comes from environment variables validated with zod (`apps/api/src/config.ts`).
 - Logs are structured JSON (pino); pretty-printed in an interactive dev terminal.
 - api tests must pass on both PGlite and Postgres; web tests never need WebGL.
-- Conventional commit messages; run lint, format:check, typecheck and test before pushing.
+- Conventional commit messages. CI runs lint, format:check, typecheck, the tests, the build and the checks on
+  staging on every push; agents run only the quick checks of their own change locally (`AGENTS.md` § Where tests
+  run).
 
 ## Docker and CI
 

@@ -10,6 +10,7 @@ import { partBatches } from '../catalog/PartsMesh';
 import { createContext, defaultSettings } from '../editor/operations';
 import { batches } from './batches';
 import { BUDGETS } from '../quality/perfReport';
+import { capSolids, furnitureItems, homeItems } from '../views/caps';
 import { furnitureViews } from './furnitureViews';
 
 /**
@@ -75,6 +76,19 @@ describe('draw-call and triangle budgets of "Our home"', () => {
     const { phone, desktop } = DRAW_CALLS[name];
     expect(f.drawCalls).toBeLessThanOrEqual(phone);
     expect(f.drawCalls).toBeLessThanOrEqual(desktop);
+  });
+
+  it('the whole house with a section is within the draw-call budget of a phone', () => {
+    const v = wholeVisibility(scene);
+    // A cap's solids are counted in two draw calls a mesh; then one quad a cap, and the ground.
+    const counted = [
+      ...capSolids(homeItems(scene)),
+      ...capSolids(furnitureItems(furnitureViews(ctx, items, scene, v))),
+    ].filter((s) => !s.group || groupShown(s.group, scene, v));
+    const caps = new Set(counted.map((s) => s.cap)).size;
+    const drawCalls = frame(v).drawCalls + counted.length * 2 + caps + 1;
+    expect(counted.length).toBeGreaterThan(5);
+    expect(drawCalls).toBeLessThanOrEqual(DRAW_CALLS.whole.phone);
   });
 
   it('the whole house is within the triangle budget', () => {

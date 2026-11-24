@@ -10,6 +10,7 @@ import {
   type Texture,
 } from 'three';
 import type { DrawMaterial } from '../builder/drawList';
+import { SECTION_PLANES } from '../views/planes';
 import { FinishTextures, type TextureEvent } from './textures';
 
 /**
@@ -82,6 +83,9 @@ export class FinishMaterials {
       side: m?.doubleSided ? DoubleSide : FrontSide,
       roughness: finish?.roughness ?? 1,
       metalness: finish?.metalness ?? 0,
+      // A section cuts every surface of the home, and its shadow with it (§7.2).
+      clippingPlanes: SECTION_PLANES,
+      clipShadows: true,
       ...(finish?.texture && {
         map: maps.color ?? PLACEHOLDERS.color,
         normalMap: maps.normal ?? PLACEHOLDERS.normal,

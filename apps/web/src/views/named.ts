@@ -18,11 +18,8 @@ export type NamedView =
 
 export type ViewKind = NamedView['kind'];
 
-/**
- * The views that can be opened, by URL and from the Views control. The section joins them with
- * its cut and its caps (§7.2).
- */
-export const VIEW_KINDS: readonly ViewKind[] = ['cutaway', 'eye'];
+/** The views that can be opened, by URL and from the Views control, in the control's order. */
+export const VIEW_KINDS: readonly ViewKind[] = ['cutaway', 'section', 'eye'];
 
 export const LOOKS: readonly Look[] = ['north', 'east', 'south', 'west'];
 

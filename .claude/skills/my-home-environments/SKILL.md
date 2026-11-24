@@ -29,6 +29,34 @@ The magnetic declination is a home setting that deploys keep:
 
 The scripts below do all of this. Dependencies: `bash`, `curl`, `jq`, `gh`. Run them from the repository root.
 
+**A pull request's browser checks run in CI.** After the deploy to staging, the job `staging-checks` runs
+`walk-smoke.sh`, `mobile-smoke.sh` and `visual-diff.sh` (shot twice) through `staging-checks.sh`
+(`docs/deployment.md` § Checks on staging). Do not run these three from your own machine to verify a pull
+request: read the job instead.
+
+```sh
+gh pr checks <n> --repo NNTin/my-home                      # staging-checks (walk), (mobile), (visual-diff)
+gh run view <run-id> --repo NNTin/my-home                  # the summary: failed checks, the comparison table
+gh run view <run-id> --repo NNTin/my-home --log --job <job-id> | grep -E '^.*(FAIL|skip) '   # one job's output
+gh run download <run-id> --repo NNTin/my-home -n visual-diff-<full commit sha> --dir /tmp/vd   # the canvas shots
+gh run rerun <run-id> --repo NNTin/my-home --failed        # after "another deploy came first"
+```
+
+- "skipped, the secret NNTIN_BOT_TOKEN is not set": nothing was checked; tell the owner (the same section says
+  how to set it).
+- "answered 504 for the page" (or another status of 400 and above): staging itself failed that request; the
+  view was not looked at. It is a matter for `env-status.sh`, not for the pull request's code.
+- Cloudflare's own requests on the environment's host (`/cdn-cgi/*`, its analytics beacon, which GitHub's
+  runners get on every page) are answered inside the browser by every script (`scripts/infrastructure.mjs`):
+  they are no write and no error of the app. Every other write is still refused and reported.
+- "another deploy came first" (exit 6): staging ran another commit before or after the check; run it again.
+- "the placements, overrides or notes on staging were changed while the views were shot" (exit 6, `visual-diff`):
+  someone edited them on staging between the two shoots (the owner works there). Not the code: run it again,
+  and never "fix" it by importing the seed over their draft.
+- For a before/after of a renderer change, download the artifact of the pull request's run and of a run on
+  `main`'s tree and `visual-diff.sh compare` the two folders (it reads files only).
+- By hand, the scripts are for debugging one failing check, and `screenshot.sh` for a render to show.
+
 ## Quick start
 
 ```sh
@@ -42,7 +70,7 @@ $S/screenshot.sh staging --click 'label:has-text("Souterrain")' --drag -300,0   
 $S/screenshot.sh staging --viewport 390x844 --path '/?walk=first' --pad 0,-44,2000   # walk, then shoot
 $S/screenshot.sh staging --viewport 390x844 --touch --path '/?panel=furniture'   # phone layout, a panel open
 $S/screenshot.sh staging --canvas --out /tmp/view.png   # the 3D canvas only, no UI text
-$S/screenshot.sh staging --canvas --path '/?view=cutaway&hints=off'   # a named view (docs/views.md): cutaway, eye
+$S/screenshot.sh staging --canvas --path '/?view=cutaway&hints=off'   # a named view (docs/views.md): cutaway, section, eye
 $S/visual-diff.sh staging shoot --out /tmp/vd-main         # 8 fixed canvas views + manifest (commit)
 $S/visual-diff.sh compare /tmp/vd-main /tmp/vd-pr          # identical, or differing pixels + diff PNGs
 $S/walk-smoke.sh staging                                 # phone-sized smoke test of walk mode
@@ -87,7 +115,9 @@ $S/seed.sh staging diff                                # drift between git's see
   `quality=beautiful` in `--path` also for the beautiful tier (`data-tier="beautiful"`), which arrives with a
   lazy chunk. Under software rendering a beautiful frame takes many seconds, and the viewer **steps down** to a
   faster setting by itself: add `&stepdown=off` to shoot the tier you asked for.
-- **Named views** (`docs/views.md`) open by URL: `?view=cutaway&level=<levelId>` (the isometric cutaway) and
+- **Named views** (`docs/views.md`) open by URL: `?view=cutaway&level=<levelId>` (the isometric cutaway),
+  `?view=section&look=north|east|south|west&at=<m>` (the cross-section: where the camera looks, and the cut's
+  distance from the building's near face) and
   `?view=eye&room=<roomId>&look=<degrees>` (eye level in a room, degrees clockwise from plan north);
   `?backdrop=sky|studio-light|studio-dark` chooses the backdrop for a visit. They combine with `?quality=`. A
   shot waits until the view has opened (it comes with a lazy chunk) and settled.
@@ -100,8 +130,8 @@ $S/seed.sh staging diff                                # drift between git's see
   `souterrain`, `ground-floor` and `first-floor`, `orbit-180` (`--drag 600,0`), `steep` (`--drag 0,250`, from above),
   phone 390x844: `phone`; all with `hints=off&quality=fast`; then, with `stepdown=off`, the tiers
   (`default-beautiful`, `walk-fast`: walk mode's first room at eye level, `phone-auto`: the refined frame) and the
-  named views in both tiers (`cutaway-fast`, `cutaway-beautiful`: `?view=cutaway`; `eye-fast`, `eye-beautiful`:
-  `?view=eye` in the kitchen)) into `DIR/<view>.png` plus `DIR/manifest.json`
+  named views in both tiers (`cutaway-fast`, `cutaway-beautiful`: `?view=cutaway`; `section-fast`,
+  `section-beautiful`: `?view=section`; `eye-fast`, `eye-beautiful`: `?view=eye` in the kitchen)) into `DIR/<view>.png` plus `DIR/manifest.json`
   (deployed commit, view arguments, sha256). It reads the deployed commit before and after and fails if a
   deploy happened in between. `visual-diff.sh compare DIR_A DIR_B` prints a Markdown table per view:
   identical (same sha256) or the number of differing pixels, how many of them differ by more than 2 levels of
@@ -188,6 +218,11 @@ $S/seed.sh staging diff                                # drift between git's see
   walk control folded or open, and its Copy answers a tap; nothing may log an error. Read-only. Playwright (pinned) is installed outside the repository in
   `${XDG_CACHE_HOME:-$HOME/.cache}/my-home-environments/playwright`, Chromium in `~/.cache/ms-playwright`;
   `screenshot.sh --check` installs them if missing and verifies a headless launch.
+- `staging-checks.sh <walk|mobile|visual-diff> <commit> [--out DIR]`: what CI's `staging-checks` job runs. One
+  check, counted only if staging ran `<commit>` (full sha) before and after it (exit 6 otherwise). `visual-diff`
+  shoots every view twice and fails if any but `orbit-180` differs; it is not counted either when the seed
+  export of staging changed between the shoots. Appends a Markdown result to
+  `GITHUB_STEP_SUMMARY` when set.
 - `raise-env-issue.sh [--dry-run] [--force] <env> <summary> [details-file]`: refuses (exit 3) unless
   `env-status.sh` reports BROKEN; then comments on the open `environment`-labelled issue titled
   `[env] <env>: ...`, or creates one (and the label). `--force` is for a human override only.

@@ -38,7 +38,6 @@ describe('named views in the viewer', () => {
     const views = await open('/');
     expect(views.getByRole('button', { name: 'Free' })).toHaveAttribute('aria-pressed', 'true');
     expect(lastScene).toMatchObject({ rigView: undefined, backdrop: undefined, busy: false });
-    expect(lastScene?.stage).toBeFalsy();
     expect(lastScene?.markers).toHaveLength(4);
     expect(lastScene?.lettersHidden).toBe(false);
     expect(lastScene?.labels.length).toBeGreaterThan(0);
@@ -58,7 +57,6 @@ describe('named views in the viewer', () => {
       quality: 'fast',
     });
     expect(lastScene?.frame).toMatchObject({ fov: 20 });
-    expect(lastScene?.stage).toBeTruthy();
     // The address still names the view, with everything else it had.
     expect(query()).toEqual({ view: 'cutaway', level: 'ground-floor', quality: 'fast' });
   });
@@ -88,7 +86,6 @@ describe('named views in the viewer', () => {
 
     fireEvent.click(views.getByRole('button', { name: 'Free' }));
     expect(lastScene).toMatchObject({ rigView: undefined, backdrop: undefined });
-    expect(lastScene?.stage).toBeFalsy();
     expect(levelsShown()).toEqual(new Set(['souterrain']));
   });
 
@@ -151,11 +148,46 @@ describe('named views in the viewer', () => {
     await act(() => import('./render-views'));
     expect(lastScene?.walk).toBeDefined();
     expect(lastScene?.rigView).toBeUndefined();
+    // Nothing is still to come while walking: a capture of the walk can settle.
+    expect(lastScene?.busy).toBe(false);
     expect(query()).toMatchObject({ view: 'cutaway' });
     fireEvent.click(screen.getByRole('button', { name: /Exit|Leave|Done/ }));
     await screen.findByRole('group', { name: 'Views' });
     expect(lastScene).toMatchObject({ rigView: { kind: 'cutaway' }, walk: undefined });
     expect(lastScene?.frame).toMatchObject({ fov: 20 });
+  });
+
+  it('?view=section cuts the whole house; the slider moves the cut and the address follows', async () => {
+    const views = await open('/?view=section&look=east&at=2&quality=fast');
+    expect(lastScene).toMatchObject({
+      rigView: { kind: 'section', look: 'east' },
+      backdrop: 'studio-light',
+      lettersHidden: true,
+      labels: [],
+    });
+    expect(lastScene?.frame).toMatchObject({ fov: 25, from: [-1, 0, expect.closeTo(0)] });
+    expect(levelsShown()).toEqual(new Set(['souterrain', 'ground-floor', 'first-floor']));
+    const before = lastScene?.frame?.key;
+    fireEvent.change(views.getByLabelText(/Cut at/), { target: { value: '3.5' } });
+    expect(query()).toEqual({ view: 'section', look: 'east', at: '3.5', quality: 'fast' });
+    // Moving the cut does not move the camera.
+    expect(lastScene?.frame?.key).toBe(before);
+    // Looking from another side does.
+    fireEvent.change(views.getByLabelText('Looking'), { target: { value: 'south' } });
+    expect(query()).toMatchObject({ view: 'section', look: 'south' });
+    expect(lastScene?.frame?.key).not.toBe(before);
+    expect(lastScene?.rigView).toEqual({ kind: 'section', look: 'south' });
+  });
+
+  it('a cut that was left by orbiting can still be moved, without taking the camera back', async () => {
+    const views = await open('/?view=section');
+    act(() => lastScene?.onOrbit?.());
+    expect(window.location.search).toBe('');
+    const before = lastScene?.frame?.key;
+    fireEvent.change(views.getByLabelText(/Cut at/), { target: { value: '1' } });
+    expect(lastScene?.frame?.key).toBe(before);
+    expect(window.location.search).toBe('');
+    expect(lastScene?.rigView).toEqual({ kind: 'section', look: 'north' });
   });
 
   it('on a phone the control is in the View tab and "Reset view" goes back to the free view', async () => {

@@ -12,6 +12,7 @@
 /* global window, screen, DeviceOrientationEvent */
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { answeredInfrastructure } from './infrastructure.mjs';
 
 const require = createRequire(path.join(process.env.MY_HOME_PLAYWRIGHT_DIR, 'package.json'));
 const { chromium } = require('playwright');
@@ -48,6 +49,8 @@ async function open(browser, initScript) {
   await context.route('**/*', (route) => {
     const request = route.request();
     if (new URL(request.url()).host !== host) return route.continue();
+    // Cloudflare's own requests (its analytics beacon) are answered here: no write, no error.
+    if (answeredInfrastructure(route, host)) return;
     // Read-only: no write leaves the browser (nothing is stored on a deployed environment).
     if (!['GET', 'HEAD'].includes(request.method())) return route.abort();
     return route.continue({ headers: { ...request.headers(), ...auth } });

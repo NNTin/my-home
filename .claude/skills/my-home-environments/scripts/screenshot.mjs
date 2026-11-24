@@ -5,6 +5,7 @@
 import { writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { answeredInfrastructure } from './infrastructure.mjs';
 
 const require = createRequire(path.join(process.env.MY_HOME_PLAYWRIGHT_DIR, 'package.json'));
 const { chromium } = require('playwright');
@@ -136,6 +137,8 @@ async function shoot([
     await context.route('**/*', (route) => {
       const request = route.request();
       if (new URL(request.url()).host !== host) return route.continue();
+      // Cloudflare's own requests (its analytics beacon) are answered here: no write, no error.
+      if (answeredInfrastructure(route, host)) return;
       // Read-only: no write leaves the browser (nothing is stored on a deployed environment).
       if (!['GET', 'HEAD'].includes(request.method())) return route.abort();
       return route.continue({
@@ -156,6 +159,10 @@ async function shoot([
     const finalHost = new URL(page.url()).host;
     console.log(`final host ${finalHost}, status ${response?.status() ?? 'none'}`);
     if (finalHost !== host) throw new Error(`ended on ${finalHost}, not ${host} (login redirect?)`);
+    // An error page has no canvas to wait for: say what the environment answered, at once.
+    const status = response?.status() ?? 0;
+    if (status >= 400)
+      throw new Error(`${host} answered ${status} for the page: the environment, not the view`);
     // The viewer (`/`) draws a canvas; the other pages (`/catalog`, …) have a heading instead.
     const viewer = new URL(page.url()).pathname === '/';
     await page.waitForSelector(viewer ? 'canvas' : 'h1', { timeout: 30_000 });

@@ -17,8 +17,8 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - `packages/shared/src/finishes/`: the finish library (surface materials: one definition per finish), and
   `apps/web/src/finishes/`: their texture files (CC0 only, `ASSETS.md`), loader and materials; a room or exterior
   surface names a finish in `home.json` (`docs/home-model.md` § Finishes)
-- `apps/web/src/views/`: the named views (`?view=cutaway|eye`, the Views control, backdrops), a lazy chunk
-  (`docs/views.md`)
+- `apps/web/src/views/`: the named views (`?view=cutaway|section|eye`, the Views control, backdrops, the
+  section's cut and caps, "Save image"), a lazy chunk (`docs/views.md`)
 - `apps/web/src/routing/` (no router library) and `apps/web/src/catalog-page/`: the pages `/catalog` and
   `/catalog/<kind>/<typeId>`, lazy chunks; thumbnails cached in the browser (`docs/catalog.md`)
 - `docs/`: project docs (designs not built yet in `docs/design/`: the realistic render, `realistic-render.md`);
@@ -40,7 +40,8 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 
 - **No Docker locally.** Without `DATABASE_URL` the api uses PGlite (`apps/api/.data/`, in-memory in tests).
   Dockerfiles, compose and real Postgres are verified only in CI (`.github/workflows/ci.yml`).
-- Run `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test` before pushing.
+- **Tests run in CI, not on the agents' machine** (§ Where tests run). The machine is small and runs many agents
+  at once.
 - API request/response shapes live in `packages/shared`; validate with them on both sides.
 - api tests use `fastify.inject` and must also pass against real Postgres (CI `test-postgres`).
 - web tests run in jsdom: mock the R3F canvas, never require WebGL.
@@ -52,6 +53,50 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - Agents never delete or purge photos or photo requests, and never commit photos. Unsure about a wall, room, opening
   or furniture? Look at the photos, then ask for one (`photo-requests.sh`) instead of guessing.
 - Refining the model from photos (measuring, view from here, German windows): the `my-home-photo-modelling` skill.
+
+## Where tests run
+
+The agents share one small machine and many tasks run on it at the same time. A full test suite, a build or a
+browser run here slows every other agent down, and takes far longer than on a CI runner. So **CI is where things
+are verified**, and the machine is for writing the change.
+
+- **Locally, only what is quick and about your change:** the commit hook (eslint and prettier on the staged
+  files), `tsc` for the package you touched, and the test files you touched or wrote
+  (`pnpm --filter @my-home/web exec vitest run src/views`). One heavy command at a time, through the shared
+  queue.
+- **Not locally:** the whole `pnpm test`, `pnpm build` with `pnpm check:bundle`, real Postgres, Docker, and
+  anything with a browser (the smokes, `visual-diff`, screenshots in bulk). CI runs all of them on every push:
+  `check`, `test-postgres`, `docker`, `chart`, then `publish`, `deploy` and, on staging, `staging-checks`
+  (`docs/deployment.md` § Checks on staging).
+- **Read CI instead of repeating it:** `gh pr checks <n>`, `gh run view <run-id>` (the summary has each staging
+  check's result), `gh run view --job <job-id> --log-failed`, `gh run download <run-id> -n visual-diff-<sha>`.
+  Put what CI found in the pull request; do not run the same thing again here to "confirm".
+- **A push is not free either.** Every push to a pull request deploys staging and cancels the run before it.
+  Collect your commits and push once, when the quick local checks pass. Do not push to see whether it compiles.
+- **When a CI job fails, find the cause in its log before changing anything.** Reproduce locally only if the
+  log cannot tell you, and then only the one failing test.
+- **If a check you need does not exist in CI, add it to CI** (with an offline test of any script it uses), rather
+  than running it by hand each time.
+
+What reading CI has taught us:
+
+- **Green can mean skipped.** A job that finishes in seconds did nothing: read its warning (the staging checks
+  skip without the secret `NNTIN_BOT_TOKEN`; tell the owner).
+- **A job's log is only available once the whole run is complete,** and GitHub re-runs one job per attempt:
+  re-running jobs one by one, or while someone else does, hides the logs for a long time. Wait for the run.
+- **What the page gets on a CI runner is not what it gets here:** Cloudflare adds its analytics beacon
+  (`POST /cdn-cgi/rum`) there. The browser scripts answer `/cdn-cgi/*` themselves
+  (`scripts/infrastructure.mjs`); a new script must use the same filter.
+- **Staging is shared:** a check counts only for the commit staging ran before and after it, and the owner may
+  be editing there. A difference in a screenshot can be data, not rendering: look at `seed.sh staging diff`.
+
+## Keeping this file useful
+
+This file is for the next agent. When a task teaches you something that would have saved you time (a rule the
+owner states, a trap in CI or in the tooling, a check that moved), **write it here in the same pull request**:
+one or two lines, in the section it belongs to, with the reason. Change a line that turned out wrong, and
+remove one that no longer holds. Details go into `docs/` or a skill; this file says that they exist and when to
+read them. Do not turn it into a log of what you did.
 
 ## House model
 

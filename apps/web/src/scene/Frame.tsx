@@ -16,7 +16,7 @@ import { studioEnvironment } from '../lighting/environment';
 import { roomAt, type Emitter, type LampRoom } from '../lighting/lamps';
 import { backdropColors, environmentIntensity, type LightRig } from '../lighting/rig';
 import { SceneLights } from '../lighting/sceneLights';
-import type { FrameGovernor } from '../quality/governor';
+import type { FrameGovernor, Tier } from '../quality/governor';
 import { FrameOutput, gpuIdle } from './output';
 import { casterBounds } from './sunShadow';
 
@@ -40,6 +40,21 @@ export interface FrameControl {
   finishes: FinishMaterials;
   /** A finish is drawn: its texture files are asked for, once, in this device's size (§5.3). */
   finishShown(finish: string): void;
+  /**
+   * The camera was put somewhere else at once (a named view, `?focus=`): the lamp pool gathers
+   * afresh around the new place, so what is lit and shadowed there does not depend on where the
+   * camera was before (§6.4, §6.7).
+   */
+  cameraJumped(): void;
+  /** A section is cut: the frame's targets get a stencil buffer for its caps (§7.2). */
+  useStencil(): void;
+  /**
+   * Resolves once beautiful frames can be drawn, whatever the quality setting: the lazy chunk
+   * is asked for if it is not here. False when it does not come. For the image export (§7.4).
+   */
+  beautifulReady(): Promise<boolean>;
+  /** Draws one frame of the view as it is, now and outside the loop: the governor is not told. */
+  drawNow(tier: Tier): void;
 }
 
 const Context = createContext<FrameControl | undefined>(undefined);
@@ -50,8 +65,13 @@ export const useFrameControl = () => useContext(Context);
 /** Device pixel ratio the canvas renders at, as [min, max]; lower on a phone. */
 export const DPR: [number, number] = [1, 2];
 export const PHONE_DPR: [number, number] = [1, 1.5];
+/** The camera's near plane, in metres; a named view moves it out with a far camera (`views/Stage.tsx`). */
+export const NEAR = 0.1;
 /** A compile that never reports back (a lost context) must not hold the view forever. */
 const COMPILE_TIMEOUT_MS = 5000;
+
+/** How long the image export waits for the beautiful tier's chunk and its warm-up. */
+const BEAUTIFUL_TIMEOUT_MS = 60_000;
 
 const programIds = (gl: WebGLRenderer) => (gl.info.programs ?? []).map((p) => p.id);
 
@@ -158,6 +178,8 @@ export function FrameLoop({
     programs: new Set(),
   });
 
+  /** The image export's two actions, filled in below where the loop's parts are at hand. */
+  const still = useRef({ ready: () => Promise.resolve(false), draw: (_tier: Tier) => {} });
   const control = useMemo(
     (): FrameControl => ({
       governor,
@@ -176,8 +198,18 @@ export function FrameLoop({
         // The view has not settled while a texture is on its way: a capture waits for it.
         governor.setMoving('textures', finishSet.textures.pending > 0);
       },
+      cameraJumped() {
+        lights.regather();
+        invalidate();
+      },
+      useStencil() {
+        output.useStencil();
+        invalidate();
+      },
+      beautifulReady: () => still.current.ready(),
+      drawNow: (tier) => still.current.draw(tier),
     }),
-    [governor, invalidate, finishSet],
+    [governor, invalidate, finishSet, output, lights],
   );
 
   // A texture arrives: the next frame draws with it, and compiles nothing (§4.5). One that fails
@@ -223,7 +255,7 @@ export function FrameLoop({
   // The lazy chunk of the beautiful tier (§4.4): asked for once the first fast frame is on screen
   // and the setting can use it. Until it has arrived and is compiled, every frame is a fast one;
   // if it does not arrive, the viewer stays fast and says so once.
-  const chunk = useRef<'idle' | 'loading' | 'here'>('idle');
+  const chunk = useRef<'idle' | 'loading' | 'here' | 'failed'>('idle');
   const wanted = useRef(beautiful);
   const loadBeautiful = useCallback(() => {
     if (chunk.current !== 'idle' || !wanted.current || !drawn.current) return;
@@ -239,7 +271,9 @@ export function FrameLoop({
         invalidate();
       },
       () => {
-        if (current.current) notice.current?.(CHUNK_FAILED);
+        if (!current.current) return;
+        chunk.current = 'failed';
+        notice.current?.(CHUNK_FAILED);
       },
     );
   }, [get, output, phone, invalidate]);
@@ -266,11 +300,64 @@ export function FrameLoop({
     pending.current.shadow = true;
     invalidate();
   }, [lights, output, rig, eye, invalidate]);
+  // Into a room or out of one: the pool gathers afresh around the eye or the orbit target, so
+  // which lamps cast shadows does not depend on the view before (§6.4, §6.7).
+  useLayoutEffect(() => {
+    lights.regather();
+    invalidate();
+  }, [lights, eye, invalidate]);
   // Lamps are assigned by the frame: one is drawn when they changed.
   useEffect(() => invalidate(), [emitters, rooms, invalidate]);
 
   const bounds = useMemo(() => new Box3(), []);
   const lampChanges = useRef(0);
+  /** Lights the scene as it is and draws it in `tier`, through the output pass. */
+  const drawFrame = (tier: Tier) => {
+    const { scene, camera, controls } = get();
+    const p = pending.current;
+    // The pool gathers around the orbit target, or around the eye in a view from inside.
+    const at = vec3(camera.position);
+    const target = (controls as { target?: Vector3 } | null)?.target;
+    const lamps = lights.update({
+      emitters,
+      focus: eye || !target ? at : vec3(target),
+      ...(eye && { eye: { position: at, roomId: roomAt(rooms, at)?.id } }),
+    });
+    scene.environmentIntensity = environmentIntensity(rig, eye);
+    if (p.shadow) {
+      p.shadow = false;
+      lights.fitSunShadow(casterBounds(scene, bounds));
+    }
+    if (p.lampShadows && !governor.moving) {
+      p.lampShadows = false;
+      lights.redrawLampShadows();
+    }
+    // The tiers share the sun's shadow map; a beautiful frame filters it wider (§6.2).
+    lights.setShadowFilter(tier === 'beautiful');
+    gl.info.reset();
+    output.render(scene, camera, tier);
+    return lamps;
+  };
+  // The image export (§7.4): a beautiful frame whatever the setting, drawn outside the loop.
+  useEffect(() => {
+    still.current = {
+      async ready() {
+        wanted.current = true;
+        loadBeautiful();
+        const until = performance.now() + BEAUTIFUL_TIMEOUT_MS;
+        while (!output.beautiful || pending.current.compiling) {
+          if (chunk.current === 'failed' || performance.now() > until) return false;
+          invalidate();
+          await new Promise((resolve) => window.setTimeout(resolve, 100));
+        }
+        return true;
+      },
+      draw(tier) {
+        endDamping(get().controls as Damped | null);
+        drawFrame(tier);
+      },
+    };
+  });
   // Priority 1: this draws the frame instead of R3F.
   useFrame(({ scene, camera }) => {
     const p = pending.current;
@@ -302,28 +389,8 @@ export function FrameLoop({
     if (p.compiling) return;
 
     const tier = governor.frameStarted();
-    // The pool gathers around the orbit target, or around the eye in a view from inside.
-    const at = vec3(camera.position);
-    const target = (get().controls as { target?: Vector3 } | null)?.target;
-    const lamps = lights.update({
-      emitters,
-      focus: eye || !target ? at : vec3(target),
-      ...(eye && { eye: { position: at, roomId: roomAt(rooms, at)?.id } }),
-    });
+    const lamps = drawFrame(tier);
     lampChanges.current += lamps.reassigned;
-    scene.environmentIntensity = environmentIntensity(rig, eye);
-    if (p.shadow) {
-      p.shadow = false;
-      lights.fitSunShadow(casterBounds(scene, bounds));
-    }
-    if (p.lampShadows && !governor.moving) {
-      p.lampShadows = false;
-      lights.redrawLampShadows();
-    }
-    // The tiers share the sun's shadow map; a beautiful frame filters it wider (§6.2).
-    lights.setShadowFilter(tier === 'beautiful');
-    gl.info.reset();
-    output.render(scene, camera, tier);
 
     let compiled = false;
     for (const id of programIds(gl)) {

@@ -26,6 +26,7 @@ import {
   type DrawShape,
   type FacePart,
 } from '../builder/drawList';
+import { SECTION_PLANES } from '../views/planes';
 
 /**
  * Batching: merges draw items into few geometries (docs/design/realistic-render.md §4.2). Every
@@ -343,6 +344,9 @@ export function batchMaterial(m: DrawMaterial | undefined, glow?: Glow): MeshSta
       ...(m?.metalness !== undefined && { metalness: m.metalness }),
       ...(m?.roughness !== undefined && { roughness: m.roughness }),
       ...(glow && { emissive: glow.color, emissiveIntensity: glow.intensity }),
+      // A section cuts the pieces like the shell (§7.2).
+      clippingPlanes: SECTION_PLANES,
+      clipShadows: true,
     });
     materials.set(key, material);
   }

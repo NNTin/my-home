@@ -14,7 +14,7 @@ import { PerfReadout, perfRequested } from '../quality/PerfReadout';
 import { perfView } from '../quality/perfReport';
 import type { Quality } from '../quality/setting';
 import { onCanvas } from './canvasEvent';
-import { DPR, FrameLoop, PHONE_DPR } from './Frame';
+import { DPR, FrameLoop, NEAR, PHONE_DPR, useFrameControl } from './Frame';
 import { FurnitureLayer, type FurnitureHandlers, type FurnitureView } from './FurnitureLayer';
 import type { FrameRequest } from '../placements/focus';
 import { ShellMeshes, type PieceHandlers } from './ShellMeshes';
@@ -240,11 +240,20 @@ function applyFrame(state: RootState, frame: FrameRequest) {
  */
 function FrameView({ frame }: { frame: (FrameRequest & { key: number }) | undefined }) {
   const get = useThree((s) => s.get);
+  const control = useFrameControl();
   const key = frame?.key;
   useEffect(() => {
     if (!frame) return;
-    // A frame later: on the first render the camera and controls are still being set up.
-    const id = requestAnimationFrame(() => applyFrame(get(), frame));
+    // With the controls there, at once: no frame is drawn from the old place under the new
+    // view's light. On the first render the camera and controls are still being set up: a
+    // frame later.
+    const apply = () => {
+      applyFrame(get(), frame);
+      // The lamps gather around the new place, not around where the camera happened to be.
+      control?.cameraJumped();
+    };
+    if (get().controls) return apply();
+    const id = requestAnimationFrame(apply);
     return () => cancelAnimationFrame(id);
     // Only a new request frames: the same one must not pull the camera back on a re-render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -339,7 +348,7 @@ export function Scene({
   return (
     <>
       <Canvas
-        camera={{ position: initialCamera(scene.bounds), fov: ORBIT_FOV, near: 0.1, far: 500 }}
+        camera={{ position: initialCamera(scene.bounds), fov: ORBIT_FOV, near: NEAR, far: 500 }}
         // A phone has more pixels per inch than it can fill at a steady rate: a capped pixel ratio.
         dpr={touch ? PHONE_DPR : DPR}
         // On every device a new frame is drawn only when something changed (docs/mobile.md).
@@ -403,17 +412,20 @@ export function Scene({
           />
           {walk && <WalkRig figure={walk.figure} view={walk.view} rose={rose} />}
           {viewpoint && <ViewpointRig viewpoint={viewpoint} rose={rose} />}
-          <PhotoMarkers
-            markers={photoMarkers}
-            touch={touch}
-            onSelect={(id) => onSelectPhoto?.(id)}
-          />
+          {/* Markers are not part of an exported image (§7.4). */}
+          <group userData={{ overlay: true }}>
+            <PhotoMarkers
+              markers={photoMarkers}
+              touch={touch}
+              onSelect={(id) => onSelectPhoto?.(id)}
+            />
+            <RequestGhosts ghosts={requestGhosts} />
+          </group>
           {resetViewRef && (
             <ViewReset bounds={scene.bounds} target={target} resetRef={resetViewRef} />
           )}
           <FrameView frame={frame} />
           {stage}
-          <RequestGhosts ghosts={requestGhosts} />
           <CompassTracker northBearing={northBearing} roseRef={roseRef} northUpRef={northUpRef} />
         </FrameLoop>
       </Canvas>

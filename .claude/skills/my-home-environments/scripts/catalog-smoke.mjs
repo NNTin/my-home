@@ -9,6 +9,7 @@
 /* global document, window, caches */
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { answeredInfrastructure } from './infrastructure.mjs';
 
 const require = createRequire(path.join(process.env.MY_HOME_PLAYWRIGHT_DIR, 'package.json'));
 const { chromium } = require('playwright');
@@ -88,6 +89,8 @@ async function smoke(out, homeId) {
           const request = route.request();
           const url = new URL(request.url());
           if (url.host !== host) return route.continue();
+          // Cloudflare's own requests (its analytics beacon) are answered here: no write, no error.
+          if (answeredInfrastructure(route, host)) return;
           const method = request.method();
           if (method !== 'GET' && method !== 'HEAD') {
             const answer = fake?.(method, url.pathname, request.postData());

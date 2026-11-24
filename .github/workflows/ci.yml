@@ -406,3 +406,66 @@ jobs:
           done
           echo "::error::https://$HOST did not switch to $REVISION within 15 minutes"
           exit 1
+
+  staging-checks:
+    # The browser checks of a pull request on staging (docs/deployment.md § Checks on staging): walk mode, the
+    # phone layout with the frame loop, budgets and named views, and every fixed view shot twice. Read-only.
+    # They need the nntin-bot GitHub token to pass staging's SSO (secret NNTIN_BOT_TOKEN); without it they are
+    # skipped with a warning. Staging is shared: a check counts only if staging ran this commit before and
+    # after it, and fails with "another deploy came first" otherwise (run the job again).
+    needs: [publish, deploy]
+    if: needs.publish.outputs.channel == 'staging'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        check: [walk, mobile, visual-diff]
+    env:
+      REVISION: ${{ needs.publish.outputs.revision }}
+      SCRIPTS: .claude/skills/my-home-environments/scripts
+    steps:
+      - name: Is the token for staging there?
+        id: token
+        env:
+          NNTIN_BOT_TOKEN: ${{ secrets.NNTIN_BOT_TOKEN }}
+        run: |
+          if [ -n "$NNTIN_BOT_TOKEN" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::The secret NNTIN_BOT_TOKEN is not set: the checks on staging were skipped (docs/deployment.md § Checks on staging)."
+            echo "### ${{ matrix.check }} on staging: skipped, the secret NNTIN_BOT_TOKEN is not set" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.token.outputs.present == 'true'
+        with:
+          ref: ${{ needs.publish.outputs.revision }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.token.outputs.present == 'true'
+        with:
+          node-version-file: .nvmrc
+      - name: Install Playwright and Chromium (the version the skill pins)
+        if: steps.token.outputs.present == 'true'
+        run: |
+          set -euo pipefail
+          # The first try installs them; if Chromium then lacks system libraries, those are installed too.
+          if ! "$SCRIPTS/screenshot.sh" --check; then
+            (cd "$HOME/.cache/my-home-environments/playwright" && node_modules/.bin/playwright install-deps chromium)
+            "$SCRIPTS/screenshot.sh" --check
+          fi
+      - name: ${{ matrix.check }} on staging
+        if: steps.token.outputs.present == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.NNTIN_BOT_TOKEN }}
+        run: '"$SCRIPTS/staging-checks.sh" "${{ matrix.check }}" "$REVISION" --out staging-checks'
+      # Canvas shots of the model only (no UI, no photo): the two shoots and their differences.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always() && steps.token.outputs.present == 'true' && matrix.check == 'visual-diff'
+        with:
+          name: visual-diff-${{ needs.publish.outputs.revision }}
+          path: |
+            staging-checks/first
+            staging-checks/second
+            staging-checks/compare.md
+          if-no-files-found: ignore
+          retention-days: 14

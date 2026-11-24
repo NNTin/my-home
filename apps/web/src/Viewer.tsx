@@ -65,7 +65,7 @@ import { TopBar } from './overlay/TopBar';
 import { useKeyboardViewport } from './overlay/useKeyboardViewport';
 import { useLayoutMode } from './overlay/useLayoutMode';
 import { ViewPanel } from './overlay/ViewPanel';
-import { backdropRequested, type Backdrop } from './lighting/rig';
+import { backdropRequested, rigFor, type Backdrop } from './lighting/rig';
 import { filterPhotos, NO_FILTERS } from './photos/filters';
 import { usePlanColours } from './quality/planColours';
 import { useQuality } from './quality/setting';
@@ -86,6 +86,7 @@ import type { FurnitureHandlers } from './scene/FurnitureLayer';
 import { furnitureViews } from './scene/furnitureViews';
 import type { PhotoMarkerView, RequestGhostView, Viewpoint } from './scene/PhotoMarkers';
 import { Scene } from './scene/Scene';
+import type { SaveImage } from './views/ImageExport';
 import type { NamedView } from './views/named';
 import { calibrationTargets } from './walk/calibration';
 import type { Figure } from './walk/figure';
@@ -209,6 +210,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   const [viewAsked, setViewAsked] = useState(
     () => new URLSearchParams(window.location.search).get('view') !== null,
   );
+  const saveImage = useRef<SaveImage | undefined>(undefined);
+  const [saving, setSaving] = useState(false);
   const [chosenBackdrop, setBackdrop] = useState<Backdrop | undefined>(() =>
     backdropRequested(window.location.search),
   );
@@ -832,15 +835,33 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     />
   );
   const backdrop = chosenBackdrop ?? (presented ? views?.VIEW_BACKDROP : undefined);
+  /** The backdrop on screen: the one chosen, or the rig's own. */
+  const shownBackdrop = backdrop ?? rigFor({ kind: 'free' }).backdrop;
   const viewsControl = views && (
     <views.ViewsControl
       scene={scene}
       view={view?.view}
-      onView={(next) => (next ? openView(next) : closeView())}
-      backdrop={backdrop ?? 'sky'}
+      onView={(next) => {
+        const now = view?.view;
+        if (!next) closeView();
+        // The slider moves the cut and nothing else: the camera stays where it is.
+        else if (now?.kind === 'section' && next.kind === 'section' && now.look === next.look)
+          setView((v) => v && { ...v, view: next });
+        else openView(next);
+      }}
+      backdrop={shownBackdrop}
       onBackdrop={setBackdrop}
       // A cutaway opens on the level being looked into; from a view of the whole house, the lowest.
       levelId={view && view.view.kind !== 'cutaway' ? undefined : level?.id}
+      saving={saving}
+      onSave={() => {
+        const save = saveImage.current;
+        if (!save || saving) return;
+        setSaving(true);
+        save(presented?.view.kind ?? 'free')
+          .catch(() => setToast('The image could not be saved'))
+          .finally(() => setSaving(false));
+      }}
     />
   );
   const tabs: SheetTab<PanelId>[] = [
@@ -917,13 +938,24 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
             rigView={presented && views?.viewRig(presented.view)}
             backdrop={backdrop}
             stage={
-              views &&
-              presented && (
-                <views.Stage scene={scene} view={presented.view} backdrop={backdrop ?? 'sky'} />
+              views && (
+                <>
+                  <views.ImageExport actionRef={saveImage} />
+                  {presented && (
+                    <views.Stage
+                      scene={scene}
+                      view={presented.view}
+                      backdrop={shownBackdrop}
+                      visibility={visibility}
+                      furniture={furniture}
+                    />
+                  )}
+                </>
               )
             }
             onOrbit={leaveView}
-            busy={viewAsked}
+            // While walking the view waits for the walk to end: nothing is still to come.
+            busy={viewAsked && !walking}
             walk={walkView && { figure: walk.figureRef, view: walkView }}
             photoMarkers={photoMarkers}
             onSelectPhoto={(id) => {
