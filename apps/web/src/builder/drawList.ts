@@ -1,4 +1,4 @@
-import { resolveFinish, TERRAIN_FINISH, type ResolvedFinish } from '@my-home/shared';
+import { CUT_FINISH, resolveFinish, TERRAIN_FINISH, type ResolvedFinish } from '@my-home/shared';
 import type { Part } from '../catalog/types';
 import type {
   Box,
@@ -25,10 +25,12 @@ export type Matrix = number[];
 
 /**
  * Which faces of a box or a profile are drawn: the one at local +z (`front`), the one at local
- * -z (`back`), or all the others (`core`). A wall is drawn as three items, so that its two long
- * faces can each take the finish of the room they border; together they are the closed solid.
+ * -z (`back`), or all the others (`core`). A wall is drawn as three kinds of item, so that its two
+ * long faces can each take the finish of the room they border; together they are the closed solid.
+ * A wall that ends in a cut face has its core in two parts: the faces that look up (`top`) and
+ * the others (`rest`).
  */
-export type FacePart = 'front' | 'back' | 'core';
+export type FacePart = 'front' | 'back' | 'core' | 'top' | 'rest';
 
 /** The solid of a draw item, in its local frame; `matrix` puts it into the world. */
 export type DrawShape =
@@ -280,7 +282,9 @@ const profileItem = (
 
 /**
  * A wall segment: its core (top, ends, reveals) and its two long faces, each stretch with the
- * finish of the room it borders. The three kinds of item together are the closed solid.
+ * finish of the room it borders. The top of a wall is a cut face (§7.2): it shows when the level
+ * above is hidden and is covered otherwise, so it is always drawn dark and nothing is rebuilt
+ * when the cutaway changes. All the items together are the closed solid.
  */
 function wallItems(w: WallSegment): DrawItem[] {
   const group = levelGroup(w);
@@ -303,7 +307,9 @@ function wallItems(w: WallSegment): DrawItem[] {
       : boxItem(common, box, finish, rest, only);
   };
   return [
-    part(w.id, w, w.finish, 'core'),
+    ...(w.cutTop
+      ? [part(w.id, w, w.finish, 'rest'), part(`${w.id}/top`, w, CUT_FINISH, 'top')]
+      : [part(w.id, w, w.finish, 'core')]),
     ...w.faces.map((f, i) => part(`${w.id}/face-${i}`, f, f.finish, f.side > 0 ? 'front' : 'back')),
   ];
 }

@@ -159,7 +159,10 @@ describe('texture coordinates', () => {
       const core = items.find((i) => i.id === wall.id)!;
       expect(core.finish).toBe('render.facade');
       const [length, height, thickness] = wall.size;
-      const vertices = drawn(core);
+      // The top of a full-height segment is a cut face, an item of its own (§7.2): the same
+      // faces either way.
+      const whole = { ...core, shape: { ...core.shape, only: 'core' } } as DrawItem;
+      const vertices = drawn(whole);
       // Six vertices a face, in the order of the box's faces without the two long ones:
       // the two ends, then the top and the bottom.
       const face = (n: number) => vertices.slice(n * 6, n * 6 + 6);
@@ -227,7 +230,8 @@ describe('the parts of a wall', () => {
   it('core, front and back together have the triangles of the whole box or profile', () => {
     for (const wall of scene.walls) {
       const own = items.filter((i) => i.id === wall.id || i.id.startsWith(`${wall.id}/face-`));
-      const core = own[0]!;
+      // The core, whether it is one item or its top and the rest (a cut face, §7.2).
+      const core = { ...own[0]!, shape: { ...own[0]!.shape, only: 'core' } } as DrawItem;
       const whole = { ...core, shape: { ...core.shape, only: undefined } } as DrawItem;
       const faces = own.slice(1);
       if (wall.outline) {

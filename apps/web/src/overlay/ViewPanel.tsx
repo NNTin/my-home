@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { HomeScene } from '../builder/buildHome';
 import { toggleId, type Visibility } from '../builder/visibility';
 import type { Quality } from '../quality/setting';
@@ -12,6 +13,8 @@ interface Props {
   /** "Plan colours": room floors in the colours that tell rooms apart, not their finishes. */
   planColours: boolean;
   onPlanColours(on: boolean): void;
+  /** The "Views" control (`views/ViewsControl.tsx`), once its lazy chunk is here. */
+  views?: ReactNode;
 }
 
 interface Item {
@@ -40,6 +43,7 @@ export function ViewPanel({
   onQuality,
   planColours,
   onPlanColours,
+  views,
 }: Props) {
   const set = (patch: Partial<Visibility>) => onChange({ ...visibility, ...patch });
   /** The hidden ids of a group that is shown or hidden as a whole. */
@@ -102,6 +106,7 @@ export function ViewPanel({
         <input type="checkbox" checked={planColours} onChange={() => onPlanColours(!planColours)} />{' '}
         Plan colours
       </label>
+      {views}
       <QualityControl quality={quality} onChange={onQuality} phone />
       <h2>Show / hide…</h2>
       {groups

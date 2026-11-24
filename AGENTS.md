@@ -17,6 +17,8 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - `packages/shared/src/finishes/`: the finish library (surface materials: one definition per finish), and
   `apps/web/src/finishes/`: their texture files (CC0 only, `ASSETS.md`), loader and materials; a room or exterior
   surface names a finish in `home.json` (`docs/home-model.md` § Finishes)
+- `apps/web/src/views/`: the named views (`?view=cutaway|eye`, the Views control, backdrops), a lazy chunk
+  (`docs/views.md`)
 - `apps/web/src/routing/` (no router library) and `apps/web/src/catalog-page/`: the pages `/catalog` and
   `/catalog/<kind>/<typeId>`, lazy chunks; thumbnails cached in the browser (`docs/catalog.md`)
 - `docs/`: project docs (designs not built yet in `docs/design/`: the realistic render, `realistic-render.md`);

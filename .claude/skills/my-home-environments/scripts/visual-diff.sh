@@ -6,8 +6,10 @@
 # (screenshot.sh --canvas) of a fixed set of views and writes DIR/<view>.png plus DIR/manifest.json (deployed
 # commit, view arguments). `--only` shoots just the named views. Desktop 1440x900: default, the cutaway to each
 # level, the default view orbited 180 degrees, a steep view; phone 390x844: default. Those pin ?quality=fast.
-# The tiers (docs/design/realistic-render.md §11.3): default-beautiful and, at eye level in the first room of
-# walk mode, eye-fast and eye-beautiful (desktop); phone-auto (the refined frame). They turn stepping down off
+# The tiers (docs/design/realistic-render.md §11.3): default-beautiful (desktop) and phone-auto (the refined
+# frame). The named views (§7.1), each in fast and in beautiful: cutaway-fast and cutaway-beautiful
+# (?view=cutaway), eye-fast and eye-beautiful (?view=eye in the kitchen, or the first room of a home without
+# one). walk-fast is eye level in the first room of walk mode. All of these turn stepping down off
 # (?stepdown=off): a software renderer is slow, and the tier asked for must be the tier shot. Every shot waits
 # for the settled frame.
 # The deployed commit is read before and after: a deploy in between fails the shoot (exit 1), shoot again.
@@ -20,7 +22,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$script_dir/lib.sh"
 
 usage() {
-  sed -n '2,16s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,18s/^# \{0,1\}//p' "$0" >&2
   exit 1
 }
 
@@ -35,9 +37,12 @@ orbit-180
 steep
 phone
 default-beautiful
+walk-fast
+phone-auto
+cutaway-fast
+cutaway-beautiful
 eye-fast
 eye-beautiful
-phone-auto
 EOF
 }
 
@@ -53,9 +58,13 @@ view_args() {
     steep) ARGS=("${base[@]}" --drag '0,250') ;;
     phone) ARGS=(--viewport 390x844 --touch --path '/?hints=off&quality=fast') ;;
     default-beautiful) ARGS=(--viewport 1440x900 --path '/?hints=off&quality=beautiful&stepdown=off') ;;
-    eye-fast) ARGS=(--viewport 1440x900 --path '/?walk=first&hints=off&quality=fast') ;;
-    eye-beautiful) ARGS=(--viewport 1440x900 --path '/?walk=first&hints=off&quality=beautiful&stepdown=off') ;;
+    walk-fast) ARGS=(--viewport 1440x900 --path '/?walk=first&hints=off&quality=fast&stepdown=off') ;;
     phone-auto) ARGS=(--viewport 390x844 --touch --path '/?hints=off&quality=auto&stepdown=off') ;;
+    cutaway-fast | cutaway-beautiful | eye-fast | eye-beautiful)
+      local named=cutaway
+      [[ $1 == eye-* ]] && named='eye&room=souterrain-kitchen'
+      ARGS=(--viewport 1440x900 --path "/?view=$named&hints=off&quality=${1#*-}&stepdown=off")
+      ;;
     *) die "unknown view '$1' (views: $(views | tr '\n' ' '))" ;;
   esac
 }

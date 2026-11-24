@@ -221,7 +221,7 @@ Paths are under `apps/web/src/` unless they start with `packages/`.
 | Texture files       | `finishes/textures/<set>/`                 | assets (hashed)    | WebP files, fetched when a finish is first drawn                         |
 | Beautiful           | `beautiful/`                               | `render-beautiful` | The AO pass and the beautiful-only extras (grass tufts)                  |
 | Frame output        | `scene/output.ts`                          | main               | The offscreen target and the output pass every frame goes through (§4.5) |
-| Views               | `views/`                                   | main               | Named views, section plane, caps, backdrop, image export                 |
+| Views               | `views/`                                   | `render-views`     | Named views, section plane, caps, backdrop, image export (D51)           |
 | Render mode         | `render-mode/`                             | `render-path`      | Its canvas, WebGPU renderer and path tracer                              |
 | Catalogue           | `catalog/`                                 | main               | Unchanged role. `Part` gains shapes and a finish (§8.2)                  |
 
@@ -381,6 +381,9 @@ that the main chunk never imports statically.
 - `render-beautiful` is requested when the setting is `beautiful` or `auto`, after the first fast frame is on
   screen. Until it arrives the viewer draws fast frames; nothing waits for it.
 - `render-path` is requested when "Render" is pressed, after a WebGPU check.
+- `render-views` holds the named views (§7): their URLs and cameras, the Views control, the ground, the section's
+  caps and the image export. It is requested when the viewer opens, beside the first frame, and nothing waits
+  for it but a `?view=` link: until that view has opened, the canvas is not marked settled (D51).
 - Textures are files, not code: each is requested when a finish that uses it is first drawn, in the one size
   the device's class calls for (§5.3). A finish draws with its tint alone until its texture arrives. While a
   file is on its way the view has not settled (§4.3), so a capture waits for it; a file that neither arrives
@@ -835,16 +838,24 @@ URL and from the View panel.
 
 - The camera stays perspective. A narrow field of view reads as isometric and keeps orbit controls, picking
   and depth-based effects unchanged.
+- A narrow field of view puts the camera 40 to 120 m away. While a named view's look is on, the near plane moves
+  out with the camera, as far as the scene allows, so the depth buffer keeps its precision (D54).
+- The eye stands back from the middle of its room, towards the wall behind it (0.6 of the way, at least 0.5 m
+  clear), and by default looks to the room's farthest corner (D55).
 - `look` names the direction the camera looks. `at` is the distance of the cut plane along that direction from
   the building's near face, in metres; the default is the middle. A slider in the View panel moves it.
 - A named view hides the compass letters and room labels. Orbiting away from it leaves the view (the URL drops
-  the parameter) but keeps the cut and backdrop until "Reset view".
-- `?view=` combines with `?quality=` and with the existing `?focus=` and `?walk=`.
+  the parameter) but keeps the cut and backdrop until "Reset view". Changing what is shown by hand leaves it
+  too. A desktop has no "Reset view" button: "Free" in the Views control is the same action (D56).
+- `?view=` combines with `?quality=` and with the existing `?focus=` and `?walk=`: with `?focus=` the view gives
+  its look and field of view and the camera frames the use; with `?walk=` the walk comes first and the view
+  opens when the walk is left (D56).
 
 ### 7.2 Cut caps
 
 - **Cutaway:** the tops of walls of the highest visible level are drawn with `cut.dark` when the level above is
-  hidden. The builder marks those faces; no extra geometry.
+  hidden. The builder marks those faces; no extra geometry. A wall's top is always drawn dark: the level above
+  or the roof covers it when shown, so nothing is rebuilt when the cutaway changes (D52).
 - **Section:** one clipping plane cuts every material. Cut solids are closed with a **stencil cap**: the back
   and front faces of closed solids write the stencil, and a quad on the cut plane is drawn where a solid is
   open.
@@ -859,7 +870,8 @@ URL and from the View panel.
 ### 7.3 Backdrop
 
 `sky`, `studio-light`, `studio-dark` (§6.3), chosen in the View panel and by `?backdrop=`. Beyond the plot the
-ground is a neutral plane fading into the backdrop; nothing outside the plot is modelled.
+ground is a neutral plane fading into the backdrop; nothing outside the plot is modelled. The plane lies at the
+foot of the ground block and belongs to the named views; the free view is as it was (D53).
 
 ### 7.4 Image export
 
@@ -1044,7 +1056,8 @@ today. Step 1 converts the goldens and shows, with `visual-diff.sh`, that the pi
 - `visual-diff.sh`: the existing views pin `quality=fast`. New views: the three named views in `fast` and in
   `beautiful`, and the phone in `auto` after settling. It waits for the settled frame (§6.7). Step 2 adds
   `default-beautiful`, `eye-fast` and `eye-beautiful` (the first room of walk mode, until the named views of
-  step 4 exist) and `phone-auto`, with `?stepdown=off`.
+  step 4 exist) and `phone-auto`, with `?stepdown=off`. Step 4 makes `eye-*` the named view and adds
+  `cutaway-*` and `section-*`; `walk-fast` keeps the first room of walk mode.
 - `catalog-smoke.sh`: thumbnails and piece pages draw the new shapes and finishes.
 
 ### 11.4 Showing renders in PRs
@@ -1325,6 +1338,12 @@ All seven proposed defaults were accepted.
 | D48 | A face at right angles to its UV frame is projected along the frame's third axis                                       | A wall's frame is right for its two long faces, a roof plane's for its top. On the wall's top, ends and reveals, and on the roof's verges and eave edge, one coordinate would be constant and the texture a streak. Found in the review of #141 (#112) |
 | D49 | `stone.rubble` (Poly Haven `broken_wall`, colour and relief) joins the library, for rubble walls                       | The photos show the patio entrance's side walls as dry-stacked grey boulders; the library had only `concrete.screed` for an embankment. Budgets: 1.11 and 4.55 MB to download, 35 and 179 MB of memory (#113)                                          |
 | D50 | A surface no photo shows may be written as its default finish with `source: mock` and a note naming the photo request  | §5.5 says a missing field means the default. The explicit entry also says that the surface was looked for and which request will settle it; the builder draws the same either way (#113)                                                               |
+| D51 | The named views are a lazy chunk, `render-views`, asked for when the viewer opens; §4.1 had them in the main chunk     | The main chunk had 9.6 kB of its budget left for six more steps (#120 Q5). The chunk is 3 to 4 kB and the viewer is whole without it; only a `?view=` link waits for it (#114)                                                                         |
+| D52 | The top of a wall is always drawn `cut.dark`, as an item of its own; a window sill is not a cut                        | "When the level above is hidden" would need a second finish per wall and a re-merge. A wall's top is covered whenever the level above or the roof is shown, so always dark draws the same (#114)                                                       |
+| D53 | The neutral ground lies at the foot of the ground block, in named views only                                           | The plot's edges are at different heights (the street, the lower garden): a plane at one ground level would hover over the one or bury the other. The free view must stay as it was (#114)                                                             |
+| D54 | While a named view's look is on, the camera's near plane moves out with the camera                                     | At 20 and 25 degrees the camera stands 40 to 120 m away; with a near plane of 10 cm the depth buffer's steps there are millimetres to a centimetre, and floors a centimetre over their slab would flicker (#114)                                       |
+| D55 | The eye stands back from its room's middle and looks to the farthest corner by default                                 | From the middle of a small room 70 degrees shows the nearest cabinet. §7.1 fixes the height and the field of view, not the spot (#114)                                                                                                                 |
+| D56 | "Free" in the Views control is "Reset view"; with `?walk=` the view waits for the walk to end                          | A desktop has no "Reset view" button. Walk mode sets the camera, its field of view and the light itself: the two cannot be on at once (#114)                                                                                                           |
 
 ## 14. Open questions
 

@@ -157,11 +157,13 @@ describe('wall faces', () => {
   it('a wall is drawn as its core and its faces, which together are the solid', () => {
     const items = shellItems(home);
     for (const wall of home.walls.slice(0, 40)) {
-      const own = items.filter((i) => i.id === wall.id || i.id.startsWith(`${wall.id}/face-`));
-      expect(own).toHaveLength(1 + wall.faces.length);
+      const own = items.filter((i) => i.id === wall.id || i.id.startsWith(`${wall.id}/`));
+      // A wall that ends in a cut face has its core in two items: the top and the rest (§7.2).
+      const core = wall.cutTop ? ['rest', 'top'] : ['core'];
+      expect(own).toHaveLength(core.length + wall.faces.length);
       const only = own.map((i) => (i.shape as { only?: string }).only);
-      expect(only[0]).toBe('core');
-      expect(new Set(only.slice(1))).toEqual(new Set(['front', 'back']));
+      expect(only.slice(0, core.length)).toEqual(core);
+      expect(new Set(only.slice(core.length))).toEqual(new Set(['front', 'back']));
       for (const item of own) {
         expect(item.closed).toBe(true);
         expect(item.castShadow).toBe(true);

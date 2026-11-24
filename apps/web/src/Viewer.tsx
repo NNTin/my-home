@@ -65,6 +65,7 @@ import { TopBar } from './overlay/TopBar';
 import { useKeyboardViewport } from './overlay/useKeyboardViewport';
 import { useLayoutMode } from './overlay/useLayoutMode';
 import { ViewPanel } from './overlay/ViewPanel';
+import { backdropRequested, type Backdrop } from './lighting/rig';
 import { filterPhotos, NO_FILTERS } from './photos/filters';
 import { usePlanColours } from './quality/planColours';
 import { useQuality } from './quality/setting';
@@ -85,6 +86,7 @@ import type { FurnitureHandlers } from './scene/FurnitureLayer';
 import { furnitureViews } from './scene/furnitureViews';
 import type { PhotoMarkerView, RequestGhostView, Viewpoint } from './scene/PhotoMarkers';
 import { Scene } from './scene/Scene';
+import type { NamedView } from './views/named';
 import { calibrationTargets } from './walk/calibration';
 import type { Figure } from './walk/figure';
 import { useWalk } from './walk/useWalk';
@@ -136,6 +138,10 @@ const ignoredParams = (item: EditorItem) => {
   const type = catalog.get(item.typeId);
   return type ? effectiveParams(type, item.params).ignored : [];
 };
+
+/** The lazy chunk of the named views (`views/render-views.ts`). */
+type Views = typeof import('./views/render-views');
+const NONE: never[] = [];
 
 /** How long a focused or clicked window, door or gate glows. */
 const HIGHLIGHT_MS = 2000;
@@ -195,6 +201,28 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     setWalkView(undefined);
     setRestored(undefined);
   };
+  // Named views (§7.1), from their lazy chunk. `view` is the one whose look the scene has: `on`
+  // while the camera is still where the view put it (the address names it), and `before` what
+  // was shown before the first one, for "Reset view".
+  const [views, setViews] = useState<Views>();
+  const [view, setView] = useState<{ view: NamedView; on: boolean; before: Visibility }>();
+  const [viewAsked, setViewAsked] = useState(
+    () => new URLSearchParams(window.location.search).get('view') !== null,
+  );
+  const [chosenBackdrop, setBackdrop] = useState<Backdrop | undefined>(() =>
+    backdropRequested(window.location.search),
+  );
+  useEffect(() => {
+    let wanted = true;
+    import('./views/render-views').then(
+      (chunk) => wanted && setViews(chunk),
+      // Without the chunk the viewer has no named views, and is whole otherwise.
+      () => wanted && setViewAsked(false),
+    );
+    return () => {
+      wanted = false;
+    };
+  }, []);
   /** A camera covers the view: the scene stops drawing meanwhile. */
   const [cameraOpen, setCameraOpen] = useState(false);
   const photos = usePhotos(model.id);
@@ -335,6 +363,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     [viewKey],
   );
 
+  // Walking and "view from here" have their own camera and light: a named view waits.
+  const presented = walkView || viewedPhoto ? undefined : view;
   const visibility = useMemo(() => {
     if (walkView) return walkVisibility(scene, chosenVisibility, walkView, figureLevel?.id);
     // Looking from inside the building, like the figure in first person.
@@ -486,6 +516,40 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
       }
     }
   }
+
+  /** Opens a named view: what it shows, its look, and (unless `camera` is false) its camera. */
+  const openView = (next: NamedView, camera = true) => {
+    if (!views) return;
+    setView((now) => ({ view: next, on: true, before: now?.before ?? chosenVisibility }));
+    setVisibility(views.viewVisibility(scene, next));
+    const at = views.viewFrame(scene, next);
+    // With `?focus=` the camera frames the use, with the view's field of view.
+    setFrame((f) => ({ ...(camera || !f ? at : { ...f, fov: at.fov }), key: (f?.key ?? 0) + 1 }));
+  };
+  /** "Reset view": the free view, and what was shown before the named views. */
+  const closeView = () => {
+    if (view) setVisibility(view.before);
+    setView(undefined);
+    resetView.current?.();
+  };
+  /** The camera or what is shown was changed by hand: the address no longer names the view. */
+  const leaveView = () => setView((now) => (now?.on ? { ...now, on: false } : now));
+  // `?view=`, once its chunk is here. Walking wins: the view opens when the walk is left.
+  if (viewAsked && views && !walking) {
+    setViewAsked(false);
+    const asked = views.parseView(window.location.search, scene);
+    if (asked) openView(asked, focusId !== undefined || initialFocus() === undefined);
+  }
+  // Back from a walk or from a photo's pose, which moved the camera: the view takes it again.
+  const [waited, setWaited] = useState(false);
+  if (waited !== (view !== undefined && !presented)) {
+    setWaited(!waited);
+    if (waited && view?.on) openView(view.view);
+  }
+  const named = view?.on ? view.view : undefined;
+  useEffect(() => {
+    if (!viewAsked) views?.writeViewUrl(named);
+  }, [views, named, viewAsked]);
 
   const edit = (label: string, next: EditorItem[], selectedId?: string | null) =>
     editing &&
@@ -710,7 +774,10 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     onSelectHome,
     scene,
     visibility: chosenVisibility,
-    onChange: setVisibility,
+    onChange: (v: Visibility) => {
+      setVisibility(v);
+      leaveView();
+    },
     onWalk: () => setWalkView('first'),
     photoCount: photos.photos.length,
     openRequests: openRequests(photos.requests).length,
@@ -762,6 +829,18 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
       flagged={flagged}
       onSelectItem={(id) => dispatch({ type: 'select', id })}
       onRelocate={commands.relocate}
+    />
+  );
+  const backdrop = chosenBackdrop ?? (presented ? views?.VIEW_BACKDROP : undefined);
+  const viewsControl = views && (
+    <views.ViewsControl
+      scene={scene}
+      view={view?.view}
+      onView={(next) => (next ? openView(next) : closeView())}
+      backdrop={backdrop ?? 'sky'}
+      onBackdrop={setBackdrop}
+      // A cutaway opens on the level being looked into; from a view of the whole house, the lowest.
+      levelId={view && view.view.kind !== 'cutaway' ? undefined : level?.id}
     />
   );
   const tabs: SheetTab<PanelId>[] = [
@@ -831,8 +910,19 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
             toolbar={toolbar}
             resetViewRef={resetView}
             northBearing={northBearing}
-            markers={markers}
-            labels={labels}
+            // A named view shows the model alone: no compass letters, no room names (§7.1).
+            markers={named ? NONE : markers}
+            labels={named ? NONE : labels}
+            rigView={presented && views?.viewRig(presented.view)}
+            backdrop={backdrop}
+            stage={
+              views &&
+              presented && (
+                <views.Stage scene={scene} view={presented.view} backdrop={backdrop ?? 'sky'} />
+              )
+            }
+            onOrbit={leaveView}
+            busy={viewAsked}
             walk={walkView && { figure: walk.figureRef, view: walkView }}
             photoMarkers={photoMarkers}
             onSelectPhoto={(id) => {
@@ -884,7 +974,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
                   edited: editor.revision > 0,
                   photosError: photos.error,
                 }}
-                onResetView={viewed ? undefined : () => resetView.current?.()}
+                onResetView={viewed ? undefined : closeView}
               />
               <Hints side={side} />
             </>
@@ -944,7 +1034,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
                 <ViewPanel
                   scene={scene}
                   visibility={chosenVisibility}
-                  onChange={setVisibility}
+                  onChange={controls.onChange}
+                  views={viewsControl}
                   quality={quality}
                   onQuality={setQuality}
                   planColours={planColours}
@@ -962,6 +1053,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
                 {...controls}
                 photosOpen={photosOpen}
                 onPhotos={() => (photosOpen ? closePhotos() : setPhotosOpen(true))}
+                views={viewsControl}
                 quality={quality}
                 onQuality={setQuality}
                 planColours={planColours}
