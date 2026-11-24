@@ -95,6 +95,14 @@ export class FinishMaterials {
     this.materials.set(finishId, [...(this.materials.get(finishId) ?? []), material]);
     return material;
   }
+
+  /** Frees the materials and the textures: this device class is no longer drawn. */
+  dispose() {
+    for (const material of this.byKey.values()) material.dispose();
+    this.byKey.clear();
+    this.materials.clear();
+    this.textures.dispose();
+  }
 }
 
 const byDevice = new Map<DeviceClass, FinishMaterials>();
@@ -107,4 +115,17 @@ export function finishMaterials(device: DeviceClass): FinishMaterials {
     byDevice.set(device, found);
   }
   return found;
+}
+
+/**
+ * Frees what the other device class holds. The class follows the layout, which can change in a
+ * visit (a window made narrow): without this both sizes of every texture would stay in memory,
+ * which is what one size per device is there to prevent (§5.3).
+ */
+export function releaseOtherDevices(device: DeviceClass) {
+  for (const [other, set] of byDevice) {
+    if (other === device) continue;
+    set.dispose();
+    byDevice.delete(other);
+  }
 }

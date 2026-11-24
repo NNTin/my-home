@@ -1,7 +1,7 @@
 import { deviceTextureFiles, finishes, type DeviceClass } from '@my-home/shared';
 import { NoColorSpace, RepeatWrapping, SRGBColorSpace, Texture } from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { finishMaterials, FinishMaterials, PLACEHOLDERS } from './materials';
+import { finishMaterials, FinishMaterials, PLACEHOLDERS, releaseOtherDevices } from './materials';
 import { FinishTextures, type TextureEvent } from './textures';
 import { textureUrl } from './urls';
 
@@ -113,7 +113,8 @@ describe('the texture loader', () => {
       expect(texture.wrapS).toBe(RepeatWrapping);
       expect(texture.wrapT).toBe(RepeatWrapping);
       expect(texture.repeat.x).toBeCloseTo(1 / 1.7, 12);
-      expect(texture.repeat.y).toBeCloseTo(1 / 1.7, 12);
+      // Read bottom up: the bitmap's first row is the image's top, in every browser.
+      expect(texture.repeat.y).toBeCloseTo(-1 / 1.7, 12);
     }
     expect(textures.maps('wood.oak-laminate')).toEqual({ color, normal });
     expect(events.map((e) => e.map)).toEqual(['color', 'normal']);
@@ -262,6 +263,30 @@ describe('the materials of finishes', () => {
     expect(glass.transparent).toBe(true);
     expect(glass.depthWrite).toBe(false);
     expect(glass).not.toBe(materials.material('paint.plain'));
+  });
+
+  it('frees the other device class when the layout changes, and a file that arrives after', async () => {
+    const { materials, textures, arrive } = make('desktop');
+    const material = materials.material('wood.oak-laminate');
+    textures.request('wood.oak-laminate');
+    const color = await arrive('wood-oak-laminate/color-1024.webp');
+    const freed: string[] = [];
+    color.addEventListener('dispose', () => freed.push('color'));
+    material.addEventListener('dispose', () => freed.push('material'));
+    materials.dispose();
+    expect(freed.sort()).toEqual(['color', 'material']);
+    const late = await arrive('wood-oak-laminate/normal-1024.webp');
+    expect(textures.maps('wood.oak-laminate')).toEqual({});
+    expect(material.normalMap).toBe(PLACEHOLDERS.normal);
+    expect(late.version).toBe(0);
+
+    const phone = finishMaterials('phone');
+    const desktop = finishMaterials('desktop');
+    releaseOtherDevices('phone');
+    expect(finishMaterials('phone')).toBe(phone);
+    expect(finishMaterials('desktop')).not.toBe(desktop);
+    // The placeholders are shared by every set and stay.
+    expect(finishMaterials('desktop').material('grass.lawn').map).toBe(PLACEHOLDERS.color);
   });
 
   it('is one set per device class for the visit', () => {

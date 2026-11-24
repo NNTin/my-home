@@ -25,15 +25,15 @@ const loadFromNetwork: LoadTexture = (url) => {
   if (import.meta.env.MODE === 'test') {
     return Promise.reject(new Error(`A test must not load a texture (${url})`));
   }
-  // Decoded off the main thread; an image bitmap is turned upright here, not by the renderer.
+  // Decoded off the main thread. The renderer does not turn an image bitmap upright, and not
+  // every browser does when asked to (`imageOrientation`): the bitmap is taken as it is, top row
+  // first, and `request` reads it bottom up instead.
   return fetch(url)
     .then((response) => {
       if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
       return response.blob();
     })
-    .then((blob) =>
-      createImageBitmap(blob, { imageOrientation: 'flipY', colorSpaceConversion: 'none' }),
-    )
+    .then((blob) => createImageBitmap(blob, { colorSpaceConversion: 'none' }))
     .then((bitmap) => {
       const texture = new Texture(bitmap);
       texture.flipY = false;
@@ -56,6 +56,7 @@ export class FinishTextures {
   private inFlight = 0;
   private done = 0;
   private failures = 0;
+  private disposed = false;
 
   constructor(
     readonly device: DeviceClass,
@@ -78,9 +79,13 @@ export class FinishTextures {
       this.inFlight += 1;
       void this.fetch(file).then(
         (texture) => {
+          if (this.disposed) return texture.dispose();
           // One repeat of the image covers `tileSize` metres: the coordinates are metres.
           texture.wrapS = texture.wrapT = RepeatWrapping;
-          texture.repeat.set(repeat, repeat);
+          // Downwards: a file's first row is its top (`loadFromNetwork`), and with a wrapped
+          // texture reading it backwards is reading it upright. So the relief of a normal map
+          // keeps its direction too.
+          texture.repeat.set(repeat, -repeat);
           texture.colorSpace = file.map === 'color' ? SRGBColorSpace : NoColorSpace;
           texture.anisotropy = 4;
           this.loaded.set(finishId, { ...this.loaded.get(finishId), [file.map]: texture });
@@ -130,6 +135,19 @@ export class FinishTextures {
   /** Files asked for and not yet arrived or failed. */
   get pending(): number {
     return this.inFlight;
+  }
+
+  /**
+   * Frees the textures: this device class is no longer drawn (the layout changed). A file still
+   * on its way is freed when it arrives, and tells no one.
+   */
+  dispose() {
+    this.disposed = true;
+    this.listeners.clear();
+    for (const maps of this.loaded.values()) {
+      for (const texture of Object.values(maps)) texture.dispose();
+    }
+    this.loaded.clear();
   }
 
   /** For the `?perf` data: texture files that arrived, failed and are still on their way. */

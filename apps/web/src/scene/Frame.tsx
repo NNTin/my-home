@@ -11,7 +11,7 @@ import {
 } from 'react';
 import { Box3, type Light, type Vector3, type WebGLRenderer } from 'three';
 import type { Vec3 } from '../builder/buildHome';
-import { finishMaterials, type FinishMaterials } from '../finishes/materials';
+import { finishMaterials, releaseOtherDevices, type FinishMaterials } from '../finishes/materials';
 import { studioEnvironment } from '../lighting/environment';
 import { roomAt, type Emitter, type LampRoom } from '../lighting/lamps';
 import { backdropColors, environmentIntensity, type LightRig } from '../lighting/rig';
@@ -128,6 +128,8 @@ export function FrameLoop({
   useEffect(() => () => output.dispose(), [output]);
   // One size of every texture set per device, in every tier (§5.3).
   const finishSet = useMemo(() => finishMaterials(phone ? 'phone' : 'desktop'), [phone]);
+  // The other class's textures and materials go once this one is in use.
+  useEffect(() => releaseOtherDevices(finishSet.device), [finishSet]);
   const lights = useMemo(() => new SceneLights(phone), [phone]);
   useEffect(() => () => lights.dispose(), [lights]);
   // The environment is drawn once, before the first frame is compiled.
