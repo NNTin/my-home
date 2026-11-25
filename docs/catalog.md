@@ -159,7 +159,8 @@ git. `apps/web/src/catalog-page/thumbnails.ts`:
   draws each type's `parts(defaultParams(type), preview)` with a fixed light and a three-quarter camera, **one
   at a time**. There is never a canvas per card: phones allow only a few WebGL contexts per page. Furniture is
   drawn at its default size, an opening in its type's `preview` hole. Each part is drawn with the viewer's own
-  geometry of its shape (`shapeGeometry` in `scene/batches.ts`).
+  geometry of its shape (`shapeGeometry` in `scene/batches.ts`). A part that names a finish is drawn with the finish's
+  material; the thumbnail waits up to 10 s for its texture (the 512 px files) and draws the tint if none comes.
 - **Lazy.** A card asks for its thumbnail when it comes near the screen (an `IntersectionObserver` per card),
   and shows the type's icon until it is ready, or for good where WebGL is missing.
 - **Cached.** Each image is kept in the Cache Storage API (cache `my-home-thumbnails`) under
@@ -207,6 +208,10 @@ Behind the sign-on, forward auth returns to the address that was asked for after
 on `/` after the login instead, that is a setting of the sign-on (infrastructure), not of the app.
 
 ## Testing on an environment
+
+CI runs `catalog-smoke.sh` on staging after every deploy of a pull request: the job `staging-checks (catalog)`
+([deployment.md](deployment.md#checks-on-staging)). Read the job; run it by hand only for an environment CI does
+not check.
 
 ```sh
 S=.claude/skills/my-home-environments/scripts

@@ -10,6 +10,7 @@ import {
   type Texture,
 } from 'three';
 import type { DrawMaterial } from '../builder/drawList';
+import type { Glow } from '../scene/batches';
 import { SECTION_PLANES } from '../views/planes';
 import { FinishTextures, type TextureEvent } from './textures';
 
@@ -69,9 +70,13 @@ export class FinishMaterials {
     for (const material of this.materials.get(finish) ?? []) material[SLOT[map]] = texture;
   }
 
-  /** The material of a batch of `finishId`. An unknown finish draws as a plain white one. */
-  material(finishId: string, m?: DrawMaterial): MeshStandardMaterial {
-    const key = `${finishId}|${drawKey(m)}`;
+  /**
+   * The material of a batch of `finishId`. An unknown finish draws as a plain white one. A piece
+   * that glows (selected, colliding) gets a copy with the glow as its emissive colour: a uniform,
+   * so the copy compiles nothing, and it gets the finish's textures like the others.
+   */
+  material(finishId: string, m?: DrawMaterial, glow?: Glow): MeshStandardMaterial {
+    const key = `${finishId}|${drawKey(m)}|${glow ? `${glow.color}/${glow.intensity}` : ''}`;
     const found = this.byKey.get(key);
     if (found) return found;
     const finish = finishes.get(finishId);
@@ -83,6 +88,7 @@ export class FinishMaterials {
       side: m?.doubleSided ? DoubleSide : FrontSide,
       roughness: finish?.roughness ?? 1,
       metalness: finish?.metalness ?? 0,
+      ...(glow && { emissive: glow.color, emissiveIntensity: glow.intensity }),
       // A section cuts every surface of the home, and its shadow with it (§7.2).
       clippingPlanes: SECTION_PLANES,
       clipShadows: true,

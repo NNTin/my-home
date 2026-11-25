@@ -1,3 +1,4 @@
+import { finishes } from '../../finishes/library';
 import { FRACTION_STEP, LENGTH_STEP, type ParamSpec, type ParamTier } from '../params';
 
 /** Shorthands for the definitions; not exported from the package. */
@@ -75,4 +76,17 @@ export const choice = (
   label,
   default: value,
   options: Object.entries(options).map(([v, l]) => ({ value: v, label: l })),
+});
+
+/**
+ * A basic choice of finish for a type's parts: the options are finish ids, named as the library
+ * names them, the first the default. `catalog` checks that each is a finish a part may have.
+ */
+export const finishChoice = (label: string, ids: readonly string[]): ParamSpec => ({
+  type: 'choice',
+  tier: 'basic',
+  label,
+  default: ids[0]!,
+  options: ids.map((id) => ({ value: id, label: finishes.get(id)?.name ?? id })),
+  finish: true,
 });

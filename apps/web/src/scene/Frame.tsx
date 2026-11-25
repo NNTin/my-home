@@ -1,23 +1,15 @@
 import { useFrame, useThree } from '@react-three/fiber';
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  type ReactNode,
-} from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react';
 import { Box3, type Light, type Vector3, type WebGLRenderer } from 'three';
 import type { Vec3 } from '../builder/buildHome';
-import { finishMaterials, releaseOtherDevices, type FinishMaterials } from '../finishes/materials';
+import { finishMaterials, releaseOtherDevices } from '../finishes/materials';
 import { studioEnvironment } from '../lighting/environment';
 import { roomAt, type Emitter, type LampRoom } from '../lighting/lamps';
 import { backdropColors, environmentIntensity, type LightRig } from '../lighting/rig';
 import { SceneLights } from '../lighting/sceneLights';
 import type { FrameGovernor, Tier } from '../quality/governor';
 import { FrameOutput, gpuIdle } from './output';
+import { FrameContext as Context, type FrameControl } from './frameControl';
 import { casterBounds } from './sunShadow';
 
 /**
@@ -29,38 +21,7 @@ import { casterBounds } from './sunShadow';
  * studio environment and the lamp pool, the same in every tier.
  */
 
-/** What the parts of the scene tell the frame loop. */
-export interface FrameControl {
-  governor: FrameGovernor;
-  /** What casts shadows changed: the sun's shadow map is fitted and drawn again. */
-  castersChanged(): void;
-  /** A material may be new to the renderer: compile ahead before the next frame is drawn. */
-  materialsChanged(): void;
-  /** The materials of finishes for this device, with their textures. */
-  finishes: FinishMaterials;
-  /** A finish is drawn: its texture files are asked for, once, in this device's size (§5.3). */
-  finishShown(finish: string): void;
-  /**
-   * The camera was put somewhere else at once (a named view, `?focus=`): the lamp pool gathers
-   * afresh around the new place, so what is lit and shadowed there does not depend on where the
-   * camera was before (§6.4, §6.7).
-   */
-  cameraJumped(): void;
-  /** A section is cut: the frame's targets get a stencil buffer for its caps (§7.2). */
-  useStencil(): void;
-  /**
-   * Resolves once beautiful frames can be drawn, whatever the quality setting: the lazy chunk
-   * is asked for if it is not here. False when it does not come. For the image export (§7.4).
-   */
-  beautifulReady(): Promise<boolean>;
-  /** Draws one frame of the view as it is, now and outside the loop: the governor is not told. */
-  drawNow(tier: Tier): void;
-}
-
-const Context = createContext<FrameControl | undefined>(undefined);
-
-/** The frame loop's controls; undefined outside the viewer's canvas (the piece page, tests). */
-export const useFrameControl = () => useContext(Context);
+export { useFrameControl, type FrameControl } from './frameControl';
 
 /** Device pixel ratio the canvas renders at, as [min, max]; lower on a phone. */
 export const DPR: [number, number] = [1, 2];

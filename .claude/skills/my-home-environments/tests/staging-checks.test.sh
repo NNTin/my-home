@@ -45,6 +45,7 @@ printf '{"placements":"%s"}\n' "${seeds[$at]}"
 STUB
 cp "$work/smoke" "$work/walk-smoke.sh"
 cp "$work/smoke" "$work/mobile-smoke.sh"
+cp "$work/smoke" "$work/catalog-smoke.sh"
 chmod +x "$work"/site-curl "$work"/*.sh
 export SITE_CURL="$work/site-curl" STAGING_CHECKS_SCRIPTS="$work" STUB_DIR="$work" STUB_TABLE="$work/table.md"
 
@@ -81,6 +82,12 @@ STUB_SMOKE_EXIT=1 run 'abc abc' mobile abc
 check 'a smoke that fails fails the check' test "$code" -eq 1
 check 'the summary names the failed check' grep -q -- '- FAIL  the sheet opens' "$work/summary"
 
+run 'abc abc' catalog abc
+check 'the catalogue smoke is one of the checks' test "$code" -eq 0
+check 'its summary says what passed' grep -q 'catalog on staging at abc: passed' "$work/summary"
+run 'old old' catalog abc
+check 'the catalogue smoke is not counted on another commit either (exit 6)' test "$code" -eq 6
+
 run 'old old' walk abc
 check 'staging on another commit before the check: not counted (exit 6)' test "$code" -eq 6
 check 'the smoke did not run' test "$(grep -c 'the view is on screen' "$work/out")" -eq 0
@@ -110,7 +117,7 @@ run 'abc abc' visual-diff abc
 check 'a comparison without a table fails' test "$code" -eq 1
 
 code=0
-"$scripts/staging-checks.sh" catalog abc >/dev/null 2>&1 || code=$?
+"$scripts/staging-checks.sh" gallery abc >/dev/null 2>&1 || code=$?
 check 'an unknown check is a usage error' test "$code" -eq 1
 
 echo "$pass passed, $fail failed"

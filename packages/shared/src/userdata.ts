@@ -205,6 +205,8 @@ const ParamSpecSummary = z.looseObject({
   step: z.number().optional(),
   unit: z.string().optional(),
   options: z.array(z.object({ value: z.string(), label: z.string() })).optional(),
+  /** A choice whose values are finish ids. */
+  finish: z.literal(true).optional(),
 });
 
 /** A catalogue type as the api lists it: metadata and parameter specs (tier and limits). */

@@ -79,3 +79,17 @@ export const finishes = createFinishLibrary([
   ...ground,
   ...parts,
 ]);
+
+/**
+ * Why a part of a catalogue piece may not name this finish, or undefined: the library must have
+ * it, for the surface `part` (docs/design/realistic-render.md §5.7).
+ */
+export function partFinishProblem(
+  id: string,
+  library: FinishLibrary = finishes,
+): string | undefined {
+  const finish = library.get(id);
+  if (!finish) return `"${id}" is not a finish of the library`;
+  if (!finish.surfaces.includes('part')) return `the finish "${id}" is not for parts`;
+  return undefined;
+}

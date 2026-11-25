@@ -12,9 +12,10 @@ import {
   Vector3,
   WebGLRenderer,
 } from 'three';
-import { partShape } from '../builder/drawList';
+import { PART_FINISH, partItems, partShape } from '../builder/drawList';
 import type { Part } from '../catalog/types';
-import { shapeGeometry } from '../scene/batches';
+import { finishMaterials } from '../finishes/materials';
+import { batches, shapeGeometry } from '../scene/batches';
 
 /** Thumbnails are square, this many pixels a side. */
 export const THUMBNAIL_SIZE = 256;
@@ -76,12 +77,42 @@ function partMesh(part: Part): Mesh {
   return mesh;
 }
 
+/** A thumbnail waits this long for the textures of its finishes, then draws their tints. */
+const TEXTURE_WAIT_MS = 10_000;
+
+/**
+ * The parts that name a finish (§5.7), merged as the viewer merges them, with the finish's
+ * material: its roughness, its metalness and, once the files are here, its texture.
+ */
+async function finishMeshes(parts: readonly Part[]): Promise<Mesh[]> {
+  const items = partItems(parts, '', { kind: 'placement', id: '' }).filter(
+    (item) => item.finish !== PART_FINISH,
+  );
+  if (items.length === 0) return [];
+  const set = finishMaterials('phone');
+  for (const item of items) set.textures.request(item.finish);
+  if (set.textures.pending > 0) {
+    await new Promise<void>((resolve) => {
+      const done = () => {
+        clearTimeout(timer);
+        stop();
+        resolve();
+      };
+      const timer = setTimeout(done, TEXTURE_WAIT_MS);
+      const stop = set.textures.subscribe(() => set.textures.pending === 0 && done());
+    });
+  }
+  return batches(items).map((b) => new Mesh(b.geometry, set.material(b.finish, b.material)));
+}
+
 /** Renders the parts with a fixed light and a three-quarter camera into a transparent PNG. */
 export async function renderThumbnail(parts: readonly Part[]): Promise<Blob> {
   const gl = getRenderer();
   const scene = new Scene();
-  const meshes = parts.map(partMesh);
-  scene.add(...meshes);
+  const meshes = parts.filter((p) => p.material?.finish === undefined).map(partMesh);
+  // Their materials are the finishes' own, shared with the pages: only the geometry is freed.
+  const finished = await finishMeshes(parts);
+  scene.add(...meshes, ...finished);
   scene.add(new AmbientLight(0xffffff, 1.1));
   const sun = new DirectionalLight(0xffffff, 2.2);
   sun.position.set(3, 5, 4);
@@ -107,5 +138,6 @@ export async function renderThumbnail(parts: readonly Part[]): Promise<Blob> {
       mesh.geometry.dispose();
       (mesh.material as MeshStandardMaterial).dispose();
     }
+    for (const mesh of finished) mesh.geometry.dispose();
   }
 }

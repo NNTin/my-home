@@ -6,6 +6,7 @@ import { garden } from './definitions/garden';
 import { gates } from './definitions/gates';
 import { kitchen } from './definitions/kitchen';
 import { windows } from './definitions/windows';
+import { partFinishProblem } from '../finishes/library';
 import { HexColor, TypeId } from './ids';
 import type { ParamSpec } from './params';
 import { isPlacedKind, type CatalogType } from './types';
@@ -42,7 +43,9 @@ function specProblem(spec: ParamSpec): string | undefined {
       const values = spec.options.map((o) => o.value);
       if (values.length < 2) return 'a choice needs at least two options';
       if (new Set(values).size !== values.length) return 'duplicate option values';
-      return values.includes(spec.default) ? undefined : `default ${spec.default} is not an option`;
+      if (!values.includes(spec.default)) return `default ${spec.default} is not an option`;
+      // A choice of finish offers only finishes a part may have.
+      return spec.finish ? values.map((v) => partFinishProblem(v)).find(Boolean) : undefined;
     }
   }
 }

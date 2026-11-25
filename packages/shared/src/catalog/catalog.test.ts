@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { finishes } from '../finishes/library';
 import type { Polygon } from '../home-model';
 import {
   basicOverridesSchema,
@@ -166,7 +167,7 @@ describe('catalog', () => {
         'doors',
         'frontStyle',
       ],
-      'kitchen.wall-shelf': ['color', 'width', 'depth', 'height', 'rail'],
+      'kitchen.wall-shelf': ['color', 'finish', 'width', 'depth', 'height', 'rail'],
       'kitchen.tall-cabinet': [
         'carcassColor',
         'door',
@@ -284,6 +285,85 @@ describe('catalog', () => {
     expect(() => withParam({ type: 'choice', default: 'a', options: [options[0]] })).toThrow(
       /at least two/,
     );
+  });
+
+  it('a choice of finish offers only finishes of the library that a part may have (§5.7)', () => {
+    const finishChoice = (...ids: string[]) =>
+      createCatalog([
+        {
+          ...type('furniture.bed'),
+          params: {
+            finish: {
+              type: 'choice',
+              tier: 'basic',
+              label: 'Finish',
+              default: ids[0]!,
+              options: ids.map((id) => ({ value: id, label: id })),
+              finish: true,
+            },
+          },
+        },
+      ]);
+    expect(() => finishChoice('wood.veneer', 'plastic.matt')).not.toThrow();
+    // A finish the library does not have.
+    expect(() => finishChoice('wood.veneer', 'wood.mahogany')).toThrow(
+      /parameter "finish": "wood.mahogany" is not a finish of the library/,
+    );
+    // A finish that exists, for floors: not for parts.
+    expect(() => finishChoice('wood.oak-laminate', 'wood.veneer')).toThrow(
+      /parameter "finish": the finish "wood.oak-laminate" is not for parts/,
+    );
+    // Only the viewer draws it.
+    expect(() => finishChoice('wood.veneer', 'cut.dark')).toThrow(/"cut.dark" is not for parts/);
+    // A plain choice may hold any values.
+    expect(() =>
+      createCatalog([
+        {
+          ...type('furniture.bed'),
+          params: {
+            x: {
+              type: 'choice',
+              tier: 'basic',
+              label: 'X',
+              default: 'wood.mahogany',
+              options: [
+                { value: 'wood.mahogany', label: 'A' },
+                { value: 'b', label: 'B' },
+              ],
+            },
+          },
+        },
+      ]),
+    ).not.toThrow();
+  });
+
+  it('every choice of finish in the catalogue names its options as the library does', () => {
+    const choices = catalog.types.flatMap((t) =>
+      Object.values(t.params).filter((spec) => spec.type === 'choice' && spec.finish),
+    );
+    expect(choices.length).toBeGreaterThan(0);
+    for (const spec of choices) {
+      if (spec.type !== 'choice') continue;
+      expect(spec.tier).toBe('basic');
+      for (const o of spec.options) expect(o.label).toBe(finishes.get(o.value)?.name);
+    }
+    // The wall shelf's board: lacquer by default, as it has always looked, or oak veneer.
+    expect(type('kitchen.wall-shelf').params.finish).toMatchObject({
+      default: 'plastic.matt',
+      options: [
+        { value: 'plastic.matt', label: 'Matt plastic' },
+        { value: 'wood.veneer', label: 'Oak veneer' },
+      ],
+    });
+    const shelf = type('kitchen.wall-shelf');
+    expect(effectiveParams(shelf, { finish: 'wood.veneer' }).values.finish).toBe('wood.veneer');
+    // A stored value that is no option is ignored, never drawn.
+    expect(effectiveParams(shelf, { finish: 'wood.oak-laminate' })).toMatchObject({
+      values: { finish: 'plastic.matt' },
+      ignored: ['finish'],
+    });
+    expect(basicOverridesSchema(shelf).safeParse({ finish: 'wood.veneer' }).success).toBe(true);
+    expect(basicOverridesSchema(shelf).safeParse({ finish: 'cut.dark' }).success).toBe(false);
   });
 
   it('gives the wall windows a shutter and a curtain, both off by default', () => {

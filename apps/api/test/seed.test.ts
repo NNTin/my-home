@@ -367,6 +367,69 @@ describe('the seed (data/homes/<home>.seed.json)', () => {
       });
     });
 
+    it('a finish chosen for a placement goes through the seed unchanged (#116)', async () => {
+      const shelf = {
+        typeId: 'kitchen.wall-shelf',
+        levelId: 'souterrain',
+        position: { x: 3, z: -3.675 },
+        rotationY: 0,
+        elevation: 1.4,
+      };
+      const url = '/api/homes/mock-home/placements';
+      const placed = await inject(
+        'POST',
+        url,
+        { ...shelf, params: { finish: 'wood.veneer' } },
+        agent,
+      );
+      expect(placed.statusCode, placed.body).toBe(201);
+      const { id, version } = placed.json();
+      expect(placed.json().params).toEqual({ finish: 'wood.veneer' });
+      // The default finish is not stored: a use only holds what it changes.
+      const plain = await inject('POST', url, { ...shelf, position: { x: 2, z: -3.675 } }, agent);
+      expect(plain.json().params).toEqual({});
+
+      const first = await exported('mock-home');
+      const seed = HomeSeed.parse(JSON.parse(first));
+      expect(seed.placements.map((p) => p.params)).toEqual([{ finish: 'wood.veneer' }, {}]);
+      expect(seedIssues(seed, mockHome)).toEqual([]);
+
+      // Into a fresh database: the choice is there again, and the export is the same bytes.
+      await clearUserdata(ctx);
+      expect((await inject('PUT', '/api/homes/mock-home/seed', seed, agent)).statusCode).toBe(200);
+      expect(await exported('mock-home')).toBe(first);
+      const items = (await inject('GET', url)).json().items;
+      expect(items.find((p: { id: string }) => p.id === id).params).toEqual({
+        finish: 'wood.veneer',
+      });
+
+      // Changed in the app after the export, the import puts the exported choice back.
+      const current = items.find((p: { id: string }) => p.id === id).version;
+      expect(current).toBe(version);
+      const changed = await inject(
+        'PATCH',
+        `${url}/${id}`,
+        { version: current, params: { finish: 'plastic.matt' } },
+        agent,
+      );
+      expect(changed.json().params).toEqual({ finish: 'plastic.matt' });
+      const report = SeedSyncReport.parse(
+        (await inject('PUT', '/api/homes/mock-home/seed', seed, agent)).json(),
+      );
+      expect(report.homes[0]!.placements.updated).toEqual([id]);
+      expect(await exported('mock-home')).toBe(first);
+
+      // A seed that names a finish the type does not offer does not fit: nothing is written.
+      for (const finish of ['wood.oak-laminate', 'wood.mahogany']) {
+        const bad = structuredClone(seed);
+        bad.placements[0]!.params = { finish };
+        const refused = await inject('PUT', '/api/homes/mock-home/seed', bad, agent);
+        expect(refused.statusCode, finish).toBe(400);
+        expect(refused.json().message).toMatch(/placements\.0\.params\.finish|finish/);
+      }
+      expect(await exported('mock-home')).toBe(first);
+    });
+
     it('a note on a placement in the trash is outside the seed: not exported, kept by a sync', async () => {
       const bed = await inject(
         'POST',

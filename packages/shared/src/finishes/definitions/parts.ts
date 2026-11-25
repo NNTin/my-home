@@ -1,7 +1,7 @@
 import type { Finish } from '../types';
 import { polyHaven } from './source';
 
-/** Finishes of catalogue parts. Nothing draws them until parts name finishes (§5.7 of the design). */
+/** Finishes of catalogue parts: a part names one as `material.finish` (§5.7 of the design). */
 export const parts: Finish[] = [
   {
     id: 'wood.veneer',

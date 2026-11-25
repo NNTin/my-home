@@ -172,6 +172,15 @@ describe('placements', () => {
           .issues.map((i: { path: string }) => i.path)
           .sort(),
       ).toEqual(['params', 'params.width']);
+      // A choice of finish takes the type's options only (#116): no floor finish, no unknown one.
+      const shelf = { typeId: 'kitchen.wall-shelf', position: { x: 3, z: -3.675 }, elevation: 1.4 };
+      for (const finish of ['wood.oak-laminate', 'wood.mahogany', 'cut.dark']) {
+        const refused = await post({ ...shelf, params: { finish } });
+        expect(refused.statusCode, finish).toBe(400);
+        expect(refused.json().issues.map((i: { path: string }) => i.path)).toEqual([
+          'params.finish',
+        ]);
+      }
       expect(
         (
           await inject('POST', '/api/homes/nope/placements', {

@@ -49,6 +49,12 @@ export type PartRole =
 
 /** Material settings beyond the colour; each is three.js' default when omitted. */
 export interface PartMaterial {
+  /**
+   * A finish of the library that may be used on a part (docs/design/realistic-render.md §5.7):
+   * `wood.veneer`, `metal.brushed`. The part's colour is its tint (a finish that is not tintable
+   * keeps its own), and the finish gives the roughness and metalness: the part's are ignored.
+   */
+  finish?: string;
   transparent?: boolean;
   opacity?: number;
   depthWrite?: boolean;

@@ -536,7 +536,7 @@ every surface.
 | Floor, ceiling, ground | along plan x                 | along plan z                 | the plan origin, so neighbours line up |
 | Wall face              | along the wall               | up                           | the wall's start, at its floor         |
 | Roof plane             | along the eave               | up the slope, true length    | the eave's start                       |
-| Catalogue part         | box projection, local x or z | box projection, local y or z | the piece's origin                     |
+| Catalogue part         | box projection, local x or z | box projection, local y or z | the part's middle (D73)                |
 
 - A use may turn a floor finish by a quarter turn (`rotation: 90`), for the direction planks run.
 - UVs are computed by the batching step from descriptors. Nothing recomputes them at runtime.
@@ -686,6 +686,11 @@ ever made from a photo:** a texture cut from the owner's photo would put the pho
 - A type offers a choice of finishes with the existing `choice` parameter, whose option values are finish ids.
   A `basic` choice is stored per use in the seed like a colour today; no change to the seed's format.
 - A part without a finish draws as today: its colour, roughness and metalness.
+- The finish gives the roughness and metalness; a finish that is not tintable keeps its own colour (D72). The
+  texture is projected in the part's own frame (D73). Outside the viewer (piece page, thumbnails) the phone's
+  texture files are used (D74).
+- A choice of finish is a `choice` marked `finish`: the catalogue refuses an option that is no finish of the
+  library or not for parts, at import (D75).
 
 ## 6. Lighting and post-processing
 
@@ -1386,6 +1391,11 @@ All seven proposed defaults were accepted.
 | D69 | A section cuts a lathed part by the cylinder around it, not by its box                                                                                                                     | A lathe is round: the chord of its circle is what a cylinder already gets, and the box would draw a part beside the cut (#116)                                                                                                                                                                                                                                                |
 | D70 | A rounded box is a cube's grid of 5 × 5 steps a face moved onto its corner spheres: 300 triangles, four steps a quarter round. A lathe has the cylinder's 24 sides                         | Sixteen rounded boxes fit a piece's 5,000 triangles. One count for every radius keeps the geometry a function of the shape alone; #117 may add a coarser one if a type needs more boxes (#116)                                                                                                                                                                                |
 | D71 | A lathe whose profile neither starts and ends on the axis nor ends where it starts is an open skin: drawn from both sides, a mesh of its own, not capped by a section                      | A lamp shade or a bowl is a skin. Asking for a wall thickness would double its triangles, and refusing the profile would make a module throw (#116)                                                                                                                                                                                                                           |
+| D72 | A part with a finish takes its roughness and metalness from the finish, and its colour is the tint; a finish that is not tintable keeps its own colour                                     | One material per finish (§4.2): the parts of a finish merge into one mesh, which per-part roughness would prevent. `tintable: false` means the same for a part as for a room (#116)                                                                                                                                                                                           |
+| D73 | A part's texture is a box projection in the part's own frame, about its middle, not about the piece's origin as §5.4 said                                                                  | It was what the batching did for every box without a frame since #112. It turns and tilts with the part, so the grain of a leaning backrest leans with it. The price: parts of the same size show the same piece of the texture, and the direction of a grain is the part's axes, not a choice. #117 may add one (#116)                                                       |
+| D74 | Outside the viewer (the piece page, thumbnails) a finish draws with the phone's files, whatever the device                                                                                 | Those views have no frame loop and no device class of their own; a piece fills a few hundred pixels. A thumbnail waits up to 10 s for the files and then draws the tint (#116)                                                                                                                                                                                                |
+| D75 | A choice of finish is a `choice` parameter marked `finish`; the catalogue checks its options against the library at import                                                                 | §5.7 wanted the existing `choice` with finish ids as values. The mark is what lets the check tell a finish id from any other value; the seed and the api see an ordinary choice (#116)                                                                                                                                                                                        |
+| D76 | `kitchen.wall-shelf` offers `plastic.matt` (the default) and `wood.veneer` for its board                                                                                                   | The proof of step 6a. Lacquer first, so that the placed shelf looks as it did: oak veneer tinted with the shelf's dark brown is nearly black, and choosing real finishes and tints from photos is step 6b (#116)                                                                                                                                                              |
 
 ## 14. Open questions
 

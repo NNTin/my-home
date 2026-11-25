@@ -39,6 +39,12 @@ export type ParamSpec =
       label: string;
       default: string;
       options: { value: string; label: string }[];
+      /**
+       * A choice of finish (docs/design/realistic-render.md §5.7): every option's value is the id
+       * of a finish of the library that may be used on a part. The piece module draws its parts
+       * with the chosen one (`material.finish`).
+       */
+      finish?: true;
     };
 
 export type ParamValues = Record<string, string | number>;
