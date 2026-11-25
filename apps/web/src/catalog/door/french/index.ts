@@ -5,13 +5,15 @@ import { definePiece, type PieceContext } from '../../types';
 const leaves = (values: ParamValues, ctx: PieceContext) =>
   fittingCount('door.french', 'leaves', values, ctx.width);
 
-/** A frame without a sill and a pane down to the floor; more leaves add mullions. */
+/**
+ * A frame without a sill and glazed leaves down to the floor, each with its stiles, rails and
+ * handle; more leaves add mullions.
+ */
 export default definePiece({
   id: 'door.french',
   parts: (values, ctx) =>
     frameParts(ctx, {
       ...frameOf(values),
-      sill: false,
       divisions: leaves(values, ctx),
       fill: glassOf(values),
     }),
