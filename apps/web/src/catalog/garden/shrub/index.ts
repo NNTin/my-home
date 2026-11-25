@@ -31,7 +31,8 @@ export default definePiece({
       parts.push(
         lathe(
           [c.x, c.bottom, c.z],
-          bushProfile(c.radius, c.height, 0.4),
+          // Nearly pointed at its foot: a clump that starts over the ground shows no flat underside.
+          bushProfile(c.radius, c.height, 0.05),
           shade(leaf, 0.04 + (i % 3) * 0.05),
           'body',
         ),
