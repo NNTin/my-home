@@ -7,6 +7,9 @@ import { furnitureDimensions, sizeOf } from '../size';
 const ARM = 0.18;
 const BACK = 0.22;
 const FOOT = 0.06;
+/** A back cushion's thickness, and how far it leans back (radians). */
+const THICK = 0.14;
+const LEAN = 0.15;
 /** How far a cushion's edges are rounded. */
 const SOFT = 0.05;
 
@@ -54,18 +57,18 @@ export default definePiece({
           ),
         );
     }
+    // A back cushion leans by `LEAN` about its middle. It rests on its seat cushion (its lower
+    // front edge half a centimetre in the seat cushion's top) and against the back (its lower
+    // back edge on the back's face); its top sinks into the back.
+    const tall = h - seat - 0.06;
+    const [sin, cos] = [Math.sin(LEAN), Math.cos(LEAN)];
+    const backY = seat + 0.005 + (tall / 2) * cos - (THICK / 2) * sin;
+    const backZ = -d / 2 + BACK + (THICK / 2) * cos - (tall / 2) * sin;
     for (let i = 0; i < seats; i++) {
       const x = -inner / 2 + each * (i + 0.5);
       parts.push(
         cushion([x, seat - 0.07, BACK / 2 + 0.01], [each - 0.01, 0.16, d - BACK - 0.02]),
-        tilted(
-          cushion(
-            [x, seat + (h - seat) / 2, -d / 2 + BACK + 0.07],
-            [each - 0.02, h - seat - 0.06, 0.14],
-            0.05,
-          ),
-          -0.15,
-        ),
+        tilted(cushion([x, backY, backZ], [each - 0.02, tall, THICK], 0.05), -LEAN),
       );
     }
     return parts;

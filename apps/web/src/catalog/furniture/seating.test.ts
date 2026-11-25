@@ -95,6 +95,38 @@ describe('seating and tables', () => {
     }
   });
 
+  it('a sofa\u2019s back cushions rest on its seat cushions and against its back', () => {
+    for (const width of [1.2, 2, 3.2]) {
+      const { parts, size } = draw('furniture.sofa', { width });
+      const back = parts.find((p) => p.shape === 'roundedBox' && p.size[0] === width)!;
+      const leaning = parts.filter((p) => p.rotationX !== undefined);
+      const seats = parts.filter((p) => p.shape === 'roundedBox' && p.size[1] === 0.16);
+      expect(leaning).toHaveLength(seats.length);
+      const face = back.center[2] + back.size[2] / 2;
+      leaning.forEach((cushion, i) => {
+        const seatTop = seats[i]!.center[1] + seats[i]!.size[1] / 2;
+        // The cushion's lower edges, turned about its middle by its lean.
+        const [sin, cos] = [Math.sin(cushion.rotationX!), Math.cos(cushion.rotationX!)];
+        const corner = (z: number) => {
+          const [y0, z0] = [-cushion.size[1] / 2, (z * cushion.size[2]) / 2];
+          return [cushion.center[1] + y0 * cos - z0 * sin, cushion.center[2] + y0 * sin + z0 * cos];
+        };
+        const [front, rear] = [corner(1), corner(-1)];
+        // Both lower edges are in the seat cushion, by no more than 3 cm: no slit, nothing buried.
+        for (const edge of [front, rear]) {
+          expect(edge[0]!).toBeLessThanOrEqual(seatTop - 0.004);
+          expect(edge[0]!).toBeGreaterThan(seatTop - 0.03);
+        }
+        // Its lower back edge is on the back's face, and it leans back from there.
+        expect(rear[1]!).toBeCloseTo(face);
+        expect(cushion.rotationX).toBeLessThan(0);
+        // It stays under the sofa's height and over the seat cushion's footprint.
+        expect(boundsOf([cushion]).max[1]).toBeLessThanOrEqual(size.height);
+        expect(front[1]!).toBeLessThan(seats[i]!.center[2] + seats[i]!.size[2] / 2);
+      });
+    }
+  });
+
   it('a chair’s back legs run on as the posts of its back, which leans', () => {
     const { parts, size } = draw('furniture.chair');
     const posts = parts.filter((p) => p.shape === 'extrude' && p.rotationY !== 0);
@@ -142,6 +174,18 @@ describe('seating and tables', () => {
     expect(mattress!.center[1] + mattress!.size[1] / 2).toBeCloseTo(size.height);
     expect(duvet!.center[1] + duvet!.size[1] / 2).toBeGreaterThan(size.height);
     expect(boundsOf(parts).max[1]).toBeCloseTo(size.height * 1.8);
+    // The mattress lies against the headboard and the foot rail; the duvet starts where the
+    // pillows end.
+    const headboard = parts[0]!;
+    const pillow = soft[1]!;
+    expect(mattress!.center[2] - mattress!.size[2] / 2).toBeCloseTo(
+      headboard.center[2] + headboard.size[2] / 2,
+    );
+    expect(mattress!.center[2] + mattress!.size[2] / 2).toBeCloseTo(size.depth / 2 - 0.03);
+    expect(duvet!.center[2] - duvet!.size[2] / 2).toBeCloseTo(
+      pillow.center[2] + pillow.size[2] / 2,
+    );
+    expect(duvet!.center[2] + duvet!.size[2] / 2).toBeLessThanOrEqual(size.depth / 2);
     expect(parts[0]!.material).toEqual({ finish: 'wood.veneer' });
   });
 });

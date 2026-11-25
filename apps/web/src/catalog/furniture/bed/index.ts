@@ -41,8 +41,9 @@ export default definePiece({
         ),
       ),
       soft(
-        [0, (frame + h) / 2 - 0.02, z],
-        [w - 2 * RAIL - 0.01, h - frame + 0.04, lying - RAIL - 0.01],
+        // From the headboard's face to the foot rail.
+        [0, (frame + h) / 2 - 0.02, z - RAIL / 2],
+        [w - 2 * RAIL - 0.01, h - frame + 0.04, lying - RAIL],
         0.05,
         linen,
       ),
@@ -54,8 +55,9 @@ export default definePiece({
           colorParam(values, 'pillowColor'),
         ),
       ),
-      // The duvet lies over the mattress from under the pillows to the foot, and hangs over its sides.
-      soft([0, h - 0.03, z + 0.24], [w - 0.02, 0.14, lying - 0.5], 0.06, shade(linen, -0.07)),
+      // The duvet lies over the mattress from where the pillows end to the foot, and hangs over
+      // its sides.
+      soft([0, h - 0.03, z + 0.1925], [w - 0.02, 0.14, lying - 0.405], 0.06, shade(linen, -0.07)),
     ];
   },
   dimensions: furnitureDimensions,
