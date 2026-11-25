@@ -51,22 +51,48 @@ describe('the storage pieces', () => {
     },
   );
 
-  it('a bin hangs by its rim on two runners and is narrower below it', () => {
-    const { parts } = draw('furniture.storage-shelf');
-    const bins = parts.filter((p) => p.role === 'body' && p.color === '#f3f3f0');
-    // Nine bins: a rim and a body each.
-    expect(bins).toHaveLength(18);
-    const [rim, body] = bins;
-    expect(rim!.size[0]).toBeGreaterThan(body!.size[0]);
-    expect(rim!.center[1]).toBeGreaterThan(body!.center[1] + body!.size[1] / 2);
-    const runners = parts.filter((p) => p.size[0] === 0.012 && p.size[1] === 0.012);
-    expect(runners).toHaveLength(18);
-    // The rim lies on its runners: its ends over them, its underside on their tops.
-    const [left, right] = runners;
-    expect(rim!.center[0] - rim!.size[0] / 2).toBeLessThan(left!.center[0] + 0.006);
-    expect(rim!.center[0] + rim!.size[0] / 2).toBeGreaterThan(right!.center[0] - 0.006);
-    expect(rim!.center[1] - rim!.size[1] / 2).toBeCloseTo(left!.center[1] + 0.006);
-    expect(parts.filter((p) => p.role === 'detail')).toHaveLength(9);
+  it('a bin hangs by its rim on two runners; its body goes up to the rim and is narrower', () => {
+    for (const overrides of [
+      {},
+      { width: 1.5, height: 1.5, columns: 4, rows: 5 },
+      { columns: 1, rows: 1 },
+    ]) {
+      const { parts, size } = draw('furniture.storage-shelf', overrides);
+      const bins = parts.filter((p) => p.role === 'body' && p.color === '#f3f3f0');
+      const count = bins.length / 2;
+      const runners = parts.filter((p) => p.size[1] === 0.012 && p.size[2] === size.depth - 0.02);
+      expect(runners).toHaveLength(2 * count);
+      expect(parts.filter((p) => p.role === 'detail')).toHaveLength(count);
+      for (let i = 0; i < count; i++) {
+        const [rim, body] = [bins[2 * i]!, bins[2 * i + 1]!];
+        const [left, right] = [runners[2 * i]!, runners[2 * i + 1]!];
+        expect(rim.size[0]).toBeGreaterThan(body.size[0]);
+        // No slit under the rim: the body's top is the rim's underside.
+        expect(body.center[1] + body.size[1] / 2).toBeCloseTo(rim.center[1] - rim.size[1] / 2);
+        // The rim lies on its runners: its ends over them, its underside on their tops.
+        expect(rim.center[0] - rim.size[0] / 2).toBeLessThan(left.center[0] + left.size[0] / 2);
+        expect(rim.center[0] + rim.size[0] / 2).toBeGreaterThan(
+          right.center[0] - right.size[0] / 2,
+        );
+        expect(rim.center[1] - rim.size[1] / 2).toBeCloseTo(left.center[1] + 0.006);
+        // And the body hangs between them.
+        expect(body.center[0] - body.size[0] / 2).toBeGreaterThanOrEqual(
+          left.center[0] + left.size[0] / 2,
+        );
+        expect(body.center[0] + body.size[0] / 2).toBeLessThanOrEqual(
+          right.center[0] - right.size[0] / 2,
+        );
+      }
+      // Every runner touches timber on its outer side: a divider, or a post at the frame's ends.
+      const uprights = parts.filter((p) => p.size[1] > 0.3 && p.material && p.color !== '#f3f3f0');
+      for (const [k, runner] of runners.entries()) {
+        const outer = runner.center[0] + (k % 2 ? 1 : -1) * (runner.size[0] / 2);
+        const touches = uprights.some(
+          (u) => Math.abs(Math.abs(outer - u.center[0]) - u.size[0] / 2) < 1e-9,
+        );
+        expect(touches).toBe(true);
+      }
+    }
   });
 
   it('a pine frame is lacquer in its colour, a darker one stained oak veneer', () => {

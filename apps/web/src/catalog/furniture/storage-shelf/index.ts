@@ -39,14 +39,19 @@ export default definePiece({
         const x = -w / 2 + POST + cw * (c + 0.5);
         const y = FOOT + ch * (r + 0.5);
         const top = y + ch / 2 - 0.0125;
-        for (const side of [-1, 1])
+        for (const side of [-1, 1]) {
+          // A runner is fixed to the divider beside it; at the frame's ends it is wider by the
+          // half board a divider would take, and reaches the posts.
+          const wider = c === (side < 0 ? 0 : columns - 1) ? BOARD / 2 : 0;
           timber(
-            [x + side * (cw / 2 - RUNNER / 2 - BOARD / 2), top - 0.014, 0],
-            [RUNNER, RUNNER, d - 0.02],
+            [x + side * (cw / 2 - RUNNER / 2 - BOARD / 2 + wider / 2), top - 0.014, 0],
+            [RUNNER + wider, RUNNER, d - 0.02],
           );
+        }
         parts.push(
           box([x, top - 0.004, 0.01], [rim, 0.008, d - 0.05], bin, 'body', LACQUER),
-          box([x, y - 0.008, 0.01], [rim - 0.03, ch - 0.041, d - 0.07], bin, 'body', LACQUER),
+          // The body hangs from the rim's underside.
+          box([x, y - 0.004, 0.01], [rim - 0.03, ch - 0.033, d - 0.07], bin, 'body', LACQUER),
           box(
             [x, top - 0.03, d / 2 - 0.0245],
             [rim * 0.4, 0.022, 0.002],
