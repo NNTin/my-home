@@ -6,6 +6,7 @@ import {
   DoubleSide,
   ExtrudeGeometry,
   FrontSide,
+  LatheGeometry,
   Matrix4,
   MeshStandardMaterial,
   Path,
@@ -22,6 +23,7 @@ import {
   CYLINDER_SEGMENTS,
   linearRgb,
   materialKey,
+  ROUNDED_SEGMENTS,
   type DrawGroup,
   type DrawItem,
   type DrawMaterial,
@@ -105,6 +107,37 @@ function polygonGeometry(outline: Vec3[], holes: Vec3[][]): BufferGeometry {
   return g;
 }
 
+/**
+ * A box with rounded edges and corners (§8.2): a cube's grid of vertices, each moved onto the
+ * corner sphere of its octant. The grid has an odd number of steps, so the middle one spans the
+ * flat of each face and of each edge, and the others round the corners.
+ */
+function roundedBoxGeometry([w, h, d]: Vec3, radius: number): BufferGeometry {
+  const r = Math.min(radius, w / 2, h / 2, d / 2);
+  if (!(r > 0)) return new BoxGeometry(w, h, d);
+  const steps = ROUNDED_SEGMENTS * 2 + 1;
+  const g = new BoxGeometry(1, 1, 1, steps, steps, steps);
+  const position = g.getAttribute('position');
+  const normal = g.getAttribute('normal');
+  const inner = [w / 2 - r, h / 2 - r, d / 2 - r] as const;
+  const p = new Vector3();
+  for (let i = 0; i < position.count; i++) {
+    p.fromBufferAttribute(position, i);
+    const sign = [Math.sign(p.x), Math.sign(p.y), Math.sign(p.z)] as const;
+    // The middle step's vertices are half a step from the centre: they face straight out.
+    p.set(p.x - sign[0] / 2 / steps, p.y - sign[1] / 2 / steps, p.z - sign[2] / 2 / steps);
+    p.normalize();
+    normal.setXYZ(i, p.x, p.y, p.z);
+    position.setXYZ(
+      i,
+      sign[0] * inner[0] + p.x * r,
+      sign[1] * inner[1] + p.y * r,
+      sign[2] * inner[2] + p.z * r,
+    );
+  }
+  return g;
+}
+
 /** The geometry of a shape in its local frame, as the viewer has always built it. */
 export function shapeGeometry(shape: DrawShape): BufferGeometry {
   switch (shape.kind) {
@@ -115,6 +148,13 @@ export function shapeGeometry(shape: DrawShape): BufferGeometry {
         shape.diameter / 2,
         shape.diameter / 2,
         shape.height,
+        CYLINDER_SEGMENTS,
+      );
+    case 'roundedBox':
+      return roundedBoxGeometry(shape.size, shape.radius);
+    case 'lathe':
+      return new LatheGeometry(
+        shape.profile.map(([r, y]) => new Vector2(r, y)),
         CYLINDER_SEGMENTS,
       );
     case 'profile': {

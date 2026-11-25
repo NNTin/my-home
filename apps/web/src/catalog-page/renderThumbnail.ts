@@ -2,9 +2,8 @@ import {
   ACESFilmicToneMapping,
   AmbientLight,
   Box3,
-  BoxGeometry,
-  CylinderGeometry,
   DirectionalLight,
+  DoubleSide,
   Mesh,
   MeshStandardMaterial,
   PerspectiveCamera,
@@ -13,7 +12,9 @@ import {
   Vector3,
   WebGLRenderer,
 } from 'three';
+import { partShape } from '../builder/drawList';
 import type { Part } from '../catalog/types';
+import { shapeGeometry } from '../scene/batches';
 
 /** Thumbnails are square, this many pixels a side. */
 export const THUMBNAIL_SIZE = 256;
@@ -21,8 +22,6 @@ export const THUMBNAIL_SIZE = 256;
 const FOV = 30;
 /** Three-quarter view: from the front (+z), a little right and above. */
 const VIEW = new Vector3(0.9, 0.7, 1.6).normalize();
-/** Cylinders are drawn with this many sides, as in the viewer. */
-const CYLINDER_SEGMENTS = 24;
 
 /** The one offscreen renderer: a phone allows only a few WebGL contexts per page. */
 let renderer: WebGLRenderer | undefined;
@@ -59,16 +58,21 @@ function partMesh(part: Part): Mesh {
       ([key, value]) => value !== undefined && key !== 'castShadow' && key !== 'receiveShadow',
     ),
   );
-  const [sx, sy, sz] = part.size;
-  const geometry =
-    part.shape === 'box'
-      ? new BoxGeometry(sx, sy, sz)
-      : new CylinderGeometry(sx / 2, sx / 2, sy, CYLINDER_SEGMENTS);
-  const mesh = new Mesh(geometry, new MeshStandardMaterial({ color: part.color, ...settings }));
+  // The viewer's own geometry of the part's shape (`scene/batches.ts`).
+  const { shape, closed } = partShape(part);
+  const mesh = new Mesh(
+    shapeGeometry(shape),
+    new MeshStandardMaterial({
+      color: part.color,
+      ...settings,
+      // An open skin (a lathed shade) is seen from both sides.
+      ...(!closed && { side: DoubleSide }),
+    }),
+  );
   mesh.position.set(...part.center);
   // The tilt about the part's own x first, then the turn about y (as the draw list's `transform`).
   mesh.rotation.set(part.rotationX ?? 0, part.rotationY, 0, 'YXZ');
-  if (part.shape === 'cylinder') mesh.scale.set(1, 1, sz / sx);
+  if (part.shape === 'cylinder') mesh.scale.set(1, 1, part.size[2] / part.size[0]);
   return mesh;
 }
 

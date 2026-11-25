@@ -81,7 +81,8 @@ What the page writes is in [its uses](#uses-on-the-piece-page), below the playgr
   tagged by role, plus the wall stub; a piece may give its own `section()`. It is drawn as SVG
   (`SectionView.tsx`) with a legend by role and, in cm, the wall, frame, sash, glass (or panel), window board
   and outside sill depths, a shutter box's height and depth, and the sill and opening heights. The
-  outdoors is on the left, the room on the right.
+  outdoors is on the left, the room on the right. Rounded boxes and extruded outlines are cut as the box around
+  them and a lathed part as the cylinder around it ([adding-piece-type.md](adding-piece-type.md) § 2).
 - **Playground** (`Playground.tsx`), generated from the type's `params`:
   - a basic colour: a colour picker, a hex field (`#rgb` or `#rrggbb`, lower-cased) and a swatch; any colour;
   - a basic length: a slider in 1 cm steps and a field in cm with one decimal (`92,5` and `92.5` both work),
@@ -157,7 +158,8 @@ git. `apps/web/src/catalog-page/thumbnails.ts`:
 - **One renderer.** A single offscreen three.js `WebGLRenderer` (256×256, transparent; `renderThumbnail.ts`)
   draws each type's `parts(defaultParams(type), preview)` with a fixed light and a three-quarter camera, **one
   at a time**. There is never a canvas per card: phones allow only a few WebGL contexts per page. Furniture is
-  drawn at its default size, an opening in its type's `preview` hole.
+  drawn at its default size, an opening in its type's `preview` hole. Each part is drawn with the viewer's own
+  geometry of its shape (`shapeGeometry` in `scene/batches.ts`).
 - **Lazy.** A card asks for its thumbnail when it comes near the screen (an `IntersectionObserver` per card),
   and shows the type's icon until it is ready, or for good where WebGL is missing.
 - **Cached.** Each image is kept in the Cache Storage API (cache `my-home-thumbnails`) under
@@ -218,7 +220,8 @@ $S/screenshot.sh staging --viewport 390x844 --touch --path '/catalog' --out /tmp
 Tests: `apps/web/src/routing/routing.test.tsx`, `apps/web/src/catalog-page/Catalog.test.tsx`,
 `apps/web/src/catalog-page/thumbnails.test.ts`, `apps/web/src/piece-page/*.test.ts(x)` (playground, section,
 page, uses, editor, history, Place, notes and photos; the fake api in `test/fakeApi.ts` has uses, history with
-undo, notes and photo subjects), `apps/web/src/catalog/dimensions.test.ts`, `App.test.tsx` § pages and `Mobile.test.tsx`. The piece page's
+undo, notes and photo subjects), `apps/web/src/catalog/dimensions.test.ts`, `apps/web/src/catalog/shapes.test.ts` (the part shapes, and the
+triangles of every type against the budget of 5,000), `App.test.tsx` § pages and `Mobile.test.tsx`. The piece page's
 tests mock `Inspector` (no WebGL in jsdom); the section is SVG and is tested as it is.
 
 ## Wall windows (`window.casement`, `window.tilt-turn`)

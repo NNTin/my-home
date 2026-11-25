@@ -6,7 +6,8 @@ Every window, door, roof window, gate, furniture and fixture type is a **piece t
    its id, kind, family, name, icon, description, placement (and, placed in a room, its mounting) and **parameters** (colours and sizes, `basic` or
    `design`, with limits). Both the api and the web app read it from `@my-home/shared` `catalog`.
 2. a **piece module** in [`apps/web/src/catalog/<family>/<variant>/index.ts`](../apps/web/src/catalog/):
-   how the type is drawn, as plain data (boxes and cylinders), from its parameter values.
+   how the type is drawn, as plain data (boxes, cylinders, rounded boxes, extruded outlines and lathed
+   profiles), from its parameter values.
 
 The registry ([`catalog/registry.ts`](../apps/web/src/catalog/registry.ts)) finds every module with
 `import.meta.glob` and checks it against the shared catalogue: exactly one module per type, the
@@ -110,13 +111,39 @@ export default definePiece({
   height is the placement's). A ceiling piece's origin is on the ceiling's surface, +y up into it: what shows
   hangs below 0 (a downlight's trim), what is hidden sits above (its housing).
   The builder or the editor places the piece, so a module never sees world coordinates.
-- A `Part` is a `box` or a `cylinder` (`size` = `[diameter, height, diameter]`), turned by `rotationY` and
+- A `Part` is one solid: a shape (below), turned by `rotationY` and
   optionally tilted by `rotationX` (about its own x axis, before the turn: a sloping roof sheet, a leaning
   backrest, `tilted(cylinder(…), Math.PI / 2)` for a log lying on its side), with a colour, a
   `role` (`frame`, `glass`, `body`, …) and optional `material` settings (transparency, metalness,
   shadows). [`PartsMesh`](../apps/web/src/catalog/PartsMesh.tsx) draws every piece the same way,
   in the order of its parts (keep glass after the frame), and adds the selection and collision
   highlight to furniture.
+- **Shapes**, each with a helper in [`parts.ts`](../apps/web/src/catalog/parts.ts) that works out the part's
+  `center` and `size` (always the box around the part, before it is turned):
+
+  | Helper                                          | Shape                                                                                       | For                                | Triangles           |
+  | ----------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------- | ------------------- |
+  | `box(center, size, …)`                          | A box                                                                                       | Boards, carcasses, panes           | 12                  |
+  | `cylinder(center, diameter, height, …)`         | An upright cylinder, elliptic with a `depth`                                                | Posts, discs, trunks               | 96                  |
+  | `roundedBox(center, size, radius, …)`           | A box whose edges and corners are rounded by `radius` (at most half its smallest side)      | Cushions, fronts, appliances       | 300                 |
+  | `extrude(origin, outline, depth, …, rotationY)` | A closed outline in x/y about `origin`, extruded through `depth` along z, half to each side | Handles, legs, mouldings, worktops | 4 n − 4 (n corners) |
+  | `lathe(origin, profile, …)`                     | A profile of `[radius, y]` points about `origin`, turned about the y axis                   | Lamp shades, pots, turned legs     | 48 (n − 1)          |
+  - **`extrude`** takes its turn as an argument, because the outline turns about `origin`, not about the middle
+    of its box: `-Math.PI / 2` lays the outline's x along the piece's z, for a side view that runs along x (the
+    hooks of `kitchen.wall-shelf`). The outline may wind either way.
+  - **`lathe`**: give the profile from the bottom up along the outside (and back down the inside for a hollow
+    pot). A point given twice is a sharp edge; a single point is a soft one. A profile that starts and ends on
+    the axis (radius 0), or ends where it starts (a ring), is a solid. Any other is an open skin (a bowl, a
+    lamp shade): it is drawn from both sides, as a mesh of its own, and a section does not cap it
+    (`garden.planter` is a pot and a bush).
+  - **Everything else ignores the shape.** Dimensions, the footprint, collisions and snapping come from the
+    type's parameters (`furnitureSize`), as for boxes. The piece page frames a part by its `size`, and a
+    section (`sectionOf`) cuts a rounded box and an extruded outline by that box and a lathed part by the
+    cylinder around it, unless the module gives its own `section`.
+  - **Budget:** at most 5,000 triangles per piece (`docs/design/realistic-render.md` §10.1). The count of every
+    type at its default size is recorded in `apps/web/src/catalog/__golden__/triangles.json` and checked by
+    `catalog/shapes.test.ts`; a design change updates it with the other goldens.
+
 - `dimensions(values, ctx)` lists the measurements the piece page shows: lines in the local frame
   with a `value` in metres, a `label` in cm with one decimal and a `name` ("Width", "Sill height"),
   built with `dimension(from, to, value, name)`. At most 8 lines (the piece page labels at most 8 in
@@ -152,7 +179,8 @@ everything the renderer is given; how it is merged into meshes is not recorded. 
 goldens in the same PR and says so**: run `pnpm --filter @my-home/web exec vitest run -u
 src/catalog/golden.test.ts` and review the diff (one line per solid). A refactor must leave them
 unchanged. A new type changes no golden until a home or the furniture list uses it (the furniture
-golden lists every furniture type, so a new furniture type adds its lines).
+golden lists every furniture type, so a new furniture type adds its lines). `triangles.json` beside them
+lists the triangles of every type; a new type adds its line.
 
 ## Removing or renaming a type
 
