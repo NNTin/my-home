@@ -1,4 +1,5 @@
 import {
+  BoxGeometry,
   BufferAttribute,
   BufferGeometry,
   DataTexture,
@@ -16,6 +17,8 @@ import {
 import { describe, expect, it } from 'vitest';
 import {
   boundaryEdges,
+  covered,
+  coverOf,
   createTufts,
   edgeTufts,
   hash,
@@ -260,6 +263,53 @@ describe('the tufts of a scene', () => {
     lawn.geometry = lawnGeometry(20, 8);
     frame(scene, camera, beautiful());
     expect(tufts.mesh.count).toBeGreaterThan(all);
+  });
+
+  it('leave out what lies under a stepping stone, and stand around what is higher', () => {
+    const scene = new Scene();
+    scene.add(lawnMesh());
+    const tufts = createTufts(scene);
+    const camera = cameraAt(5, 1.6, 4);
+    frame(scene, camera, beautiful());
+    const open = tufts.mesh.count;
+    const places = () => {
+      const matrix = new Matrix4();
+      return Array.from({ length: tufts.mesh.count }, (_, i) => {
+        tufts.mesh.getMatrixAt(i, matrix);
+        return new Vector3().setFromMatrixPosition(matrix);
+      });
+    };
+    const under = (p: Vector3) => Math.abs(p.x - 5) < 0.5 && Math.abs(p.z - 4) < 0.5;
+    expect(places().filter(under).length).toBeGreaterThan(15);
+    // A slab of a metre, 3 cm thick, lying on the lawn.
+    const stone = new Mesh(new BoxGeometry(1, 0.03, 1), new MeshStandardMaterial());
+    stone.position.set(5, 0.015, 4);
+    stone.updateMatrixWorld();
+    scene.add(stone);
+    frame(scene, camera, beautiful());
+    expect(places().filter(under)).toHaveLength(0);
+    expect(tufts.mesh.count).toBeLessThan(open);
+    expect(tufts.mesh.count).toBeGreaterThan(open - 60);
+    // Moved away, the grass is back where it lay.
+    stone.position.set(50, 0.015, 4);
+    stone.updateMatrixWorld();
+    frame(scene, camera, beautiful());
+    expect(tufts.mesh.count).toBe(open);
+    // A chair-high box, a flat surface and a block the size of a terrace cover nothing.
+    for (const size of [
+      [1, 0.9, 1],
+      [1, 0, 1],
+      [5, 0.2, 5],
+    ] as const) {
+      const other = new Mesh(new BoxGeometry(...size), new MeshStandardMaterial());
+      other.position.set(5, size[1] / 2, 4);
+      other.updateMatrixWorld();
+      expect(coverOf(other)).toBeUndefined();
+    }
+    // A slab that lies a storey higher (on another level) covers nothing down here.
+    stone.position.set(5, 2.6, 4);
+    stone.updateMatrixWorld();
+    expect(covered(coverOf(stone)!, { x: 5, y: 0, z: 4 })).toBe(false);
   });
 
   it('are cut by a section with the home: they hold the home’s cutting planes', () => {

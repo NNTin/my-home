@@ -1,4 +1,5 @@
 import {
+  Box3,
   BufferAttribute,
   BufferGeometry,
   Color,
@@ -24,6 +25,8 @@ import {
  * instances, which is no draw call: switching tier shows and hides the tufts without compiling
  * anything. Which tier a frame is, the mesh reads from the target the frame is drawn into: only
  * the beautiful tier's has a depth texture (`scene/output.ts`).
+ *
+ * Under something low that lies on a lawn (a stepping stone) there are none.
  *
  * Nothing here is random: a tuft's place, turn and size come from a hash of where it stands, so
  * the same view draws the same pixels (§6.7).
@@ -244,6 +247,34 @@ export type SceneHook = (
   target: WebGLRenderTarget | null,
 ) => void;
 
+/** Something lower than this lies on the ground: a stepping stone, a slab, a cover. */
+const COVER_HEIGHT = 0.3;
+/** Larger than this in plan it is ground itself (paving, a terrain block), not something on it. */
+const COVER_AREA = 12;
+
+/**
+ * The box of a mesh that may lie on a lawn and cover its grass: a solid (not a flat surface) no
+ * larger than a slab. Whether it does lie on the lawn is decided per tuft (`covered`). Tufts
+ * stand around the foot of what is higher (a chair, a shrub, a fence), as grass does.
+ */
+export function coverOf(object: Mesh): Box3 | undefined {
+  const { geometry } = object;
+  if (!geometry.boundingBox) geometry.computeBoundingBox();
+  const box = geometry.boundingBox!.clone().applyMatrix4(object.matrixWorld);
+  const [w, h, d] = [box.max.x - box.min.x, box.max.y - box.min.y, box.max.z - box.min.z];
+  return h > 0.005 && h <= COVER_HEIGHT && w * d <= COVER_AREA ? box : undefined;
+}
+
+/** Whether the tuft stands under a cover that lies on the ground there. */
+export const covered = (cover: Box3, tuft: Pick<Tuft, 'x' | 'y' | 'z'>): boolean =>
+  tuft.x > cover.min.x &&
+  tuft.x < cover.max.x &&
+  tuft.z > cover.min.z &&
+  tuft.z < cover.max.z &&
+  cover.min.y < tuft.y + 0.1 &&
+  cover.max.y > tuft.y &&
+  cover.max.y <= tuft.y + COVER_HEIGHT;
+
 interface Lawn {
   mesh: Mesh;
   /** The geometry the tufts were made from: a new one is a new lawn. */
@@ -310,10 +341,16 @@ export function createTufts(scene: Scene): Tufts {
       return;
     }
     const found: Lawn[] = [];
+    const covers: Box3[] = [];
     frameScene.traverse((object) => {
       const lawn = object as Mesh;
-      if (!lawn.isMesh || (lawn.material as { name?: string }).name !== LAWN) return;
-      if (!shown(lawn) || !textured(lawn)) return;
+      if (!lawn.isMesh || lawn === mesh || !shown(lawn)) return;
+      if ((lawn.material as { name?: string }).name !== LAWN) {
+        const cover = coverOf(lawn);
+        if (cover) covers.push(cover);
+        return;
+      }
+      if (!textured(lawn)) return;
       let known = lawns.get(lawn);
       if (known?.geometry !== lawn.geometry) {
         const triangles = meshTriangles(lawn);
@@ -324,7 +361,8 @@ export function createTufts(scene: Scene): Tufts {
     });
     for (const lawn of lawns.keys()) if (!lawn.parent) lawns.delete(lawn);
     camera.getWorldPosition(eye);
-    const now = `${found.map((l) => l.geometry.uuid).join()}@${eye.x},${eye.y},${eye.z}`;
+    const lying = covers.map((c) => [...c.min.toArray(), ...c.max.toArray()].join()).join(';');
+    const now = `${found.map((l) => l.geometry.uuid).join()}@${eye.x},${eye.y},${eye.z}#${lying}`;
     if (now === held) {
       mesh.count = Math.min(MAX_TUFTS, mesh.userData.tufts as number);
       return;
@@ -332,7 +370,7 @@ export function createTufts(scene: Scene): Tufts {
     held = now;
     let count = 0;
     const put = (tuft: Tuft) => {
-      if (count >= MAX_TUFTS) return;
+      if (count >= MAX_TUFTS || covers.some((c) => covered(c, tuft))) return;
       turn.setFromAxisAngle(up, tuft.turn);
       matrix.compose(
         at.set(tuft.x, tuft.y, tuft.z),
