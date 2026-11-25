@@ -1257,8 +1257,9 @@ the catalogue, a family per PR.
 **How (#117):** the helpers every family shares are in `catalog/parts.ts` (`rod`, `plank`, `slab`, `strip`, `arc`,
 `roundedRect`, `veneerTint`) and `catalog/cabinet.ts` (the finishes `LACQUER`, `METAL`, `GLASS`, `wood`, and
 `handle`); `docs/adding-piece-type.md` § 2 describes them. A wooden board is stained veneer (D77) with its grain
-along it (D78), every part of a rebuilt piece names a finish (D80), and bright steel is lacquer (D81). Piece modules are in the main chunk: the
-kitchen family with the helpers is 1.1 kB of it.
+along it (D78), every part of a rebuilt piece names a finish (D80), and bright steel is lacquer (D81). Doors stay open
+frames (D82). Piece modules are in the main chunk: the seven families together are 3.8 kB of it, which uses up
+the epic's +35 kB (§10.1).
 
 ### Step 7. Outdoors (M)
 
@@ -1407,6 +1408,9 @@ All seven proposed defaults were accepted.
 | D79 | A built-in oven is a unit of its own in a base cabinet run: the other units share what is left on its two sides                                                                            | The units shared the whole run and the oven was laid over their fronts wherever `ovenAt` put it: handles showed beside it and fronts were cut by it. Same parameters, same placements; the unit width that is measured is the first stretch's (#117)                                                                                                                          |
 | D80 | A rebuilt piece names a finish on every part (`plastic.matt` for lacquer and laminate, `metal.brushed`, `glass.clear`, `wood.veneer`), at most four of them                                | The parts of one finish are one mesh, a part without a finish with its own roughness a mesh of its own (D24): a finish on every part is what keeps a piece at two to four draw calls. The default view goes from 131 to 136 draw calls with the kitchen (#117)                                                                                                                |
 | D81 | `metal.brushed` is for dark hardware (handles, rails, hooks, taps); a part in a bright steel or chrome colour is `plastic.matt` in that colour                                             | A metal has no colour of its own: it mirrors the environment, which is lowered under a ceiling (§6.3) and absent on a piece page and in a thumbnail. The oven's steel panel `#b7b9bb` came out charcoal at eye level, where the plain part before it read as steel. A brighter metal needs light to mirror, which is the renderer's matter, not a piece's (#117)              |
+| D82 | An interior or exterior door is still drawn open, as its frame with the stop the leaf closes against; no leaf                                                                              | The home model does not say on which side a door hangs or which way it swings, and step 6b adds no parameter. A leaf drawn on a guessed side would be wrong in half the doorways. A French door and a garage door are closed by what fills them, as before, now as leaves and sections (#117)                                                                                 |
+| D83 | A piece holds its triangle budget at its parameters' limits, not only at its default size: a large rock pile is made of larger stones                                                      | The budget test drew every type at its default size. A rock pile of 6 x 3 x 1.5 m was about 1,000 boxes before step 6b. Each family's test now draws the extremes a use may choose (#117)                                                                                                                                                                                     |
+| D84 | A thumbnail turns a ceiling piece over part by part (each part's tilt grows by half a turn), not by mirroring the parts' centres                                                           | Mirroring is the same for a box or a cylinder, which was all a ceiling piece had. The downlight's trim is a lathed ring with a bevel on its room side: mirrored, it showed its ceiling side (#117)                                                                                                                                                                            |
 
 ## 14. Open questions
 

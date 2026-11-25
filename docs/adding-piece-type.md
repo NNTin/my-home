@@ -170,7 +170,8 @@ export default definePiece({
     more mesh, and the default view has a draw-call budget (§10.1 of the design). `catalog/cabinet.ts` has the
     usual ones: `LACQUER` (`plastic.matt`: carcasses, fronts, laminate), `METAL` (`metal.brushed`, tinted by the
     part's colour: dark hardware only, because a metal mirrors the room and bright steel reads as charcoal under
-    a ceiling and on a piece page; draw steel and chrome as `LACQUER` in their colour), `GLASS` (`glass.clear`: glossy; see-through only with `transparent`).
+    a ceiling and on a piece page; draw steel and chrome as `LACQUER` in their colour), `GLASS` (`glass.clear`: glossy; see-through only with `transparent`),
+    `FABRIC` (`fabric.weave`: cloth, a woven sling, a curtain).
   - **Wood:** the veneer's grain runs along the part's own z on a face that looks up, and up a face that looks
     sideways. A board that lies along x is a `plank` (a box turned a quarter). A tint multiplies the texture, so
     a colour used as the tint comes out far too dark: `wood(color)` of `catalog/cabinet.ts` gives the colour and
