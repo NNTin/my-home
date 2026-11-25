@@ -49,11 +49,25 @@ export function createFinishListing(
   });
 }
 
+/**
+ * The groups' texts as one record. Throws on a finish that two groups describe: spreading the
+ * groups into one object would keep the later entry and say nothing.
+ */
+export function joinAbout(
+  groups: readonly Readonly<Record<string, FinishAbout>>[],
+): Record<string, FinishAbout> {
+  const joined: Record<string, FinishAbout> = {};
+  for (const group of groups) {
+    for (const [id, said] of Object.entries(group)) {
+      if (id in joined) throw new Error(`Invalid finish "${id}": described twice`);
+      joined[id] = said;
+    }
+  }
+  return joined;
+}
+
 /** Every finish with its description and source, in library order. */
-export const finishListing: readonly ListedFinish[] = createFinishListing(finishes, {
-  ...floorsAbout,
-  ...wallsAbout,
-  ...exteriorAbout,
-  ...groundAbout,
-  ...partsAbout,
-});
+export const finishListing: readonly ListedFinish[] = createFinishListing(
+  finishes,
+  joinAbout([floorsAbout, wallsAbout, exteriorAbout, groundAbout, partsAbout]),
+);
