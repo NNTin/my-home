@@ -101,7 +101,12 @@ describe('frame parts', () => {
     expect(glass.size[0]).toBeCloseTo(1 - 2 * 0.065 - 2 * 0.06, 9);
     expect(glass.size[1]).toBeCloseTo(1 - 2 * 0.065 - 2 * 0.06, 9);
     expect(glass.size[2]).toBeCloseTo(0.024, 9);
-    expect(glass.material).toEqual({ transparent: true, opacity: 0.35, depthWrite: false });
+    expect(glass.material).toEqual({
+      finish: 'glass.clear',
+      transparent: true,
+      opacity: 0.35,
+      depthWrite: false,
+    });
   });
 
   it('leaves a door open at the bottom: its frame, and the stop the leaf closes against', () => {
@@ -221,24 +226,30 @@ describe('frame parts', () => {
     expect(french.filter((p) => p.role === 'frame')).toHaveLength(3 + 1);
   });
 
-  it('draws the roof window as one opaque pane that casts but does not receive shadows', () => {
+  it('draws the roof window as one opaque pane in a frame of cladding; the pane casts but does not receive shadows', () => {
     const type = catalog.get('window.roof')!;
     const parts = pieces.get('window.roof')!.parts(defaultParams(type), {
       width: 0.8,
       height: 1,
       wallDepth: 0.06,
     });
-    expect(parts).toEqual([
-      {
-        shape: 'box',
-        center: [0, 0, 0],
-        size: [0.8, 0.06, 1],
-        rotationY: 0,
-        color: '#a8d4ff',
-        role: 'glass',
-        material: { metalness: 0.3, roughness: 0.2, receiveShadow: false },
-      },
-    ]);
+    expect(parts.map((p) => p.role)).toEqual(['frame', 'frame', 'frame', 'frame', 'glass']);
+    expect(parts.at(-1)).toEqual({
+      shape: 'box',
+      center: [0, 0, 0],
+      size: [0.8 - 0.1, 0.06, 1 - 0.1],
+      rotationY: 0,
+      color: '#a8d4ff',
+      role: 'glass',
+      material: { metalness: 0.3, roughness: 0.2, receiveShadow: false },
+    });
+    // The frame fills the hole around the pane and stands a centimetre proud of it.
+    for (const member of parts.slice(0, 4)) {
+      expect(Math.abs(member.center[0]) + member.size[0] / 2).toBeLessThanOrEqual(0.4 + 1e-9);
+      expect(Math.abs(member.center[2]) + member.size[2] / 2).toBeLessThanOrEqual(0.5 + 1e-9);
+      expect(member.center[1] + member.size[1] / 2).toBeCloseTo(0.04);
+      expect(member.material).toEqual({ finish: 'plastic.matt' });
+    }
   });
 
   it('measures the hole, the frame and the sashes', () => {
