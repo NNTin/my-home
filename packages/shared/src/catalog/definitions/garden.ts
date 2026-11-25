@@ -156,6 +156,27 @@ export const grass = defineType({
   footprint: 'ellipse',
 });
 
+export const hedge = defineType({
+  id: 'garden.hedge',
+  kind: 'outdoor',
+  family: 'garden',
+  name: 'Hedge',
+  description:
+    'A clipped hedge in a straight run. Several in a row, or at an angle, follow a border.',
+  icon: '🌳',
+  category: 'Plants',
+  placement: 'floor',
+  mounting: 'floor',
+  params: {
+    color: color('Leaf colour', '#3f5f35'),
+    width: length('Length', 2, 0.5, 12),
+    depth: length('Depth', 0.6, 0.3, 1.5),
+    height: length('Height', 1.5, 0.4, 3),
+  },
+  snapping: { wall: 'none' },
+  footprint: 'rectangle',
+});
+
 export const rockPile = defineType({
   id: 'garden.rock-pile',
   kind: 'outdoor',
@@ -243,6 +264,7 @@ export const garden = [
   planter,
   shrub,
   grass,
+  hedge,
   rockPile,
   steppingStone,
   log,

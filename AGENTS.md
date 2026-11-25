@@ -14,7 +14,8 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
   furniture, kitchen units, appliances, the `fixtures` kind: lights, the radiator, and the `outdoor` kind: patio and
   garden pieces), auto-registered (`docs/adding-piece-type.md`); the furniture (one placement set per home) and its editor in `docs/furniture.md`;
   the phone layout (top bar, sheet) in `docs/mobile.md`
-- `packages/shared/src/finishes/`: the finish library (surface materials: one definition per finish), and
+- `packages/shared/src/finishes/`: the finish library (surface materials: one definition per finish, its
+  description and texture source apart in `definitions/*.about.ts`), and
   `apps/web/src/finishes/`: their texture files (CC0 only, `ASSETS.md`), loader and materials; a room or exterior
   surface names a finish in `home.json` (`docs/home-model.md` § Finishes)
 - `apps/web/src/views/`: the named views (`?view=cutaway|section|eye`, the Views control, backdrops, the
@@ -107,6 +108,9 @@ What reading CI has taught us:
   about 0.1 kB of it (#117).
   Import the small thing from a small module (`scene/frameControl.ts`) and read `pnpm check:bundle` in the
   `check` job.
+- **What only a lazy page reads must not be exported by `@my-home/shared`'s index:** the index is in the main
+  chunk, and a bundler keeps a module where its first importer is. Texts and tables for the catalogue page go
+  in a module of their own behind an entry of the package (`@my-home/shared/finish-listing`: 1.2 kB, #118).
 - **A smoke's screenshots are not artifacts:** a page can show the owner's photos. Only `visual-diff` uploads
   (canvas shots of the model).
 - **Staging is shared:** a check counts only for the commit staging ran before and after it, and the owner may

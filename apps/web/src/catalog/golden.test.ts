@@ -40,7 +40,7 @@ describe('golden draw lists', () => {
 
   it('draws every outdoor type as recorded', async () => {
     const outdoor = catalog.types.filter(isOutdoorKind).map((t) => furniture.get(t.id)!);
-    expect(outdoor).toHaveLength(11);
+    expect(outdoor).toHaveLength(12);
     await expect(goldenJson(typeItems(outdoor))).toMatchFileSnapshot('./__golden__/outdoor.json');
   });
 });

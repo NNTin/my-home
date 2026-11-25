@@ -1,11 +1,9 @@
 import type { Finish } from '../types';
-import { ambientCg, polyHaven } from './source';
 
 export const ground: Finish[] = [
   {
     id: 'grass.lawn',
     name: 'Lawn',
-    description: 'A short, dense lawn. The default of gardens.',
     surfaces: ['ground'],
     texture: { id: 'grass-lawn', maps: ['color', 'normal'] },
     tileSize: 1.4,
@@ -13,12 +11,10 @@ export const ground: Finish[] = [
     tintable: false,
     roughness: 1,
     metalness: 0,
-    source: ambientCg('Grass004'),
   },
   {
     id: 'paving.concrete-slab',
     name: 'Concrete paving slabs',
-    description: 'Grey concrete slabs laid in rows. The default of patios, paths and driveways.',
     surfaces: ['ground', 'floor'],
     texture: { id: 'paving-concrete-slab', maps: ['color', 'normal', 'roughness'] },
     tileSize: 1.8,
@@ -26,12 +22,10 @@ export const ground: Finish[] = [
     tintable: false,
     roughness: 1,
     metalness: 0,
-    source: polyHaven('concrete_pavement'),
   },
   {
     id: 'gravel.fine',
     name: 'Fine gravel',
-    description: 'Fine grey gravel. The default of gravel and drainage strips.',
     surfaces: ['ground'],
     texture: { id: 'gravel-fine', maps: ['color', 'normal'] },
     tileSize: 2,
@@ -39,12 +33,10 @@ export const ground: Finish[] = [
     tintable: false,
     roughness: 1,
     metalness: 0,
-    source: polyHaven('gravel_floor_02'),
   },
   {
     id: 'asphalt.plain',
     name: 'Asphalt',
-    description: 'Clean dark asphalt. The default of roads.',
     surfaces: ['ground'],
     texture: { id: 'asphalt-plain', maps: ['color', 'normal', 'roughness'] },
     tileSize: 2.1,
@@ -52,12 +44,10 @@ export const ground: Finish[] = [
     tintable: false,
     roughness: 1,
     metalness: 0,
-    source: polyHaven('clean_asphalt'),
   },
   {
     id: 'soil.plain',
     name: 'Soil',
-    description: 'Bare brown soil: the ground itself, where nothing covers it and where it is cut.',
     surfaces: ['ground'],
     texture: { id: 'soil-plain', maps: ['color', 'normal'] },
     tileSize: 2,
@@ -65,13 +55,10 @@ export const ground: Finish[] = [
     tintable: false,
     roughness: 1,
     metalness: 0,
-    source: polyHaven('dirt'),
   },
   {
     id: 'stone.rubble',
     name: 'Rubble stone wall',
-    description:
-      'Rough grey stones stacked dry: a rubble retaining wall or a bank of boulders in the garden.',
     surfaces: ['ground'],
     texture: { id: 'stone-rubble', maps: ['color', 'normal'] },
     tileSize: 3,
@@ -79,6 +66,5 @@ export const ground: Finish[] = [
     tintable: false,
     roughness: 1,
     metalness: 0,
-    source: polyHaven('broken_wall', '2026-11-24'),
   },
 ];

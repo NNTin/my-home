@@ -11,6 +11,7 @@ import {
   textureFiles,
   type FileFacts,
 } from '@my-home/shared';
+import { finishListing } from '@my-home/shared/finish-listing';
 import { describe, expect, it } from 'vitest';
 
 // The texture files against the finish definitions and the manifest (docs/design/realistic-render.md
@@ -85,11 +86,11 @@ describe('ASSETS.md', () => {
         )
         .join('\n')
         .trim();
-    expect(bare(manifest)).toBe(bare(assetManifest(finishes.finishes, facts)));
+    expect(bare(manifest)).toBe(bare(assetManifest(finishListing, facts)));
   });
 
   it('names a CC0 source for every texture set', () => {
-    for (const finish of finishes.finishes.filter((f) => f.texture)) {
+    for (const finish of finishListing.filter((f) => f.texture)) {
       const section = manifest.split(`## ${finish.id}\n`)[1]?.split('\n## ')[0] ?? '';
       expect(section, finish.id).toContain(finish.source!.url);
       expect(section, finish.id).toContain('licence CC0-1.0');

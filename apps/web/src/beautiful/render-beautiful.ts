@@ -57,8 +57,9 @@ type Held = Partial<
 >;
 
 /**
- * The occlusion pass for one device, and with it the tufts of the scene's lawns. A phone computes it at half the resolution. The settings
- * are fixed here: changing one later would compile the pass's programs again (§4.5).
+ * The occlusion pass for one device, and with it the tufts of the scene's lawns. A phone
+ * computes it at half the resolution. The settings are fixed here: changing one later would
+ * compile the pass's programs again (§4.5).
  */
 export function createAmbientOcclusion(
   scene: Scene,

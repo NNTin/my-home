@@ -103,8 +103,11 @@ export interface FenceSlat {
 const SLAT_DEPTH = 0.02;
 /** A privacy fence: upright boards this wide, a centimetre apart, their tops a little uneven. */
 const BOARD = 0.11;
-/** A trellis: laths this wide in a diagonal lattice, this far apart along the bay. */
-const LATH = 0.03;
+/**
+ * A trellis: laths 3 cm wide in a diagonal lattice, this far apart along the bay. A lath leans
+ * at 45 degrees, so it takes the square root of two times its width of the bay's length.
+ */
+const LATH = 0.03 * Math.SQRT2;
 const LATTICE = 0.16;
 /** The rails a wire mesh hangs between. */
 const RAIL = 0.04;

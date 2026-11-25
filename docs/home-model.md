@@ -341,7 +341,8 @@ from the home's location, which the model does not contain.
 
 A **finish** is a named surface material: oak laminate, plain paint, clay roof tiles. Finishes are a library in
 git, like the piece types: [`packages/shared/src/finishes/`](../packages/shared/src/finishes/) (definitions in
-`definitions/`, validated at import). A home refers to a finish by id. A home may leave out every finish: a surface without
+`definitions/`, validated at import: what a finish is drawn with in `<group>.ts`, its description and the source of
+its texture in `<group>.about.ts`, which only the catalogue page, the asset manifest and the fetch tool read). A home refers to a finish by id. A home may leave out every finish: a surface without
 one draws the **default for its kind**, so a home that names no finish is valid and complete.
 
 A **finish use** is:
@@ -394,7 +395,7 @@ section "Finishes") and in the definitions. A textured finish has files under
 [`apps/web/src/finishes/textures/`](../apps/web/src/finishes/textures/), all from CC0 libraries, each listed with
 its source, licence and SHA-256 in [`apps/web/src/finishes/ASSETS.md`](../apps/web/src/finishes/ASSETS.md).
 
-**Adding a finish** is its own pull request: the definition, then `pnpm finishes:fetch <finish id>` (downloads
+**Adding a finish** is its own pull request: the definition and its entry in the group's `.about.ts`, then `pnpm finishes:fetch <finish id>` (downloads
 from the CC0 library, checks the provider's checksum, writes the WebP files and the manifest; needs ImageMagick
 with WebP and `unzip`), and a note of which photo ids called for it. `pnpm test` checks the files against the
 manifest and the texture budgets. **No texture is ever made from a photo:** a texture cut from one of the

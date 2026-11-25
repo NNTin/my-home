@@ -64,12 +64,11 @@ export interface FinishTexture {
   maps: readonly TextureMap[];
 }
 
+/** What a finish is drawn with, and its name. */
 export interface Finish {
   /** `<material>.<name>`, lower case. */
   id: string;
   name: string;
-  /** For the catalogue page and for people choosing. */
-  description: string;
   /** Where it may be used. Empty: only the viewer draws it (cut faces), no home may name it. */
   surfaces: readonly FinishSurface[];
   /** Absent for a plain finish: a colour with a roughness, and no files. */
@@ -84,6 +83,19 @@ export interface Finish {
   roughness: number;
   /** 0 to 1. */
   metalness: number;
+}
+
+/**
+ * What is said about a finish and nothing draws with: its description and where its texture
+ * comes from. Kept beside the definition and out of the viewer's first chunk: the catalogue page,
+ * the asset manifest and the fetch tool read it (`listing.ts`).
+ */
+export interface FinishAbout {
+  /** For the catalogue page and for people choosing. */
+  description: string;
   /** For textured finishes. */
   source?: FinishSource;
 }
+
+/** A finish with what is said about it. */
+export type ListedFinish = Finish & FinishAbout;
