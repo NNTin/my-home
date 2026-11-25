@@ -44,11 +44,14 @@ export function previewParts(type: CatalogType, values = defaultParams(type)): P
 export function thumbnailParts(type: CatalogType): Part[] {
   const parts = previewParts(type);
   if (isPlacedKind(type) && mountingOf(type) === 'ceiling') {
-    // Half a turn about x: y and z change sign, and so does a turn about y.
+    // Half a turn about x: y and z change sign, and so does a turn about y. The part itself is
+    // turned over too (its tilt, which comes before the turn, grows by half a turn): a bevelled
+    // trim ring is not the same upside down, as a box or a cylinder is.
     return parts.map((p) => ({
       ...p,
       center: [p.center[0], -p.center[1], -p.center[2]],
       rotationY: -p.rotationY,
+      rotationX: (p.rotationX ?? 0) + Math.PI,
     }));
   }
   return parts;

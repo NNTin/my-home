@@ -130,14 +130,6 @@ export function handle(
   };
 }
 
-/** A horizontal bar handle as a plain bar: the pieces that are not rebuilt yet (#117). */
-export const barHandle = (x: number, y: number, face: number, length: number, color: string) =>
-  box([x, y, face + 0.012], [length, 0.012, 0.016], color, 'handle');
-
-/** A vertical bar handle as a plain bar. */
-export const uprightHandle = (x: number, y: number, face: number, length: number, color: string) =>
-  box([x, y, face + 0.012], [0.012, length, 0.016], color, 'handle');
-
 /**
  * A row of `count` doors across `width` (centred on x = 0), from `bottom` to `top`, their faces at
  * z = `face`. The handles (when a colour is given) sit on the opening edges: a single door opens

@@ -529,7 +529,8 @@ describe('the types rebuilt with the new shapes', () => {
       expect(min[0]).toBeGreaterThanOrEqual(-size.width / 2 - 1e-9);
       expect(max[0]).toBeLessThanOrEqual(size.width / 2 + 1e-9);
       expect(min[2]).toBeGreaterThanOrEqual(-size.depth / 2 - 1e-9);
-      expect(max[2]).toBeLessThanOrEqual(size.depth / 2 + 0.005);
+      // The microwave's keys and its dial stand off its front.
+      expect(max[2]).toBeLessThanOrEqual(size.depth / 2 + 0.02);
     },
   );
 });
