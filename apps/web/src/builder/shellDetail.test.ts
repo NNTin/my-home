@@ -185,10 +185,16 @@ describe('door reveals and thresholds', () => {
     );
   });
 
-  it('the frame stays the door piece’s: the same parts as without any reveal', () => {
+  it('the frame stays the door piece’s: its three members and its stop, as without any reveal', () => {
     const door = home.openings.find((o) => o.id === 'door-souterrain-corridor-bath-room')!;
-    expect(door.parts).toHaveLength(3);
-    expect(door.parts.every((p) => p.role === 'frame')).toBe(true);
+    expect(door.parts.map((p) => p.role)).toEqual([
+      'frame',
+      'frame',
+      'frame',
+      'detail',
+      'detail',
+      'detail',
+    ]);
   });
 
   it('is drawn with its level, as closed boxes', () => {

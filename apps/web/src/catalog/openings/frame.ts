@@ -1,12 +1,17 @@
 import { catalog, type ParamValues } from '@my-home/shared';
-import { box, colorParam, dimension, numberParam } from '../parts';
+import { GLASS, handle, LACQUER, wood } from '../cabinet';
+import { box, colorParam, dimension, numberParam, shade } from '../parts';
 import type { DimensionLine, Part, PieceContext } from '../types';
 
 /**
- * The frame of a wall opening and what fills it, in the opening's local frame (centre of the hole
- * at the origin, width along x). Members, in this order: left and right jambs, the head, the sill
- * (`sill`), then `divisions - 1` mullions, then the fill. A frame without a sill is open at the
- * bottom (a door), and its fill reaches the floor.
+ * The frame of a door and what fills it, in the opening's local frame (centre of the hole at the
+ * origin, width along x). Members, in this order: left and right jambs, the head, then
+ * `divisions - 1` mullions, then the fill. The frame is open at the bottom and its fill reaches
+ * the floor: glass as one leaf for each division (stiles and
+ * rails around a pane, a handle where it closes), a panel as the sections of a sectional door.
+ * A door without a fill is drawn open: its frame with the stop the leaf closes against.
+ *
+ * The frame is oak veneer stained to its colour, or lacquer for a colour lighter than oak.
  *
  * The frame width is clamped to a quarter of the hole and the depth to the wall, so small holes
  * and thin walls still get a frame.
@@ -15,7 +20,6 @@ export interface FrameOptions {
   frameWidth: number;
   frameDepth: number;
   frameColor: string;
-  sill: boolean;
   /** Sashes or leaves side by side; between them a mullion of the frame's width and colour. */
   divisions?: number;
   fill?:
@@ -23,35 +27,116 @@ export interface FrameOptions {
     | { kind: 'panel'; depth: number; color: string };
 }
 
+/** A glazed door leaf's stiles and top rail, the least depth of a leaf, and a door stop. */
+const STILE = 0.09;
+const LEAF = 0.04;
+const STOP = 0.015;
+
 export function frameParts(ctx: PieceContext, options: FrameOptions): Part[] {
   const { width: w, height: h, wallDepth } = ctx;
   const f = Math.min(options.frameWidth, w / 4, h / 4);
   const d = Math.min(options.frameDepth, wallDepth);
-  const color = options.frameColor;
+  const { color, material } = wood(options.frameColor);
+  const member = (center: Part['center'], size: Part['size'], role: Part['role'] = 'frame') =>
+    box(center, size, color, role, material);
   const parts = [
-    box([-w / 2 + f / 2, 0, 0], [f, h, d], color, 'frame'),
-    box([w / 2 - f / 2, 0, 0], [f, h, d], color, 'frame'),
-    box([0, h / 2 - f / 2, 0], [w - 2 * f, f, d], color, 'frame'),
+    member([-w / 2 + f / 2, 0, 0], [f, h, d]),
+    member([w / 2 - f / 2, 0, 0], [f, h, d]),
+    member([0, h / 2 - f / 2, 0], [w - 2 * f, f, d]),
   ];
-  if (options.sill) parts.push(box([0, -h / 2 + f / 2, 0], [w - 2 * f, f, d], color, 'frame'));
-  // The space inside the frame: down to the floor without a sill.
-  const [innerY, innerHeight] = options.sill ? [0, h - 2 * f] : [-f / 2, h - f];
+  // The space inside the frame, down to the floor.
+  const [innerY, innerHeight] = [-f / 2, h - f];
   const divisions = options.divisions ?? 1;
-  for (let i = 1; i < divisions; i++) {
-    const x = -w / 2 + f + ((w - 2 * f) * i) / divisions;
-    parts.push(box([x, innerY, 0], [f, innerHeight, d], color, 'frame'));
-  }
+  const mullion = (i: number) => -w / 2 + f + ((w - 2 * f) * i) / divisions;
+  for (let i = 1; i < divisions; i++)
+    parts.push(member([mullion(i), innerY, 0], [f, innerHeight, d]));
   const fill = options.fill;
   if (fill?.kind === 'glass') {
-    parts.push(
-      box([0, innerY, 0], [w - 2 * f, innerHeight, fill.depth], fill.color, 'glass', {
-        transparent: true,
-        opacity: fill.opacity,
-        depthWrite: false,
-      }),
-    );
+    const pane = { ...GLASS, transparent: true, opacity: fill.opacity, depthWrite: false };
+    // A glazed door: each leaf between two members of the frame.
+    const leaves: Part[] = [];
+    for (let i = 0; i < divisions; i++) {
+      const from = i === 0 ? -w / 2 + f : mullion(i) + f / 2;
+      const to = i === divisions - 1 ? w / 2 - f : mullion(i + 1) - f / 2;
+      const [cx, lw] = [(from + to) / 2, to - from];
+      const stile = Math.min(STILE, lw / 4);
+      const depth = Math.min(d, Math.max(fill.depth, LEAF));
+      for (const side of [-1, 1])
+        parts.push(
+          member(
+            [cx + side * (lw / 2 - stile / 2), innerY, 0],
+            [stile, innerHeight, depth],
+            'sash',
+          ),
+        );
+      parts.push(
+        member(
+          [cx, innerY + innerHeight / 2 - stile / 2, 0],
+          [lw - 2 * stile, stile, depth],
+          'sash',
+        ),
+        // The bottom rail is twice as high, as a door's is.
+        member(
+          [cx, innerY - innerHeight / 2 + stile, 0],
+          [lw - 2 * stile, 2 * stile, depth],
+          'sash',
+        ),
+        // It closes towards the middle of the door; a single leaf on its right.
+        handle(
+          cx + (cx < -1e-6 ? 1 : cx > 1e-6 ? -1 : 1) * (lw / 2 - stile / 2),
+          innerY - innerHeight / 2 + Math.min(1.05, innerHeight / 2),
+          depth / 2,
+          Math.min(0.14, innerHeight / 2),
+          shade(options.frameColor, -0.55),
+          true,
+        ),
+      );
+      leaves.push(
+        box(
+          [cx, innerY + stile / 2, 0],
+          [lw - 2 * stile, innerHeight - 3 * stile, fill.depth],
+          fill.color,
+          'glass',
+          pane,
+        ),
+      );
+    }
+    // The panes last: they are see-through.
+    parts.push(...leaves);
   } else if (fill?.kind === 'panel') {
-    parts.push(box([0, innerY, 0], [w - 2 * f, innerHeight, fill.depth], fill.color, 'panel'));
+    // A sectional door: sections about half a metre high with a joint between them, in front of
+    // a dark backing that shows in the joints.
+    const sections = Math.max(1, Math.round(innerHeight / 0.5));
+    const each = innerHeight / sections;
+    parts.push(
+      box(
+        [0, innerY, -fill.depth / 4],
+        [w - 2 * f, innerHeight, fill.depth / 2],
+        shade(fill.color, -0.5),
+        'panel',
+        LACQUER,
+      ),
+    );
+    for (let i = 0; i < sections; i++)
+      parts.push(
+        box(
+          [0, innerY - innerHeight / 2 + each * (i + 0.5), 0],
+          [w - 2 * f, each - 0.012, fill.depth],
+          fill.color,
+          'panel',
+          LACQUER,
+        ),
+      );
+  } else {
+    // An open doorway: the stop on both jambs and under the head.
+    const [across, deep] = [Math.min(STOP, f / 2), d / 3];
+    for (const side of [-1, 1])
+      parts.push(
+        member([side * (w / 2 - f - across / 2), innerY, 0], [across, innerHeight, deep], 'detail'),
+      );
+    parts.push(
+      member([0, h / 2 - f - across / 2, 0], [w - 2 * f - 2 * across, across, deep], 'detail'),
+    );
   }
   return parts;
 }

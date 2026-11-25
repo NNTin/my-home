@@ -70,14 +70,18 @@ describe('sectionOf', () => {
 
   it('cuts a French door: no sill member and no wall under it, glass down to the floor', () => {
     const { shapes } = sectionFor('door.french');
-    expect(roles(shapes)).toEqual(['wall', 'frame', 'glass']);
-    expect(rect(shapes[2]!)).toEqual([-0.01, 0.01, -1.1, 1.04]);
+    // The head, the leaf's top and bottom rails, and the pane between them.
+    expect(roles(shapes)).toEqual(['wall', 'frame', 'sash', 'sash', 'glass']);
+    expect(rect(shapes[4]!)).toEqual([-0.01, 0.01, -0.92, 0.95]);
+    expect(rect(shapes[3]!)).toEqual([-0.02, 0.02, -1.1, -0.92]);
   });
 
   it('cuts a garage door: head and panel', () => {
     const { shapes } = sectionFor('door.garage');
-    expect(roles(shapes)).toEqual(['wall', 'frame', 'panel']);
-    expect(rect(shapes[2]!)).toEqual([-0.02, 0.02, -1.05, 0.99]);
+    // The backing, then the four sections.
+    expect(roles(shapes)).toEqual(['wall', 'frame', 'panel', 'panel', 'panel', 'panel', 'panel']);
+    expect(rect(shapes[2]!)).toEqual([-0.02, 0, -1.05, 0.99]);
+    expect(rect(shapes[3]!)).toEqual([-0.02, 0.02, -1.044, -0.546]);
   });
 
   it('uses the piece’s own section instead of the cut when it has one', () => {

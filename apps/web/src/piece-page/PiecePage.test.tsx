@@ -165,7 +165,8 @@ describe('the piece page', () => {
     const before = inspector!.parts.length;
     const more = panel().getByRole('button', { name: 'More leaves' });
     fireEvent.click(more);
-    expect(inspector!.parts.length).toBe(before + 1);
+    // A mullion, and the second leaf: four members, a handle and a pane.
+    expect(inspector!.parts.length).toBe(before + 7);
     expect(dimensions()).toContain('Leaf 2 width41.0 cm');
     fireEvent.click(more);
     // Three leaves need 120 cm; the preview hole is 100 cm.
@@ -173,9 +174,10 @@ describe('the piece page', () => {
       '3 leaves need at least 120.0 cm, the opening is 100.0 cm',
     );
     fireEvent.change(panel().getByRole('textbox', { name: 'Frame colour, hex' }), {
-      target: { value: '#123' },
+      target: { value: '#eee' },
     });
-    expect(inspector!.parts[0]!.color).toBe('#112233');
+    // A colour lighter than oak: the frame is lacquer in it (a darker one would be a stain).
+    expect(inspector!.parts[0]!.color).toBe('#eeeeee');
     fireEvent.click(panel().getByRole('button', { name: 'Reset to defaults' }));
     expect(inspector!.parts.length).toBe(before);
     fireEvent.click(screen.getByRole('checkbox', { name: 'Dimensions' }));

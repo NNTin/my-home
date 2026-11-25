@@ -78,10 +78,31 @@ describe('gate piece', () => {
       height: 1.2,
       wallDepth: 0.1,
     });
-    expect(parts.map((p) => p.role)).toEqual(['post', 'post', 'panel']);
+    // Each post under its cap, the panel between its two rails, and the latch.
+    expect(parts.map((p) => p.role)).toEqual([
+      'post',
+      'post',
+      'post',
+      'post',
+      'panel',
+      'panel',
+      'panel',
+      'handle',
+    ]);
     expect(parts[0]!.size).toEqual([0.1, 1.3, 0.1]);
-    expect(parts[2]!.size).toEqual([1, 1.2, 0.04]);
-    expect(parts.map((p) => p.color)).toEqual(['#3d4043', '#3d4043', '#6c7176']);
+    expect(parts[1]!.center[1] - parts[1]!.size[1] / 2).toBeCloseTo(1.3);
+    expect(parts[4]!.size).toEqual([1, 1.2, 0.04]);
+    expect([parts[0]!.color, parts[2]!.color, parts[4]!.color]).toEqual([
+      '#3d4043',
+      '#3d4043',
+      '#6c7176',
+    ]);
+    // The rails lie at the panel's top and bottom, inside its height, and stand proud of it.
+    const [top, bottom] = [parts[6]!, parts[5]!];
+    expect(top.center[1] + top.size[1] / 2).toBeCloseTo(1.2);
+    expect(bottom.center[1] - bottom.size[1] / 2).toBeCloseTo(0);
+    expect(top.size[2]).toBeCloseTo(0.06);
+    expect(parts.every((p) => p.material?.finish === 'plastic.matt')).toBe(true);
   });
 
   it('builds a gate fence from its effective values', () => {
@@ -103,8 +124,10 @@ describe('gate piece', () => {
     expect(built.values).toEqual(defaultParams(catalog.get('gate.swing')!));
     // 3 m in bays of at most 2.5 m: 2 panels, 3 posts.
     expect(built.panels).toHaveLength(Math.ceil(3 / FENCE_BAY));
-    expect(built.parts?.map((p) => p.role)).toEqual(['post', 'post', 'post', 'panel', 'panel']);
-    expect(built.parts?.[3]?.center).toEqual(built.panels[0]!.center);
+    expect(built.parts?.filter((p) => p.role === 'post')).toHaveLength(6);
+    expect(built.parts?.filter((p) => p.role === 'panel')).toHaveLength(6);
+    expect(built.parts?.filter((p) => p.role === 'handle')).toHaveLength(1);
+    expect(built.parts?.[6]?.center).toEqual(built.panels[0]!.center);
   });
 });
 
