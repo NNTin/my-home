@@ -1,7 +1,31 @@
-import { box, shade } from './parts';
-import type { Part } from './types';
+import type { Vec2 } from '../builder/buildHome';
+import { box, extrude, shade, strip, veneerTint } from './parts';
+import type { Part, PartMaterial } from './types';
 
 /** Shared pieces of cabinets (kitchen units, the shoe cabinet), in the furniture frame. */
+
+/** Lacquer and laminate: carcasses and fronts. */
+export const LACQUER: PartMaterial = { finish: 'plastic.matt' };
+/**
+ * Dark hardware: handles, rails, hooks, taps. The part's colour tints the metal. A metal mirrors
+ * what is around it, and under a ceiling that is little (docs/design/realistic-render.md D81): a
+ * part in a bright steel or chrome colour is `LACQUER`, or it reads as charcoal.
+ */
+export const METAL: PartMaterial = { finish: 'metal.brushed' };
+
+/** Glass and glass ceramic: glossy, and see-through only where the part says `transparent`. */
+export const GLASS: PartMaterial = { finish: 'glass.clear' };
+
+/**
+ * A wooden board's colour and finish: oak veneer stained to `color`, or lacquer where the colour
+ * is lighter than oak (`veneerTint`).
+ */
+export function wood(color: string): { color: string; material: PartMaterial } {
+  const stain = veneerTint(color);
+  return stain
+    ? { color: stain, material: { finish: 'wood.veneer' } }
+    : { color, material: LACQUER };
+}
 
 /** Board thickness of carcasses and fronts. */
 export const BOARD = 0.018;
@@ -33,24 +57,84 @@ export function carcass(
   back: number,
   front: number,
   color: string,
+  material?: PartMaterial,
 ): Part[] {
   const h = top - bottom;
   const d = front - back;
   const z = (front + back) / 2;
+  const board = (center: Part['center'], size: Part['size'], tone = color) =>
+    box(center, size, tone, 'body', material);
   return [
-    box([-w / 2 + BOARD / 2, bottom + h / 2, z], [BOARD, h, d], color, 'body'),
-    box([w / 2 - BOARD / 2, bottom + h / 2, z], [BOARD, h, d], color, 'body'),
-    box([0, top - BOARD / 2, z], [w - 2 * BOARD, BOARD, d], color, 'body'),
-    box([0, bottom + BOARD / 2, z], [w - 2 * BOARD, BOARD, d], color, 'body'),
-    box([0, bottom + h / 2, back + 0.004], [w - 2 * BOARD, h, 0.008], shade(color, -0.08), 'body'),
+    board([-w / 2 + BOARD / 2, bottom + h / 2, z], [BOARD, h, d]),
+    board([w / 2 - BOARD / 2, bottom + h / 2, z], [BOARD, h, d]),
+    board([0, top - BOARD / 2, z], [w - 2 * BOARD, BOARD, d]),
+    board([0, bottom + BOARD / 2, z], [w - 2 * BOARD, BOARD, d]),
+    board([0, bottom + h / 2, back + 0.004], [w - 2 * BOARD, h, 0.008], shade(color, -0.08)),
   ];
 }
 
-/** A horizontal bar handle centred on (x, y), standing off a front at z = `face`. */
+/** How far a bar handle stands off its front, the bar's thickness and its width. */
+const HANDLE = { reach: 0.03, gauge: 0.007, width: 0.011 };
+
+/** A bar handle seen along its width: two short posts and the bar, `length` over all. */
+const handleOutline = (length: number): Vec2[] => {
+  const [end, out] = [length / 2 - HANDLE.gauge / 2, HANDLE.reach - HANDLE.gauge / 2];
+  return strip(
+    [
+      [-end, 0],
+      [-end, out],
+      [end, out],
+      [end, 0],
+    ],
+    HANDLE.gauge,
+  );
+};
+
+/**
+ * A bar handle on two posts, of brushed metal unless a `material` is given, centred on (x, y) and standing off a front at
+ * z = `face`: lying, or `upright`.
+ */
+export function handle(
+  x: number,
+  y: number,
+  face: number,
+  length: number,
+  color: string,
+  upright = false,
+  material = METAL,
+): Part {
+  const outline = handleOutline(length);
+  if (upright)
+    // Seen from its side: the outline's x runs out of the front (-π/2 lays it along z).
+    return extrude(
+      [x, y, face],
+      outline.map(([along, out]): Vec2 => [out, along]),
+      HANDLE.width,
+      color,
+      'handle',
+      -Math.PI / 2,
+      material,
+    );
+  // Seen from above and laid down: the outline's y becomes the piece's z.
+  return {
+    ...extrude(
+      [x, y - HANDLE.reach / 2, face + HANDLE.reach / 2],
+      outline,
+      HANDLE.width,
+      color,
+      'handle',
+      0,
+      material,
+    ),
+    rotationX: Math.PI / 2,
+  };
+}
+
+/** A horizontal bar handle as a plain bar: the pieces that are not rebuilt yet (#117). */
 export const barHandle = (x: number, y: number, face: number, length: number, color: string) =>
   box([x, y, face + 0.012], [length, 0.012, 0.016], color, 'handle');
 
-/** A vertical bar handle. */
+/** A vertical bar handle as a plain bar. */
 export const uprightHandle = (x: number, y: number, face: number, length: number, color: string) =>
   box([x, y, face + 0.012], [0.012, length, 0.016], color, 'handle');
 
@@ -66,7 +150,8 @@ export function doors(
   top: number,
   face: number,
   color: string,
-  handle?: { color: string; y: number; length: number },
+  bar?: { color: string; y: number; length: number },
+  material?: PartMaterial,
 ): Part[] {
   const dw = width / count;
   const parts: Part[] = [];
@@ -78,12 +163,13 @@ export function doors(
         [dw - FRONT_GAP, top - bottom - FRONT_GAP, BOARD],
         color,
         'leaf',
+        material,
       ),
     );
-    if (handle) {
+    if (bar) {
       const side = count === 1 ? -1 : i < count / 2 ? 1 : -1;
       const x = cx + side * (dw / 2 - 0.04);
-      parts.push(uprightHandle(x, handle.y, face, handle.length, handle.color));
+      parts.push(handle(x, bar.y, face, bar.length, bar.color, true));
     }
   }
   return parts;

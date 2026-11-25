@@ -178,7 +178,7 @@ describe('the finishes the catalogue’s pieces name', () => {
     expect(partFinishProblem('cut.dark')).toMatch(/not for parts/);
   });
 
-  it('the wall shelf’s board has the finish its use chose, tinted with its colour', () => {
+  it('the wall shelf’s board has the finish its use chose: lacquer in its colour, oak veneer stained to it', () => {
     const type = catalog.get('kitchen.wall-shelf')!;
     const board = (overrides: Record<string, unknown>) => {
       const { values } = effectiveParams(type, overrides);
@@ -186,9 +186,12 @@ describe('the finishes the catalogue’s pieces name', () => {
       return batches(partItems(parts, 'p', group)).map((b) => b.finish);
     };
     expect(board({})).toEqual(['plastic.matt']);
-    expect(board({ finish: 'wood.veneer', rail: 'hooks' })).toEqual(['wood.veneer', 'part']);
-    const { values } = effectiveParams(type, { finish: 'wood.veneer', color: '#c9a36b' });
+    expect(board({ finish: 'wood.veneer', rail: 'hooks' })).toEqual([
+      'wood.veneer',
+      'metal.brushed',
+    ]);
+    const { values } = effectiveParams(type, { finish: 'wood.veneer', color: '#7a5a3a' });
     const [part] = pieces.get(type.id)!.parts(values, previewContext(type, values));
-    expect(part).toMatchObject({ color: '#c9a36b', material: { finish: 'wood.veneer' } });
+    expect(part).toMatchObject({ color: '#c1b6aa', material: { finish: 'wood.veneer' } });
   });
 });

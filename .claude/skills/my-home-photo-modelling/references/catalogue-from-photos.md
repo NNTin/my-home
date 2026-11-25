@@ -26,10 +26,10 @@ garden of the souterrain went this way: the `outdoor` kind, ten `garden.*` types
 - A new type is a PR reviewed like code ([docs/adding-piece-type.md](../../../../docs/adding-piece-type.md)):
   - the shared definition: id `<family>.<variant>` (never renamed once used), kind, category, basic
     parameters with defaults and limits from the photos, and design ones fixed;
-  - the piece module in `apps/web/src/catalog/<family>/<variant>/`: boxes and cylinders, `rotationX` to tilt,
+  - the piece module in `apps/web/src/catalog/<family>/<variant>/`: shapes with finishes (`docs/adding-piece-type.md` § 2),
     at most 8 dimension lines;
-  - the tests that list every type (`catalog.test.ts`, `Catalog.test.tsx`), the goldens (`vitest -u
-src/catalog/golden.test.ts`, reviewed), a test for anything clever, and the table in `docs/catalog.md`.
+  - the tests that list every type (`catalog.test.ts`, `Catalog.test.tsx`), the goldens (`vitest run
+src/catalog/golden.test.ts -u`, reviewed), a test for anything clever, and the table in `docs/catalog.md`.
 - Pick the kind by where the piece is:
   - `furniture`: in a room, stands or hangs;
   - `fixtures`: built in (lights, heating);
