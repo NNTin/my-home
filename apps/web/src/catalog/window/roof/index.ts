@@ -16,13 +16,12 @@ export default definePiece({
     const { width: w, height: l } = ctx;
     const t = numberParam(values, 'thickness');
     const f = Math.min(FRAME, w / 4, l / 4);
-    const member = (x: number, z: number, sx: number, sz: number) =>
-      box([x, 0.005, z], [sx, t + 0.01, sz], CLADDING, 'frame', LACQUER);
     return [
-      member(-w / 2 + f / 2, 0, f, l),
-      member(w / 2 - f / 2, 0, f, l),
-      member(0, -l / 2 + f / 2, w - 2 * f, f),
-      member(0, l / 2 - f / 2, w - 2 * f, f),
+      // The cladding: along the two sides, then across the top and the bottom between them.
+      ...[-1, 1].flatMap((side) => [
+        box([(side * (w - f)) / 2, 0.005, 0], [f, t + 0.01, l], CLADDING, 'frame', LACQUER),
+        box([0, 0.005, (side * (l - f)) / 2], [w - 2 * f, t + 0.01, f], CLADDING, 'frame', LACQUER),
+      ]),
       box([0, 0, 0], [w - 2 * f, t, l - 2 * f], colorParam(values, 'glassColor'), 'glass', {
         metalness: numberParam(values, 'metalness'),
         roughness: numberParam(values, 'roughness'),
