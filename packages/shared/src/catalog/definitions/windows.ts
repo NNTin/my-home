@@ -72,7 +72,7 @@ export const roofWindow = defineType({
   kind: 'openings',
   family: 'window',
   name: 'Roof window',
-  description: 'A window lying in a roof plane, in a frame of dark cladding.',
+  description: 'A window lying in a roof plane (no frame is drawn yet).',
   icon: '🔲',
   placement: 'roof',
   preview: { width: 0.8, height: 1.2, sill: 0, wallDepth: 0.06 },
