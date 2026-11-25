@@ -330,4 +330,35 @@ describe('the tufts of a scene', () => {
     expect(scene.onBeforeRender).toBe(before);
     expect(scene.children).not.toContain(tufts.mesh);
   });
+
+  it('a second set of tufts keeps drawing when the first goes after it came', () => {
+    // A new frame output brings a new pass; the old one may be disposed after that.
+    const scene = new Scene();
+    scene.add(lawnMesh());
+    const first = createTufts(scene);
+    const second = createTufts(scene);
+    first.dispose();
+    frame(scene, cameraAt(5, 80, 4), beautiful());
+    expect(second.mesh.count).toBeGreaterThan(0);
+    expect(first.mesh.count).toBe(0);
+    expect(scene.children).toContain(second.mesh);
+  });
+
+  it('rewrites nothing while the camera moves far from every lawn, and sends only what is used', () => {
+    const scene = new Scene();
+    scene.add(lawnMesh());
+    const tufts = createTufts(scene);
+    frame(scene, cameraAt(5, 80, 4), beautiful());
+    const { instanceMatrix, instanceColor } = tufts.mesh;
+    const version = instanceMatrix.version;
+    expect(instanceMatrix.updateRanges).toEqual([{ start: 0, count: tufts.mesh.count * 16 }]);
+    expect(instanceColor!.updateRanges).toEqual([{ start: 0, count: tufts.mesh.count * 3 }]);
+    frame(scene, cameraAt(40, 60, -30), beautiful());
+    frame(scene, cameraAt(-20, 30, 10), beautiful());
+    expect(instanceMatrix.version).toBe(version);
+    // Down on the lawn every step is another set of tufts.
+    frame(scene, cameraAt(5, 1.6, 4), beautiful());
+    frame(scene, cameraAt(5.3, 1.6, 4), beautiful());
+    expect(instanceMatrix.version).toBe(version + 2);
+  });
 });

@@ -257,12 +257,14 @@ const COVER_AREA = 12;
  * larger than a slab. Whether it does lie on the lawn is decided per tuft (`covered`). Tufts
  * stand around the foot of what is higher (a chair, a shrub, a fence), as grass does.
  */
+const scratch = new Box3();
 export function coverOf(object: Mesh): Box3 | undefined {
   const { geometry } = object;
   if (!geometry.boundingBox) geometry.computeBoundingBox();
-  const box = geometry.boundingBox!.clone().applyMatrix4(object.matrixWorld);
+  const box = scratch.copy(geometry.boundingBox!).applyMatrix4(object.matrixWorld);
   const [w, h, d] = [box.max.x - box.min.x, box.max.y - box.min.y, box.max.z - box.min.z];
-  return h > 0.005 && h <= COVER_HEIGHT && w * d <= COVER_AREA ? box : undefined;
+  // Nearly every mesh is none: only a cover gets a box of its own.
+  return h > 0.005 && h <= COVER_HEIGHT && w * d <= COVER_AREA ? box.clone() : undefined;
 }
 
 /** Whether the tuft stands under a cover that lies on the ground there. */
@@ -361,8 +363,11 @@ export function createTufts(scene: Scene): Tufts {
     });
     for (const lawn of lawns.keys()) if (!lawn.parent) lawns.delete(lawn);
     camera.getWorldPosition(eye);
+    const near = found.flatMap((lawn) => nearTufts(lawn.triangles, eye));
     const lying = covers.map((c) => [...c.min.toArray(), ...c.max.toArray()].join()).join(';');
-    const now = `${found.map((l) => l.geometry.uuid).join()}@${eye.x},${eye.y},${eye.z}#${lying}`;
+    // Far from every lawn the tufts are the edges', wherever the camera is: nothing to rewrite.
+    const from = near.length ? `${eye.x},${eye.y},${eye.z}` : '';
+    const now = `${found.map((l) => l.geometry.uuid).join()}@${from}#${lying}`;
     if (now === held) {
       mesh.count = Math.min(MAX_TUFTS, mesh.userData.tufts as number);
       return;
@@ -382,27 +387,39 @@ export function createTufts(scene: Scene): Tufts {
       count++;
     };
     for (const lawn of found) lawn.edge.forEach(put);
-    for (const lawn of found) nearTufts(lawn.triangles, eye).forEach(put);
+    near.forEach(put);
     mesh.count = count;
     mesh.userData.tufts = count;
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    // Only the instances in use are sent to the GPU, not the whole of both buffers.
+    for (const [attribute, itemSize] of [
+      [mesh.instanceMatrix, 16],
+      [mesh.instanceColor!, 3],
+    ] as const) {
+      attribute.clearUpdateRanges();
+      attribute.addUpdateRange(0, count * itemSize);
+      attribute.needsUpdate = true;
+    }
   };
 
   // three.js calls a scene's hook with the target the frame is drawn into as its fourth
   // argument (`WebGLRenderer.render`); its types describe the hook of an object in a scene.
   const hooked = scene as unknown as { onBeforeRender: SceneHook };
   const before = hooked.onBeforeRender;
-  hooked.onBeforeRender = (renderer, frameScene, camera, target) => {
+  let gone = false;
+  const hook: SceneHook = (renderer, frameScene, camera, target) => {
     before.call(scene, renderer, frameScene, camera, target);
-    update(frameScene, camera, target);
+    if (!gone) update(frameScene, camera, target);
   };
+  hooked.onBeforeRender = hook;
 
   return {
     mesh,
     update,
     dispose() {
-      hooked.onBeforeRender = before;
+      // Whoever hooked the scene after these tufts keeps its hook, which calls this one: it
+      // passes the call on and does nothing more.
+      gone = true;
+      if (hooked.onBeforeRender === hook) hooked.onBeforeRender = before;
       scene.remove(mesh);
       mesh.dispose();
       geometry.dispose();
