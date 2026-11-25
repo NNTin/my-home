@@ -1,25 +1,39 @@
-import { colorParam, cylinder, dimension, numberParam, shade, tilted } from '../../parts';
+import { colorParam, dimension, numberParam, rod, shade } from '../../parts';
 import { definePiece } from '../../types';
 import { sizeOf } from '../../furniture/size';
 
 const CUT = '#c9ad84';
+/** The cut at an end, from the outside in: [share of the diameter, colour]. */
+const RINGS: [number, number][] = [
+  [0.9, 0],
+  [0.55, -0.14],
+  [0.12, -0.4],
+];
 
-/** A tree trunk section lying along its width, with the light cut wood at both ends. */
+/**
+ * A tree trunk section lying along its width: the bark, and at both ends the cut wood inside it,
+ * with its darker heartwood and the pith.
+ */
 export default definePiece({
   id: 'garden.log',
   parts: (values) => {
     const { width: length } = sizeOf(values);
     const diameter = numberParam(values, 'diameter');
-    const bark = colorParam(values, 'color');
-    // Upright cylinders, tilted onto their side (along z) and turned to lie along x.
-    const lying = (x: number, len: number, color: string) => ({
-      ...tilted(cylinder([x, diameter / 2, 0], diameter, len, color, 'body'), Math.PI / 2),
-      rotationY: Math.PI / 2,
-    });
+    const y = diameter / 2;
     return [
-      lying(0, length - 0.02, bark),
-      lying(-length / 2 + 0.005, 0.01, shade(CUT, -0.05)),
-      lying(length / 2 - 0.005, 0.01, CUT),
+      rod([0, y, 0], diameter, length - 0.006, colorParam(values, 'color'), 'body'),
+      ...[-1, 1].flatMap((side) =>
+        RINGS.map(([share, tone], i) =>
+          // Each ring a millimetre proud of the one around it.
+          rod(
+            [side * (length / 2 - 0.006 - (RINGS.length - 1 - i) * 0.001), y, 0],
+            diameter * share,
+            0.012,
+            shade(CUT, tone),
+            'detail',
+          ),
+        ),
+      ),
     ];
   },
   dimensions: (values) => {

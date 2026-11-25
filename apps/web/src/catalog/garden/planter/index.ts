@@ -2,6 +2,7 @@ import type { Vec2 } from '../../../builder/buildHome';
 import { box, colorParam, cylinder, dimension, lathe, numberParam, shade } from '../../parts';
 import { definePiece } from '../../types';
 import { sizeOf } from '../../furniture/size';
+import { bushProfile } from '../plants';
 
 /** The thickness of a round pot's wall at its rim, and how far the soil lies below it. */
 const WALL = 0.02;
@@ -29,18 +30,6 @@ function potProfile(radius: number, height: number): Vec2[] {
     [0, soil],
   ];
 }
-
-/** A plant as one rounded bush: widest a third of the way up, closing to a blunt top. */
-const bushProfile = (radius: number, height: number): Vec2[] => [
-  [0, 0],
-  [radius * 0.55, 0],
-  [radius * 0.9, height * 0.15],
-  [radius, height * 0.35],
-  [radius * 0.92, height * 0.6],
-  [radius * 0.68, height * 0.82],
-  [radius * 0.35, height * 0.96],
-  [0, height],
-];
 
 /** A round or square pot with a plant growing out of it. */
 export default definePiece({
