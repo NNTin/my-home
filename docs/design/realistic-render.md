@@ -962,7 +962,7 @@ a photo shows otherwise.
 | --------------- | ----------------------------------------------------------------------------------------------------------- |
 | Slopes          | A sloped area is one smooth surface; the stepped contour bands go (D85)                                     |
 | Lawn            | `grass.lawn`, plus instanced tufts along lawn edges and within 6 m of the camera, beautiful tier only (D89) |
-| Hedges, trees   | New parametric `garden` types, built from the shapes of §8.2 (D92); none placed yet (D93)                   |
+| Hedges, trees   | New parametric `garden` types, built from the shapes of §8.2 (D92, D94); none placed yet (D93)              |
 | Fences          | Posts and slats or mesh as merged geometry per fence kind (D86, D87)                                        |
 | Beyond the plot | A neutral ground plane into the backdrop (D53, D88). No neighbours, no real surroundings                    |
 
@@ -1420,6 +1420,7 @@ All seven proposed defaults were accepted.
 | D91 | A finish's description and texture source are modules of their own (`definitions/*.about.ts`) behind the entry `@my-home/shared/finish-listing`; the library the viewer loads has neither  | Only the catalogue page, the asset manifest and the fetch tool read them. A bundler keeps a module where its first importer is, and the package's index is in the main chunk: an entry of its own is what moves them to the `CatalogPage` chunk, 1.19 kB of the main chunk's budget, which was used up (D22). Names stay: a finish choice shows them (D75) (#118)             |
 | D92 | `garden.hedge` is a row of rounded blocks of leaves, about a metre each and at most twelve, each reaching 8 cm into the next; plain parts, no finish                                       | A clipped hedge is a box with soft edges, and a run of several is not one smooth bar. Twelve rounded boxes are 3,600 of a piece's 5,000 triangles (D70), so a hedge of 12 m has blocks of a metre. No finish of the library is a leaf (#117's rule for plants); the blocks are one mesh (#118)                                                                                |
 | D93 | No hedge and no tree is placed: the owner's photos show none on the plot. Three photo requests are open for the parts of the garden no photo shows (f88373b9, eddd12f1, 5f4d3647)          | Those in view stand beyond the fences, and nothing outside the plot is modelled (§8.3). The north fence line, the west end of the north garden and the garden on the street side are in no photo taken from where the owner may stand. Nothing is guessed (#118)                                                                                                              |
+| D94 | `garden.tree` is a trunk that tapers into its crown and a crown made like the shrub's: a rounded middle and six clumps of leaves, lathed. Its footprint is `none`: one walks under it      | A broadleaved tree of 2 to 12 m from the shapes of §8.2, 2,544 triangles at any size. The crown starts where the clear trunk ends, at most six tenths of the way up, so every tree has a crown. Open like the pergola: a footprint as wide as the crown would block the lawn under it, and the catalogue has no footprint for a trunk alone (#118)                            |
 
 ## 14. Open questions
 
