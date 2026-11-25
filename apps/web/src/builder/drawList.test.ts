@@ -6,8 +6,6 @@ import mockHomeJson from '../../../../packages/shared/test-fixtures/mock-home.js
 import { box, cylinder, tilted } from '../catalog/parts';
 import { buildHome, type HomeScene } from './buildHome';
 import {
-  batchKey,
-  contourColor,
   drawList,
   groupShown,
   IDENTITY,
@@ -64,25 +62,12 @@ describe('colours', () => {
   it('reads a colour as three.js does, in linear light', () => {
     for (const hex of samples) close(linearRgb(hex), new Color(hex).toArray());
   });
-
-  it('darkens a contour as the old renderer did', () => {
-    for (const hex of samples)
-      expect(contourColor(hex)).toBe(`#${new Color(hex).multiplyScalar(0.6).getHexString()}`);
-  });
 });
 
 describe('the shell items', () => {
-  it('have unique ids, and a contour is a tint of its area’s finish', () => {
+  it('have unique ids', () => {
     const items = shellItems(home);
     expect(new Set(items.map((i) => i.id)).size).toBe(items.length);
-    const contours = items.filter((i) => i.id.includes('/contour-'));
-    expect(contours.length).toBeGreaterThan(0);
-    for (const contour of contours) {
-      const area = items.find((i) => i.id === contour.id.split('/contour-')[0])!;
-      expect(contour.finish).toBe(area.finish);
-      expect(contour.tint).not.toBe(area.tint);
-      expect(batchKey(contour)).toBe(batchKey(area));
-    }
   });
 
   it('flat polygons are open, cast no shadow and are drawn from both sides', () => {

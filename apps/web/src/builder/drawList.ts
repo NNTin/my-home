@@ -195,14 +195,17 @@ export function multiply(a: Matrix, b: Matrix): Matrix {
 
 // --- colours ------------------------------------------------------------------------------------
 
-/** Fences are not in the home model's finishes: plain paint in the colours they have always had. */
+/**
+ * Fences are not in the home model's finishes: plain paint. The privacy fence's boards are
+ * weathered wood, grey in the owner's photos (7a35c0c4, 1877b25d).
+ */
 const paint = (tint: string): ResolvedFinish =>
   resolveFinish(undefined, { finish: 'paint.plain', tint });
 const fenceFinishes = {
   post: paint('#3d4043'),
   brickPillar: paint('#9a5b40'),
   'chain-link': paint('#4a4e52'),
-  privacy: paint('#2c2e30'),
+  privacy: paint('#8a8780'),
   trellis: paint('#7a5a3a'),
 } as const;
 
@@ -219,9 +222,6 @@ const planColor = (index: number): ResolvedFinish =>
 
 const srgbToLinear = (c: number) =>
   c < 0.04045 ? c * 0.0773993808 : Math.pow(c * 0.9478672986 + 0.0521327014, 2.4);
-const linearToSrgb = (c: number) =>
-  c < 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 0.41666) - 0.055;
-
 /** A `#rrggbb` colour as linear RGB in 0..1: what a vertex colour holds. */
 export function linearRgb(color: string): Vec3 {
   const n = Number.parseInt(color.slice(1), 16);
@@ -230,15 +230,6 @@ export function linearRgb(color: string): Vec3 {
     srgbToLinear(((n >> 8) & 0xff) / 255),
     srgbToLinear((n & 0xff) / 255),
   ];
-}
-
-/** Contour lines are a darker shade of the surface they lie on (scaled in linear light). */
-export function contourColor(color: string): string {
-  const channel = (c: number) =>
-    Math.round(Math.max(0, Math.min(255, linearToSrgb(c * 0.6) * 255)))
-      .toString(16)
-      .padStart(2, '0');
-  return `#${linearRgb(color).map(channel).join('')}`;
 }
 
 // --- the shell and outdoors ---------------------------------------------------------------------
@@ -333,13 +324,7 @@ const prismItem = (common: Common, p: Prism, finish: ResolvedFinish) =>
 /** A floor finish turned by a quarter: its texture runs along plan z instead of plan x. */
 const QUARTER_TURN: UvFrame = { origin: [0, 0, 0], u: [0, 0, 1], v: [-1, 0, 0] };
 
-/** `tint` differs from the finish's for a tinted use of it (a contour on its area). */
-const surfaceItem = (
-  common: Common,
-  s: Surface,
-  finish: ResolvedFinish,
-  tint = finish.tint,
-): DrawItem => ({
+const surfaceItem = (common: Common, s: Surface, finish: ResolvedFinish): DrawItem => ({
   ...common,
   shape: {
     kind: 'surface',
@@ -350,7 +335,7 @@ const surfaceItem = (
   },
   matrix: transform([0, s.y, 0], 0, -Math.PI / 2),
   finish: finish.finish,
-  tint,
+  tint: finish.tint,
   ...(finish.rotation === 90 && { uv: QUARTER_TURN }),
   material: { doubleSided: true },
   castShadow: false,
@@ -541,20 +526,9 @@ export function shellItems(scene: HomeScene, options: ShellOptions = {}): DrawIt
   });
   return [
     ...scene.terrain.map((t) => prismItem({ id: t.id, group: terrain }, t, TERRAIN_FINISH)),
-    ...scene.outdoorAreas.flatMap((a) => {
-      const group: DrawGroup = { kind: 'area', id: a.id };
-      return [
-        surfaceItem({ id: a.id, group }, a, a.finish),
-        ...a.contours.map((c, i) =>
-          surfaceItem(
-            { id: `${a.id}/contour-${i}`, group },
-            c,
-            a.finish,
-            contourColor(a.finish.tint),
-          ),
-        ),
-      ];
-    }),
+    ...scene.outdoorAreas.map((a) =>
+      surfaceItem({ id: a.id, group: { kind: 'area', id: a.id } }, a, a.finish),
+    ),
     ...scene.slabs.map((s) =>
       prismItem(
         { id: s.id, group: { kind: 'slab', levelId: s.levelId, roof: s.kind === 'roof' } },
@@ -601,14 +575,17 @@ export function shellItems(scene: HomeScene, options: ShellOptions = {}): DrawIt
             f.kind === 'trellis' ? fenceFinishes.brickPillar : fenceFinishes.post,
           ),
         ),
-        ...f.panels.map((panel) =>
-          boxItem(
-            { id: panel.id, group },
-            panel,
-            fenceFinishes[kind],
-            f.kind === 'chain-link'
-              ? { material: { transparent: true, opacity: 0.35, depthWrite: false } }
-              : {},
+        // A wire mesh is its bay's panel, seen through; boards and laths are the fence itself.
+        ...(kind === 'chain-link' ? f.panels : []).map((panel) =>
+          boxItem({ id: panel.id, group }, panel, fenceFinishes[kind], {
+            material: { transparent: true, opacity: 0.35, depthWrite: false },
+          }),
+        ),
+        ...f.slats.map((slat) =>
+          profileItem(
+            { id: slat.id, group },
+            slat,
+            kind === 'chain-link' ? fenceFinishes.post : fenceFinishes[kind],
           ),
         ),
       ];

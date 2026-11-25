@@ -1,5 +1,5 @@
 import type { HomeModel } from '@my-home/shared';
-import type { Box, Vec2 } from './buildHome';
+import type { Box, Vec2, Vec3 } from './buildHome';
 import { EPS, rotationFor } from './plan';
 
 type FenceKind = NonNullable<HomeModel['fences']>[number]['kind'];
@@ -88,4 +88,84 @@ export function fenceLine(
     if (i === lengths.length - 1) post([ex, ez], walked, rotationY);
   });
   return { posts, panels };
+}
+
+/** A board, lath or rail of a fence: an outline in its bay's upright plane, `depth` thick. */
+export interface FenceSlat {
+  id: string;
+  center: Vec3;
+  rotationY: number;
+  depth: number;
+  outline: Vec2[];
+}
+
+/** Boards, laths and rails are this thick. */
+const SLAT_DEPTH = 0.02;
+/** A privacy fence: upright boards this wide, a centimetre apart, their tops a little uneven. */
+const BOARD = 0.11;
+/** A trellis: laths this wide in a diagonal lattice, this far apart along the bay. */
+const LATH = 0.03;
+const LATTICE = 0.16;
+/** The rails a wire mesh hangs between. */
+const RAIL = 0.04;
+
+/** What is left of a convex outline where `a x + b y <= c`. */
+const cut = (outline: Vec2[], a: number, b: number, c: number): Vec2[] =>
+  outline.flatMap((p, i) => {
+    const q = outline[(i + 1) % outline.length]!;
+    const [dp, dq] = [a * p[0] + b * p[1] - c, a * q[0] + b * q[1] - c];
+    const kept: Vec2[] = dp <= 0 ? [p] : [];
+    if (dp * dq < 0) {
+      const t = dp / (dp - dq);
+      kept.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]);
+    }
+    return kept;
+  });
+
+/**
+ * What fills the bays of a fence between its posts (docs/design/realistic-render.md §8.3):
+ * upright boards (privacy), a diagonal lattice cut to the bay (trellis), or the two rails of a
+ * wire mesh (chain-link; the mesh itself is the bay's translucent panel). Outlines are in the
+ * panel's own frame, about its middle.
+ */
+export function fenceSlats(
+  kind: Exclude<FenceKind, 'gate'>,
+  panels: (Box & { id: string })[],
+): FenceSlat[] {
+  const gap = FENCE_POST[kind];
+  return panels.flatMap((panel) => {
+    const [w, h] = [(panel.size[0] - gap) / 2, panel.size[1] / 2];
+    const rect = (x0: number, x1: number, y0: number, y1: number): Vec2[] => [
+      [x0, y0],
+      [x1, y0],
+      [x1, y1],
+      [x0, y1],
+    ];
+    const outlines: Vec2[][] = [];
+    if (kind === 'privacy') {
+      const count = Math.max(1, Math.round((2 * w) / (BOARD + 0.01)));
+      const pitch = (2 * w) / count;
+      for (let i = 0; i < count; i++) {
+        const x = -w + i * pitch;
+        outlines.push(rect(x, x + pitch - 0.01, -h, h - (i % 3) * 0.02));
+      }
+    } else {
+      outlines.push(rect(-w, w, h - RAIL, h), rect(-w, w, -h, RAIL - h));
+      if (kind === 'trellis') {
+        for (const side of [1, -1]) {
+          for (let c = -w - h; c < w + h; c += LATTICE) {
+            const lath = cut(cut(rect(-w, w, -h, h), 1, side, c + LATH), -1, -side, -c);
+            if (lath.length > 2) outlines.push(lath);
+          }
+        }
+      }
+    }
+    return outlines.map((outline, i) => ({
+      id: `${panel.id}:slat:${i}`,
+      center: panel.center,
+      rotationY: panel.rotationY,
+      depth: SLAT_DEPTH,
+      outline,
+    }));
+  });
 }
