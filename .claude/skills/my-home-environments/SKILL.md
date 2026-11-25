@@ -30,12 +30,12 @@ The magnetic declination is a home setting that deploys keep:
 The scripts below do all of this. Dependencies: `bash`, `curl`, `jq`, `gh`. Run them from the repository root.
 
 **A pull request's browser checks run in CI.** After the deploy to staging, the job `staging-checks` runs
-`walk-smoke.sh`, `mobile-smoke.sh` and `visual-diff.sh` (shot twice) through `staging-checks.sh`
-(`docs/deployment.md` § Checks on staging). Do not run these three from your own machine to verify a pull
+`walk-smoke.sh`, `mobile-smoke.sh`, `catalog-smoke.sh` and `visual-diff.sh` (shot twice) through `staging-checks.sh`
+(`docs/deployment.md` § Checks on staging). Do not run these four from your own machine to verify a pull
 request: read the job instead.
 
 ```sh
-gh pr checks <n> --repo NNTin/my-home                      # staging-checks (walk), (mobile), (visual-diff)
+gh pr checks <n> --repo NNTin/my-home                      # staging-checks (walk), (mobile), (catalog), (visual-diff)
 gh run view <run-id> --repo NNTin/my-home                  # the summary: failed checks, the comparison table
 gh run view <run-id> --repo NNTin/my-home --log --job <job-id> | grep -E '^.*(FAIL|skip) '   # one job's output
 gh run download <run-id> --repo NNTin/my-home -n visual-diff-<full commit sha> --dir /tmp/vd   # the canvas shots
@@ -218,7 +218,7 @@ $S/seed.sh staging diff                                # drift between git's see
   walk control folded or open, and its Copy answers a tap; nothing may log an error. Read-only. Playwright (pinned) is installed outside the repository in
   `${XDG_CACHE_HOME:-$HOME/.cache}/my-home-environments/playwright`, Chromium in `~/.cache/ms-playwright`;
   `screenshot.sh --check` installs them if missing and verifies a headless launch.
-- `staging-checks.sh <walk|mobile|visual-diff> <commit> [--out DIR]`: what CI's `staging-checks` job runs. One
+- `staging-checks.sh <walk|mobile|catalog|visual-diff> <commit> [--out DIR]`: what CI's `staging-checks` job runs. One
   check, counted only if staging ran `<commit>` (full sha) before and after it (exit 6 otherwise). `visual-diff`
   shoots every view twice and fails if any but `orbit-180` differs; it is not counted either when the seed
   export of staging changed between the shoots. Appends a Markdown result to

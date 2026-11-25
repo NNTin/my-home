@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# staging-checks.sh <walk|mobile|visual-diff> <commit> [--out DIR]
+# staging-checks.sh <walk|mobile|catalog|visual-diff> <commit> [--out DIR]
 #
 # One of the browser checks of a pull request on staging, as CI runs them after the deploy (the `staging-checks`
 # job of .github/workflows/ci.yml). Read-only. Staging is shared and the latest deploy wins, so the check only
 # counts when staging ran <commit> (the full sha) before and after it:
 #   walk         walk-smoke.sh
 #   mobile       mobile-smoke.sh (phone layout, frame loop and budgets, named views, section, "Save image")
+#   catalog      catalog-smoke.sh (the catalogue, every piece page in 3D with its dimensions, sections, thumbnails,
+#                the playground; its screenshots can show photos and stay on the runner)
 #   visual-diff  visual-diff.sh shoot, twice, and compare: every view must come out byte-identical both times,
 #                except orbit-180 (a drag view whose camera angle is known to vary now and then). It counts only
 #                if the placements, overrides and notes on staging (the seed export) stayed the same meanwhile
@@ -19,7 +21,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$script_dir/lib.sh"
 
 usage() {
-  sed -n '2,15s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,17s/^# \{0,1\}//p' "$0" >&2
   exit 1
 }
 
@@ -33,7 +35,7 @@ while [[ $# -gt 0 ]]; do
   shift 2
 done
 case "$check" in
-  walk | mobile | visual-diff) ;;
+  walk | mobile | catalog | visual-diff) ;;
   *) usage ;;
 esac
 require_tools jq node
@@ -92,6 +94,11 @@ status=0
 case "$check" in
   walk) "$checks_dir/walk-smoke.sh" staging --out "$out/walk.png" >"$log" 2>&1 || status=$? ;;
   mobile) "$checks_dir/mobile-smoke.sh" staging --out "$out/mobile.png" >"$log" 2>&1 || status=$? ;;
+  catalog)
+    # Every piece page is opened twice (desktop and phone): the site token must outlive that.
+    SITE_TOKEN_MIN_TTL=${SITE_TOKEN_MIN_TTL:-2700} \
+      "$checks_dir/catalog-smoke.sh" staging --out "$out/catalog.png" >"$log" 2>&1 || status=$?
+    ;;
   visual-diff)
     {
       "$checks_dir/visual-diff.sh" staging shoot --out "$out/first" &&

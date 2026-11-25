@@ -209,6 +209,10 @@ on `/` after the login instead, that is a setting of the sign-on (infrastructure
 
 ## Testing on an environment
 
+CI runs `catalog-smoke.sh` on staging after every deploy of a pull request: the job `staging-checks (catalog)`
+([deployment.md](deployment.md#checks-on-staging)). Read the job; run it by hand only for an environment CI does
+not check.
+
 ```sh
 S=.claude/skills/my-home-environments/scripts
 $S/catalog-smoke.sh staging                                    # desktop and phone: deep links, reload, back,

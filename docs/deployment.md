@@ -136,16 +136,18 @@ seed). A rollback deploys the older commit's seed too (§ Roll back production).
 After a pull request (or a tag, or a dispatch) is deployed to staging, the CI job **`staging-checks`** runs the
 browser checks against it, one runner each, in headless Chromium:
 
-| Check         | Runs                                                 | Passes when                                                                             |
-| ------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `walk`        | `walk-smoke.sh staging`                              | the smoke passes                                                                        |
-| `mobile`      | `mobile-smoke.sh staging`                            | the smoke passes: phone layout, frame loop, budgets, named views, section, "Save image" |
-| `visual-diff` | `visual-diff.sh staging shoot`, twice, and `compare` | every view is byte-identical in both shoots (`orbit-180`, a drag view, may differ)      |
+| Check         | Runs                                                 | Passes when                                                                               |
+| ------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `walk`        | `walk-smoke.sh staging`                              | the smoke passes                                                                          |
+| `mobile`      | `mobile-smoke.sh staging`                            | the smoke passes: phone layout, frame loop, budgets, named views, section, "Save image"   |
+| `catalog`     | `catalog-smoke.sh staging`                           | the smoke passes: the catalogue, thumbnails, every piece page in 3D, sections, playground |
+| `visual-diff` | `visual-diff.sh staging shoot`, twice, and `compare` | every view is byte-identical in both shoots (`orbit-180`, a drag view, may differ)        |
 
 - Each is `staging-checks.sh <check> <commit>` of the `my-home-environments` skill. All are read-only.
 - **Results:** the run's summary page has a section per check (the smoke's failed checks, or the comparison
   table); the full output is the job's log. `visual-diff` uploads its two sets of canvas shots and the table
-  as the artifact `visual-diff-<commit>` (kept 14 days): renders of the model only, no UI and no photo.
+  as the artifact `visual-diff-<commit>` (kept 14 days): renders of the model only, no UI and no photo. The
+  screenshots of the smokes are not uploaded: a piece page can show a photo.
 - **Staging is shared and the latest deploy wins.** A check counts only if staging ran the commit before and
   after it. If another deploy came first, the job fails and says so: run it again once the commit is deployed
   (`gh run rerun <run-id> --failed`, or push again).
@@ -164,7 +166,7 @@ browser checks against it, one runner each, in headless Chromium:
 Staging is behind SSO. The checks pass it as agents do: a GitHub token of the **nntin-bot** account is exchanged
 at `POST /agent-auth/token` for a site token (the skill's `site-curl.sh`). CI needs that GitHub token as the
 repository secret `NNTIN_BOT_TOKEN`; the workflow's own `GITHUB_TOKEN` belongs to another account and is
-refused. Without the secret the three jobs pass with a warning and check nothing.
+refused. Without the secret the four jobs pass with a warning and check nothing.
 
 To set it (the owner, once, and again when the token expires):
 

@@ -70,7 +70,7 @@ are verified**, and the machine is for writing the change.
 - **Not locally:** the whole `pnpm test`, `pnpm build` with `pnpm check:bundle`, real Postgres, Docker, and
   anything with a browser (the smokes, `visual-diff`, screenshots in bulk). CI runs all of them on every push:
   `check`, `test-postgres`, `docker`, `chart`, then `publish`, `deploy` and, on staging, `staging-checks`
-  (`docs/deployment.md` § Checks on staging).
+  (`walk`, `mobile`, `catalog`, `visual-diff`; `docs/deployment.md` § Checks on staging).
 - **Read CI instead of repeating it:** `gh pr checks <n>`, `gh run view <run-id>` (the summary has each staging
   check's result), `gh run view --job <job-id> --log-failed`, `gh run download <run-id> -n visual-diff-<sha>`.
   Put what CI found in the pull request; do not run the same thing again here to "confirm".
@@ -90,6 +90,12 @@ What reading CI has taught us:
 - **What the page gets on a CI runner is not what it gets here:** Cloudflare adds its analytics beacon
   (`POST /cdn-cgi/rum`) there. The browser scripts answer `/cdn-cgi/*` themselves
   (`scripts/infrastructure.mjs`); a new script must use the same filter.
+- **A lazy page that imports a big module of the main chunk makes the bundler split that chunk,** and the pieces
+  compress worse: 1.4 kB of the main budget for one import of the frame loop's hook from the piece page (#116).
+  Import the small thing from a small module (`scene/frameControl.ts`) and read `pnpm check:bundle` in the
+  `check` job.
+- **A smoke's screenshots are not artifacts:** a page can show the owner's photos. Only `visual-diff` uploads
+  (canvas shots of the model).
 - **Staging is shared:** a check counts only for the commit staging ran before and after it, and the owner may
   be editing there. A difference in a screenshot can be data, not rendering: look at `seed.sh staging diff`.
 

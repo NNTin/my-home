@@ -441,7 +441,8 @@ jobs:
 
   staging-checks:
     # The browser checks of a pull request on staging (docs/deployment.md § Checks on staging): walk mode, the
-    # phone layout with the frame loop, budgets and named views, and every fixed view shot twice. Read-only.
+    # phone layout with the frame loop, budgets and named views, the catalogue with every piece page, and every
+    # fixed view shot twice. Read-only.
     # They need the nntin-bot GitHub token to pass staging's SSO (secret NNTIN_BOT_TOKEN); without it they are
     # skipped with a warning. Staging is shared: a check counts only if staging ran this commit before and
     # after it, and fails with "another deploy came first" otherwise (run the job again).
@@ -452,7 +453,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        check: [walk, mobile, visual-diff]
+        check: [walk, mobile, catalog, visual-diff]
     env:
       REVISION: ${{ needs.publish.outputs.revision }}
       SCRIPTS: .claude/skills/my-home-environments/scripts
