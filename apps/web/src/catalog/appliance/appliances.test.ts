@@ -23,6 +23,7 @@ function draw(id: string, overrides: Record<string, unknown> = {}) {
 const CASES: [string, Record<string, unknown>, number][] = [
   ['appliance.fridge-freezer', {}, 1],
   ['appliance.fridge-freezer', { width: 0.75, height: 2.05, depth: 0.75 }, 1],
+  ['appliance.fridge-freezer', { height: 1.2 }, 1],
   ['appliance.microwave', {}, 2],
   ['appliance.microwave', { width: 0.4, height: 0.24, depth: 0.3 }, 2],
   ['fixture.radiator', {}, 1],
@@ -83,6 +84,20 @@ describe('the appliances and fixtures', () => {
     expect(handles.every((p) => p.material?.finish === 'plastic.matt')).toBe(true);
   });
 
+  it.each([1.2, 1.25, 1.3, 1.85, 2.05])(
+    'a fridge %s m high keeps its upright handle on the fridge door',
+    (height) => {
+      const { parts } = draw('appliance.fridge-freezer', { height });
+      const [fridge] = parts.filter((p) => p.role === 'leaf');
+      const [upright] = parts.filter((p) => p.role === 'handle');
+      const door = boundsOf([fridge!]);
+      const bar = boundsOf([upright!]);
+      expect(bar.min[1]).toBeCloseTo(0.8);
+      expect(bar.max[1]).toBeLessThanOrEqual(door.max[1] - 0.04);
+      expect(bar.max[1] - bar.min[1]).toBeCloseTo(Math.min(0.5, height - 0.85));
+    },
+  );
+
   it('the microwave has a glass window and a control panel with a display, keys and a dial', () => {
     const { parts } = draw('appliance.microwave');
     expect(parts.filter((p) => p.material?.finish === 'glass.clear')).toHaveLength(2);
@@ -109,6 +124,20 @@ describe('the appliances and fixtures', () => {
       expect(all.max[2]).toBeCloseTo(size.depth / 2);
       expect(all.min[2]).toBeGreaterThanOrEqual(-size.depth / 2 - 1e-9);
       expect(all.max[1]).toBeCloseTo(size.height);
+    }
+  });
+
+  it('the radiator\u2019s brackets reach the panel they carry, also when it has one panel only', () => {
+    for (const depth of [0.09, 0.14, 0.2]) {
+      const { parts, size } = draw('fixture.radiator', { depth });
+      const brackets = parts.filter((p) => p.size[0] === 0.03 && p.size[1] === 0.06);
+      expect(brackets).toHaveLength(2);
+      // What stands at the brackets' front: the back face of the panel nearest the wall.
+      const front = brackets[0]!.center[2] + brackets[0]!.size[2] / 2;
+      const panels = parts.filter((p) => p.size[0] === size.width);
+      const backs = panels.map((p) => p.center[2] - p.size[2] / 2);
+      expect(Math.min(...backs)).toBeCloseTo(front);
+      expect(brackets[0]!.center[2] - brackets[0]!.size[2] / 2).toBeCloseTo(-size.depth / 2);
     }
   });
 

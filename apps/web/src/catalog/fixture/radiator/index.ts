@@ -59,8 +59,15 @@ export default definePiece({
           [0.003, h - 0.008, body - 2 * PANEL + 0.004],
         );
     }
+    // The brackets reach from the wall to the back of the panel next to it: the only panel is
+    // the front one.
+    const reach = panels > 1 ? gap : d - PANEL;
     for (const side of [-1, 1])
-      enamel([side * (w / 3), h * 0.75, -d / 2 + gap / 2], [0.03, 0.06, gap], shade(color, -0.25));
+      enamel(
+        [side * (w / 3), h * 0.75, -d / 2 + reach / 2],
+        [0.03, 0.06, reach],
+        shade(color, -0.25),
+      );
     const side = String(values.valveSide) === 'left' ? -1 : 1;
     const valve = colorParam(values, 'valveColor');
     const pipe = shade(valve, -0.08);

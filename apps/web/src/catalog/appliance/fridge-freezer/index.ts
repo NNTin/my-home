@@ -25,6 +25,9 @@ export default definePiece({
     const f = clamp(numberParam(values, 'freezer'), 0.2, h - 0.3);
     const face = d / 2;
     const dark = shade(color, -0.75);
+    // The fridge door's handle starts 10 cm over the freezer and ends under the door's top,
+    // however low the fridge is.
+    const grip = Math.min(0.5, h - f - 0.15);
     const door = (bottom: number, top: number) =>
       roundedBox(
         [0, (bottom + top) / 2, face - DOOR / 2],
@@ -52,7 +55,7 @@ export default definePiece({
       ),
       door(f, h),
       door(KICK, f),
-      handle(w / 2 - 0.05, f + 0.35, face, 0.5, bar, true, LACQUER),
+      handle(w / 2 - 0.05, f + 0.1 + grip / 2, face, grip, bar, true, LACQUER),
       handle(0, f - 0.06, face, w * 0.6, bar, false, LACQUER),
     ];
   },
