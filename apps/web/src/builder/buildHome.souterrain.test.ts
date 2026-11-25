@@ -10,15 +10,14 @@ import {
   buildHome,
   buildStair,
   centroid,
-  CONTOUR_INTERVAL,
   FENCE_BAY,
   MAX_RISER,
-  slopeContours,
   slopeY,
   SURFACE_OFFSET,
   type Box,
   type Vec2,
 } from './buildHome';
+import { shellItems } from './drawList';
 import {
   defaultVisibility,
   roomLabels,
@@ -357,6 +356,14 @@ describe('stairs', () => {
   });
 });
 
+/** The signed area of an outline: positive when it runs anticlockwise. */
+const area = (outline: Vec2[]) =>
+  outline.reduce((sum, [x, y], i) => {
+    const [nx, ny] = outline[(i + 1) % outline.length]!;
+    return sum + (x * ny - nx * y) / 2;
+  }, 0);
+const length = ([a, b]: readonly [Vec2, Vec2]) => Math.hypot(b[0] - a[0], b[1] - a[1]);
+
 describe('fences', () => {
   const fence = (id: string) => home().fences!.find((f) => f.id === id)!;
 
@@ -410,6 +417,75 @@ describe('fences', () => {
     expect(corner.posts[0]!.size[0]).toBeGreaterThan(metal.posts[0]!.size[0]);
   });
 
+  it('a privacy fence is upright boards from post to post, a centimetre apart', () => {
+    const garden = buildFence(fence('fence-east-souterrain-garden'));
+    const bay = garden.panels[0]!;
+    const boards = garden.slats.filter((s) => s.id.startsWith(`${bay.id}:`));
+    expect(boards.length).toBeGreaterThan(15);
+    const span = (s: { outline: Vec2[] }, axis: 0 | 1) => {
+      const at = s.outline.map((p) => p[axis]);
+      return [Math.min(...at), Math.max(...at)] as const;
+    };
+    boards.forEach((board, i) => {
+      const [x0, x1] = span(board, 0);
+      const [y0, y1] = span(board, 1);
+      expect(board.center).toEqual(bay.center);
+      expect(x1 - x0).toBeGreaterThan(0.09);
+      expect(x1 - x0).toBeLessThan(0.13);
+      // On the ground, and up to the fence's height or a few centimetres less.
+      expect(y0).toBeCloseTo(-bay.size[1] / 2);
+      expect(y1).toBeLessThanOrEqual(bay.size[1] / 2 + 1e-9);
+      expect(y1).toBeGreaterThan(bay.size[1] / 2 - 0.05);
+      if (i > 0) expect(x0 - span(boards[i - 1]!, 0)[1]).toBeCloseTo(0.01);
+    });
+    // Between the posts' faces, not into the posts.
+    expect(span(boards[0]!, 0)[0]).toBeCloseTo(-bay.size[0] / 2 + 0.04);
+    expect(span(boards.at(-1)!, 0)[1]).toBeCloseTo(bay.size[0] / 2 - 0.04 - 0.01);
+  });
+
+  it('a trellis is a diagonal lattice cut to its bay, between two rails', () => {
+    const trellis = buildFence(fence('fence-west-driveway'));
+    const bay = trellis.panels[0]!;
+    const laths = trellis.slats.filter((s) => s.id.startsWith(`${bay.id}:`));
+    const [w, h] = [(bay.size[0] - 0.24) / 2, bay.size[1] / 2];
+    for (const lath of laths) {
+      expect(lath.outline.length).toBeGreaterThanOrEqual(3);
+      for (const [x, y] of lath.outline) {
+        expect(Math.abs(x)).toBeLessThanOrEqual(w + 1e-9);
+        expect(Math.abs(y)).toBeLessThanOrEqual(h + 1e-9);
+      }
+    }
+    // Two rails, then laths leaning both ways: every lath's long edges run at 45 degrees.
+    const leaning = laths.slice(2).map((lath) => {
+      const [a, b] = lath.outline
+        .map((p, i) => [p, lath.outline[(i + 1) % lath.outline.length]!] as const)
+        .sort((e, f) => length(f) - length(e))[0]!;
+      return Math.sign((b[0] - a[0]) * (b[1] - a[1]));
+    });
+    expect(leaning.filter((s) => s > 0).length).toBeGreaterThan(10);
+    expect(leaning.filter((s) => s < 0).length).toBe(leaning.filter((s) => s > 0).length);
+    // No outline is turned inside out by the cut.
+    for (const lath of laths) expect(area(lath.outline)).toBeGreaterThan(0);
+  });
+
+  it('a wire mesh hangs between a top and a bottom rail; a gate has no slats', () => {
+    const north = buildFence(fence('fence-north'));
+    expect(north.slats).toHaveLength(2 * north.panels.length);
+    const scene = buildHome(home());
+    expect(scene.fences.find((f) => f.kind === 'gate')!.slats).toEqual([]);
+    const items = shellItems(scene);
+    // The mesh is the only panel that is drawn, and seen through.
+    const panels = items.filter((i) => i.id.includes(':panel:') && !i.id.includes(':slat:'));
+    expect(panels.length).toBeGreaterThan(0);
+    for (const panel of panels) {
+      expect(panel.id).toMatch(/^fence-(north|east-garden):/);
+      expect(panel.material).toMatchObject({ transparent: true });
+    }
+    // Posts and slats of a fence are one finish: one mesh a fence, and the mesh one more.
+    const slats = items.filter((i) => i.id.includes(':slat:'));
+    expect(new Set(slats.map((i) => i.finish))).toEqual(new Set(['paint.plain']));
+  });
+
   it('are part of the scene, with the gate at the north end of the patio fence', () => {
     const scene = buildHome(home());
     expect(scene.fences).toHaveLength(7);
@@ -423,82 +499,23 @@ describe('fences', () => {
   });
 });
 
-describe('slope contours', () => {
+describe('slopes', () => {
   const scene = buildHome(home());
   const area = (id: string) => scene.outdoorAreas.find((a) => a.id === id)!;
 
-  it('mark every 0.2 m of fall across a sloped area, lying on the slope', () => {
+  it('are one smooth surface each: a plane from the high edge to the low one, no bands', () => {
     const embankment = area('garden-divider');
     expect(embankment.kind).toBe('embankment');
-    // 1.6 m of fall over 1 m: a line every 0.125 m, none on the top and bottom edges.
-    expect(embankment.contours).toHaveLength(7);
-    embankment.contours.forEach((c, i) => {
-      const zs = c.outline.map((p) => p[1]);
-      const mid = (Math.min(...zs) + Math.max(...zs)) / 2;
-      expect(mid).toBeCloseTo(0.5 - 0.125 * (i + 1));
-      const xs = c.outline.map((p) => p[0]);
-      expect([Math.min(...xs), Math.max(...xs)]).toEqual([13.42, 19.3]);
-      const height = slopeY(c.slope!, [15, mid]);
-      expect(height - slopeY(embankment.slope!, [15, mid])).toBeCloseTo(SURFACE_OFFSET);
-      expect(height).toBeCloseTo(-0.05 - CONTOUR_INTERVAL * (i + 1) + 2 * SURFACE_OFFSET);
-    });
-  });
-
-  it('are closer together the steeper the slope, and absent on level ground', () => {
-    const spacing = (contours: { outline: Vec2[] }[], axis: 0 | 1) =>
-      Math.abs(contours[1]!.outline[0]![axis] - contours[0]!.outline[0]![axis]);
-    expect(spacing(area('lane').contours, 1)).toBeGreaterThan(
-      5 * spacing(area('garden-divider').contours, 1),
-    );
-    expect(area('patio-souterrain').contours).toEqual([]);
-    expect(area('drainage-north-east')).toMatchObject({ kind: 'gravel', contours: [] });
-    const east = slopeContours(
-      [
-        [0, 0],
-        [1, 0],
-        [1, 3],
-        [0, 3],
-      ],
-      { axis: 'x', from: 0, to: 1, high: 0, low: -0.5 },
-    );
-    expect(east).toHaveLength(2);
-    expect(east[0]!.outline.map((p) => p[1])).toEqual([0, 0, 3, 3]);
-    expect(east[0]!.outline[0]![0]).toBeCloseTo(0.4 - 0.04);
-  });
-
-  it('are clipped to the outline, not its bounding box', () => {
-    // A U-shaped area falling east: 4 m wide at the west, two 1 m prongs east of x = 1.
-    const u: Vec2[] = [
-      [0, 0],
-      [2, 0],
-      [2, 1],
-      [1, 1],
-      [1, 3],
-      [2, 3],
-      [2, 4],
-      [0, 4],
-    ];
-    const contours = slopeContours(u, { axis: 'x', from: 0, to: 2, high: 0, low: -0.6 });
-    const spans = contours.map((c) => {
-      const zs = c.outline.map((p) => p[1]);
-      return [c.outline[0]![0] + 0.04, Math.min(...zs), Math.max(...zs)];
-    });
-    // One full-width line in the base (x = 0.67), then one per prong (x = 1.33).
-    expect(spans).toEqual([
-      [expect.closeTo(2 / 3), 0, 4],
-      [expect.closeTo(4 / 3), 0, 1],
-      [expect.closeTo(4 / 3), 3, 4],
-    ]);
-    // A triangle narrows the lines towards its tip.
-    const triangle = slopeContours(
-      [
-        [0, 0],
-        [4, 2],
-        [0, 4],
-      ],
-      { axis: 'x', from: 0, to: 4, high: 0, low: -0.5 },
-    );
-    const widths = triangle.map((c) => c.outline[2]![1] - c.outline[0]![1]);
-    expect(widths).toEqual([expect.closeTo(2.4), expect.closeTo(0.8)]);
+    // 1.6 m of fall over 1 m, from z = 0.5 down to z = -0.5.
+    expect(slopeY(embankment.slope!, [15, 0.5])).toBeCloseTo(-0.05 + SURFACE_OFFSET);
+    expect(slopeY(embankment.slope!, [15, 0])).toBeCloseTo(-0.85 + SURFACE_OFFSET);
+    expect(slopeY(embankment.slope!, [15, -0.5])).toBeCloseTo(-1.65 + SURFACE_OFFSET);
+    expect(area('patio-souterrain').slope).toBeUndefined();
+    // One draw item an area, sloped or not: nothing lies on a slope to mark it.
+    const items = shellItems(scene).filter((i) => i.group.kind === 'area');
+    expect(items.map((i) => i.id)).toEqual(scene.outdoorAreas.map((a) => a.id));
+    const sloped = items.filter((i) => i.shape.kind === 'surface' && i.shape.slope);
+    expect(sloped.length).toBe(scene.outdoorAreas.filter((a) => a.slope).length);
+    expect(sloped.length).toBeGreaterThan(10);
   });
 });

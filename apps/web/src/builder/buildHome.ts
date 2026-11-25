@@ -27,7 +27,7 @@ import { numberParam } from '../catalog/parts';
 import { pieces } from '../catalog/registry';
 import type { Part } from '../catalog/types';
 import { pointInPolygon } from '../editor/geometry';
-import { fenceLine, fenceSpec } from './fence';
+import { fenceLine, fenceSlats, fenceSpec, type FenceSlat } from './fence';
 import {
   doorReveal,
   gableRoofTrim,
@@ -275,8 +275,6 @@ export interface OutdoorAreaDescriptor extends Surface {
   name: string;
   kind: HomeModel['outdoorAreas'][number]['kind'];
   ownerApartmentId?: string;
-  /** Contour lines of a sloped area (none when flat): the closer together, the steeper. */
-  contours: Surface[];
   finish: ResolvedFinish;
 }
 
@@ -298,7 +296,8 @@ export interface StairDescriptor {
 }
 
 /**
- * A fence: posts and one panel per bay, stepped along sloping ground. A gate is also a use of its
+ * A fence: posts, one panel per bay (stepped along sloping ground) and the slats that fill the
+ * bays: the panels are the bays as boxes, drawn only as a wire mesh. A gate is also a use of its
  * catalogue type (`typeId`, `values`, `parts`), drawn from its parts.
  */
 export interface FenceDescriptor extends Partial<Omit<PieceUse, 'name'>> {
@@ -307,6 +306,8 @@ export interface FenceDescriptor extends Partial<Omit<PieceUse, 'name'>> {
   kind: NonNullable<HomeModel['fences']>[number]['kind'];
   posts: (Box & { id: string })[];
   panels: (Box & { id: string })[];
+  /** The boards, laths or rails that fill the bays; a gate has none (its parts draw it). */
+  slats: FenceSlat[];
 }
 
 /** An opening in an outbuilding wall. */
@@ -954,7 +955,6 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
       outline,
       y: a.elevation.value + SURFACE_OFFSET,
       ...(slope && { slope }),
-      contours: slope ? slopeContours(outline, slope) : [],
       finish: outdoorAreaFinish(a),
     };
   });
@@ -1202,51 +1202,6 @@ function inside([x, z]: Vec2, outline: Vec2[]): boolean {
   return result;
 }
 
-/** Height between two contour lines of a sloped outdoor area. */
-export const CONTOUR_INTERVAL = 0.2;
-const CONTOUR_WIDTH = 0.08;
-
-/**
- * Contour lines across a sloped surface: thin strips at every `CONTOUR_INTERVAL` of fall, lying
- * on the slope just above the surface. The slope runs across the bounding box, but each line is
- * clipped to the outline, so a notched or L-shaped area gets a strip per stretch inside it.
- */
-export function slopeContours(outline: Vec2[], slope: PlaneSlope): Surface[] {
-  const fall = slope.high - slope.low;
-  const run = slope.to - slope.from;
-  // Outline as [along the fall, across it].
-  const points = outline.map(([x, z]): Vec2 => (slope.axis === 'x' ? [x, z] : [z, x]));
-  const lifted = { ...slope, high: slope.high + SURFACE_OFFSET, low: slope.low + SURFACE_OFFSET };
-  const contours: Surface[] = [];
-  for (let k = 1; k * CONTOUR_INTERVAL < fall - EPS; k++) {
-    const at = slope.from + (run * k * CONTOUR_INTERVAL) / fall;
-    const [a, b] = [at - CONTOUR_WIDTH / 2, at + CONTOUR_WIDTH / 2];
-    // Where the line crosses the outline's edges; it is inside between each pair of crossings.
-    const crossings = points
-      .flatMap(([u0, v0], i) => {
-        const [u1, v1] = points[(i + 1) % points.length]!;
-        return u0 > at !== u1 > at ? [v0 + ((at - u0) / (u1 - u0)) * (v1 - v0)] : [];
-      })
-      .sort((p, q) => p - q);
-    for (let i = 0; i + 1 < crossings.length; i += 2) {
-      const [min, max] = [crossings[i]!, crossings[i + 1]!];
-      if (max - min < EPS) continue;
-      const corners: Vec2[] = [
-        [a, min],
-        [b, min],
-        [b, max],
-        [a, max],
-      ];
-      contours.push({
-        outline: slope.axis === 'x' ? corners : corners.map(([u, v]): Vec2 => [v, u]),
-        y: lifted.high,
-        slope: lifted,
-      });
-    }
-  }
-  return contours;
-}
-
 /** Steps are at most this high; the builder adds steps until they are. */
 export const MAX_RISER = 0.19;
 
@@ -1349,12 +1304,19 @@ export function buildFence(
   const common = { id: fence.id, name: fence.name, kind: fence.kind };
   if (fence.kind !== 'gate') {
     const line = fenceLine(fence.id, points, fence.height.value, start, end, fenceSpec(fence.kind));
-    return { ...common, ...line };
+    return { ...common, ...line, slats: fenceSlats(fence.kind, line.panels) };
   }
   if (!fence.typeId) throw new Error(`Gate ${fence.id} has no typeId`);
   const { values } = pieceUse(fence.typeId, fence.id, overrides);
   const line = fenceLine(fence.id, points, fence.height.value, start, end, gateSpec(values));
-  return { ...common, ...line, typeId: fence.typeId, values, parts: gateParts(values, line) };
+  return {
+    ...common,
+    ...line,
+    slats: [],
+    typeId: fence.typeId,
+    values,
+    parts: gateParts(values, line),
+  };
 }
 
 function boundsOf(points: Vec3[]) {

@@ -136,9 +136,8 @@ Model levelled areas as flat patches and join them with sloped patches (ramps, e
 a lower patch next to a higher one form a retaining wall. Light wells and sunken entries are small
 low patches in a notch of the surrounding one.
 
-A sloped outdoor area is drawn with contour lines, one for every 0.2 m of fall and clipped to its
-outline, so slopes stand out
-from levelled areas and a steep bank shows as tightly packed lines. Outdoor area kind `embankment`
+A sloped outdoor area is drawn as one smooth surface in its finish, from its high edge to its low
+one. Outdoor area kind `embankment`
 is a steep bank or retaining slope that divides two levels and is not walked on; `gravel` is a
 gravel or drainage strip such as the one along a facade.
 
@@ -215,8 +214,8 @@ the walk world ignore ceilings: a door must simply fit under the ceiling it stan
 }
 ```
 
-`kind` is `chain-link`, `privacy` (mesh with a privacy screen), `trellis` (wood between brick
-pillars) or `gate`. `elevation` is the ground height at the start of `path`; with `endElevation`
+`kind` is `chain-link` (a wire mesh between two rails), `privacy` (upright boards), `trellis` (a
+diagonal lattice of laths between brick pillars) or `gate`. `elevation` is the ground height at the start of `path`; with `endElevation`
 the ground runs linearly to that height at the end, and the fence steps down bay by bay (posts at
 most 2.5 m apart). A gate is its own short fence of kind `gate` in the fence line, with an id that
 names what it connects, and the catalogue type `"typeId": "gate.swing"` (other fence kinds have no
@@ -540,8 +539,8 @@ links, tile IDs, place names) to the repo.
 ## Rendering
 
 `apps/web/src/builder/buildHome.ts` turns a model into render descriptors (wall segments, openings,
-slabs, lowered ceilings, room floors, terrain blocks, outdoor surfaces, roof planes, stair steps, fence posts and
-panels) without three.js, and
+slabs, lowered ceilings, room floors, terrain blocks, outdoor surfaces, roof planes, stair steps, fence posts, bays and
+slats) without three.js, and
 `visibility.ts` filters them for the cutaway and the visibility toggles. The cutaway's top entry,
 **Roof**, shows the whole building; choosing the highest level hides the roof to look into it, and
 **Room names** labels the rooms of the level being looked into. Walls are split around openings (no CSG).
