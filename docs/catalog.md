@@ -290,6 +290,7 @@ the ground outside ([furniture.md](furniture.md#outdoor-pieces)). Their piece pa
 | `garden.shrub`          | Plants       | 90 cm across, 110 cm high                                           | flowers (none, roses)           |
 | `garden.grass`          | Plants       | 60 cm across, 120 cm high                                           |                                 |
 | `garden.hedge`          | Plants       | 200 × 60 × 150 cm, a clipped run of rounded blocks; 50 cm to 12 m   |                                 |
+| `garden.tree`           | Plants       | crown 350 cm across, 500 cm high, 180 cm of clear trunk; open       |                                 |
 | `garden.rock-pile`      | Stone & wood | 160 × 80 × 60 cm of dry-laid natural stones                         |                                 |
 | `garden.stepping-stone` | Stone & wood | 45 cm round, 3 cm thick; open                                       |                                 |
 | `garden.log`            | Stone & wood | 80 cm long, 35 cm across, lying                                     |                                 |

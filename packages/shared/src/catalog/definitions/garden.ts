@@ -177,6 +177,27 @@ export const hedge = defineType({
   footprint: 'rectangle',
 });
 
+export const tree = defineType({
+  id: 'garden.tree',
+  kind: 'outdoor',
+  family: 'garden',
+  name: 'Tree',
+  description: 'A broadleaved tree: a trunk and a round crown. Open: you walk and sit under it.',
+  icon: '🌲',
+  category: 'Plants',
+  placement: 'floor',
+  mounting: 'floor',
+  params: {
+    leafColor: color('Leaf colour', '#4f7038'),
+    trunkColor: color('Trunk colour', '#5b4a3a'),
+    diameter: length('Crown diameter', 3.5, 1, 8),
+    height: length('Height', 5, 2, 12),
+    trunkHeight: length('Clear trunk', 1.8, 0.3, 4),
+  },
+  snapping: { wall: 'none' },
+  footprint: 'none',
+});
+
 export const rockPile = defineType({
   id: 'garden.rock-pile',
   kind: 'outdoor',
@@ -265,6 +286,7 @@ export const garden = [
   shrub,
   grass,
   hedge,
+  tree,
   rockPile,
   steppingStone,
   log,
