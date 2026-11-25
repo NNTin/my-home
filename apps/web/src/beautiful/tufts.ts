@@ -140,6 +140,10 @@ export function edgeTufts(triangles: readonly Triangle[]): Tuft[] {
     const count = Math.max(1, Math.round(length / EDGE_STEP));
     for (let i = 0; i < count; i++) {
       const t = ((i + 0.5) / count) * length;
+      // A side that lies along shorter sides of other triangles is shared, though no one side
+      // is its twin: where the lawn goes on beyond it, it is no edge.
+      const [ox, oz] = [a.x + along.x * t - inward.x * 0.02, a.z + along.z * t - inward.z * 0.02];
+      if (triangles.some((other) => heightIn(other, ox, oz) !== undefined)) continue;
       const inset = EDGE_INSET * (2 * hash(a.x + along.x * t, a.z + along.z * t, 5) - 1);
       tufts.push(
         tuftAt(
@@ -171,6 +175,12 @@ function heightIn([a, b, c]: Triangle, x: number, z: number): number | undefined
  */
 export function nearTufts(triangles: readonly Triangle[], eye: Vector3): Tuft[] {
   const tufts: Tuft[] = [];
+  // Far from the whole lawn (the overview, a named view) there is no cell to look at.
+  const reach = (axis: 'x' | 'y' | 'z') => {
+    const at = triangles.flatMap((t) => t.map((p) => p[axis]));
+    return Math.max(Math.min(...at) - eye[axis], eye[axis] - Math.max(...at));
+  };
+  if (Math.max(reach('x'), reach('y'), reach('z')) >= NEAR_RADIUS) return tufts;
   const cells = Math.ceil(NEAR_RADIUS / NEAR_CELL);
   const [cx, cz] = [Math.round(eye.x / NEAR_CELL), Math.round(eye.z / NEAR_CELL)];
   for (let i = -cells; i <= cells; i++) {

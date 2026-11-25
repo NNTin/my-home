@@ -119,6 +119,27 @@ describe('the edges of a lawn', () => {
     expect(edgeTufts(triangles)).toEqual(tufts);
   });
 
+  it('do not grow along a side that is shared in parts (a T-junction of the triangles)', () => {
+    // A lawn of 2 by 2 m: one triangle over its whole south side, two that meet at its middle.
+    const p = (x: number, z: number) => new Vector3(x, 0, z);
+    const joined: Triangle[] = [
+      [p(0, 0), p(2, 0), p(2, 1)],
+      [p(0, 0), p(2, 1), p(0, 1)],
+      [p(0, 1), p(1, 1), p(0, 2)],
+      [p(1, 1), p(2, 2), p(0, 2)],
+      [p(1, 1), p(2, 1), p(2, 2)],
+    ];
+    const tufts = edgeTufts(joined);
+    // Only along the outline: none across the middle, where z is 1.
+    for (const t of tufts) {
+      const outline = Math.min(t.x, 2 - t.x, t.z, 2 - t.z);
+      expect(Math.abs(outline)).toBeLessThanOrEqual(0.04 + 1e-9);
+    }
+    // Two sides of 2 m, and the east and west sides in two halves each; without the check
+    // the middle has 50 more.
+    expect(tufts).toHaveLength(2 * Math.round(2 / 0.08) + 4 * Math.round(1 / 0.08));
+  });
+
   it('lie on a slope where the lawn slopes', () => {
     const sloped: Triangle[] = [
       [new Vector3(0, 0, 0), new Vector3(4, 0, 4), new Vector3(4, 0, 0)],
