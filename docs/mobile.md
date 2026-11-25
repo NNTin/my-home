@@ -151,8 +151,8 @@ says which tier is drawn when; a phone starts on "Automatic". It is remembered o
 
 - **Fast** draws fast frames always.
 - **Automatic** (a phone's default) draws fast frames while a finger moves the view, and **one beautiful frame**
-  200 ms after the last frame, when nothing moves any more: ambient occlusion, 4 samples of anti-aliasing and a
-  softer sun shadow. Then it stops; at rest nothing is drawn.
+  200 ms after the last frame, when nothing moves any more: ambient occlusion, 4 samples of anti-aliasing, a
+  softer sun shadow, and grass tufts on the lawns (along their edges and within 6 m of the camera). Then it stops; at rest nothing is drawn.
 - **Always beautiful** (a desktop's default) draws every frame that way.
 
 The beautiful tier's code is a **lazy chunk** (`render-beautiful`), asked for after the first frame; until it

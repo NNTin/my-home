@@ -1,9 +1,11 @@
 import { N8AOPass } from 'n8ao';
 import type { Camera, Scene, WebGLRenderer, WebGLRenderTarget } from 'three';
+import { createTufts } from './tufts';
 
 /**
  * The lazy chunk of the beautiful tier (docs/design/realistic-render.md §4.4, §6.6): ambient
- * occlusion, laid over a frame between the scene and the output pass. The main chunk never
+ * occlusion, laid over a frame between the scene and the output pass, and the beautiful-only
+ * extras, which are the lawns' grass tufts (`tufts.ts`, §8.3). The main chunk never
  * imports this file statically; `scene/Frame.tsx` asks for it once the first fast frame is on
  * screen, and frames stay fast until it has arrived and its programs are compiled.
  *
@@ -55,7 +57,7 @@ type Held = Partial<
 >;
 
 /**
- * The occlusion pass for one device. A phone computes it at half the resolution. The settings
+ * The occlusion pass for one device, and with it the tufts of the scene's lawns. A phone computes it at half the resolution. The settings
  * are fixed here: changing one later would compile the pass's programs again (§4.5).
  */
 export function createAmbientOcclusion(
@@ -82,6 +84,8 @@ export function createAmbientOcclusion(
   pass.configuration.denoiseRadius = DENOISE_RADIUS;
   pass.configuration.halfRes = phone;
   own.dispose();
+  // The beautiful-only extras: in the scene from now on, so the warm-up compiles them (§4.5).
+  const tufts = createTufts(scene);
   let width = 0;
   let height = 0;
   return {
@@ -98,6 +102,7 @@ export function createAmbientOcclusion(
       pass.render(renderer, into);
     },
     dispose() {
+      tufts.dispose();
       const held = pass as unknown as Held;
       held.writeTargetInternal?.dispose();
       held.readTargetInternal?.dispose();
