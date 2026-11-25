@@ -16,6 +16,9 @@ export const METAL: PartMaterial = { finish: 'metal.brushed' };
 /** Glass and glass ceramic: glossy, and see-through only where the part says `transparent`. */
 export const GLASS: PartMaterial = { finish: 'glass.clear' };
 
+/** Cloth and woven mesh: a sling seat, a cushion. The weave is a relief; the part's colour shows. */
+export const FABRIC: PartMaterial = { finish: 'fabric.weave' };
+
 /**
  * A wooden board's colour and finish: oak veneer stained to `color`, or lacquer where the colour
  * is lighter than oak (`veneerTint`).
