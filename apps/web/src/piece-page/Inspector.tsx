@@ -42,10 +42,14 @@ export function boundsOf(parts: readonly Part[], lines: readonly DimensionLine[]
     }
   };
   for (const part of parts) {
-    // A turned part fits in the circle of its footprint's diagonal.
-    const [sx, sy, sz] = part.size;
-    const r = part.rotationY ? Math.hypot(sx, sz) / 2 : 0;
-    add(part.center, part.rotationY ? [r, sy / 2, r] : [sx / 2, sy / 2, sz / 2]);
+    // The box around the part's own box once it is tilted about its x axis (a rail lying down, a
+    // slab laid flat) and then turned about y.
+    const [sx, uy, uz] = part.size;
+    const abs = (angle: number) => [Math.abs(Math.cos(angle)), Math.abs(Math.sin(angle))] as const;
+    const [cx, sn] = abs(part.rotationX ?? 0);
+    const [sy, sz] = [uy * cx + uz * sn, uy * sn + uz * cx];
+    const [cy, sm] = abs(part.rotationY);
+    add(part.center, [(sx * cy + sz * sm) / 2, sy / 2, (sx * sm + sz * cy) / 2]);
   }
   for (const line of lines) {
     add(line.from);

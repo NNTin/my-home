@@ -45,6 +45,8 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - API request/response shapes live in `packages/shared`; validate with them on both sides.
 - api tests use `fastify.inject` and must also pass against real Postgres (CI `test-postgres`).
 - web tests run in jsdom: mock the R3F canvas, never require WebGL.
+- A piece of another family may use a shared helper (`catalog/cabinet.ts`): changing one changes that family's
+  goldens too. Look at `git diff --stat` of `__golden__` before a commit (the fridge used the kitchen's handles).
 - Keep changes scoped; conventional commit messages.
 - A hairline in a render is geometry, not light: an edge that ends in the middle of another one, or a face lying
   edge-on in a visible one (a wall's end or top under its neighbour). Look at a close-up, and at the closed house,
@@ -67,6 +69,9 @@ are verified**, and the machine is for writing the change.
   files), `tsc` for the package you touched, and the test files you touched or wrote
   (`pnpm --filter @my-home/web exec vitest run src/views`). One heavy command at a time, through the shared
   queue.
+- **Updating goldens:** `pnpm --filter @my-home/web exec vitest run src/catalog/golden.test.ts
+src/catalog/shapes.test.ts -u`, the flag **last**. `-u` takes the word after it: `vitest run -u <file>` runs
+  other files, updates nothing in that one and still says "passed" (#117).
 - **Not locally:** the whole `pnpm test`, `pnpm build` with `pnpm check:bundle`, real Postgres, Docker, and
   anything with a browser (the smokes, `visual-diff`, screenshots in bulk). CI runs all of them on every push:
   `check`, `test-postgres`, `docker`, `chart`, then `publish`, `deploy` and, on staging, `staging-checks`

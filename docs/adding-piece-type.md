@@ -141,6 +141,12 @@ export default definePiece({
     the axis (radius 0), or ends where it starts (a ring), is a solid. Any other is an open skin (a bowl, a
     lamp shade): it is drawn from both sides, as a mesh of its own, and a section does not cap it
     (`garden.planter` is a pot and a bush).
+  - **Parts that lie down, and outlines** (the same file): `rod(center, diameter, length, …, 'x' | 'z')` is a
+    cylinder lying along x or z (a rail, a knob); `slab(center, [width, thickness, depth], radius, …)` a flat
+    plate with rounded corners in plan (an inset sink, a hob); `plank(center, [length, thickness, depth], …)` a
+    board whose grain runs along it (below). For `extrude`: `strip(path, gauge)` is the outline of a bent bar or
+    a tube seen from its side (a handle, a hook, a tap: `kitchen.base-cabinet`), `arc(center, radius, from, to)`
+    the points of a bend, `roundedRect(width, height, radius)` a rectangle with rounded corners.
   - **Everything else ignores the shape.** Dimensions, the footprint, collisions and snapping come from the
     type's parameters (`furnitureSize`), as for boxes. The piece page frames a part by its `size`, and a
     section (`sectionOf`) cuts a rounded box and an extruded outline by that box and a lathed part by the
@@ -159,7 +165,19 @@ export default definePiece({
   - A texture is laid on by a box projection **in the part's own frame**, in metres: it turns and tilts with the
     part, and two parts of the same size show the same piece of it. Around a cylinder or a lathe it is poor: use a
     plain finish there.
-  - The parts of one finish are one mesh; a part without a finish draws as before.
+  - The parts of one finish are one mesh; a part without a finish draws as before. **Give every part of a piece
+    a finish,** and at most four finishes a piece: a plain part with its own roughness or shadow flags is one
+    more mesh, and the default view has a draw-call budget (§10.1 of the design). `catalog/cabinet.ts` has the
+    usual ones: `LACQUER` (`plastic.matt`: carcasses, fronts, laminate), `METAL` (`metal.brushed`, tinted by the
+    part's colour: dark hardware only, because a metal mirrors the room and bright steel reads as charcoal under
+    a ceiling and on a piece page; draw steel and chrome as `LACQUER` in their colour), `GLASS` (`glass.clear`: glossy; see-through only with `transparent`).
+  - **Wood:** the veneer's grain runs along the part's own z on a face that looks up, and up a face that looks
+    sideways. A board that lies along x is a `plank` (a box turned a quarter). A tint multiplies the texture, so
+    a colour used as the tint comes out far too dark: `wood(color)` of `catalog/cabinet.ts` gives the colour and
+    finish of a stained board (`veneerTint`: the colour divided by the oak's own), or lacquer for a colour
+    lighter than oak, which no stain gives.
+  - **Handles:** `handle(x, y, face, length, color, upright?)` of `catalog/cabinet.ts` is a bar of brushed metal
+    on two posts, 3 cm off its front.
   - `catalog/partFinishes.test.ts` fails for a part of any type, at any of its choices, that names a finish the
     library does not have or one that is not for parts. In the app such a part draws plain.
 - `dimensions(values, ctx)` lists the measurements the piece page shows: lines in the local frame
@@ -194,8 +212,8 @@ every furniture and outdoor type at its default size, without WebGL, and compare
 matrix, finish and tint, material settings, shadow flags, in draw order) with the records in
 `apps/web/src/catalog/__golden__/`. The draw list ([`builder/drawList.ts`](../apps/web/src/builder/drawList.ts)) is
 everything the renderer is given; how it is merged into meshes is not recorded. **A design change updates the
-goldens in the same PR and says so**: run `pnpm --filter @my-home/web exec vitest run -u
-src/catalog/golden.test.ts` and review the diff (one line per solid). A refactor must leave them
+goldens in the same PR and says so**: run `pnpm --filter @my-home/web exec vitest run
+src/catalog/golden.test.ts src/catalog/shapes.test.ts -u` (the flag last: it takes the word after it) and review the diff (one line per solid). A refactor must leave them
 unchanged. A new type changes no golden until a home or the furniture list uses it (the furniture
 golden lists every furniture type, so a new furniture type adds its lines). `triangles.json` beside them
 lists the triangles of every type; a new type adds its line.
