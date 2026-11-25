@@ -1,5 +1,6 @@
 import type { ParamValues } from '@my-home/shared';
-import { colorParam, cylinder, dimension, numberParam, shade } from '../../parts';
+import { LACQUER } from '../../cabinet';
+import { colorParam, cylinder, dimension, lathe, numberParam, shade } from '../../parts';
 import { definePiece } from '../../types';
 import { sizeOf } from '../../furniture/size';
 
@@ -22,7 +23,8 @@ const EMITTER_DROP = 0.25;
 
 /**
  * A recessed downlight. Its frame starts at the ceiling's surface (y = 0), +y up into the ceiling:
- * the housing sits above it, hidden in the house; the trim ring and the lens are flush below it.
+ * the housing sits above it, hidden in the house; the trim ring lies below it, bevelled towards
+ * the lens, which sits back in the ring.
  */
 export default definePiece({
   id: 'fixture.downlight',
@@ -31,10 +33,32 @@ export default definePiece({
     const trim = numberParam(values, 'trim');
     const color = colorParam(values, 'trimColor');
     const light = LIGHT[kindOf(values)];
+    const [R, inner] = [D / 2, D * 0.36];
+    // The trim's lower face lies `trim` under the ceiling; the lens sits back in it.
+    const lens = -Math.min(trim, 0.002);
     return [
-      cylinder([0, housing / 2, 0], D * 0.8, housing, shade(color, -0.55), 'body'),
-      cylinder([0, -trim / 2, 0], D, trim, color, 'frame'),
-      cylinder([0, -trim - 0.0005, 0], D * 0.72, 0.001, light, 'glass'),
+      {
+        ...cylinder([0, housing / 2, 0], D * 0.8, housing, shade(color, -0.55), 'body'),
+        material: LACQUER,
+      },
+      // The trim ring in section, from its inner edge at the lens around and back: a bevel down
+      // to the lower face, a chamfered rim, and up to the ceiling.
+      lathe(
+        [0, 0, 0],
+        [
+          [inner, lens],
+          [inner + (trim + lens), -trim],
+          [R - trim / 3, -trim],
+          [R, (-trim * 2) / 3],
+          [R, 0],
+          [inner, 0],
+          [inner, lens],
+        ],
+        color,
+        'frame',
+        LACQUER,
+      ),
+      { ...cylinder([0, lens - 0.0005, 0], inner * 2, 0.001, light, 'glass'), material: LACQUER },
     ];
   },
   emits: (values) => [

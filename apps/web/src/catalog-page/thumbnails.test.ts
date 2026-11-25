@@ -2,6 +2,7 @@ import { Blob as NodeBlob } from 'node:buffer';
 import { catalog, defaultParams } from '@my-home/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { box } from '../catalog/parts';
+import { partBatches } from '../catalog/PartsMesh';
 import { previewParts, thumbnailParts } from './preview';
 import {
   cacheStorageStore,
@@ -135,8 +136,16 @@ describe('thumbnail parts', () => {
     expect(housing!.center[1]).toBeGreaterThan(0);
     expect(lens!.center[1]).toBeLessThan(0);
     expect(housingUp!.center[1]).toBeCloseTo(-housing!.center[1]);
-    expect(lensUp!.center[1]).toBeGreaterThan(trimUp!.center[1]);
+    // The lens sits back in the trim ring, on the camera's side of the ceiling.
+    expect(lensUp!.center[1]).toBeGreaterThan(0);
+    expect(lensUp!.center[1]).toBeLessThan(trimUp!.center[1] + trimUp!.size[1] / 2);
     expect(lensUp!.size).toEqual(lens!.size);
     expect(trimUp!.center[1]).toBeCloseTo(-trim!.center[1]);
+    // Each part is turned over with the piece: the ring's bevel faces the camera.
+    expect(trimUp!.rotationX).toBe(Math.PI);
+    const drawn = partBatches([trimUp!])[0]!.geometry;
+    drawn.computeBoundingBox();
+    expect(drawn.boundingBox!.min.y).toBeCloseTo(0);
+    expect(drawn.boundingBox!.max.y).toBeCloseTo(trim!.size[1]);
   });
 });
