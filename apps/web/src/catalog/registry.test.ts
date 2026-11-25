@@ -171,10 +171,11 @@ describe('furniture types', () => {
       [0.8, 1],
       [-0.8, 1],
     ]);
-    const wide = furniture.resolve('furniture.bed', { width: 1.8, color: '#112233' })!;
+    const wide = furniture.resolve('furniture.bed', { width: 1.8, color: '#e0e0e0' })!;
     expect(wide.size.width).toBe(1.8);
     expect(Math.max(...wide.footprint.map(([x]) => x))).toBeCloseTo(0.9);
-    expect(wide.parts[0]!.color).toBe('#112233');
+    // A side rail of the frame: lacquer in the colour, which is lighter than oak (no stain).
+    expect(wide.parts[1]!.color).toBe('#e0e0e0');
     // Invalid or design-only props are ignored, never thrown.
     expect(furniture.resolve('furniture.bed', { width: 9, height: 2, legs: [1] })!.size).toEqual(
       bed.size,
