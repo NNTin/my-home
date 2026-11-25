@@ -374,7 +374,11 @@ const levelGroup = (
 const latheClosed = (profile: readonly Vec2[]) => {
   const [first, last] = [profile[0], profile.at(-1)];
   if (!first || !last) return false;
-  return (first[0] === 0 && last[0] === 0) || (first[0] === last[0] && first[1] === last[1]);
+  // Computed profiles: a hundredth of a millimetre is the same point.
+  const same = (a: number, b: number) => Math.abs(a - b) < 1e-5;
+  return (
+    (same(first[0], 0) && same(last[0], 0)) || (same(first[0], last[0]) && same(first[1], last[1]))
+  );
 };
 
 /**

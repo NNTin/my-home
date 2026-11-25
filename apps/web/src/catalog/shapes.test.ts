@@ -1,6 +1,6 @@
 import { catalog, defaultParams, effectiveParams, furnitureSize } from '@my-home/shared';
 import { Box3, Vector3, type BufferGeometry } from 'three';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { IDENTITY, partItems, partShape, ROUNDED_SEGMENTS, transform } from '../builder/drawList';
 import { previewContext, previewParts } from '../catalog-page/preview';
 import { boundsOf } from '../piece-page/Inspector';
@@ -117,6 +117,7 @@ describe('part helpers', () => {
   });
 
   it('a lathed profile is centred on its height and as wide as its widest point', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const part = lathe(
       [0, 1, 0],
       [
@@ -129,7 +130,9 @@ describe('part helpers', () => {
       'body',
     );
     expect(part).toMatchObject({ shape: 'lathe', center: [0, 1.2, 0], size: [0.6, 0.4, 0.6] });
-    // A radius is never negative.
+    // A radius is never negative, and a module that gives one is told in development.
+    expect(warn).toHaveBeenCalledWith('lathe: a negative radius is drawn as 0', expect.anything());
+    warn.mockRestore();
     expect(part.shape === 'lathe' && part.profile).toEqual([
       [0, -0.2],
       [0.2, -0.2],
@@ -211,6 +214,47 @@ describe('the draw shapes of parts', () => {
     expect(items.map((i) => i.shape.kind)).toEqual(['roundedBox', 'profile', 'lathe', 'lathe']);
     expect(items.every((i) => i.closed && i.material === undefined)).toBe(true);
     expect(batches(items)).toHaveLength(1);
+  });
+
+  it('a lathe that all but closes is closed: computed profiles need not meet to the last bit', () => {
+    const ring = lathe(
+      [0, 0, 0],
+      [
+        [1, 0],
+        [1.1, 0],
+        [1.1, 1],
+        [1, 1],
+        [1, 0.1 + 0.2 - 0.3],
+      ],
+      '#112233',
+      'body',
+    );
+    expect(partShape(ring).closed).toBe(true);
+    const solid = lathe(
+      [0, 0, 0],
+      [
+        [1e-9, 0],
+        [1, 0],
+        [1, 1],
+        [0, 1],
+      ],
+      '#112233',
+      'body',
+    );
+    expect(partShape(solid).closed).toBe(true);
+    expect(
+      partShape(
+        lathe(
+          [0, 0, 0],
+          [
+            [0.001, 0],
+            [1, 1],
+          ],
+          '#112233',
+          'body',
+        ),
+      ).closed,
+    ).toBe(false);
   });
 
   it('an open lathe is a skin drawn from both sides, in a mesh of its own', () => {

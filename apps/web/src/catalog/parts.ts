@@ -102,6 +102,9 @@ export function lathe(
   role: PartRole,
   material?: PartMaterial,
 ): Part {
+  // A radius below zero is a mistake of the module: it is drawn on the axis, and said in development.
+  if (import.meta.env.DEV && profile.some((p) => p[0] < 0))
+    console.warn('lathe: a negative radius is drawn as 0', profile);
   const radii = profile.map((p) => Math.max(0, p[0]));
   const y = span(profile.map((p) => p[1]));
   const diameter = 2 * Math.max(...radii);
