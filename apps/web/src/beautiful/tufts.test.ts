@@ -100,21 +100,19 @@ describe('the edges of a lawn', () => {
     expect(first![0].toArray()).toEqual([5, -1.65, 2]);
   });
 
-  it('get a tuft every 8 cm, inside the lawn by at most 6 cm, on its surface', () => {
+  it('get a tuft every 8 cm, within 4 cm of the edge to either side, on its surface', () => {
     const tufts = edgeTufts(triangles);
     // 36 m of edge.
     expect(tufts).toHaveLength(Math.round(10 / 0.08) * 2 + Math.round(8 / 0.08) * 2);
     for (const t of tufts) {
       expect(t.y).toBeCloseTo(0);
-      expect(t.x).toBeGreaterThanOrEqual(0);
-      expect(t.x).toBeLessThanOrEqual(10);
-      expect(t.z).toBeGreaterThanOrEqual(0);
-      expect(t.z).toBeLessThanOrEqual(8);
       const inside = Math.min(t.x, 10 - t.x, t.z, 8 - t.z);
-      expect(inside).toBeLessThanOrEqual(0.06 + 1e-9);
-      expect(t.height).toBeGreaterThanOrEqual(0.05);
-      expect(t.height).toBeLessThanOrEqual(0.12);
+      expect(Math.abs(inside)).toBeLessThanOrEqual(0.04 + 1e-9);
+      // Higher than on the open lawn: the mower does not reach an edge.
+      expect(t.height).toBeGreaterThanOrEqual(0.09);
+      expect(t.height).toBeLessThanOrEqual(0.22);
     }
+    expect(tufts.some((t) => Math.min(t.x, 10 - t.x, t.z, 8 - t.z) < 0)).toBe(true);
     expect(edgeTufts(triangles)).toEqual(tufts);
   });
 

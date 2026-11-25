@@ -37,8 +37,16 @@ const NEAR_FULL = 4.5;
 /** Near the camera a tuft stands in every cell of this size; along an edge every `EDGE_STEP`. */
 const NEAR_CELL = 0.2;
 const EDGE_STEP = 0.08;
-/** An edge tuft stands at most this far inside its lawn. */
-const EDGE_INSET = 0.06;
+/**
+ * Where the mower does not reach, grass stands higher: an edge tuft is this much larger than one
+ * on the open lawn, 9 to 22 cm high. It is what shows of the tufts from far away.
+ */
+const EDGE_GROWTH = 1.8;
+/**
+ * An edge tuft stands on the edge or up to this far to either side of it: grass grows over a
+ * border, which is what makes a lawn's outline ragged against paving and gravel.
+ */
+const EDGE_INSET = 0.04;
 /** The mesh holds at most this many tufts: 8 triangles each. */
 export const MAX_TUFTS = 8192;
 /** The mean colour of the lawn's texture (`grass-lawn/color-512.webp`). */
@@ -112,7 +120,7 @@ const tuftAt = (x: number, y: number, z: number, grown = 1): Tuft => ({
   shade: 0.8 + 0.4 * hash(x, z, 4),
 });
 
-/** Tufts along the edges of a lawn, a little inside it, on its surface. */
+/** Tufts along the edges of a lawn, on its surface's plane. */
 export function edgeTufts(triangles: readonly Triangle[]): Tuft[] {
   const tufts: Tuft[] = [];
   const along = new Vector3();
@@ -129,12 +137,13 @@ export function edgeTufts(triangles: readonly Triangle[]): Tuft[] {
     const count = Math.max(1, Math.round(length / EDGE_STEP));
     for (let i = 0; i < count; i++) {
       const t = ((i + 0.5) / count) * length;
-      const inset = EDGE_INSET * hash(a.x + along.x * t, a.z + along.z * t, 5);
+      const inset = EDGE_INSET * (2 * hash(a.x + along.x * t, a.z + along.z * t, 5) - 1);
       tufts.push(
         tuftAt(
           a.x + along.x * t + inward.x * inset,
           a.y + along.y * t + inward.y * inset,
           a.z + along.z * t + inward.z * inset,
+          EDGE_GROWTH,
         ),
       );
     }
