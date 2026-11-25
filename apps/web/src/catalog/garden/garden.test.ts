@@ -71,6 +71,9 @@ describe('the rebuilt garden pieces', () => {
     ['garden.shrub', { diameter: 3, height: 3, flowers: 'roses' }, 1],
     ['garden.grass', {}, 1],
     ['garden.grass', { diameter: 1.5, height: 2.5 }, 1],
+    ['garden.hedge', {}, 1],
+    ['garden.hedge', { width: 12, depth: 1.5, height: 3 }, 1],
+    ['garden.hedge', { width: 0.5, depth: 0.3, height: 0.4 }, 1],
     ['garden.log', {}, 1],
     ['garden.rock-pile', {}, 1],
     ['garden.rock-pile', { width: 6, depth: 3, height: 1.5 }, 1],
@@ -97,6 +100,9 @@ describe('the rebuilt garden pieces', () => {
     ['garden.grass', { diameter: 0.7, height: 1.4 }],
     ['garden.grass', { diameter: 0.2, height: 2.5 }],
     ['garden.stepping-stone', { diameter: 0.6 }],
+    ['garden.hedge', {}],
+    ['garden.hedge', { width: 12, depth: 1.5, height: 3 }],
+    ['garden.hedge', { width: 0.5, depth: 0.3, height: 0.4 }],
     ['garden.table', { width: 1.2, depth: 0.8 }],
     ['garden.bench', {}],
   ] as [string, Record<string, unknown>][])('%s %j stays within its size', (id, overrides) => {
@@ -111,6 +117,28 @@ describe('the rebuilt garden pieces', () => {
     expect(max[1]).toBeLessThanOrEqual(size.height + 1e-6);
     if (id !== 'garden.bench') expect(min[2]).toBeGreaterThanOrEqual(-size.depth / 2 - slack);
   });
+
+  it.each([{}, { width: 12, depth: 1.5, height: 3 }, { width: 0.5 }, { width: 7.4, height: 0.4 }])(
+    'a hedge %j is a row of rounded blocks from end to end, each reaching into the next',
+    (overrides) => {
+      const type = catalog.get('garden.hedge')!;
+      const size = furnitureSize(effectiveParams(type, overrides).values);
+      const blocks = draw('garden.hedge', overrides);
+      expect(blocks.every((b) => b.shape === 'roundedBox' && !b.material)).toBe(true);
+      expect(blocks.length).toBeLessThanOrEqual(12);
+      const ends = blocks.map((b) => [b.center[0] - b.size[0] / 2, b.center[0] + b.size[0] / 2]);
+      expect(ends[0]![0]).toBeCloseTo(-size.width / 2);
+      expect(ends.at(-1)![1]).toBeCloseTo(size.width / 2);
+      // Nothing floats: each block overlaps the one before it, and all stand on the ground.
+      ends.slice(1).forEach(([from], i) => expect(from).toBeLessThan(ends[i]![1]! - 0.1));
+      for (const b of blocks) {
+        expect(b.center[1] - b.size[1] / 2).toBeCloseTo(0);
+        expect(b.size[1]).toBeGreaterThan(size.height * 0.94);
+        expect(b.size[2]).toBeGreaterThan(size.depth * 0.9);
+      }
+      expect(Math.max(...blocks.map((b) => b.size[1]))).toBeLessThanOrEqual(size.height);
+    },
+  );
 
   it('a chair is a frame of bent tubes with a woven sling for its seat and its back', () => {
     const parts = draw('garden.chair');
