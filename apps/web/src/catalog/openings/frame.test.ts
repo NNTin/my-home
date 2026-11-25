@@ -101,7 +101,12 @@ describe('frame parts', () => {
     expect(glass.size[0]).toBeCloseTo(1 - 2 * 0.065 - 2 * 0.06, 9);
     expect(glass.size[1]).toBeCloseTo(1 - 2 * 0.065 - 2 * 0.06, 9);
     expect(glass.size[2]).toBeCloseTo(0.024, 9);
-    expect(glass.material).toEqual({ transparent: true, opacity: 0.35, depthWrite: false });
+    expect(glass.material).toEqual({
+      finish: 'glass.clear',
+      transparent: true,
+      opacity: 0.35,
+      depthWrite: false,
+    });
   });
 
   it('leaves a door open at the bottom: its frame, and the stop the leaf closes against', () => {

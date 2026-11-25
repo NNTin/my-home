@@ -1,5 +1,6 @@
 import type { ParamValues } from '@my-home/shared';
 import type { Vec3 } from '../../builder/buildHome';
+import { FABRIC, GLASS, LACQUER } from '../cabinet';
 import { box, colorParam, numberParam, shade } from '../parts';
 import type { Part, PieceContext } from '../types';
 import { fittingCount, framedDimensions } from './frame';
@@ -12,7 +13,8 @@ import { fittingCount, framedDimensions } from './frame';
  * Across the wall, from the outdoors in: the outside sill, the frame (Blendrahmen) set back from
  * the facade by `frameSetback`, the sashes (Flügel) a little proud of it on the room side, each
  * with its glass, handle and hinges, then the inside window board (Fensterbank) over the inner
- * reveal. Optional: a roller shutter (box on the facade, or a lid inside over the window with the
+ * reveal. The frame, the sashes, the board and the sill are `plastic.matt` in their colours, the
+ * panes `glass.clear`; the lever handle and the window board have rounded edges. Optional: a roller shutter (box on the facade, or a lid inside over the window with the
  * slats in the outer reveal) and a curtain on a rod in the room.
  */
 
@@ -50,6 +52,13 @@ export function windowOptions(values: ParamValues) {
 }
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+
+/** The box with its edges rounded by `radius`, at most half its smallest side. */
+const rounded = (part: Part, radius: number): Part => ({
+  ...part,
+  shape: 'roundedBox',
+  radius: Math.min(radius, ...part.size.map((n) => n / 2)),
+});
 
 /** The curtain rod's thickness. */
 const ROD = 0.022;
@@ -89,7 +98,8 @@ export function windowParts(typeId: string, values: ParamValues, ctx: PieceConte
     material?: Part['material'],
   ) => {
     const { center, size: full } = at(x, y, t1, t2, size);
-    return box(center, full, color, role, material);
+    // uPVC, lacquered boards and aluminium are `plastic.matt`; a curtain is cloth.
+    return box(center, full, color, role, material ?? (role === 'curtain' ? FABRIC : LACQUER));
   };
   // "Right" as seen from the room, looking towards the outdoors: -x when the outdoors is +z.
   const rightX = -s;
@@ -124,6 +134,7 @@ export function windowParts(typeId: string, values: ParamValues, ctx: PieceConte
     const gd = Math.min(o.glassDepth, so - si);
     parts.push(
       part(cx, 0, gm - gd / 2, gm + gd / 2, [bw - 2 * sw, innerH - 2 * sw], o.glassColor, 'glass', {
+        ...GLASS,
         transparent: true,
         opacity: o.glassOpacity,
         depthWrite: false,
@@ -140,15 +151,19 @@ export function windowParts(typeId: string, values: ParamValues, ctx: PieceConte
     parts.push(
       part(handleX, 0, face, face - 0.012, [Math.min(0.032, sw), 0.075], o.handleColor, 'handle'),
     );
+    // The lever: a rounded bar.
     parts.push(
-      part(
-        handleX,
-        -0.045,
-        face - 0.012,
-        face - 0.034,
-        [Math.min(0.022, sw), 0.12],
-        o.handleColor,
-        'handle',
+      rounded(
+        part(
+          handleX,
+          -0.045,
+          face - 0.012,
+          face - 0.034,
+          [Math.min(0.022, sw), 0.12],
+          o.handleColor,
+          'handle',
+        ),
+        0.008,
       ),
     );
     for (const y of [innerH / 2 - 0.05, -innerH / 2 + 0.05]) {
@@ -162,15 +177,19 @@ export function windowParts(typeId: string, values: ParamValues, ctx: PieceConte
   const boardInner = -d / 2 - o.boardOverhang;
   if (boardOuter > boardInner) {
     const top = -h / 2 + 0.02;
+    // The window board's edges are rounded: its nose stands into the room.
     parts.push(
-      part(
-        0,
-        top - o.boardThickness / 2,
-        boardOuter,
-        boardInner,
-        [w + 0.06, o.boardThickness],
-        o.boardColor,
-        'board',
+      rounded(
+        part(
+          0,
+          top - o.boardThickness / 2,
+          boardOuter,
+          boardInner,
+          [w + 0.06, o.boardThickness],
+          o.boardColor,
+          'board',
+        ),
+        o.boardThickness / 3,
       ),
     );
   }
@@ -251,7 +270,16 @@ function curtainParts(
   const rodY = h / 2 + Math.max(ROD / 2, Math.min(o.curtainRodHeight, room - 0.03 - ROD / 2));
   const rodT = -d / 2 - 0.09;
   const parts = [
-    part(0, rodY, rodT - ROD / 2, rodT + ROD / 2, [span, ROD], o.curtainRodColor, 'curtain'),
+    part(
+      0,
+      rodY,
+      rodT - ROD / 2,
+      rodT + ROD / 2,
+      [span, ROD],
+      o.curtainRodColor,
+      'curtain',
+      LACQUER,
+    ),
   ];
   const top = rodY - 0.01;
   // Down to the floor where it is known, else just below the window board.

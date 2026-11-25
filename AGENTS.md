@@ -72,6 +72,8 @@ are verified**, and the machine is for writing the change.
 - **Updating goldens:** `pnpm --filter @my-home/web exec vitest run src/catalog/golden.test.ts
 src/catalog/shapes.test.ts -u`, the flag **last**. `-u` takes the word after it: `vitest run -u <file>` runs
   other files, updates nothing in that one and still says "passed" (#117).
+- **Run prettier from the repository root** (`node_modules/.bin/prettier --write apps/web/src/...`). From
+  `apps/web` it does not see the root's ignore file and reformats the goldens in `__golden__/`, which then fail.
 - **Not locally:** the whole `pnpm test`, `pnpm build` with `pnpm check:bundle`, real Postgres, Docker, and
   anything with a browser (the smokes, `visual-diff`, screenshots in bulk). CI runs all of them on every push:
   `check`, `test-postgres`, `docker`, `chart`, then `publish`, `deploy` and, on staging, `staging-checks`
@@ -92,11 +94,17 @@ What reading CI has taught us:
   skip without the secret `NNTIN_BOT_TOKEN`; tell the owner).
 - **A job's log is only available once the whole run is complete,** and GitHub re-runs one job per attempt:
   re-running jobs one by one, or while someone else does, hides the logs for a long time. Wait for the run.
+- **`gh run rerun <run> --failed` hides every job's log again** until the re-run is complete: read the logs you
+  need (check counts, draw calls) before you re-run a flaky job.
+- **`walk`'s "a tap on the enlarged map puts the figure at the stair" fails now and then** without a change to
+  walking (#150, #151, #154). Re-run the failed job once before looking for a cause in your change.
 - **What the page gets on a CI runner is not what it gets here:** Cloudflare adds its analytics beacon
   (`POST /cdn-cgi/rum`) there. The browser scripts answer `/cdn-cgi/*` themselves
   (`scripts/infrastructure.mjs`); a new script must use the same filter.
 - **A lazy page that imports a big module of the main chunk makes the bundler split that chunk,** and the pieces
   compress worse: 1.4 kB of the main budget for one import of the frame loop's hook from the piece page (#116).
+  Piece modules are in the main chunk too (the builder needs them for the first frame): a rebuilt type costs
+  about 0.1 kB of it (#117).
   Import the small thing from a small module (`scene/frameControl.ts`) and read `pnpm check:bundle` in the
   `check` job.
 - **A smoke's screenshots are not artifacts:** a page can show the owner's photos. Only `visual-diff` uploads

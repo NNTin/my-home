@@ -83,7 +83,7 @@ export function frameParts(ctx: PieceContext, options: FrameOptions): Part[] {
         ),
         // It closes towards the middle of the door; a single leaf on its right.
         handle(
-          cx + (cx < -1e-6 ? 1 : cx > 1e-6 ? -1 : 1) * (lw / 2 - stile / 2),
+          cx + (cx > 1e-6 ? -1 : 1) * (lw / 2 - stile / 2),
           innerY - innerHeight / 2 + Math.min(1.05, innerHeight / 2),
           depth / 2,
           Math.min(0.14, innerHeight / 2),

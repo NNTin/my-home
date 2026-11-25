@@ -28,6 +28,29 @@ describe('windowParts', () => {
     expect(of(parts, 'sill')).toHaveLength(1);
     expect(of(parts, 'shutter')).toHaveLength(0);
     expect(of(parts, 'curtain')).toHaveLength(0);
+    // uPVC and boards are lacquer, the pane is glass; the lever and the board have rounded edges.
+    expect(
+      parts.filter((p) => p.role !== 'glass').every((p) => p.material?.finish === 'plastic.matt'),
+    ).toBe(true);
+    expect(of(parts, 'glass')[0]!.material).toMatchObject({
+      finish: 'glass.clear',
+      transparent: true,
+    });
+    expect(parts.filter((p) => p.shape === 'roundedBox').map((p) => p.role)).toEqual([
+      'handle',
+      'board',
+    ]);
+    for (const p of parts)
+      if (p.shape === 'roundedBox') expect(p.radius).toBeLessThanOrEqual(Math.min(...p.size) / 2);
+  });
+
+  it('a curtain is cloth, on a lacquered rod', () => {
+    const parts = of(windowParts(ID, values({ curtain: 'both' }), ctx()), 'curtain');
+    expect(parts.map((p) => p.material?.finish)).toEqual([
+      'plastic.matt',
+      'fabric.weave',
+      'fabric.weave',
+    ]);
   });
 
   it.each([1, -1] as const)(

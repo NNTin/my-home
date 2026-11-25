@@ -23,9 +23,21 @@ export const gateSpec = (values: ParamValues): FenceSpec => ({
  * latch on the first panel's end.
  */
 export function gateParts(values: ParamValues, line: { posts: Box[]; panels: Box[] }): Part[] {
-  const part = (b: Box, color: string, role: Part['role'], grow = [0, 0, 0], lift = 0): Part => ({
+  /** The box grown by `grow`, lifted by `lift` and moved `along` its own length. */
+  const part = (
+    b: Box,
+    color: string,
+    role: Part['role'],
+    grow = [0, 0, 0],
+    lift = 0,
+    along = 0,
+  ): Part => ({
     ...box(
-      [b.center[0], b.center[1] + lift, b.center[2]],
+      [
+        b.center[0] + Math.cos(b.rotationY) * along,
+        b.center[1] + lift,
+        b.center[2] - Math.sin(b.rotationY) * along,
+      ],
       [b.size[0] + grow[0]!, b.size[1] + grow[1]!, b.size[2] + grow[2]!],
       color,
       role,
@@ -35,7 +47,6 @@ export function gateParts(values: ParamValues, line: { posts: Box[]; panels: Box
   });
   const [post, leaf] = [colorParam(values, 'postColor'), colorParam(values, 'color')];
   const rail = shade(leaf, -0.2);
-  const first = line.panels[0];
   return [
     ...line.posts.flatMap((p) => [
       part(p, post, 'post'),
@@ -47,23 +58,19 @@ export function gateParts(values: ParamValues, line: { posts: Box[]; panels: Box
         part(p, rail, 'panel', [0, RAIL - p.size[1], 0.02], side * (p.size[1] / 2 - RAIL / 2)),
       ),
     ]),
-    ...(first
-      ? [
-          {
-            ...part(first, shade(leaf, -0.6), 'handle', [
-              0.1 - first.size[0],
-              0.03 - first.size[1],
-              0.05,
-            ]),
-            // At the end of the panel, along it.
-            center: [
-              first.center[0] + Math.cos(first.rotationY) * (first.size[0] / 2 - 0.08),
-              first.center[1],
-              first.center[2] - Math.sin(first.rotationY) * (first.size[0] / 2 - 0.08),
-            ] as Part['center'],
-          },
-        ]
-      : []),
+    // The latch, at the end of the first panel.
+    ...line.panels
+      .slice(0, 1)
+      .map((p) =>
+        part(
+          p,
+          shade(leaf, -0.6),
+          'handle',
+          [0.1 - p.size[0], 0.03 - p.size[1], 0.05],
+          0,
+          p.size[0] / 2 - 0.08,
+        ),
+      ),
   ];
 }
 
