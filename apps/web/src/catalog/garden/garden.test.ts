@@ -74,6 +74,9 @@ describe('the rebuilt garden pieces', () => {
     ['garden.hedge', {}, 1],
     ['garden.hedge', { width: 12, depth: 1.5, height: 3 }, 1],
     ['garden.hedge', { width: 0.5, depth: 0.3, height: 0.4 }, 1],
+    ['garden.tree', {}, 1],
+    ['garden.tree', { diameter: 8, height: 12, trunkHeight: 4 }, 1],
+    ['garden.tree', { diameter: 1, height: 2, trunkHeight: 4 }, 1],
     ['garden.log', {}, 1],
     ['garden.rock-pile', {}, 1],
     ['garden.rock-pile', { width: 6, depth: 3, height: 1.5 }, 1],
@@ -100,6 +103,9 @@ describe('the rebuilt garden pieces', () => {
     ['garden.grass', { diameter: 0.7, height: 1.4 }],
     ['garden.grass', { diameter: 0.2, height: 2.5 }],
     ['garden.stepping-stone', { diameter: 0.6 }],
+    ['garden.tree', {}],
+    ['garden.tree', { diameter: 8, height: 12, trunkHeight: 4 }],
+    ['garden.tree', { diameter: 1, height: 2, trunkHeight: 4 }],
     ['garden.hedge', {}],
     ['garden.hedge', { width: 12, depth: 1.5, height: 3 }],
     ['garden.hedge', { width: 0.5, depth: 0.3, height: 0.4 }],
@@ -137,6 +143,38 @@ describe('the rebuilt garden pieces', () => {
         expect(b.size[2]).toBeGreaterThan(size.depth * 0.9);
       }
       expect(Math.max(...blocks.map((b) => b.size[1]))).toBeLessThanOrEqual(size.height);
+    },
+  );
+
+  it.each([
+    {},
+    { diameter: 8, height: 12, trunkHeight: 4 },
+    { diameter: 1, height: 2, trunkHeight: 4 },
+  ])(
+    'a tree %j is a trunk that goes into its crown, and a crown that reaches its size',
+    (overrides) => {
+      const type = catalog.get('garden.tree')!;
+      const values = effectiveParams(type, overrides).values;
+      const size = furnitureSize(values);
+      const [trunk, middle, ...clumps] = draw('garden.tree', overrides);
+      // The clear height is the parameter's, or at most six tenths of the tree.
+      const clear = Math.min(Number(values.trunkHeight), size.height * 0.6);
+      expect(trunk!.role).toBe('post');
+      expect(middle!.center[1] - middle!.size[1] / 2).toBeCloseTo(clear);
+      // Nothing floats: the trunk ends inside the crown's middle, and every clump starts in it.
+      expect(trunk!.size[1]).toBeGreaterThan(clear + 0.1);
+      expect(trunk!.size[1]).toBeLessThan(middle!.center[1] + middle!.size[1] / 2);
+      expect(clumps).toHaveLength(6);
+      for (const clump of clumps) {
+        const inner = Math.hypot(clump.center[0], clump.center[2]) - clump.size[0] / 2;
+        expect(inner).toBeLessThan(middle!.size[0] / 2 - 0.02);
+        expect(clump.center[1] - clump.size[1] / 2).toBeGreaterThanOrEqual(clear);
+      }
+      const { min, max } = boundsOf([trunk!, middle!, ...clumps]);
+      expect(max[1]).toBeCloseTo(size.height);
+      expect(max[0] - min[0]).toBeGreaterThan(size.width * 0.9);
+      // Open, like the pergola: one walks and sits under a tree.
+      expect(type.footprint).toBe('none');
     },
   );
 

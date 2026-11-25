@@ -23,7 +23,7 @@ import {
   type FinishSurface,
   type ResolvedFinish,
 } from './index';
-import { createFinishListing, finishListing } from './listing';
+import { createFinishListing, finishListing, joinAbout } from './listing';
 
 const readHome = (path: string) =>
   HomeModel.parse(JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8')));
@@ -164,6 +164,16 @@ describe('the finish library', () => {
       'the crop is a share',
     );
     expect(broken({ 'tile.gone': { description: 'x' } })).toThrow('described, but not defined');
+    // Two groups' files that describe the same finish: neither entry is dropped in silence.
+    expect(
+      joinAbout([{ 'paint.test': said['paint.test'] }, { 'wood.test': said['wood.test'] }]),
+    ).toEqual(said);
+    expect(() =>
+      joinAbout([
+        { 'paint.test': said['paint.test'] },
+        { 'paint.test': { description: 'Another.' } },
+      ]),
+    ).toThrow('Invalid finish "paint.test": described twice');
   });
 });
 
