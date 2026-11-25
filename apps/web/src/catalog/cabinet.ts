@@ -133,7 +133,7 @@ export function handle(
 /**
  * A row of `count` doors across `width` (centred on x = 0), from `bottom` to `top`, their faces at
  * z = `face`. The handles (when a colour is given) sit on the opening edges: a single door opens
- * on its left, a pair in the middle.
+ * on its left, a pair in the middle, and an even row is pairs.
  */
 export function doors(
   count: number,
@@ -159,7 +159,8 @@ export function doors(
       ),
     );
     if (bar) {
-      const side = count === 1 ? -1 : i < count / 2 ? 1 : -1;
+      // An even row is pairs, an odd one opens towards its middle.
+      const side = count === 1 ? -1 : count % 2 ? (i < count / 2 ? 1 : -1) : i % 2 ? -1 : 1;
       const x = cx + side * (dw / 2 - 0.04);
       parts.push(handle(x, bar.y, face, bar.length, bar.color, true));
     }
