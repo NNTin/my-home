@@ -89,7 +89,7 @@ geometry rules are untouched. Upper floors take no finishes.
    the photos the choice and the tint were made from) and a `note` (what the surface is, where the tint comes
    from, what the finish does not show). It is a PR to `data/homes`, like every change to the house.
 6. **Missing finish:** when nothing in the library fits the material, add one in its own PR from a CC0 library
-   (the definition, then `pnpm finishes:fetch <id>`; the manifest test holds the budgets), and name the photo ids
+   (the definition and its `.about.ts` entry, then `pnpm finishes:fetch <id>`; the manifest test holds the budgets), and name the photo ids
    that called for it. A near match with a note is better than a new finish for a small difference.
 7. **Unsure, or not in any photo:** ask for a photo (`photo-requests.sh`, one surface per request, light on,
    what must be in the frame) instead of guessing. Until it arrives the surface keeps its default: write the
