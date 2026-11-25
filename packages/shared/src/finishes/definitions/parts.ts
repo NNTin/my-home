@@ -1,12 +1,10 @@
 import type { Finish } from '../types';
-import { polyHaven } from './source';
 
 /** Finishes of catalogue parts: a part names one as `material.finish` (§5.7 of the design). */
 export const parts: Finish[] = [
   {
     id: 'wood.veneer',
     name: 'Oak veneer',
-    description: 'Oak veneer with a straight grain, for furniture fronts, tops and shelves.',
     surfaces: ['part'],
     texture: { id: 'wood-veneer', maps: ['color', 'normal', 'roughness'] },
     tileSize: 1.83,
@@ -14,12 +12,10 @@ export const parts: Finish[] = [
     tintable: true,
     roughness: 1,
     metalness: 0,
-    source: polyHaven('oak_veneer_01'),
   },
   {
     id: 'fabric.weave',
     name: 'Woven fabric',
-    description: 'A plain woven cloth, for upholstery, cushions and curtains.',
     surfaces: ['part'],
     // Relief only: the colour is the tint.
     texture: { id: 'fabric-weave', maps: ['normal'] },
@@ -28,12 +24,10 @@ export const parts: Finish[] = [
     tintable: true,
     roughness: 1,
     metalness: 0,
-    source: polyHaven('rough_linen'),
   },
   {
     id: 'metal.brushed',
     name: 'Brushed metal',
-    description: 'Brushed steel or aluminium: handles, legs, appliance fronts.',
     surfaces: ['part'],
     tint: '#b9bdc1',
     tintable: true,
@@ -43,7 +37,6 @@ export const parts: Finish[] = [
   {
     id: 'ceramic.white',
     name: 'White ceramic',
-    description: 'Glazed white ceramic: sanitary ware and sinks.',
     surfaces: ['part'],
     tint: '#f4f4f0',
     tintable: false,
@@ -53,7 +46,6 @@ export const parts: Finish[] = [
   {
     id: 'plastic.matt',
     name: 'Matt plastic',
-    description: 'A plain matt surface for coated, lacquered and plastic parts.',
     surfaces: ['part'],
     tint: '#e8e8e5',
     tintable: true,
@@ -63,7 +55,6 @@ export const parts: Finish[] = [
   {
     id: 'glass.clear',
     name: 'Clear glass',
-    description: 'Smooth clear glass. A part sets how see-through it is.',
     surfaces: ['part'],
     tint: '#dfeaf0',
     tintable: true,

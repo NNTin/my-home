@@ -1,10 +1,10 @@
 import {
   deviceTextureFiles,
-  finishes,
   type DeviceClass,
-  type Finish,
   type FinishSurface,
+  type ListedFinish as Finish,
 } from '@my-home/shared';
+import { finishListing } from '@my-home/shared/finish-listing';
 import { textureUrl } from '../finishes/urls';
 
 /**
@@ -34,10 +34,10 @@ export function finishMatches(finish: Finish, query: string): boolean {
 
 /** The finishes the page lists for a search, in library order. */
 export const listedFinishes = (query = ''): Finish[] =>
-  finishes.finishes.filter((f) => finishMatches(f, query));
+  finishListing.filter((f) => finishMatches(f, query));
 
 /** "For floors and walls"; a finish no home can name says who draws it. */
-export function surfacesText(finish: Finish): string {
+export function surfacesText(finish: Pick<Finish, 'surfaces'>): string {
   const names = finish.surfaces.map((s) => SURFACE_NAMES[s]);
   if (names.length === 0) return 'Drawn by the viewer only';
   const last = names.pop()!;

@@ -1,5 +1,5 @@
 import { deviceTextureFiles, textureFiles, textureMemoryBytes, type DeviceClass } from './textures';
-import type { Finish } from './types';
+import type { Finish, ListedFinish } from './types';
 
 /**
  * The asset manifest `apps/web/src/finishes/ASSETS.md`: every texture file with its source,
@@ -24,7 +24,7 @@ export function deviceTotals(finishes: readonly Finish[], device: DeviceClass, f
 }
 
 /** The manifest's text. A file missing from `files` is listed as missing, which fails the test. */
-export function assetManifest(finishes: readonly Finish[], files: FileFacts): string {
+export function assetManifest(finishes: readonly ListedFinish[], files: FileFacts): string {
   const textured = finishes.filter((f) => f.texture);
   const all = textured.flatMap(textureFiles);
   const lines = [

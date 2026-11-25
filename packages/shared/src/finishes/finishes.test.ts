@@ -19,9 +19,11 @@ import {
   textureFiles,
   withoutFinishes,
   type Finish,
+  type FinishSource,
   type FinishSurface,
   type ResolvedFinish,
 } from './index';
+import { createFinishListing, finishListing } from './listing';
 
 const readHome = (path: string) =>
   HomeModel.parse(JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8')));
@@ -31,7 +33,6 @@ const mockHome = () => readHome('../../test-fixtures/mock-home.json');
 const plain: Finish = {
   id: 'paint.test',
   name: 'Test paint',
-  description: 'A test finish.',
   surfaces: ['wall'],
   tint: '#ffffff',
   tintable: true,
@@ -43,13 +44,14 @@ const textured: Finish = {
   id: 'wood.test',
   texture: { id: 'wood-test', maps: ['color', 'normal'] },
   tileSize: 1,
-  source: {
-    provider: 'Poly Haven',
-    assetId: 'x',
-    url: 'https://polyhaven.com/a/x',
-    licence: 'CC0-1.0',
-    fetched: '2026-11-23',
-  },
+};
+
+const source: FinishSource = {
+  provider: 'Poly Haven',
+  assetId: 'x',
+  url: 'https://polyhaven.com/a/x',
+  licence: 'CC0-1.0',
+  fetched: '2026-11-23',
 };
 
 describe('the finish library', () => {
@@ -84,7 +86,13 @@ describe('the finish library', () => {
   });
 
   it('takes every texture from a CC0 library, with a tile size', () => {
-    for (const finish of finishes.finishes.filter((f) => f.texture)) {
+    expect(finishListing.map((f) => f.id)).toEqual(finishes.finishes.map((f) => f.id));
+    for (const finish of finishListing) {
+      expect(finish, finish.id).toMatchObject(finishes.get(finish.id)!);
+      expect(finish.description.length, finish.id).toBeGreaterThan(20);
+      expect(finish.source === undefined, finish.id).toBe(finish.texture === undefined);
+    }
+    for (const finish of finishListing.filter((f) => f.texture)) {
       expect(finish.source?.licence, finish.id).toBe('CC0-1.0');
       expect(['Poly Haven', 'ambientCG'], finish.id).toContain(finish.source?.provider);
       expect(finish.tileSize, finish.id).toBeGreaterThan(0);
@@ -109,15 +117,8 @@ describe('the finish library', () => {
     expect(broken({ roughness: 2 })).toThrow('from 0 to 1');
     expect(broken({ surfaces: ['wall', 'wall'] })).toThrow('distinct kinds of surface');
     expect(broken({ surfaces: ['window' as FinishSurface] })).toThrow('distinct kinds');
-    expect(broken({ tileSize: 1 })).toThrow('a plain finish has no tile size and no source');
+    expect(broken({ tileSize: 1 })).toThrow('a plain finish has no tile size');
     expect(broken({ tileSize: undefined }, textured)).toThrow('needs a tile size');
-    expect(broken({ source: undefined }, textured)).toThrow('needs a source');
-    expect(
-      broken({ source: { ...textured.source!, licence: 'CC-BY-4.0' as 'CC0-1.0' } }, textured),
-    ).toThrow('the licence must be CC0-1.0');
-    expect(
-      broken({ source: { ...textured.source!, provider: 'A photo' as 'Poly Haven' } }, textured),
-    ).toThrow('must be a CC0 library');
     expect(broken({ texture: { id: 'wood-test', maps: ['color'] } }, textured)).toThrow(
       'has a normal map',
     );
@@ -125,6 +126,44 @@ describe('the finish library', () => {
       'belongs to another finish',
     );
     expect(createFinishLibrary([plain, textured]).finishes).toHaveLength(2);
+  });
+
+  it('rejects a finish that is not described, or a texture without a CC0 source', () => {
+    const library = createFinishLibrary([plain, textured]);
+    const said = {
+      'paint.test': { description: 'A test finish.' },
+      'wood.test': { description: 'A test wood.', source },
+    };
+    const listing = createFinishListing(library, said);
+    expect(listing.map((f) => f.id)).toEqual(['paint.test', 'wood.test']);
+    expect(listing[1]).toMatchObject({ name: 'Test paint', tileSize: 1, source });
+    const broken = (about: Parameters<typeof createFinishListing>[1]) => () =>
+      createFinishListing(library, { ...said, ...about });
+    expect(() => createFinishListing(library, { 'wood.test': said['wood.test'] })).toThrow(
+      'Invalid finish "paint.test": a finish needs a description',
+    );
+    expect(broken({ 'paint.test': { description: ' ' } })).toThrow('needs a description');
+    expect(broken({ 'paint.test': { description: 'x', source } })).toThrow(
+      'a plain finish has no source',
+    );
+    expect(broken({ 'wood.test': { description: 'x' } })).toThrow('needs a source');
+    expect(
+      broken({
+        'wood.test': { description: 'x', source: { ...source, licence: 'CC-BY-4.0' as 'CC0-1.0' } },
+      }),
+    ).toThrow('the licence must be CC0-1.0');
+    expect(
+      broken({
+        'wood.test': {
+          description: 'x',
+          source: { ...source, provider: 'A photo' as 'Poly Haven' },
+        },
+      }),
+    ).toThrow('must be a CC0 library');
+    expect(broken({ 'wood.test': { description: 'x', source: { ...source, crop: 2 } } })).toThrow(
+      'the crop is a share',
+    );
+    expect(broken({ 'tile.gone': { description: 'x' } })).toThrow('described, but not defined');
   });
 });
 

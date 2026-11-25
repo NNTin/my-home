@@ -12,7 +12,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assetManifest, finishes, textureFiles } from '../../packages/shared/src/finishes/index.ts';
+import { assetManifest, textureFiles } from '../../packages/shared/src/finishes/index.ts';
+import { finishListing } from '../../packages/shared/src/finishes/listing.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const texturesDir = join(root, 'apps/web/src/finishes/textures');
@@ -140,20 +141,20 @@ async function fetchFinish(finish) {
 
 function writeManifest() {
   const facts = new Map();
-  for (const file of finishes.finishes.flatMap(textureFiles)) {
+  for (const file of finishListing.flatMap(textureFiles)) {
     const path = join(texturesDir, file.path);
     if (!existsSync(path)) continue;
     const data = readFileSync(path);
     facts.set(file.path, { bytes: data.length, sha256: hash('sha256', data) });
   }
-  writeFileSync(manifestPath, assetManifest(finishes.finishes, facts));
+  writeFileSync(manifestPath, assetManifest(finishListing, facts));
   execFileSync('pnpm', ['exec', 'prettier', '--write', manifestPath], { cwd: root });
   console.log(`wrote ${manifestPath}`);
 }
 
 const [command, ...ids] = process.argv.slice(2);
 if (command === 'fetch') {
-  const textured = finishes.finishes.filter((f) => f.texture);
+  const textured = finishListing.filter((f) => f.texture);
   const unknown = ids.filter((id) => !textured.some((f) => f.id === id));
   if (unknown.length) throw new Error(`Not a textured finish: ${unknown.join(', ')}`);
   for (const finish of textured.filter((f) => ids.length === 0 || ids.includes(f.id))) {

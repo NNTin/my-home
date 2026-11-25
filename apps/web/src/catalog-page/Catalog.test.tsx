@@ -1,4 +1,5 @@
 import { catalog, finishes } from '@my-home/shared';
+import { finishListing } from '@my-home/shared/finish-listing';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeApi } from '../test/fakeApi';
@@ -185,7 +186,7 @@ describe('CatalogPage', () => {
     expect(paint.getByText('A plain colour: no texture')).toBeInTheDocument();
     expect(paint.getByText(/For walls, ceilings and facades · can be tinted/)).toBeInTheDocument();
     // Every textured finish names where its texture comes from.
-    for (const finish of finishes.finishes.filter((f) => f.texture)) {
+    for (const finish of finishListing.filter((f) => f.texture)) {
       const card = within(cards.find((c) => c.dataset.finishId === finish.id)!);
       expect(card.getByRole('link')).toHaveAttribute('href', finish.source!.url);
       expect(card.getByText(/licence CC0-1.0/)).toBeInTheDocument();
