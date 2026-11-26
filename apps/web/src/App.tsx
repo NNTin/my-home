@@ -61,7 +61,12 @@ function HomeViewer() {
       stopLoading();
       setState({ status: 'error', message: errorMessage(err) });
     });
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      // Left before the view was in (another page, or another home): this load is over. A remount
+      // (StrictMode, a new homeId) begins a fresh one right after.
+      stopLoading('viewer');
+    };
   }, [homeId]);
 
   const selectHome = (id: string) => {
@@ -96,7 +101,7 @@ function HomeViewer() {
 
 function NotFound() {
   useDocumentTitle('Not found');
-  useEffect(stopLoading, []);
+  useEffect(() => stopLoading(), []);
   return (
     <div className="page not-found">
       <main>

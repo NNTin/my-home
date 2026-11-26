@@ -162,9 +162,12 @@ export function loadingProgress(step: Step, fraction = 1): void {
 
 /**
  * The load failed, or there is nothing to load (no homes, a page that does not exist): the screen
- * goes at once, unfilled, with no end, and the page says what is wrong.
+ * goes at once, unfilled, with no end, and the page says what is wrong. With `plan`, only a load of
+ * that plan is stopped: a viewer that unmounts ends its own load, never the page's that replaced it
+ * (React calls the next page's lazy chunk in the render before the viewer's cleanup).
  */
-export function stopLoading(): void {
+export function stopLoading(plan?: Plan): void {
+  if (plan !== undefined && session?.plan !== plan) return;
   if (session) remove(session);
   else document.getElementById('boot')?.remove();
 }

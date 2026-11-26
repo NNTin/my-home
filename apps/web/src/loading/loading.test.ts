@@ -125,6 +125,16 @@ describe('the loading screen', () => {
     expect(boot()).toBeNull();
   });
 
+  it('stopping one plan leaves the load of another alone', () => {
+    beginLoading('viewer');
+    beginLoading('page');
+    // The viewer's cleanup runs after the page's lazy chunk was asked for, in the same commit.
+    stopLoading('viewer');
+    expect(boot()).not.toBeNull();
+    stopLoading('page');
+    expect(boot()).toBeNull();
+  });
+
   it('is made again for a later load, and starts from nothing', () => {
     beginLoading('page');
     stopLoading();
