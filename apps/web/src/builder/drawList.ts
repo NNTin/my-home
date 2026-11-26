@@ -203,10 +203,10 @@ const paint = (tint: string): ResolvedFinish =>
   resolveFinish(undefined, { finish: 'paint.plain', tint });
 const fenceFinishes = {
   post: paint('#3d4043'),
-  brickPillar: paint('#9a5b40'),
   'chain-link': paint('#4a4e52'),
   privacy: paint('#8a8780'),
-  trellis: paint('#7a5a3a'),
+  // The dark-brown stain of the lattice and its posts, from 8808ee82 (#147).
+  trellis: paint('#4a342c'),
 } as const;
 
 /**
@@ -560,6 +560,20 @@ export function shellItems(scene: HomeScene, options: ShellOptions = {}): DrawIt
     ...scene.roofTrim.map((r) =>
       profileItem({ id: r.id, group: { kind: 'roof', levelId: r.levelId } }, r, r.finish),
     ),
+    ...scene.chimneys.flatMap((c) => {
+      const group: DrawGroup = { kind: 'roof', levelId: c.levelId };
+      return [
+        boxItem({ id: c.id, group }, c.stack, c.finish),
+        ...c.flues.map((f) =>
+          solid(
+            { id: f.id, group },
+            { kind: 'cylinder', diameter: f.diameter, height: f.height },
+            transform(f.center),
+            c.flueFinish,
+          ),
+        ),
+      ];
+    }),
     ...scene.stairs.flatMap((s) => {
       const group = levelGroup(s);
       const { treads, risers, railing, balusters } = s.finishes;
@@ -588,7 +602,7 @@ export function shellItems(scene: HomeScene, options: ShellOptions = {}): DrawIt
           boxItem(
             { id: post.id, group },
             post,
-            f.kind === 'trellis' ? fenceFinishes.brickPillar : fenceFinishes.post,
+            f.kind === 'trellis' ? fenceFinishes.trellis : fenceFinishes.post,
           ),
         ),
         // A wire mesh is its bay's panel, seen through; boards and laths are the fence itself.

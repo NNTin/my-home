@@ -276,7 +276,7 @@ describe('fences', () => {
     });
   });
 
-  it('turn corners with one post each and thicker pillars for a trellis', () => {
+  it('turn corners with one post each; a trellis stands on wooden posts', () => {
     const corner = buildFence({
       ...fence('fence-west-driveway'),
       path: [point(0, 0), point(2, 0), point(2, 2)],
@@ -287,8 +287,8 @@ describe('fences', () => {
       [2, 2],
     ]);
     expect(corner.panels.map((p) => p.rotationY)).toEqual([expect.closeTo(0), -Math.PI / 2]);
-    const metal = buildFence(fence('fence-north'));
-    expect(corner.posts[0]!.size[0]).toBeGreaterThan(metal.posts[0]!.size[0]);
+    // Its brick pillar is a catalogue piece (garden.pillar), not a post (#147).
+    expect(corner.posts[0]!.size[0]).toBe(0.07);
   });
 
   it('a privacy fence is upright boards from post to post, a centimetre apart', () => {
@@ -321,7 +321,7 @@ describe('fences', () => {
     const trellis = buildFence(fence('fence-west-driveway'));
     const bay = trellis.panels[0]!;
     const laths = trellis.slats.filter((s) => s.id.startsWith(`${bay.id}:`));
-    const [w, h] = [(bay.size[0] - 0.24) / 2, bay.size[1] / 2];
+    const [w, h] = [(bay.size[0] - 0.07) / 2, bay.size[1] / 2];
     for (const lath of laths) {
       expect(lath.outline.length).toBeGreaterThanOrEqual(3);
       for (const [x, y] of lath.outline) {

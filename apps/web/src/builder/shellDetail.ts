@@ -1,4 +1,4 @@
-import { resolveFinish, type ResolvedFinish } from '@my-home/shared';
+import { resolveFinish, type Chimney, type ResolvedFinish } from '@my-home/shared';
 import type { Box, Gable, ProfileSolid, Vec2, Vec3 } from './buildHome';
 import { EPS } from './plan';
 import type { FaceRun, WallCut, WallEnd } from './wallFaces';
@@ -30,6 +30,8 @@ export const SHELL_DETAIL = {
     finish: resolveFinish(undefined, { finish: 'metal.brushed', tint: '#9aa0a3' }),
   },
   ridgeCap: { halfWidth: 0.16, thickness: 0.04 },
+  /** A chimney's box starts this far below the roof's top face, at its lowest edge. */
+  chimney: { sink: 0.05, flue: resolveFinish(undefined, { finish: 'metal.brushed' }) },
 } as const;
 
 /** A wall in the plan, as the details need it. */
@@ -259,4 +261,53 @@ export function gableRoofTrim(
     );
   }
   return result;
+}
+
+/** A chimney on a pitched roof: its box and the pipes standing on it. */
+export interface ChimneyDescriptor {
+  id: string;
+  name: string;
+  levelId: string;
+  stack: Box;
+  flues: { id: string; center: Vec3; diameter: number; height: number }[];
+  finish: ResolvedFinish;
+  flueFinish: ResolvedFinish;
+}
+
+/**
+ * The chimneys of a gable roof (D111): a box from just under the roof's top face, where it is
+ * lowest under the chimney, up to the chimney's top, and an upright cylinder for each pipe from
+ * the chimney's top to its own. `facade` is the building's facade finish, the default of a side.
+ */
+export function gableChimneys(
+  g: Gable,
+  chimneys: readonly Chimney[],
+  facade: ResolvedFinish,
+): ChimneyDescriptor[] {
+  const half = (g.across[1] - g.across[0]) / 2;
+  const t = g.thickness * Math.hypot(1, g.slope);
+  const top = (across: number) => g.eaveY + (half - Math.abs(across - g.ridge)) * g.slope + t;
+  return chimneys.map((c) => {
+    const [x, z, w, d] = [c.x.value, c.z.value, c.width.value, c.depth.value];
+    const [u, du] = g.ridgeAxis === 'x' ? [z, d] : [x, w];
+    const bottom = Math.min(top(u - du / 2), top(u + du / 2)) - SHELL_DETAIL.chimney.sink;
+    const height = c.top.value - bottom;
+    return {
+      id: c.id,
+      name: c.name,
+      levelId: g.levelId,
+      stack: { center: [x, bottom + height / 2, z], size: [w, height, d], rotationY: 0 },
+      flues: (c.flues ?? []).map((f, i) => {
+        const rise = f.top.value - c.top.value;
+        return {
+          id: `${c.id}:flue:${i}`,
+          center: [f.x.value, c.top.value + rise / 2, f.z.value] as Vec3,
+          diameter: f.diameter.value,
+          height: rise,
+        };
+      }),
+      finish: c.finish ? resolveFinish(c.finish, { finish: 'render.facade' }) : facade,
+      flueFinish: SHELL_DETAIL.chimney.flue,
+    };
+  });
 }

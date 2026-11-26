@@ -17,11 +17,14 @@ export interface FenceSpec {
 
 /** Fence posts stand at most this far apart (fences other than gates). */
 export const FENCE_BAY = 2.5;
-/** Posts are metal profiles, except the brick pillars of a trellis fence. */
+/**
+ * Posts are metal profiles, a trellis' wooden ones (#147: the street-side images show wooden posts;
+ * a brick pillar is a catalogue piece, `garden.pillar`, placed where one stands).
+ */
 const FENCE_POST: Record<Exclude<FenceKind, 'gate'>, number> = {
   'chain-link': 0.08,
   privacy: 0.08,
-  trellis: 0.24,
+  trellis: 0.07,
 };
 
 export const fenceSpec = (kind: Exclude<FenceKind, 'gate'>): FenceSpec => ({

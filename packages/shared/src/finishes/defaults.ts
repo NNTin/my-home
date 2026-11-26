@@ -178,6 +178,9 @@ export const CUT_FINISH = plain(DEFAULT_FINISHES.cut);
 export function withoutFinishes(model: HomeModel): HomeModel {
   const bare = structuredClone(model);
   delete bare.building.finishes;
+  if (bare.building.roof?.type === 'gable') {
+    for (const chimney of bare.building.roof.chimneys ?? []) delete chimney.finish;
+  }
   for (const room of bare.rooms) delete room.finishes;
   for (const area of bare.outdoorAreas) delete area.finish;
   for (const outbuilding of bare.outbuildings ?? []) delete outbuilding.finish;

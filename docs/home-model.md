@@ -226,7 +226,8 @@ the walk world ignore ceilings: a door must simply fit under the ceiling it stan
 ```
 
 `kind` is `chain-link` (a wire mesh between two rails), `privacy` (upright boards), `trellis` (a
-diagonal lattice of laths between brick pillars) or `gate`. `elevation` is the ground height at the start of `path`; with `endElevation`
+diagonal lattice of laths on wooden posts; a brick pillar where one stands is the catalogue piece
+`garden.pillar`, #147) or `gate`. `elevation` is the ground height at the start of `path`; with `endElevation`
 the ground runs linearly to that height at the end, and the fence steps down bay by bay (posts at
 most 2.5 m apart). A gate is its own short fence of kind `gate` in the fence line, with an id that
 names what it connects, and the catalogue type `"typeId": "gate.swing"` (other fence kinds have no
@@ -316,6 +317,14 @@ gable roof turns the highest level into an attic:
 towards the lower or higher across-ridge coordinate), `offset` along the ridge from the footprint's
 lower end, `fromEave` up the slope from the footprint edge, `width` along the ridge and `length`
 along the slope. They are hidden with the roof.
+
+`chimneys` (optional) stand out of a gable roof: `x` and `z` the middle on the plan, `width` along x,
+`depth` along z, `top` its height (above the ground floor's finished floor, as every height), an
+optional facade `finish` for its sides (the building's facade when omitted), and `flues`: round pipes
+on it, each its `x`, `z`, `diameter` and `top`. The builder draws a box from just under the roof's
+top face, where the roof is lowest under it, up to `top`, and a cylinder for each pipe; they are
+hidden with the roof and change none of its planes. Validation: a chimney's middle is over the
+footprint, its top above the roof there, and each pipe ends above the chimney.
 
 The roof spans the bounding rectangle of the footprint, with the ridge over its centre line;
 `roofThickness` is the thickness of the roof planes at right angles to the slope. The builder
