@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@my-home/sakuga-vfx": "workspace:*",
     "@my-home/shared": "workspace:*",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.2",

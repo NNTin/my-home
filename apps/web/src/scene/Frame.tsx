@@ -11,6 +11,18 @@ import type { FrameGovernor, Tier } from '../quality/governor';
 import { FrameOutput, gpuIdle } from './output';
 import { FrameContext as Context, type FrameControl } from './frameControl';
 import { casterBounds } from './sunShadow';
+import { loadingProgress } from '../loading/loading';
+import type { FinishTextures } from '../finishes/textures';
+
+/**
+ * The loading screen's last step: the texture files asked for by the first frame, arrived or failed
+ * (a failed one is settled: its finish stays on its tint). None asked for: nothing to wait for.
+ */
+function texturesLoading(textures: FinishTextures) {
+  const { loaded, failed, pending } = textures.counts();
+  const total = loaded + failed + pending;
+  loadingProgress('textures', total === 0 ? 1 : (loaded + failed) / total);
+}
 
 /**
  * The frame loop of the viewer (docs/design/realistic-render.md §4.3, §4.5). Frames are drawn on
@@ -185,6 +197,7 @@ export function FrameLoop({
         notice.current?.(TEXTURE_FAILED);
       }
       governor.setMoving('textures', textures.pending > 0);
+      if (drawn.current) texturesLoading(textures);
       invalidate();
     });
     return () => {
@@ -378,6 +391,8 @@ export function FrameLoop({
     });
     if (!drawn.current) {
       drawn.current = true;
+      loadingProgress('scene');
+      texturesLoading(finishSet.textures);
       loadBeautiful();
     }
   }, 1);

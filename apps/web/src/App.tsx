@@ -1,13 +1,27 @@
 import type { HomeModel, HomeSummary } from '@my-home/shared';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { fetchHome, fetchHomes } from './api';
+import { beginLoading, stopLoading, loadingProgress } from './loading/loading';
 import { href, keptQuery, Link, useDocumentTitle, useRoute } from './routing';
 import { Viewer } from './Viewer';
 import { saveWalkSession } from './walk/walkSession';
 
+/** A lazy page's chunk, followed by the loading screen while it comes. */
+function loadPage<T>(load: () => Promise<T>): () => Promise<T> {
+  return () => {
+    beginLoading('page');
+    const chunk = load();
+    chunk.then(
+      () => loadingProgress('page'),
+      () => stopLoading(),
+    );
+    return chunk;
+  };
+}
+
 // The catalogue pages are chunks of their own: the viewer's first load does not grow with them.
-const CatalogPage = lazy(() => import('./catalog-page/CatalogPage'));
-const PiecePage = lazy(() => import('./piece-page/PiecePage'));
+const CatalogPage = lazy(loadPage(() => import('./catalog-page/CatalogPage')));
+const PiecePage = lazy(loadPage(() => import('./piece-page/PiecePage')));
 
 type State =
   | { status: 'loading' }
@@ -29,14 +43,23 @@ function HomeViewer() {
   useEffect(() => {
     const controller = new AbortController();
     const { signal } = controller;
+    // The loading screen follows the home's data, then the view (Viewer, scene/Frame.tsx).
+    beginLoading('viewer');
     (async () => {
       const { items } = await fetchHomes(signal);
+      loadingProgress('homes');
       const id = homeId ?? items[0]?.id;
-      if (!id) return setState({ status: 'empty' });
+      if (!id) {
+        stopLoading();
+        return setState({ status: 'empty' });
+      }
       const model = await fetchHome(id, signal);
+      loadingProgress('home');
       setState({ status: 'ready', homes: items, model });
     })().catch((err: unknown) => {
-      if (!signal.aborted) setState({ status: 'error', message: errorMessage(err) });
+      if (signal.aborted) return;
+      stopLoading();
+      setState({ status: 'error', message: errorMessage(err) });
     });
     return () => controller.abort();
   }, [homeId]);
@@ -57,10 +80,10 @@ function HomeViewer() {
           homes={state.homes}
           onSelectHome={selectHome}
         />
-      ) : (
+      ) : state.status === 'loading' ? null : (
+        // While it loads, the loading screen (#boot, loading/loading.ts) is the status.
         <section className="overlay" aria-label="Status">
           <h1>my-home</h1>
-          {state.status === 'loading' && <p>Loading home…</p>}
           {state.status === 'empty' && (
             <p>No homes yet. Run `pnpm db:seed` or import a home file.</p>
           )}
@@ -73,6 +96,7 @@ function HomeViewer() {
 
 function NotFound() {
   useDocumentTitle('Not found');
+  useEffect(stopLoading, []);
   return (
     <div className="page not-found">
       <main>
@@ -86,12 +110,9 @@ function NotFound() {
   );
 }
 
+/** A lazy page on its way: the loading screen (`loadPage`) shows its progress. */
 function PageLoading() {
-  return (
-    <div className="page" role="status">
-      Loading…
-    </div>
-  );
+  return <div className="page" />;
 }
 
 /**

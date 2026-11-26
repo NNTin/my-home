@@ -17,9 +17,45 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="my-home" />
     <title>my-home</title>
+    <!-- The loading screen (src/loading/loading.ts): drawn before the main chunk and its CSS arrive.
+         Sakuga VFX's progress.js is put in <head> by the build (sakuga-progress-plugin.ts). -->
+    <style>
+      .boot {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: grid;
+        place-items: center;
+        background: #1d2129;
+        /* The view underneath is live: a tap is never caught by the loading screen. */
+        pointer-events: none;
+      }
+      .boot[data-backdrop='off'] {
+        background: none;
+      }
+      .boot-card {
+        padding: 2.5rem 1.5rem 1.5rem;
+        border-radius: var(--sk-r, 15px);
+        background: var(--sk-card, #fff);
+        box-shadow: var(--sk-sh, 6px 7px 0 #b8b3ff);
+        transition: transform 0.18s ease-in;
+      }
+      /* It leaves by shrinking, not by fading (packages/sakuga-vfx/AGENTS.md). */
+      .boot[data-leaving] .boot-card {
+        transform: scale(0);
+      }
+      .boot sakuga-progress {
+        min-height: 200px;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <div id="boot" class="boot">
+      <div class="boot-card">
+        <sakuga-progress label="Loading my-home"></sakuga-progress>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

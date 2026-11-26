@@ -669,6 +669,22 @@ body {
   flex: 1;
 }
 
+/* The upload's Sakuga bar (loading/SakugaProgress.tsx) on paper, like the loading screen's card:
+   its ink outline does not read on the dark sheet. It leaves by shrinking, not by fading. */
+.capture-progress:has(.sakuga-progress) {
+  justify-content: center;
+  margin: 0.5rem 0;
+  padding: 1.5rem 1rem 0.5rem;
+  border-radius: var(--sk-r, 15px);
+  background: var(--sk-card, #fff);
+  box-shadow: var(--sk-sh, 6px 7px 0 #b8b3ff);
+  transition: transform 0.18s ease-in;
+}
+
+.capture-progress:has(.sakuga-progress[data-leaving]) {
+  transform: scale(0);
+}
+
 /* The photo gallery (right-hand panel) and photos in the 3D view. */
 .photos-panel {
   width: 20rem;

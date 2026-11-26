@@ -9,6 +9,7 @@
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { answeredInfrastructure } from './infrastructure.mjs';
+import { loadingScreenGone, SCENE } from './scene.mjs';
 
 const require = createRequire(path.join(process.env.MY_HOME_PLAYWRIGHT_DIR, 'package.json'));
 const { chromium } = require('playwright');
@@ -78,10 +79,18 @@ async function smoke(out) {
     });
     if (new URL(page.url()).host !== host)
       throw new Error('ended on another host (login redirect?)');
-    await page.waitForSelector('canvas', { timeout: 30_000 });
+    await page.waitForSelector(SCENE, { timeout: 30_000 });
     const hud = page.locator('[data-testid=walk-hud]');
     await hud.waitFor({ timeout: 30_000 });
     await page.waitForTimeout(4000);
+    // The loading screen (apps/web/src/loading) follows the home, the view and its textures, then goes.
+    check(
+      'the loading screen goes once the view is in',
+      await loadingScreenGone(page, 240_000).then(
+        () => true,
+        () => false,
+      ),
+    );
 
     const figure = async () => {
       const data = await hud.evaluate((element) => ({ ...element.dataset }));
@@ -413,7 +422,7 @@ async function smoke(out) {
     await hud.waitFor({ timeout: 30_000 });
     const mark = () =>
       page
-        .locator('canvas')
+        .locator(SCENE)
         .first()
         .evaluate((c) => `${c.dataset.frame}/${c.dataset.tier}`);
     const refined = () =>

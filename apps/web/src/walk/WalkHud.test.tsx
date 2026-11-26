@@ -733,9 +733,14 @@ describe('WalkHud', () => {
       expect(screen.getByText('42%')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled();
       expect(screen.getByRole('button', { name: 'Discard' })).toBeDisabled();
+      // Every byte sent is not saved: the bar is full only once the api has answered.
+      act(() => report(1));
+      expect(screen.getByRole('progressbar', { name: 'Upload progress' })).toHaveValue(0.99);
 
       await act(async () => finish(photo()));
       expect(screen.getByText('Photo saved')).toBeInTheDocument();
+      // Full, it has ended (without progress.js at once), and goes.
+      expect(screen.queryByRole('progressbar', { name: 'Upload progress' })).toBeNull();
     });
 
     it('keeps the photo when the upload fails, to try again', async () => {

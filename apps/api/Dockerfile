@@ -9,6 +9,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 COPY packages/shared/package.json packages/shared/
+COPY packages/sakuga-vfx/package.json packages/sakuga-vfx/
 RUN corepack enable && corepack install
 
 FROM base AS build

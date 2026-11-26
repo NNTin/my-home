@@ -1,0 +1,115 @@
+# AGENTS.md: packages/sakuga-vfx
+
+Sakuga VFX: ordinary UI controls that are plain at rest and react like an anime cut when used (springs, drawn
+smoke, impact bursts, slashes, manga sound-effect lettering). Copied from
+[finktheartist/sakuga-vfx](https://github.com/finktheartist/sakuga-vfx) (MIT, `LICENSE`, by Justin Finkelman) at
+the commit recorded in `README.md`, and owned by this repository from then on. Epic #165.
+
+## The role: this package is the app's HUD
+
+- **Every HUD element of the app comes from here.** The loading bar is the first (`progress/`, #166); the rest of
+  the HUD follows its design (`docs/design/hud.md`, #167; #168).
+- **An element that exists is used as it is:** button, toggle, slider, checkbox, radio, input, tabs, progress,
+  rating, toast, tooltip. Its folder's README lists its attributes, properties and events.
+- **An element the HUD needs and upstream does not have is made here, in the same style** (§ A new element), as a
+  folder of its own like the others, with its file stamped from the core.
+- **Restyle only through the `--sk-*` CSS variables** (`--sk-ink`, `--sk-card`, `--sk-pri`, `--sk-acc`, `--sk-sh`,
+  …; a page's own `:root` values win). Never edit an element's effects to change its look.
+- **How the app loads an element:** a plain script, by a classic `<script>` tag, never as a module, never bundled,
+  split or rewritten. Each file carries its own copy of the core; the first one loaded sets `window.SakugaFX` and
+  the others reuse it (one effects canvas, one clock). The loading bar is put in `<head>` by the web build,
+  ahead of the main chunk (`sakugaProgress()` in `apps/web/vite.config.ts`, `docs/loading.md`). React drives an
+  element through its attributes and methods (`apps/web/src/loading/SakugaProgress.tsx`).
+- **Upstream's files are kept as upstream wrote them:** prettier and eslint skip this package (except `test/` and
+  this file), so a diff of an element against upstream stays readable.
+
+## The art style (binding for every element, old and new)
+
+- **White paper, two tones and a line.** Effects are white, lavender and a violet line; pink only for accents
+  (wedges, needles, the check). Every drawn shape is one flat light tone, one flat shadow tone and an outline. No
+  gradients, no blur.
+- **Things leave by shrinking or thinning, not by fading.** An effect's opacity never changes. (The app's
+  loading card shrinks away too.)
+- **Squash keeps volume:** squashed lower is wider, stretched is thinner.
+- **Springs, not easings,** for anything the hand moves. Stretch comes from the spring's speed.
+- **Effects follow speed.** A slow drag is quiet; the big things fire on the release, the landing, the change.
+- **Plain at rest:** no idle animation, nothing drawn around a control until it is used.
+- **At most one sound-effect word per reaction, on the hit.** The six: ドン (impact), カチッ (click), シュッ
+  (swish), ポン (pop), ズザッ (skid), ゴゴゴゴ (rumble). The Japanese words stay (owner, #165).
+- **The control works with every effect off.** A real `<button>`, `<input>` or `role` inside, with keys and focus;
+  state changes at once and effects only decorate it. Nothing to read depends on an effect.
+- **Reduced motion turns the effects off, and the state still changes.** The core drops every effect when
+  `prefers-reduced-motion` is set.
+
+## The core build
+
+- `core.js` is the one source of the shared core: `Spring`, the effects layer and every effect, the lettering
+  (traced from `art/words/` by `tools/trace.py`), the palette `P`, and `Base`, the custom-element base class with
+  one shared clock.
+- **Edit `core.js`, never a component file's copy.** Then stamp it into every component file (between its
+  `// >>> sakuga core` markers), the toggle's frames into `toggle.js`, and the skill's copy:
+
+  ```sh
+  pnpm --filter @my-home/sakuga-vfx stamp      # node tools/build.mjs
+  ```
+
+- **CI checks it:** this package's `pnpm test` runs `node tools/build.mjs --check` (exit 1, naming each stale
+  file, changing nothing) and `test/build-check.test.mjs` (the check itself, on a copy). It runs in the `check`
+  job's `pnpm test`. A new component goes into `NAMES` in `tools/build.mjs`, or the check does not see it.
+- A change of the core changes every element: look at each element it touches (§ Checking), not only the one you
+  changed.
+
+## A new element, checked frame by frame
+
+The workflow is upstream's skill, `skills/sakuga-vfx/SKILL.md`: read it first. In short:
+
+1. **Decide four things before animating:** the control (it works with every effect off), the beats
+   (anticipation, hit, follow-through, settle; one or two effects each), the word (at most one, on the hit), and
+   what is real and what is drawn.
+2. **Start from an element that exists** or `skills/sakuga-vfx/starter.html`: a folder `name/` with `name.js`
+   (the core markers, then the component: `extends fx.Base`, `static css`, `render()`, `setup()`, `frame(dt)`),
+   a `README.md` (attributes, properties, events, limits) and an `index.html` to try it. Add it to `NAMES` and stamp.
+   Timing goes through `later()` (the shared clock), never `setTimeout`, so it can be stepped.
+3. **Look at it frame by frame before it counts as done.** A component that runs without errors has said nothing
+   about how it reacts. Serve the folder and step the reaction with `look.mjs`:
+
+   ```sh
+   python3 -m http.server 8000 --bind 127.0.0.1 9>&-     # from packages/sakuga-vfx; leave it running
+   CHROME=... ao-heavy node skills/sakuga-vfx/look.mjs "http://127.0.0.1:8000/progress/" \
+     --select sakuga-progress --do "document.querySelector('sakuga-progress').set(0.9, true)" \
+     --act "0:document.querySelector('sakuga-progress').set(1)" --times 0.05,0.5,0.7,0.85,1.1,1.4,1.75,2.2 \
+     --out /tmp/sheet.png
+   ```
+
+   Read every frame: is the hit frame clear, does anything cover the label, does each effect leave by
+   shrinking, is there a frame where nothing happens that should. Fix and look again; expect several rounds.
+   Also at `--width 390`, and with reduced motion (the state changes, no effects).
+
+4. **Use it like a person:** real touch and key events through the DevTools protocol, at desktop width and 390 px,
+   no sideways scroll, form values in `FormData`. `tools/test.mjs` does this for upstream's gallery
+   (`ao-heavy node tools/test.mjs http://127.0.0.1:8000/gallery/`); add the new element's checks to it.
+5. **Say what is true** in the pull request: what it does, what was checked and how ("stepped with look.mjs" is
+   not "watched at real speed"), and which beats are still weak. Put the frame sheets in it.
+
+On the agents' machine:
+
+- Chrome is Playwright's Chromium, and it needs `--no-sandbox` here (no usable sandbox: it aborts at start and
+  `look.mjs` fails with "Cannot read properties of undefined (reading 'find')"). `look.mjs` and `test.mjs` take no
+  flags for Chrome, so point `CHROME` at a two-line wrapper in `/tmp`:
+  `exec ~/.cache/ms-playwright/chromium-<n>/chrome-linux64/chrome --no-sandbox "$@"`.
+- One browser run at a time, through `ao-heavy`. The static server is light: start it directly, with `9>&-`.
+- `look.mjs` pauses the Sakuga clock only: the app's own timers (the loading card's shrink) are not stepped.
+
+## Upstream changes come in by hand
+
+Upstream is not followed automatically, and never as a submodule or a package dependency.
+
+1. Read upstream's log since the recorded commit (`README.md`, the note at the top) and pick what the app wants.
+2. Copy the files in (`git archive <commit> | tar -x` into a scratch directory, then copy over), keeping this
+   repository's own files: `AGENTS.md`, `package.json`, `test/` and the note at the top of `README.md`. Keep
+   `LICENSE` with its copyright line.
+3. Carry over by hand any change made here since (an element of our own in `NAMES`, a fix), stamp the core, and
+   run `pnpm --filter @my-home/sakuga-vfx test`.
+4. Look at every element the app uses, frame by frame (§ A new element).
+5. Record the new upstream commit (the full hash and its subject) in the note at the top of `README.md`, in the
+   same pull request. It is reviewed like any change.

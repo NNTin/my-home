@@ -24,6 +24,9 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
   desktops), the lazy chunk `render-path`, and its measuring page `/?render=measure` (`docs/render-mode.md`)
 - `apps/web/src/routing/` (no router library) and `apps/web/src/catalog-page/`: the pages `/catalog` and
   `/catalog/<kind>/<typeId>`, lazy chunks; thumbnails cached in the browser (`docs/catalog.md`)
+- `packages/sakuga-vfx`: the app's HUD, Sakuga VFX copied from upstream (MIT) and owned here; read its own
+  `AGENTS.md` (art style, core build, new elements, upstream updates) before touching a HUD element. Its
+  progress bar is the loading screen, loaded ahead of the main chunk (`apps/web/src/loading/`, `docs/loading.md`)
 - `docs/`: project docs (designs not built yet in `docs/design/`: the realistic render, `realistic-render.md`);
   `docker-compose.yml` runs postgres + api + web
 - `charts/my-home`: Helm chart deployed to Kubernetes by CI + Flux (`docs/deployment.md`); `tools/check-chart.sh`
@@ -116,6 +119,9 @@ What reading CI has taught us:
 - **What the page gets on a CI runner is not what it gets here:** Cloudflare adds its analytics beacon
   (`POST /cdn-cgi/rum`) there. The browser scripts answer `/cdn-cgi/*` themselves
   (`scripts/infrastructure.mjs`); a new script must use the same filter.
+- **A bare `canvas` selector is not the 3D view any more** (#166): the HUD's Sakuga effects draw on a canvas over
+  the page and on one in a control's shadow root (Playwright's CSS reaches into it). Use `SCENE` from
+  `scripts/scene.mjs`, and wait for `loadingScreenGone` before a shot.
 - **The main chunk is one file** since #119 (`codeSplitting` in `apps/web/vite.config.ts`): what a lazy chunk
   imports no longer cuts it in pieces that compress worse (1.4 kB in #116). Piece modules are in it (the builder
   needs them for the first frame): a rebuilt type costs about 0.1 kB (#117). Read `pnpm check:bundle` in the
