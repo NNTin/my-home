@@ -42,6 +42,13 @@ export interface ViewsControlProps {
   /** "Save image" (§7.4); `saving` while one is being drawn. */
   onSave(): void;
   saving: boolean;
+  /**
+   * "Render" (§9): turns render mode on and off. Not given where it is not offered: on a phone,
+   * and while the view is a photo's.
+   */
+  onRender?: (() => void) | undefined;
+  /** Render mode is on. */
+  rendering?: boolean;
 }
 
 export function ViewsControl({
@@ -53,6 +60,8 @@ export function ViewsControl({
   levelId,
   onSave,
   saving,
+  onRender,
+  rendering = false,
 }: ViewsControlProps) {
   const open = (kind: ViewKind) => {
     const next = defaultView(scene, kind, kind === 'cutaway' ? levelId : undefined);
@@ -162,6 +171,11 @@ export function ViewsControl({
         <button type="button" onClick={onSave} disabled={saving}>
           {saving ? 'Saving…' : 'Save image'}
         </button>
+        {onRender && (
+          <button type="button" aria-pressed={rendering} onClick={onRender}>
+            Render
+          </button>
+        )}
       </div>
     </fieldset>
   );

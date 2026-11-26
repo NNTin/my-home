@@ -122,6 +122,7 @@ export class Trace {
   start(built: TraceScene, camera: PerspectiveCamera) {
     this.renderer.toneMappingExposure = built.exposure;
     this.last = { stage: 'building', samples: 0, average: 0, done: false };
+    this.tracer.pause = false;
     this.tracer.setScene(built.scene, camera);
     this.stopped = false;
     cancelAnimationFrame(this.frame);
@@ -142,7 +143,7 @@ export class Trace {
   /**
    * Draws the image as it is into a 2D canvas, over what that canvas holds (the backdrop). A
    * WebGPU canvas keeps its image only until the frame ends, so it is presented and copied in
-   * one task.
+   * one task. While the tracer runs, presenting is one more round of samples.
    */
   capture(target: CanvasRenderingContext2D) {
     this.tracer.renderSample();
@@ -152,7 +153,14 @@ export class Trace {
   /** Adds no more samples; the image stays. */
   stop() {
     this.stopped = true;
+    // Paused, the tracer still presents its image (`capture`) and adds nothing to it.
+    this.tracer.pause = true;
     cancelAnimationFrame(this.frame);
+  }
+
+  /** Whether samples are being added. */
+  get running(): boolean {
+    return !this.stopped && !this.last.done && this.lost === undefined;
   }
 
   dispose() {

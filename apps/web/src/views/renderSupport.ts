@@ -11,7 +11,7 @@ export type RenderSupport =
   | 'none';
 
 interface Adapter {
-  info?: { isFallbackAdapter?: boolean };
+  info?: { isFallbackAdapter?: boolean; architecture?: string };
   isFallbackAdapter?: boolean;
 }
 interface Gpu {
@@ -25,7 +25,11 @@ export async function renderSupport(
   try {
     const adapter = await gpu.requestAdapter();
     if (!adapter) return 'none';
-    return (adapter.info?.isFallbackAdapter ?? adapter.isFallbackAdapter) ? 'software' : 'ok';
+    // Chromium's software adapter says so by its flag, and by its name where the flag is missing.
+    const software =
+      (adapter.info?.isFallbackAdapter ?? adapter.isFallbackAdapter) === true ||
+      adapter.info?.architecture === 'swiftshader';
+    return software ? 'software' : 'ok';
   } catch {
     return 'none';
   }

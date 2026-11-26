@@ -1008,30 +1008,45 @@ the CPU from the same lit boxes (D97); and the ground of a named view. The image
 over the backdrop, as the viewer's frame does (D23). A section's plane clips every triangle, and each closed
 solid it goes through is closed again with a flat cap in the cap's finish (D98).
 
+**The still on screen (#119).** "Render" is a button of the Views control, on a desktop. Pressed, the browser
+is asked for WebGPU; then the chunk is fetched; then a canvas of its own lies over the 3D view, with a WebGPU
+renderer of its own. Until its first sample the canvas is empty and the viewer's frame shows through it. A line
+says how far the still is ("Rendering: 96 of 256 samples, 23 s"), with "Stop", "Save image" and "Close"; the
+still stops by itself at 256 samples. It has one pixel for each CSS pixel of the view, at most 1920 wide (D103).
+Another view, another cut, another backdrop or a resized window starts it over. The viewer underneath is not
+switched off: it rests as it does whenever nothing changes, and draws the new view once when the view is
+changed (D102). "Close", Escape or "Render" again ends the mode: the view, the setting and the tier are as they
+were. While render mode is on, "Save image" in the panel saves the still, as `my-home-<view>-render-<date>.png`,
+over its backdrop.
+
+**Built before the gate's numbers (#119).** The owner's measurement had not come in when the still was built;
+it uses the WebGPU tracer, the design's first choice. If the numbers fail the gate, `render-mode/tracer.ts` is
+the one file that knows the tracer: the deprecated WebGL tracer goes in behind the same `Trace`.
+
 ## 10. Performance budgets
 
 ### 10.1 The budgets
 
 "Default view" is the first view of "Our home": the souterrain cutaway.
 
-| Budget                                                           | Phone                       | Desktop                                                     |
-| ---------------------------------------------------------------- | --------------------------- | ----------------------------------------------------------- |
-| Draw calls, default view, moving frame                           | ≤ 250                       | ≤ 350                                                       |
-| Draw calls, whole house                                          | ≤ 350                       | ≤ 500                                                       |
-| Draw calls while idle                                            | 0                           | 0                                                           |
-| Triangles, whole house                                           | ≤ 150,000                   | ≤ 150,000                                                   |
-| Triangles per catalogue piece                                    | ≤ 5,000                     | ≤ 5,000                                                     |
-| Texture files in the repository                                  | ≤ 16 MB                     | same                                                        |
-| Texture download, all finishes                                   | ≤ 1.5 MB                    | ≤ 6 MB                                                      |
-| Texture memory on the GPU                                        | ≤ 40 MB                     | ≤ 220 MB                                                    |
-| Point lights in the lamp pool, every tier                        | 6                           | 12                                                          |
-| Lights with shadows, every tier                                  | 1 (sun): no lamp shadows    | 5 (sun and 4 pool lamps)                                    |
-| Shader programs compiled by a tier switch or a lamp reassignment | 0                           | 0                                                           |
-| Main chunk growth over `d4df5df`                                 | ≤ 50 kB gzipped, whole epic | same                                                        |
-| `render-beautiful` chunk                                         | ≤ 150 kB gzipped            | same                                                        |
-| `render-path` chunk                                              | not offered                 | set at the decision gate (§9); never loaded before "Render" |
-| Moving frame, median                                             | ≤ 33 ms                     | ≤ 17 ms                                                     |
-| Refined frame (`auto`)                                           | ≤ 300 ms                    | n/a                                                         |
+| Budget                                                           | Phone                       | Desktop                                        |
+| ---------------------------------------------------------------- | --------------------------- | ---------------------------------------------- |
+| Draw calls, default view, moving frame                           | ≤ 250                       | ≤ 350                                          |
+| Draw calls, whole house                                          | ≤ 350                       | ≤ 500                                          |
+| Draw calls while idle                                            | 0                           | 0                                              |
+| Triangles, whole house                                           | ≤ 150,000                   | ≤ 150,000                                      |
+| Triangles per catalogue piece                                    | ≤ 5,000                     | ≤ 5,000                                        |
+| Texture files in the repository                                  | ≤ 16 MB                     | same                                           |
+| Texture download, all finishes                                   | ≤ 1.5 MB                    | ≤ 6 MB                                         |
+| Texture memory on the GPU                                        | ≤ 40 MB                     | ≤ 220 MB                                       |
+| Point lights in the lamp pool, every tier                        | 6                           | 12                                             |
+| Lights with shadows, every tier                                  | 1 (sun): no lamp shadows    | 5 (sun and 4 pool lamps)                       |
+| Shader programs compiled by a tier switch or a lamp reassignment | 0                           | 0                                              |
+| Main chunk growth over `d4df5df`                                 | ≤ 50 kB gzipped, whole epic | same                                           |
+| `render-beautiful` chunk                                         | ≤ 150 kB gzipped            | same                                           |
+| `render-path` chunk                                              | not offered                 | ≤ 340 kB gzipped; never loaded before "Render" |
+| Moving frame, median                                             | ≤ 33 ms                     | ≤ 17 ms                                        |
+| Refined frame (`auto`)                                           | ≤ 300 ms                    | n/a                                            |
 
 Texture memory is computed, not measured: width × height × 4 bytes × 1.33 for each texture a device holds,
 summed. A device holds **one** size of each set in every tier (§5.3), so this is the real footprint: a phone
@@ -1277,8 +1292,8 @@ the catalogue, a family per PR.
 `handle`); `docs/adding-piece-type.md` § 2 describes them. A wooden board is stained veneer (D77) with its grain
 along it (D78), every part of a rebuilt piece names a finish (D80), and bright steel is lacquer (D81). Doors stay open
 frames (D82). Piece modules are in the main chunk: the seven families together are 3.8 kB of it, which used up
-the epic's first cap of +35 kB (D22: +50 kB since). The roof window's frame, 72 bytes over that cap, came with
-the new one.
+the epic's first cap of +35 kB (D22: +50 kB since). The roof window's frame, which put #160 41 bytes
+over that cap, came with the new one (#170: 100 bytes).
 
 ### Step 7. Outdoors (M)
 
@@ -1367,7 +1382,7 @@ All seven proposed defaults were accepted.
 | D19  | A fixed lamp pool per device (6 on a phone, 12 on a desktop); lamp shadows on desktops only, in both tiers                                                                                 | Stable light counts; a phone's budget of one shadow map (review of #109)                                                                                                                                                                                                                                                                                                      |
 | D20  | Every frame goes through an offscreen target and the output pass                                                                                                                           | Keeps tone mapping and colour space out of material programs                                                                                                                                                                                                                                                                                                                  |
 | D21  | A phone's fast frames use FXAA in the output pass                                                                                                                                          | Their target has no MSAA; one cheap step keeps moving edges smooth (#110)                                                                                                                                                                                                                                                                                                     |
-| D22  | Main chunk growth ≤ 50 kB gzipped                                                                                                                                                          | 25 in the first draft, 35 from #110: the environment and the output pass live in the main chunk. 50 by the owner's decision of 2026-11-26 (#120 Q5), when the catalogue's pieces had used up the 35: the cap is room, not a target. It is one file since D95, at +30.7 kB (#119)                                                                                              |
+| D22  | Main chunk growth ≤ 50 kB gzipped                                                                                                                                                          | 25 in the first draft, 35 from #110: the environment and the output pass live in the main chunk. 50 by the owner's decision of 2026-11-26 (#120 Q5), when the catalogue's pieces had used up the 35: the cap is room, not a target. It is one file since D95, at +30.8 kB (#170)                                                                                              |
 | D23  | The backdrop is laid in by the output pass, over a target cleared transparent                                                                                                              | The backdrop keeps its colour under any tone mapping; glass and edges in front of it blend as shown                                                                                                                                                                                                                                                                           |
 | D24  | A part with its own roughness, metalness or shadow flags stays its own mesh until parts name finishes                                                                                      | A merged mesh has one material; merging them would change how the piece looks. Merging also fixes the draw order of a piece's transparent parts to the parts' order, where three.js sorted them by distance before (#110)                                                                                                                                                     |
 | D25  | Surfaces that overlap in one pixel (glass over a wall, an anti-aliased edge) blend before tone mapping                                                                                     | A consequence of D20: the old renderer blended tone-mapped colours. Translucent parts read denser                                                                                                                                                                                                                                                                             |
@@ -1447,6 +1462,10 @@ All seven proposed defaults were accepted.
 | D99  | A fallback (software) WebGPU adapter counts as no WebGPU; `&adapter=any` lets it through                                                                                                   | Headless Chromium, on CI and on the agents' machine, has `navigator.gpu` with SwiftShader behind it. The tracer's kernels do not compile there in minutes, or take the browser's GPU process with them. Such a browser gets the sentence and downloads nothing (#119)                                                                                                         |
 | D100 | A traced still has no grass tufts                                                                                                                                                          | The tufts are an instanced mesh of the `render-beautiful` chunk, not draw items (D89). Tracing them means sharing that module between two lazy chunks; left until the stills are judged (#119)                                                                                                                                                                                |
 | D101 | `three-gpu-pathtracer` 0.0.28 and `three-mesh-bvh` 0.9.18, both pinned; `xatlas-web`, a peer of the first, is not installed                                                                | The tracer is at 0.0.x and its WebGPU entry is new: an update is a decision. Its peer is for a UV unwrapper the WebGPU tracer does not use. `three-mesh-bvh` 0.10.0 was a day old (#119)                                                                                                                                                                                      |
+| D102 | The viewer under a still is not stopped: it rests, and draws the new view once when the view is changed                                                                                    | §9 says "paused". Frames are on demand (D2): with nothing changing the viewer draws nothing, which is paused. Stopped outright, it would show the old view through the empty canvas after a change of view; resting, its one frame is the rasterised frame §9's flow shows first (#119)                                                                                       |
+| D103 | A still has one pixel a CSS pixel of the view, at most 1920 wide; 8 bounces                                                                                                                | The time to a clean still grows with the pixels, and 1920 x 1080 is what the gate measures. "Save image" of the viewer draws twice the canvas (§7.4) in one frame; a still of that size would take four times as long. Light in a room is its second to fourth bounce (#119)                                                                                                  |
+| D104 | `render-path` may be 340 kB gzipped (the owner, 2026-11-26); it is 294 kB at the gate                                                                                                      | The WebGPU build of three.js is most of it and shares only the core with the viewer. The cap is room for the tracer's next versions, not a target (#119, #120 Q5)                                                                                                                                                                                                             |
+| D105 | The smoke on staging checks render mode as far as a runner can: the button, no chunk before the press, the sentence                                                                        | A runner's browser has no graphics card for WebGPU (D99). What a still looks like, and how long it takes, is the owner's check (#119)                                                                                                                                                                                                                                         |
 
 ## 14. Open questions
 

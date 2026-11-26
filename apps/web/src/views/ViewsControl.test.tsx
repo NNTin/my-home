@@ -110,3 +110,36 @@ describe('the Views control', () => {
     expect(busy.group.getByRole('button', { name: 'Saving…' })).toBeDisabled();
   });
 });
+
+describe('"Render" in the Views control', () => {
+  const control = (onRender?: () => void, rendering = false) =>
+    render(
+      <ViewsControl
+        scene={home}
+        view={undefined}
+        onView={vi.fn()}
+        backdrop="sky"
+        onBackdrop={vi.fn()}
+        onSave={vi.fn()}
+        saving={false}
+        onRender={onRender}
+        rendering={rendering}
+      />,
+    );
+
+  it('is there only where render mode is offered', () => {
+    control();
+    expect(screen.queryByRole('button', { name: 'Render' })).toBeNull();
+    cleanup();
+  });
+
+  it('turns render mode on and off, and shows which it is', () => {
+    const onRender = vi.fn();
+    control(onRender, true);
+    const button = screen.getByRole('button', { name: 'Render' });
+    expect(button).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(button);
+    expect(onRender).toHaveBeenCalledTimes(1);
+    cleanup();
+  });
+});

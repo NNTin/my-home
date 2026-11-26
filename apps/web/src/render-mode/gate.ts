@@ -25,6 +25,7 @@ import { BOUNCES, SAMPLE_TARGET, Trace, type TraceSettings } from './tracer';
 import {
   buildTraceScene,
   frameCamera,
+  paintBackdrop,
   traceFinishes,
   traceMeshes,
   whenTexturesArrived,
@@ -179,7 +180,9 @@ async function measureView(
       );
       while (wanted.length > 0 && samples >= wanted[0]!) {
         wanted.shift();
-        // Only the last checkpoint passed is an image of its own.
+        // Only the last checkpoint passed is an image of its own. On a fast card two fall into
+        // one look at the samples: the image is then compared with one of a quarter of its
+        // samples, which is the stricter test.
         if (wanted.length > 0 && samples >= wanted[0]!) continue;
         const image = capture();
         const point: Checkpoint = { samples, seconds: now() - traceStart };
@@ -194,7 +197,9 @@ async function measureView(
       }
     }
     trace.stop();
-    capture();
+    // The still as it is saved: over the backdrop as the view shows it, a gradient at eye level.
+    paintBackdrop(context, built.backdropColors);
+    trace.capture(context);
     const image = await new Promise<Blob | null>((resolve) => kept.toBlob(resolve, 'image/png'));
     return { measurement, ...(image && { image }) };
   } finally {

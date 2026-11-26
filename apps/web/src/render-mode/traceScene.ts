@@ -208,13 +208,27 @@ const SUN_DISTANCE = 39;
 export const backdropCss = ({ top, bottom }: BackdropColors): string =>
   top === bottom ? top : `linear-gradient(${top}, ${bottom})`;
 
+/** Fills a 2D canvas with a backdrop: what a saved image has behind the traced one. */
+export function paintBackdrop(context: CanvasRenderingContext2D, { top, bottom }: BackdropColors) {
+  const { width, height } = context.canvas;
+  if (top === bottom) context.fillStyle = top;
+  else {
+    const gradient = context.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, top);
+    gradient.addColorStop(1, bottom);
+    context.fillStyle = gradient;
+  }
+  context.fillRect(0, 0, width, height);
+}
+
 export interface TraceScene {
   scene: Scene;
   meshes: number;
   triangles: number;
   lamps: number;
-  /** What is behind the image, as a CSS background (D23). */
+  /** What is behind the image, as a CSS background (D23), and as its colours. */
   backdrop: string;
+  backdropColors: BackdropColors;
   /** Tone-mapping exposure of the rig. */
   exposure: number;
   dispose(): void;
@@ -256,6 +270,7 @@ export function buildTraceScene(inputs: TraceInputs, meshes = traceMeshes(inputs
 
   // Every fixture that is drawn is lit: the pool of the real-time tiers is a budget of theirs.
   const emitters = rig.lamps.on ? sceneEmitters(inputs.placements, lampRooms(inputs.scene)) : [];
+  const lamps: PointLight[] = [];
   for (const emitter of emitters) {
     const lamp = new PointLight(
       emitter.color,
@@ -264,6 +279,7 @@ export function buildTraceScene(inputs: TraceInputs, meshes = traceMeshes(inputs
       2,
     );
     lamp.position.set(...emitter.position);
+    lamps.push(lamp);
     scene.add(lamp);
   }
 
@@ -282,12 +298,14 @@ export function buildTraceScene(inputs: TraceInputs, meshes = traceMeshes(inputs
     triangles,
     lamps: emitters.length,
     backdrop: backdropCss(backdropColors(rig.backdrop, inputs.eye)),
+    backdropColors: backdropColors(rig.backdrop, inputs.eye),
     exposure: rig.exposure,
     dispose() {
       for (const mesh of meshes) mesh.geometry.dispose();
       for (const copy of copies.values()) copy.dispose();
       environment.dispose();
       sun.dispose();
+      for (const lamp of lamps) lamp.dispose();
     },
   };
 }
