@@ -80,6 +80,9 @@ src/catalog/shapes.test.ts -u`, the flag **last**. `-u` takes the word after it:
 - **A local look at one view** (a shell change you must see before a push): the api on PGlite and Vite, started
   directly, and one `screenshot.mjs` at a time. Vite listens on `localhost` only: `SITE_BASE=http://localhost:<port>`,
   not `127.0.0.1` (connection refused, #145). `?view=eye&room=<id>&look=<deg>` stands back in the room.
+- **`overlay-shots.sh` takes about 6 minutes a photo here** (SwiftShader) and holds the heavy slot all along:
+  a batch of 20 blocks every install and test for two hours (#148). Shoot only the poses that settle a question,
+  in batches of a few; a night photo or a pose far off measures nothing.
 - **Not locally:** the whole `pnpm test`, `pnpm build` with `pnpm check:bundle`, real Postgres, Docker, and
   anything with a browser (the smokes, `visual-diff`, screenshots in bulk). CI runs all of them on every push:
   `check`, `test-postgres`, `docker`, `chart`, then `publish`, `deploy` and, on staging, `staging-checks`

@@ -606,11 +606,11 @@
     {
       "id": "souterrain-shoe-cabinet-1",
       "typeId": "furniture.shoe-cabinet",
-      "name": "Corridor · shoe cabinet",
+      "name": "Boiler room · shoe cabinet",
       "levelId": "souterrain",
       "position": {
-        "x": 7.7,
-        "z": -6.085
+        "x": 6.9,
+        "z": -1.855
       },
       "rotationY": 3.141592653589793,
       "params": {}
