@@ -143,10 +143,10 @@ describe('walking through the souterrain apartment', () => {
 describe('the stair between the souterrain and the ground floor', () => {
   // The walking line going up: north along the hall's west wall, east across the landing, south.
   const path: Vec2[] = [
-    [0.985, -7.722],
+    [0.985, -7.645],
     [0.985, -9.965],
     [2.09, -9.965],
-    [2.09, -8.22],
+    [2.09, -8.165],
   ];
   const rise = scene.stairs[0]!.rise;
   const LANDING = SOUTERRAIN + 8 * rise;
@@ -208,7 +208,7 @@ describe('the stair between the souterrain and the ground floor', () => {
     const over = go(stand(1, -6.5, 0), [[1, -9.5]]);
     expect(over.y).toBe(0);
     // The floor goes on over the first two steps of the lower flight.
-    expect(over.z).toBeCloseTo(-8.22, 1);
+    expect(over.z).toBeCloseTo(-8.165, 1);
   });
 
   it('steps off the first step past the post, and goes under the upper flight as far as it can stand', () => {
@@ -311,7 +311,7 @@ describe('start pose', () => {
     const start = startPose(stairsOnly, world)!;
     expect(roomOf(start)).toBe('souterrain-stair-hall');
     expect(start.x).toBeCloseTo(0.985);
-    expect(start.z).toBeCloseTo(-7.222);
+    expect(start.z).toBeCloseTo(-7.145);
     // Looking north, up the first flight.
     expect(start.yaw).toBeCloseTo(0);
   });

@@ -7712,9 +7712,9 @@
             "note": "The lower flight runs north along the west wall, 1.0 wide (two 0.6 riser tiles less a cut, 458ffbe5; ±0.05) and 5 mm clear of it"
           },
           "z": {
-            "value": -7.722,
+            "value": -7.645,
             "source": "estimated-from-photo",
-            "note": "First riser: 8 risers and 7 treads to the landing (f8268144, 458ffbe5, 95302bfd). The foot is 6.8 goings (±0.4) from the south wall in 95302bfd, which with the hall's length and a landing as deep as the flight is wide gives a going of 0.249 (±0.03)"
+            "note": "First riser: 8 risers and 7 treads to the landing (f8268144, 458ffbe5, 95302bfd). Going 0.26 (±0.02): the camera fits of 95302bfd, which has the hall's south wall in the picture, and of f8268144 are best between 0.25 and 0.28, and two risers and a going are then 0.63"
           }
         },
         {
@@ -7745,7 +7745,7 @@
             "source": "estimated-from-photo"
           },
           "z": {
-            "value": -8.22,
+            "value": -8.165,
             "source": "estimated-from-photo",
             "note": "Top riser. The photos show four treads (0b683b6f, bc0cfc94) and a taller last riser; the model has five treads of the same going, so that fourteen equal risers reach the ground floor 2.6 above (photo request 2ec17fe2)"
           }

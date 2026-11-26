@@ -186,10 +186,10 @@ describe('Minimap', () => {
     expect(svg().querySelector('.map-stair')!.getAttribute('d')).not.toBe('');
     const seen = new Set<string>();
     for (const [x, z] of [
-      [0.985, -7.722],
+      [0.985, -7.645],
       [0.985, -9.965],
       [2.09, -9.965],
-      [2.09, -8.22],
+      [2.09, -8.165],
       [2.09, -7.6],
     ] as Vec2[]) {
       for (let i = 0; i < 400 && Math.hypot(x - at.x, z - at.z) > 0.02; i++) {

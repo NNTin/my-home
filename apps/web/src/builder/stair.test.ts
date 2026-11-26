@@ -81,13 +81,13 @@ describe('the stair of the real home', () => {
     const treads = stair.steps.filter((s) => s.part === 'tread');
     for (const tread of treads) {
       expect(tread.size).toEqual([
-        expect.closeTo(0.249 + D.tread.nosing),
+        expect.closeTo(0.26 + D.tread.nosing),
         D.tread.thickness,
         expect.closeTo(1),
       ]);
     }
     // The first tread's edge is 2 cm in front of the first riser, at the walking line's start.
-    expect(treads[0]!.center[2] + treads[0]!.size[0] / 2).toBeCloseTo(-7.722 + D.tread.nosing);
+    expect(treads[0]!.center[2] + treads[0]!.size[0] / 2).toBeCloseTo(-7.645 + D.tread.nosing);
   });
 
   it('carries the lower flight on the floor and leaves the upper one open below', () => {
@@ -115,7 +115,7 @@ describe('the stair of the real home', () => {
         // The top of the step below it: two points of the outline, one going apart.
         expect(under).toHaveLength(2);
         expect(Math.abs(under[0]![0] - under[1]![0])).toBeCloseTo(
-          i === 0 || tread !== treads.at(-1) ? 0.249 : 0.249 - D.riserPlate,
+          i === 0 || tread !== treads.at(-1) ? 0.26 : 0.26 - D.riserPlate,
         );
       }
     }
@@ -127,8 +127,8 @@ describe('the stair of the real home', () => {
     expect([x0, x1]).toEqual([expect.closeTo(0.485), expect.closeTo(2.59)]);
     expect(z0).toBeCloseTo(-10.465);
     // Its south edge is where the upper flight arrives, and the third riser of the lower one.
-    expect(z1).toBeCloseTo(-8.22);
-    expect(z1).toBeCloseTo(-7.722 - 2 * 0.249);
+    expect(z1).toBeCloseTo(-8.165);
+    expect(z1).toBeCloseTo(-7.645 - 2 * 0.26);
     const ceiling = home.roomCeilings.find((c) => c.roomId === 'souterrain-stair-hall')!;
     expect(ceiling.holes).toEqual([stair.well]);
     expect(home.slabs.find((s) => s.id === 'ground-floor:floor')!.holes).toEqual([stair.well]);
@@ -152,16 +152,16 @@ describe('the railing', () => {
   it('has a post beside the second riser, one at the landing and one at the top', () => {
     const [foot, turn, last] = posts;
     expect(bottom(foot!)).toBeCloseTo(FLOOR);
-    expect(foot!.center[2]).toBeCloseTo(-7.722 - 0.249 - R.post / 2);
+    expect(foot!.center[2]).toBeCloseTo(-7.645 - 0.26 - R.post / 2);
     // At the landing's edge, from under the lower flight's board to above the upper handrail.
     expect(turn!.center[2]).toBeCloseTo(-9.965 + (2.09 - 0.985) / 2);
     const landing = top(stair.steps[7]!);
     expect(bottom(turn!)).toBeLessThan(landing - 0.2);
     expect(top(turn!)).toBeGreaterThan(landing + 1.1);
     expect(top(turn!)).toBeLessThan(landing + 1.3);
-    expect(last!.center[2]).toBeCloseTo(-8.22 - R.post / 2);
+    expect(last!.center[2]).toBeCloseTo(-8.165 - R.post / 2);
     expect(top(last!)).toBeCloseTo(
-      R.height + R.handrail + R.postAbove - stair.rise * (R.post / 2 / 0.249),
+      R.height + R.handrail + R.postAbove - stair.rise * (R.post / 2 / 0.26),
     );
   });
 
@@ -169,11 +169,11 @@ describe('the railing', () => {
     const lower = rails[1]!;
     const [a, b] = lower.outline;
     // Rising one riser per going.
-    expect((b![1] - a![1]) / (b![0] - a![0])).toBeCloseTo(stair.rise / 0.249);
+    expect((b![1] - a![1]) / (b![0] - a![0])).toBeCloseTo(stair.rise / 0.26);
     // Over the edge of the third tread (two goings and 2 cm of nosing from the first riser).
     const third = stair.steps[2]!;
-    const x = 2 * 0.249;
-    const y = a![1] + ((x - a![0]) * stair.rise) / 0.249;
+    const x = 2 * 0.26;
+    const y = a![1] + ((x - a![0]) * stair.rise) / 0.26;
     expect(FLOOR + y - top(third)).toBeCloseTo(R.height);
     expect(lower.depth).toBe(R.handrail);
     // It meets the faces of its posts.
@@ -189,7 +189,7 @@ describe('the railing', () => {
       const lowest = Math.min(...board.outline.map(([, y]) => y));
       if (i === 0)
         expect(lowest - floor).toBeCloseTo(
-          stair.rise + (D.railing.post * stair.rise) / 0.249 - D.railing.stringer.below,
+          stair.rise + (D.railing.post * stair.rise) / 0.26 - D.railing.stringer.below,
         );
       else expect(lowest).toBeCloseTo(floor);
       // No board dips under the line of its lower edge.
