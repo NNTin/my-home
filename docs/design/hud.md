@@ -716,11 +716,11 @@ the family's controls once, say what looked wrong), and the last PR lists the wh
 - with reduced motion on (the phone's setting) and with the app's Effects switch off;
 - VoiceOver or TalkBack through the top bar and the sheet (§10.3), if the owner uses one.
 
-### 10.2 A measuring page (proposed)
+### 10.2 A measuring page
 
 What only the owner's phone can tell is whether effects over the view cost frames while walking or orbiting. The
-proposal, following `AGENTS.md` (§ Where tests run) and `/?render=measure`: **`/?hud=measure`**, a lazy chunk,
-built with #168's first PR if agreed:
+page, following `AGENTS.md` (§ Where tests run) and `/?render=measure`: **`/?hud=measure`**, a lazy chunk,
+built with #168's first PR (agreed, 2026-11-26):
 
 1. Opens the viewer, waits for the scene, then measures four runs of 5 s each: the camera turning by script
    (orbit) and walking a fixed path, each with no effects and with a burst, a puff and a word fired four times a
@@ -785,7 +785,7 @@ owner's two-minute phone check listed, green staging checks.
 
 ```mermaid
 graph TD
-  p1["1. Foundation: core C1–C3, the sakuga-hud build and budget,<br/>wrappers and fallback, icons, the measuring page (if agreed)"] --> p2
+  p1["1. Foundation: core C1–C3, the sakuga-hud build and budget,<br/>wrappers and fallback, icons, the measuring page"] --> p2
   p2["2. Paper: the theme on every panel, bar and page by CSS,<br/>native controls drawn in paper, room-name tags"] --> p3
   p3["3. Buttons: button size/href/pressed, icon-button, badge, toast kind;<br/>top bar, stage tools, toolbars, hints, status"] --> p4
   p4["4. Choices: segmented, checkbox, slider, input, field;<br/>views, quality, levels, show/hide, furniture panel fields"] --> p5
@@ -794,15 +794,15 @@ graph TD
   p7["7. Photos and pages: the photos panel, the catalogue and piece pages;<br/>old HUD styles removed; the real-phone pass listed"]
 ```
 
-| PR  | Family        | New or changed elements                                                                                                | Size |
-| --- | ------------- | ---------------------------------------------------------------------------------------------------------------------- | ---- |
-| 1   | Foundation    | core C1–C3; `sakuga-hud` build, its test and budget; `hud/` wrappers and fallback; `icons/`; `/?hud=measure` if agreed | M    |
-| 2   | Paper         | none (CSS: `--sk-*` and the paper look on today's native controls)                                                     | S    |
-| 3   | Buttons       | `sakuga-button` (compact, href, pressed), `sakuga-icon-button`, `sakuga-badge`, `sakuga-toast` (kind)                  | M    |
-| 4   | Choices       | `sakuga-segmented`, `sakuga-field`, compact checkbox, slider, input                                                    | L    |
-| 5   | Containers    | `sakuga-panel`, `sakuga-fold`, `sakuga-sheet`, `sakuga-card`                                                           | L    |
-| 6   | Walking       | `sakuga-pad`, `sakuga-shutter`, `sakuga-map`, `sakuga-compass`                                                         | L    |
-| 7   | Photos, pages | none new; remove the old HUD CSS                                                                                       | M    |
+| PR  | Family        | New or changed elements                                                                                      | Size |
+| --- | ------------- | ------------------------------------------------------------------------------------------------------------ | ---- |
+| 1   | Foundation    | core C1–C3; `sakuga-hud` build, its test and budget; `hud/` wrappers and fallback; `icons/`; `/?hud=measure` | M    |
+| 2   | Paper         | none (CSS: `--sk-*` and the paper look on today's native controls)                                           | S    |
+| 3   | Buttons       | `sakuga-button` (compact, href, pressed), `sakuga-icon-button`, `sakuga-badge`, `sakuga-toast` (kind)        | M    |
+| 4   | Choices       | `sakuga-segmented`, `sakuga-field`, compact checkbox, slider, input                                          | L    |
+| 5   | Containers    | `sakuga-panel`, `sakuga-fold`, `sakuga-sheet`, `sakuga-card`                                                 | L    |
+| 6   | Walking       | `sakuga-pad`, `sakuga-shutter`, `sakuga-map`, `sakuga-compass`                                               | L    |
+| 7   | Photos, pages | none new; remove the old HUD CSS                                                                             | M    |
 
 Why this order: the foundation makes every later element cheap (the core once) and sleeping at rest before there
 are many elements on the page; paper second, so production never shows a mix of dark panels and paper controls
@@ -842,7 +842,7 @@ section are panels.
 | H16 | An "Effects" switch (C3, §10.4)                                                                       | A calm HUD without changing the phone's setting                                                  |
 | H17 | Paper first, by CSS, before the families (§12)                                                        | Production deploys each merge; no mix of dark panels and paper controls                          |
 | H18 | Budget: `first.sakuga-hud` 50 kB gzipped (§9.4)                                                       | 40 kB estimated, a quarter of room                                                               |
-| H19 | A measuring page `/?hud=measure` for the owner's phone (§10.2), if agreed                             | Frame cost with effects over the view can only be measured on the phone                          |
+| H19 | A measuring page `/?hud=measure` for the owner's phone (§10.2), agreed                                | Frame cost with effects over the view can only be measured on the phone                          |
 
 ## 14. Open questions
 
