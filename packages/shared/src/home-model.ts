@@ -134,6 +134,42 @@ export const RoofWindow = z
   .meta({ id: 'RoofWindow' });
 export type RoofWindow = z.infer<typeof RoofWindow>;
 
+/** A round pipe standing out of a chimney: a flue, or a thin vent. */
+export const ChimneyFlue = z
+  .strictObject({
+    /** Plan position of its axis. */
+    x: Dimension,
+    z: Dimension,
+    diameter: PositiveDimension,
+    /** Height of its top above the ground floor's finished floor, as every height of the model. */
+    top: Dimension,
+  })
+  .meta({ id: 'ChimneyFlue' });
+export type ChimneyFlue = z.infer<typeof ChimneyFlue>;
+
+/**
+ * A chimney standing out of a gable roof: a box on the plan, from inside the roof up to `top`,
+ * with the pipes on it. It adds to the roof and changes none of its planes.
+ */
+export const Chimney = z
+  .strictObject({
+    id: Id,
+    name: Name,
+    /** Plan position of its middle. */
+    x: Dimension,
+    z: Dimension,
+    /** Size along plan x and along plan z. */
+    width: PositiveDimension,
+    depth: PositiveDimension,
+    /** Height of its top above the ground floor's finished floor. */
+    top: Dimension,
+    /** Its sides; a facade finish, the building's facade when omitted. */
+    finish: FinishUse.optional(),
+    flues: z.array(ChimneyFlue).optional(),
+  })
+  .meta({ id: 'Chimney' });
+export type Chimney = z.infer<typeof Chimney>;
+
 /**
  * A gable (saddle) roof over the highest level, which becomes an attic. It spans the bounding
  * rectangle of the footprint; `building.roofThickness` is the thickness of the roof planes.
@@ -149,6 +185,7 @@ export const GableRoof = z
     /** How far the roof reaches past the footprint, on all four sides. */
     overhang: NonNegativeDimension,
     windows: z.array(RoofWindow).optional(),
+    chimneys: z.array(Chimney).optional(),
   })
   .meta({ id: 'GableRoof' });
 export type GableRoof = z.infer<typeof GableRoof>;
@@ -633,6 +670,7 @@ function checkSemantics(model: z.infer<typeof HomeModelShape>, ctx: z.Refinement
   const roof = model.building.roof;
   if (roof?.type === 'gable') {
     roof.windows?.forEach((w, i) => claim(w.id, ['building', 'roof', 'windows', i, 'id']));
+    roof.chimneys?.forEach((c, i) => claim(c.id, ['building', 'roof', 'chimneys', i, 'id']));
   }
 
   const levels = new Set(model.levels.map((l) => l.id));
@@ -877,6 +915,45 @@ function checkSemantics(model: z.infer<typeof HomeModelShape>, ctx: z.Refinement
       }
     });
   }
+  if (roof?.type === 'gable') checkChimneys(model, roof, issue);
+}
+
+/** A chimney stands on the roof (its middle over the footprint) and its top is above it. */
+function checkChimneys(
+  model: z.infer<typeof HomeModelShape>,
+  roof: GableRoof,
+  issue: (path: (string | number)[], message: string) => void,
+) {
+  const top = [...model.levels].sort((a, b) => b.elevation.value - a.elevation.value)[0];
+  if (!top) return;
+  const xs = model.building.footprint.map((p) => p.x.value);
+  const zs = model.building.footprint.map((p) => p.z.value);
+  const slope = Math.tan((roof.pitch.value * Math.PI) / 180);
+  const [across, ridge] = roof.ridgeAxis === 'x' ? [zs, 'z' as const] : [xs, 'x' as const];
+  const [lo, hi] = [Math.min(...across), Math.max(...across)];
+  const thickness = model.building.roofThickness.value * Math.hypot(1, slope);
+  roof.chimneys?.forEach((c, i) => {
+    const path = ['building', 'roof', 'chimneys', i];
+    const [x, z] = [c.x.value, c.z.value];
+    if (x < Math.min(...xs) || x > Math.max(...xs) || z < Math.min(...zs) || z > Math.max(...zs)) {
+      issue([...path, 'x'], `Chimney "${c.id}" does not stand on the roof`);
+      return;
+    }
+    const u = ridge === 'z' ? z : x;
+    const surface =
+      top.elevation.value +
+      roof.kneeWallHeight.value +
+      ((hi - lo) / 2 - Math.abs(u - (lo + hi) / 2)) * slope +
+      thickness;
+    if (c.top.value <= surface) {
+      issue([...path, 'top'], `Chimney "${c.id}" ends inside the roof`);
+    }
+    c.flues?.forEach((f, j) => {
+      if (f.top.value <= c.top.value) {
+        issue([...path, 'flues', j, 'top'], `A flue of chimney "${c.id}" ends inside it`);
+      }
+    });
+  });
 }
 
 /** Where a finish use sits, as the messages say it. */
@@ -942,6 +1019,12 @@ function checkFinishes(
   });
   check(model.building.finishes?.facade, 'facade', ['building', 'finishes', 'facade']);
   check(model.building.finishes?.roof, 'roof', ['building', 'finishes', 'roof']);
+  const roof = model.building.roof;
+  if (roof?.type === 'gable') {
+    roof.chimneys?.forEach((c, i) =>
+      check(c.finish, 'facade', ['building', 'roof', 'chimneys', i, 'finish']),
+    );
+  }
   model.outdoorAreas.forEach((a, i) => check(a.finish, 'ground', ['outdoorAreas', i, 'finish']));
   model.outbuildings?.forEach((b, i) => check(b.finish, 'facade', ['outbuildings', i, 'finish']));
   model.stairs?.forEach((s, i) => {

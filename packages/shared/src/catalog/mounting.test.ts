@@ -62,6 +62,9 @@ describe('mounting', () => {
       heightFitIssues(model, cabinet, values, { ...onWall, x: 0.5 }, 'wall', 1.33),
     ).toHaveLength(1);
     expect(heightFitIssues(model, cabinet, values, onWall, 'ceiling', 5)).toEqual([]);
+    // Inside the room the ceiling is checked (above); outside every room of its level (on the
+    // facade, #147) there is no ceiling over it.
+    expect(heightFitIssues(model, cabinet, values, { ...onWall, z: -0.5 }, 'wall', 3)).toEqual([]);
   });
 
   it('allows the type’s mountings only, and no elevation under a ceiling', () => {

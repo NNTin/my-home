@@ -497,6 +497,12 @@
           "items": {
             "$ref": "#/$defs/RoofWindow"
           }
+        },
+        "chimneys": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Chimney"
+          }
         }
       },
       "required": ["type", "ridgeAxis", "pitch", "kneeWallHeight", "overhang"],
@@ -581,25 +587,44 @@
       "pattern": "^[a-z][a-z0-9-]*\\.[a-z][a-z0-9-]*$",
       "description": "A piece type in the catalogue, e.g. \"window.casement\"."
     },
-    "Bearing": {
+    "Chimney": {
       "type": "object",
       "properties": {
-        "value": {
-          "type": "number",
-          "minimum": -360,
-          "maximum": 360
+        "id": {
+          "$ref": "#/$defs/Id"
         },
-        "source": {
-          "$ref": "#/$defs/DimensionSource"
-        },
-        "note": {
+        "name": {
           "type": "string",
-          "maxLength": 500
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "x": {
+          "$ref": "#/$defs/Dimension"
+        },
+        "z": {
+          "$ref": "#/$defs/Dimension"
+        },
+        "width": {
+          "$ref": "#/$defs/PositiveDimension"
+        },
+        "depth": {
+          "$ref": "#/$defs/PositiveDimension"
+        },
+        "top": {
+          "$ref": "#/$defs/Dimension"
+        },
+        "finish": {
+          "$ref": "#/$defs/FinishUse"
+        },
+        "flues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ChimneyFlue"
+          }
         }
       },
-      "required": ["value", "source"],
-      "additionalProperties": false,
-      "description": "An angle in degrees with provenance."
+      "required": ["id", "name", "x", "z", "width", "depth", "top"],
+      "additionalProperties": false
     },
     "FinishUse": {
       "type": "object",
@@ -647,6 +672,45 @@
       "maxLength": 64,
       "pattern": "^[a-z][a-z0-9-]*\\.[a-z][a-z0-9-]*$",
       "description": "A finish in the library, e.g. \"wood.oak-laminate\"."
+    },
+    "ChimneyFlue": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "$ref": "#/$defs/Dimension"
+        },
+        "z": {
+          "$ref": "#/$defs/Dimension"
+        },
+        "diameter": {
+          "$ref": "#/$defs/PositiveDimension"
+        },
+        "top": {
+          "$ref": "#/$defs/Dimension"
+        }
+      },
+      "required": ["x", "z", "diameter", "top"],
+      "additionalProperties": false
+    },
+    "Bearing": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number",
+          "minimum": -360,
+          "maximum": 360
+        },
+        "source": {
+          "$ref": "#/$defs/DimensionSource"
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 500
+        }
+      },
+      "required": ["value", "source"],
+      "additionalProperties": false,
+      "description": "An angle in degrees with provenance."
     },
     "Slope": {
       "type": "object",

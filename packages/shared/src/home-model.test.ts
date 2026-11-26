@@ -812,6 +812,49 @@ describe('optional structures', () => {
       ]),
     );
   });
+
+  it('rejects a chimney off the roof, one that ends inside it, a flue inside it, a taken id', () => {
+    const home = realHome();
+    const roof = home.building.roof as Extract<HomeModel['building']['roof'], { type: 'gable' }>;
+    expect(HomeModel.safeParse(home).success).toBe(true);
+    const chimney = roof.chimneys![0]!;
+    chimney.top.value = 6.3;
+    chimney.flues![1]!.top.value = 6;
+    chimney.id = 'garage';
+    const second = structuredClone(chimney);
+    second.id = 'roof-chimney-2';
+    second.x.value = 20;
+    roof.chimneys!.push(second);
+    expect(issuesOf(home)).toEqual(
+      expect.arrayContaining([
+        { path: 'building.roof.chimneys[0].id', message: expect.stringContaining('garage') },
+        {
+          path: 'building.roof.chimneys[0].top',
+          message: 'Chimney "garage" ends inside the roof',
+        },
+        {
+          path: 'building.roof.chimneys[0].flues[1].top',
+          message: 'A flue of chimney "garage" ends inside it',
+        },
+        {
+          path: 'building.roof.chimneys[1].x',
+          message: 'Chimney "roof-chimney-2" does not stand on the roof',
+        },
+      ]),
+    );
+  });
+
+  it('wants a facade finish on a chimney', () => {
+    const home = realHome();
+    const roof = home.building.roof as Extract<HomeModel['building']['roof'], { type: 'gable' }>;
+    roof.chimneys![0]!.finish = { finish: 'grass.lawn', source: 'mock' };
+    expect(issuesOf(home)).toEqual([
+      {
+        path: 'building.roof.chimneys[0].finish.finish',
+        message: expect.stringMatching(/^Finish "grass.lawn" is not for a facade/),
+      },
+    ]);
+  });
 });
 
 describe('piece types and names', () => {

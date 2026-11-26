@@ -51,7 +51,7 @@ export interface EditorContext {
   plans: Map<string, FloorPlan>;
   settings: EditorSettings;
   /** What heights depend on: the levels and lowered ceilings, the walls wall pieces hang on. */
-  model: Pick<HomeModel, 'levels' | 'ceilings' | 'walls'>;
+  model: Pick<HomeModel, 'levels' | 'ceilings' | 'walls' | 'rooms'>;
 }
 
 export function createContext(

@@ -28,8 +28,10 @@ import { pointInPolygon } from '../editor/geometry';
 import { fenceLine, fenceSlats, fenceSpec, type FenceSlat } from './fence';
 import {
   doorReveal,
+  gableChimneys,
   gableRoofTrim,
   wallSkirting,
+  type ChimneyDescriptor,
   type DetailWall,
   type DoorRevealDescriptor,
   type RoofTrimDescriptor,
@@ -41,7 +43,12 @@ import { buildStair, type StairDescriptor } from './stair';
 
 export { FENCE_BAY } from './fence';
 export { rotationFor } from './plan';
-export type { DoorRevealDescriptor, RoofTrimDescriptor, SkirtingDescriptor } from './shellDetail';
+export type {
+  ChimneyDescriptor,
+  DoorRevealDescriptor,
+  RoofTrimDescriptor,
+  SkirtingDescriptor,
+} from './shellDetail';
 export { SHELL_DETAIL } from './shellDetail';
 export type { WallFacePart } from './wallFaces';
 export { buildStair, MAX_RISER, type StairDescriptor } from './stair';
@@ -361,6 +368,8 @@ export interface HomeScene {
   /** The trim of a pitched roof: eaves boards, gutters, the ridge cap. */
   roofTrim: RoofTrimDescriptor[];
   roofWindows: RoofWindowDescriptor[];
+  /** Chimneys on a pitched roof, shown with it. */
+  chimneys: ChimneyDescriptor[];
   outbuildings: OutbuildingDescriptor[];
   stairs: StairDescriptor[];
   fences: FenceDescriptor[];
@@ -966,6 +975,10 @@ export function buildHome(model: HomeModel, overrides?: PieceOverrides): HomeSce
     roofTrim:
       gable && roofPlanes[0] ? gableRoofTrim(gable, roofPlanes[0], exteriorFinishes.roof) : [],
     roofWindows,
+    chimneys:
+      gable && roof.type === 'gable'
+        ? gableChimneys(gable, roof.chimneys ?? [], exteriorFinishes.facade)
+        : [],
     outbuildings,
     stairs,
     fences,

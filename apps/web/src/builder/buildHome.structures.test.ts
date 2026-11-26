@@ -120,12 +120,47 @@ describe('roof windows', () => {
     const w = scene.roofWindows.find((r) => r.id === 'roof-window-south');
     expect(w).toMatchObject({ id: 'roof-window-south', levelId: 'first-floor', rotationY: 0 });
     expect(w!.tilt).toBeCloseTo((29 * Math.PI) / 180);
-    expect(w!.size).toEqual([0.8, expect.any(Number), 1]);
+    expect(w!.size).toEqual([0.8, expect.any(Number), 1.35]);
     // Along the ridge from the footprint's west end; on the south (max z) plane.
-    expect(w!.center[0]).toBeCloseTo(0.18 + 7.1 + 0.4);
+    expect(w!.center[0]).toBeCloseTo(0.18 + 7.92 + 0.4);
     expect(w!.center[2]).toBeGreaterThan(gable.ridge);
     const top = roofUnderside(gable, w!.center[2]) + gable.thickness * Math.hypot(1, gable.slope);
     expect((w!.center[1] - top) * Math.cos(w!.tilt)).toBeCloseTo(w!.size[1] / 2);
+  });
+
+  it('a chimney stands out of the roof from inside it, its flues on top', () => {
+    const model = home();
+    const scene = buildHome(model);
+    const gable = gableOf(model, scene.levels.at(-1))!;
+    const [chimney] = scene.chimneys;
+    expect(chimney).toMatchObject({ id: 'roof-chimney', levelId: 'first-floor' });
+    const { center, size } = chimney!.stack;
+    expect(size[0]).toBeCloseTo(1.3);
+    expect(size[2]).toBeCloseTo(0.8);
+    expect(center[1] + size[1] / 2).toBeCloseTo(7.05);
+    // Its foot is inside the roof where the roof is lowest under it: no gap on the lower side.
+    const t = gable.thickness * Math.hypot(1, gable.slope);
+    const lowest = roofUnderside(gable, center[2] - size[2] / 2) + t;
+    expect(center[1] - size[1] / 2).toBeLessThan(lowest);
+    expect(center[1] - size[1] / 2).toBeGreaterThan(lowest - t);
+    expect(chimney!.flues.map((f) => [f.diameter, f.center[1] + f.height / 2])).toEqual([
+      [0.25, expect.closeTo(8.2)],
+      [0.08, expect.closeTo(7.4)],
+    ]);
+    for (const f of chimney!.flues) expect(f.center[1] - f.height / 2).toBeCloseTo(7.05);
+    expect(chimney!.finish.tint).toBe('#41403f');
+  });
+
+  it('a chimney takes the facade finish when it names none, and needs a gable roof', () => {
+    const model = home();
+    const roof = model.building.roof as Extract<typeof model.building.roof, { type: 'gable' }>;
+    delete roof.chimneys![0]!.finish;
+    expect(buildHome(model).chimneys[0]!.finish).toMatchObject({
+      finish: 'render.facade',
+      tint: '#e5e3de',
+    });
+    model.building.roof = { type: 'flat' };
+    expect(buildHome(model).chimneys).toEqual([]);
   });
 
   it('turn to face the other plane or a north-south ridge', () => {

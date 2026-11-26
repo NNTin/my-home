@@ -250,10 +250,15 @@ describe('finishes of the home model', () => {
     expect(item('souterrain-living-room:ceiling').finish).toBe('plaster.fine');
     expect(item('souterrain-kitchen:floor').finish).toBe('floor.neutral');
     expect(item('driveway').finish).toBe('gravel.fine');
-    expect(items.filter((i) => i.finish === 'render.facade' && i.tint === '#e8e0d0').length).toBe(
+    const facade = items.filter((i) => i.finish === 'render.facade' && i.tint === '#e8e0d0');
+    expect(facade.filter((i) => i.group.kind === 'level').length).toBe(
       shellItems(home).filter((i) => i.finish === 'render.facade' && i.group.kind === 'level')
         .length,
     );
+    // A chimney that names no finish has the facade's.
+    expect(facade.filter((i) => i.group.kind === 'roof').map((i) => i.id)).toEqual([
+      'roof-chimney',
+    ]);
     expect(
       items.filter((i) => i.id.includes(':tread') || i.id.includes(':landing'))[0]!.finish,
     ).toBe('tile.light-60');

@@ -91,6 +91,7 @@ export function visibleScene(scene: HomeScene, v: Visibility): HomeScene {
     roofPlanes: showRoof ? scene.roofPlanes.filter((r) => shownLevels.has(r.levelId)) : [],
     roofTrim: showRoof ? scene.roofTrim.filter((r) => shownLevels.has(r.levelId)) : [],
     roofWindows: showRoof ? scene.roofWindows.filter((r) => shownLevels.has(r.levelId)) : [],
+    chimneys: showRoof ? scene.chimneys.filter((c) => shownLevels.has(c.levelId)) : [],
     terrain: v.showTerrain ? scene.terrain : [],
     outdoorAreas: scene.outdoorAreas.filter((a) => !v.hiddenOutdoorAreas.includes(a.id)),
   };
