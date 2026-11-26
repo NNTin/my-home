@@ -51,8 +51,8 @@ describe('catalogSections', () => {
         ],
       ],
       ['Bed room', ['Bed', 'Wardrobe']],
-      ['Corridor', ['Shoe cabinet']],
-      ['Dining', ['Chair', 'Round table']],
+      ['Corridor', ['Shoe cabinet', 'Shoe rack']],
+      ['Dining', ['Chair', 'Dining table', 'Round table']],
       ['Facade', ['Satellite dish']],
       [
         'Kitchen',
@@ -66,7 +66,7 @@ describe('catalogSections', () => {
           'Wall shelf',
         ],
       ],
-      ['Living room', ['Sofa']],
+      ['Living room', ['Rug or mat', 'Sofa']],
       ['Work room', ['Desk']],
     ]);
     expect(sections[2]!.groups.map((g) => [g.name, g.types.map((t) => t.id)])).toEqual([
@@ -91,7 +91,7 @@ describe('catalogSections', () => {
       );
     expect(ids('CASEMENT')).toEqual(['window.casement']);
     expect(ids('gate.swing')).toEqual(['gate.swing']);
-    expect(ids('dining')).toEqual(['furniture.chair', 'furniture.table']);
+    expect(ids('dining')).toEqual(['furniture.chair', 'furniture.dining-table', 'furniture.table']);
     expect(ids('  ')).toHaveLength(catalog.types.length);
     expect(ids('nothing like this')).toEqual([]);
     const described = catalog.types.find((t) => t.id === 'furniture.desk')!;

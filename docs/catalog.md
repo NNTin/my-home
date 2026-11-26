@@ -310,6 +310,23 @@ It shows and hides with that level, like the rest of the facade it hangs on.
 | -------------------------- | ---------------------- | -------------------------------------------------------------- | ------------------------------- |
 | `appliance.satellite-dish` | wall, bottom at 240 cm | 80 cm across, as deep; a bracket, the receiver on an arm; open |                                 |
 
+## Hall, living and work room types (#148)
+
+From the photo drift audit: objects in the owner's photos that no type drew (`8631d272`, `95302bfd`,
+`0b683b6f`, `458ffbe5` for the stair hall; `bcc9f58e` for the living room). Kind `furniture`; sizes are
+defaults, each placement sets its own.
+
+| Type                     | Mounting | Defaults                                                      | Basic besides colours and sizes |
+| ------------------------ | -------- | ------------------------------------------------------------- | ------------------------------- |
+| `furniture.shoe-rack`    | floor    | 90 × 40 × 30 cm, white end frames, bars 1.4 cm a tier         | tiers (1–4)                     |
+| `furniture.rug`          | floor    | 80 × 50 cm, 1.2 cm thick, a 4 cm border; takes no floor space |                                 |
+| `furniture.dining-table` | floor    | 160 × 90 cm, 75 high, wood top on four square metal legs      |                                 |
+
+- A **rug or mat** is footprint `none`: it collides with nothing and the walking figure walks over it, like a
+  stepping stone. A doormat and a living-room rug are the same type in another size.
+- The **wardrobe**'s depth is a basic parameter since #148 (35 to 65 cm, 60 by default): the stair hall's
+  cabinet is shallower than a bedroom wardrobe.
+
 ## Patio and garden types (outdoor)
 
 Identified in the owner's photos of the souterrain patio and garden. Kind `outdoor`, family `garden`: they stand on

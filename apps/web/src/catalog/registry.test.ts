@@ -156,7 +156,9 @@ describe('furniture types', () => {
       'furniture.bed',
       'furniture.wardrobe',
       'furniture.shoe-cabinet',
+      'furniture.shoe-rack',
       'furniture.chair',
+      'furniture.dining-table',
       'furniture.table',
       'appliance.satellite-dish',
       'fixture.radiator',
@@ -168,6 +170,7 @@ describe('furniture types', () => {
       'kitchen.wall-cabinet',
       'kitchen.wall-shelf',
       'fixture.downlight',
+      'furniture.rug',
       'furniture.sofa',
       'furniture.desk',
     ]);

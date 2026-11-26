@@ -26,6 +26,7 @@ const CASES: [string, Record<string, unknown>, number][] = [
   ['furniture.shoe-cabinet', { width: 1.2, doors: 3, height: 1.4 }, 1],
   ['furniture.wardrobe', {}, 2],
   ['furniture.wardrobe', { width: 3, height: 2.6 }, 2],
+  ['furniture.wardrobe', { width: 0.8, height: 1.95, depth: 0.35 }, 2],
   ['furniture.wardrobe', { color: '#5b4130' }, 3],
 ];
 
