@@ -15,6 +15,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { answeredInfrastructure } from './infrastructure.mjs';
+import { loadingScreenGone, SCENE } from './scene.mjs';
 
 const require = createRequire(path.join(process.env.MY_HOME_PLAYWRIGHT_DIR, 'package.json'));
 const { chromium } = require('playwright');
@@ -106,7 +107,7 @@ async function frameChecks(browser, { device, base, host, homeId }) {
       );
   /** One step of the mouse wheel or a short pinch-free swipe: a few moving frames. */
   const nudge = async () => {
-    const canvas = await page.locator('canvas').first().boundingBox();
+    const canvas = await page.locator(SCENE).first().boundingBox();
     const x = canvas.x + canvas.width / 2;
     const y = canvas.y + canvas.height * 0.4;
     if (phone) {
@@ -134,9 +135,18 @@ async function frameChecks(browser, { device, base, host, homeId }) {
         waitUntil: 'networkidle',
         timeout: 60_000,
       });
-      await page.waitForSelector('canvas', { timeout: 30_000 });
+      await page.waitForSelector(SCENE, { timeout: 30_000 });
       await page.waitForTimeout(1500);
-      if ((await page.locator('canvas').first().getAttribute('data-frame')) === null) {
+      if (quality === QUALITIES[0])
+        // The loading screen (apps/web/src/loading) follows the home, the view and its textures, then goes.
+        check(
+          `on a ${device}: the loading screen goes once the view is in`,
+          await loadingScreenGone(page, 240_000).then(
+            () => true,
+            () => false,
+          ),
+        );
+      if ((await page.locator(SCENE).first().getAttribute('data-frame')) === null) {
         console.log(`skip  the frame loop on a ${device}: a build before #110 (no data-frame)`);
         return;
       }
@@ -154,7 +164,7 @@ async function frameChecks(browser, { device, base, host, homeId }) {
         `${where}: the setting is read from the URL and the ${atRest} tier is on screen`,
         data?.setting === quality &&
           data?.tier === atRest &&
-          (await page.locator('canvas').first().getAttribute('data-tier')) === atRest,
+          (await page.locator(SCENE).first().getAttribute('data-tier')) === atRest,
         `setting ${data?.setting}, tier ${data?.tier}`,
       );
       if (tiers) {
@@ -366,7 +376,7 @@ async function lampWalk(page, { device, base, homeId, perf, settled }) {
   const query = new URLSearchParams({ walk: 'first', perf: '1', hints: 'off', quality: 'fast' });
   if (homeId) query.set('home', homeId);
   await page.goto(new URL(`/?${query}`, base).href, { waitUntil: 'networkidle', timeout: 60_000 });
-  await page.waitForSelector('canvas', { timeout: 30_000 });
+  await page.waitForSelector(SCENE, { timeout: 30_000 });
   const where = `on a ${device}, walking`;
   check(`${where}: the view settles`, await settled());
   const start = await perf();
@@ -458,7 +468,7 @@ async function textureChecks(browser, { device, base, host, homeId }) {
     if (homeId) query.set('home', homeId);
     // Not `networkidle`: the held files are requests that do not end.
     await page.goto(new URL(`/?${query}`, base).href, { waitUntil: 'load', timeout: 60_000 });
-    await page.waitForSelector('canvas', { timeout: 30_000 });
+    await page.waitForSelector(SCENE, { timeout: 30_000 });
     const drawn = await page
       .waitForFunction(() => (window.__myHomePerf?.().frames ?? 0) >= 1, null, { timeout: 240_000 })
       .then(
@@ -479,7 +489,7 @@ async function textureChecks(browser, { device, base, host, homeId }) {
     );
     check(
       `${where}: the view has not settled while textures are on their way`,
-      (await page.locator('canvas').first().getAttribute('data-frame')) === 'moving',
+      (await page.locator(SCENE).first().getAttribute('data-frame')) === 'moving',
     );
     release();
     const settled = await page
@@ -552,7 +562,7 @@ async function renderChecks(page, { device, where, views, renderChunk }) {
     renderChunk.length === 0,
     renderChunk[0] ?? '',
   );
-  const before = await page.locator('canvas').first().getAttribute('data-tier');
+  const before = await page.locator(SCENE).first().getAttribute('data-tier');
   const view = new URL(page.url()).searchParams.get('view');
   await button.scrollIntoViewIfNeeded();
   await button.click();
@@ -587,7 +597,7 @@ async function renderChecks(page, { device, where, views, renderChunk }) {
     renderChunk.length === 0,
     renderChunk[0] ?? '',
   );
-  const after = await page.locator('canvas').first().getAttribute('data-tier');
+  const after = await page.locator(SCENE).first().getAttribute('data-tier');
   check(
     `${where}: it keeps its tier and its view`,
     after === before &&
@@ -652,7 +662,7 @@ async function viewChecks(browser, { device, base, host, homeId }) {
       waitUntil: 'networkidle',
       timeout: 60_000,
     });
-    await page.waitForSelector('canvas', { timeout: 30_000 });
+    await page.waitForSelector(SCENE, { timeout: 30_000 });
   };
   const views = page.getByRole('group', { name: 'Views', exact: true });
   const press = async (name) => {
@@ -753,7 +763,7 @@ async function viewChecks(browser, { device, base, host, homeId }) {
     // A moving frame with the cut: the wheel or a short swipe turns the view (and leaves the named
     // view; the cut stays). The frame after the cut comes to rest is not that: on a desktop it
     // also draws the lamps' shadow maps again, as after a furniture drag.
-    const box = await page.locator('canvas').first().boundingBox();
+    const box = await page.locator(SCENE).first().boundingBox();
     const [x, y] = [box.x + box.width / 2, box.y + box.height * 0.4];
     if (phone) {
       const finger = await context.newCDPSession(page);
@@ -798,7 +808,7 @@ async function viewChecks(browser, { device, base, host, homeId }) {
     );
 
     // "Save image": a PNG of twice the canvas, beautiful whatever the setting, named after the view.
-    const canvas = page.locator('canvas').first();
+    const canvas = page.locator(SCENE).first();
     const css = await canvas.evaluate((c) => ({ width: c.clientWidth, height: c.clientHeight }));
     const buffer = await canvas.evaluate((c) => ({ width: c.width, height: c.height }));
     const save = views.getByRole('button', { name: 'Save image' });
@@ -953,7 +963,7 @@ async function smoke(out, homeId) {
     await page.goto(new URL(target, base).href, { waitUntil: 'networkidle', timeout: 60_000 });
     if (new URL(page.url()).host !== host)
       throw new Error('ended on another host (login redirect?)');
-    await page.waitForSelector('canvas', { timeout: 30_000 });
+    await page.waitForSelector(SCENE, { timeout: 30_000 });
     const sheet = page.locator('.sheet');
     await sheet.waitFor({ timeout: 30_000 });
     await page.waitForTimeout(3000);
@@ -963,7 +973,7 @@ async function smoke(out, homeId) {
      * that the view rests, or a drag, must not start in the middle of them.
      */
     const atRest = async () => {
-      const canvas = page.locator('canvas').first();
+      const canvas = page.locator(SCENE).first();
       if ((await canvas.getAttribute('data-frame').catch(() => null)) === null) return;
       await page
         .waitForSelector('canvas[data-frame="settled"]', { timeout: 240_000 })
@@ -999,7 +1009,7 @@ async function smoke(out, homeId) {
     check('the sheet starts collapsed', (await snap()) === 'collapsed');
     const [bar, canvas, tabs, rose] = [
       await box('.topbar'),
-      await box('canvas'),
+      await box(SCENE),
       await box('.sheet'),
       await box('.compass'),
     ];
@@ -1097,7 +1107,7 @@ async function smoke(out, homeId) {
       calm = now;
     }
     check('and it comes to rest again', rested);
-    const ratio = await page.locator('canvas').evaluate((c) => c.width / c.clientWidth);
+    const ratio = await page.locator(SCENE).evaluate((c) => c.width / c.clientWidth);
     check(
       'the canvas is not drawn finer than 1.5 device pixels',
       ratio <= 1.5 + 0.01,
@@ -1166,7 +1176,7 @@ async function smoke(out, homeId) {
       );
       await quality.getByLabel('Automatic').tap();
     }
-    const half = await box('canvas');
+    const half = await box(SCENE);
     check(
       'the 3D view ends where the open sheet begins',
       !overlap(half, await box('.sheet')) && half.height < canvas.height,
@@ -1265,7 +1275,7 @@ async function smoke(out, homeId) {
     // The edit toolbar; in view mode the selected item shows the piece bar instead (same class).
     const toolbar = page.getByRole('toolbar', { name: /: edit$/ });
     await toolbar.waitFor({ timeout: 10_000 });
-    const view = await box('canvas');
+    const view = await box(SCENE);
     const tools = await toolbar.boundingBox();
     check(
       'the selected item has a floating toolbar inside the 3D view',
@@ -1449,7 +1459,7 @@ async function smoke(out, homeId) {
       (await page.locator('.sheet.sheet-side').count()) === 1,
     );
     const side = await box('.sheet');
-    const wide = await box('canvas');
+    const wide = await box(SCENE);
     check(
       'the 3D view keeps most of the width beside the open sheet',
       !overlap(wide, side) && wide.width > LANDSCAPE.width * 0.5,

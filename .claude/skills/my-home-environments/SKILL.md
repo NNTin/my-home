@@ -49,6 +49,9 @@ gh run rerun <run-id> --repo NNTin/my-home --failed        # after "another depl
 - Cloudflare's own requests on the environment's host (`/cdn-cgi/*`, its analytics beacon, which GitHub's
   runners get on every page) are answered inside the browser by every script (`scripts/infrastructure.mjs`):
   they are no write and no error of the app. Every other write is still refused and reported.
+- The scene's canvas is `SCENE` (`scripts/scene.mjs`), never a bare `canvas`: the HUD (Sakuga VFX) draws on
+  canvases of its own, one over the page and one in a control's shadow root. A script waits for the loading
+  screen to have gone (`loadingScreenGone`) before it shoots or pauses the page's clock.
 - "another deploy came first" (exit 6): staging ran another commit before or after the check; run it again.
 - "the placements, overrides or notes on staging were changed while the views were shot" (exit 6, `visual-diff`):
   someone edited them on staging between the two shoots (the owner works there). Not the code: run it again,

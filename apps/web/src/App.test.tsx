@@ -376,6 +376,24 @@ describe('App', () => {
       },
     );
 
+    it('leaving the viewer mid-load for a page already loaded takes the loading screen away at once', async () => {
+      // The catalogue's chunk is loaded first, so going there later asks for nothing.
+      window.history.replaceState(null, '', '/catalog');
+      stubApi();
+      const first = render(<App />);
+      expect(await screen.findByRole('heading', { name: 'Catalogue' })).toBeInTheDocument();
+      first.unmount();
+
+      window.history.replaceState(null, '', '/');
+      render(<App />);
+      await screen.findByTestId('scene');
+      // The stub scene never draws a frame: the viewer is still loading.
+      expect(document.getElementById('boot')).not.toBeNull();
+      fireEvent.click(screen.getByRole('link', { name: '📚 Catalogue' }));
+      expect(await screen.findByRole('heading', { name: 'Catalogue' })).toBeInTheDocument();
+      expect(document.getElementById('boot')).toBeNull();
+    });
+
     it('goes from the viewer to the catalogue and back, keeping ?home= only', async () => {
       window.history.replaceState(null, '', '/?home=mock-home&panel=photos');
       stubApi();

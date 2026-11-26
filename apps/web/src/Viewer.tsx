@@ -96,6 +96,7 @@ import { WalkHud, type DeclinationSource, type WalkView } from './walk/WalkHud';
 import { loadWalkSession } from './walk/walkSession';
 import { groundLevelId, minimapLevels } from './walk/minimap';
 import { buildWalkWorld, placeAt, standAt, startPose, type FurnitureBlocker } from './walk/world';
+import { loadingProgress } from './loading/loading';
 
 const shownLevels = (scene: HomeScene, v: Visibility) =>
   scene.levels.filter((l) => l.index <= v.maxLevelIndex && !v.hiddenLevels.includes(l.id));
@@ -221,11 +222,13 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   );
   useEffect(() => {
     let wanted = true;
-    import('./views/render-views').then(
-      (chunk) => wanted && setViews(chunk),
-      // Without the chunk the viewer has no named views, and is whole otherwise.
-      () => wanted && setViewAsked(false),
-    );
+    import('./views/render-views')
+      .then(
+        (chunk) => wanted && setViews(chunk),
+        // Without the chunk the viewer has no named views, and is whole otherwise.
+        () => wanted && setViewAsked(false),
+      )
+      .finally(() => loadingProgress('views'));
     return () => {
       wanted = false;
     };

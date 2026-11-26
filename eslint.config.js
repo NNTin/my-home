@@ -5,7 +5,17 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['**/dist/', '**/coverage/', '**/.data/', 'apps/api/drizzle/'] },
+  {
+    ignores: [
+      '**/dist/',
+      '**/coverage/',
+      '**/.data/',
+      'apps/api/drizzle/',
+      // Sakuga VFX: upstream's files, kept as upstream wrote them (packages/sakuga-vfx/AGENTS.md).
+      'packages/sakuga-vfx/*',
+      '!packages/sakuga-vfx/test/',
+    ],
+  },
   js.configs.recommended,
   tseslint.configs.recommended,
   {

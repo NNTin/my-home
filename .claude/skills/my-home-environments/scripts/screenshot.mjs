@@ -6,6 +6,7 @@ import { writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { answeredInfrastructure } from './infrastructure.mjs';
+import { loadingScreenGone, SCENE } from './scene.mjs';
 
 const require = createRequire(path.join(process.env.MY_HOME_PLAYWRIGHT_DIR, 'package.json'));
 const { chromium } = require('playwright');
@@ -53,7 +54,7 @@ const SETTLED_TIMEOUT_MS = 240_000;
  * for; a view that does not settle in time is shot as it is, with a warning.
  */
 async function settled(page) {
-  const canvas = page.locator('canvas').first();
+  const canvas = page.locator(SCENE).first();
   if ((await canvas.getAttribute('data-frame').catch(() => null)) === null) return;
   const quality = new URL(page.url()).searchParams.get('quality');
   const tier = quality === 'auto' || quality === 'beautiful' ? '[data-tier="beautiful"]' : '';
@@ -99,7 +100,7 @@ async function runActions(page, actions, settle) {
         await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
         paused = true;
       }
-      const box = await page.locator('canvas').first().boundingBox();
+      const box = await page.locator(SCENE).first().boundingBox();
       const x = box.x + box.width / 2;
       const y = box.y + box.height / 2;
       console.log(`drag ${dx},${dy}`);
@@ -165,10 +166,14 @@ async function shoot([
       throw new Error(`${host} answered ${status} for the page: the environment, not the view`);
     // The viewer (`/`) draws a canvas; the other pages (`/catalog`, …) have a heading instead.
     const viewer = new URL(page.url()).pathname === '/';
-    await page.waitForSelector(viewer ? 'canvas' : 'h1', { timeout: 30_000 });
+    await page.waitForSelector(viewer ? SCENE : 'h1', { timeout: 30_000 });
     await page.waitForTimeout(Number(waitMs));
     console.log(`title ${await page.title()}`);
     if (viewer) await settled(page);
+    // Its exit runs on the page's timers, which the actions may pause; it covers the shot (scene.mjs).
+    await loadingScreenGone(page, viewer ? 30_000 : 60_000).catch(() =>
+      console.log('warning: the loading screen is still up'),
+    );
     const paused = await runActions(page, JSON.parse(actions), canvas === 'canvas');
     // Not with a paused clock: there the frames after a drag are run by hand (SETTLE_MS).
     if (viewer && !paused) await settled(page);
@@ -176,12 +181,12 @@ async function shoot([
       // Only the 3D view: hide every other element (visibility keeps the layout, so nothing redraws)
       // and clip to the canvas.
       await page.addStyleTag({
-        content: '* { visibility: hidden !important; } canvas { visibility: visible !important; }',
+        content: `* { visibility: hidden !important; } ${SCENE} { visibility: visible !important; }`,
       });
       await page.waitForTimeout(500);
       if (paused) {
         // Playwright's screenshots wait for an animation frame; the browser's own capture does not.
-        const { x, y, width, height } = await page.locator('canvas').first().boundingBox();
+        const { x, y, width, height } = await page.locator(SCENE).first().boundingBox();
         const cdp = await context.newCDPSession(page);
         const { data } = await cdp.send('Page.captureScreenshot', {
           format: 'png',
@@ -190,7 +195,7 @@ async function shoot([
         writeFileSync(out, Buffer.from(data, 'base64'));
       } else {
         await page
-          .locator('canvas')
+          .locator(SCENE)
           .first()
           .screenshot({ path: out, animations: 'disabled', timeout: SHOT_TIMEOUT_MS });
       }

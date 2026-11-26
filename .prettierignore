@@ -7,3 +7,8 @@ apps/api/drizzle/meta/
 charts/*/templates/
 # Golden render records: written by vitest, compared byte for byte
 apps/web/src/catalog/__golden__/
+# Sakuga VFX: upstream's files, kept as upstream wrote them (packages/sakuga-vfx/AGENTS.md)
+packages/sakuga-vfx/*
+!packages/sakuga-vfx/AGENTS.md
+!packages/sakuga-vfx/package.json
+!packages/sakuga-vfx/test/

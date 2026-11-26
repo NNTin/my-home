@@ -265,6 +265,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@my-home/sakuga-vfx':
+        specifier: workspace:*
+        version: link:../../packages/sakuga-vfx
       '@my-home/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -326,6 +329,8 @@ importers:
       vitest:
         specifier: ^5.1.0
         version: 5.1.0(@types/node@24.19.2)(jsdom@31.0.1)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+
+  packages/sakuga-vfx: {}
 
   packages/shared:
     dependencies:

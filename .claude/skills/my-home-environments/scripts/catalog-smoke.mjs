@@ -10,6 +10,7 @@
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { answeredInfrastructure } from './infrastructure.mjs';
+import { loadingScreenGone, SCENE } from './scene.mjs';
 
 const require = createRequire(path.join(process.env.MY_HOME_PLAYWRIGHT_DIR, 'package.json'));
 const { chromium } = require('playwright');
@@ -143,7 +144,7 @@ async function smoke(out, homeId) {
         focusUrl.searchParams.set('focus', shown.id);
         focusUrl.searchParams.set('hints', 'off');
         await focused.goto(focusUrl.href, { waitUntil: 'networkidle', timeout: 60_000 });
-        await focused.waitForSelector('canvas', { timeout: 30_000 });
+        await focused.waitForSelector(SCENE, { timeout: 30_000 });
         const chip = device.hasTouch
           ? focused.locator('.piece-toolbar')
           : focused.getByRole('region', { name: 'Furniture' }).getByLabel('Selected piece');
@@ -160,7 +161,7 @@ async function smoke(out, homeId) {
         );
         check(
           `${label}: the focused opening is in view`,
-          await focused.evaluate(() => document.querySelector('canvas')?.width > 0),
+          await focused.evaluate((scene) => document.querySelector(scene)?.width > 0, SCENE),
         );
         await focused.waitForTimeout(1500); // the camera has moved and the frame is drawn
         // Best effort: the viewer draws continuously, which software rendering can make slow.
@@ -196,10 +197,10 @@ async function smoke(out, homeId) {
       viewerUrl.searchParams.set('hints', 'off');
       await page.goto(viewerUrl.href, { waitUntil: 'networkidle', timeout: 60_000 });
       onHost(page);
-      await page.waitForSelector('canvas', { timeout: 30_000 });
+      await page.waitForSelector(SCENE, { timeout: 30_000 });
       // The first frames and the finish textures keep a software renderer busy for many seconds;
       // a click waits for the page. A build from #110 on marks the canvas when the view has settled.
-      if ((await page.locator('canvas').first().getAttribute('data-frame')) !== null) {
+      if ((await page.locator(SCENE).first().getAttribute('data-frame')) !== null) {
         await page
           .waitForSelector('canvas[data-frame="settled"]', { timeout: 240_000 })
           .catch(() => {});
@@ -218,7 +219,7 @@ async function smoke(out, homeId) {
       const heading = page.getByRole('heading', { level: 1, name: 'Catalogue' });
       await heading.waitFor({ timeout: 30_000 });
       check(`${label}: the entry opens /catalog`, path(page) === '/catalog', page.url());
-      check(`${label}: the viewer is gone`, (await page.locator('canvas').count()) === 0);
+      check(`${label}: the viewer is gone`, (await page.locator(SCENE).count()) === 0);
 
       // 2. Both kinds, cards, counts, thumbnails.
       for (const kind of ['Windows & doors', 'Furniture']) {
@@ -455,7 +456,7 @@ async function smoke(out, homeId) {
       );
       await page.goBack();
       const viewerBack = await page
-        .waitForSelector('canvas', { timeout: 30_000 })
+        .waitForSelector(SCENE, { timeout: 30_000 })
         .then(() => true)
         .catch(() => false);
       check(
@@ -492,6 +493,14 @@ async function smoke(out, homeId) {
         loaded && path(deep.page) === PIECE,
       );
       check(`${label}: its title is the piece`, (await deep.page.title()) === 'Bed · my-home');
+      // The loading screen (apps/web/src/loading) follows the page's lazy chunk, plays its end and goes.
+      check(
+        `${label}: the loading screen goes once the page is in`,
+        await loadingScreenGone(deep.page).then(
+          () => true,
+          () => false,
+        ),
+      );
       await deep.page.reload({ waitUntil: 'networkidle', timeout: 60_000 });
       const reloaded = await pieceHeading.waitFor({ timeout: 30_000 }).then(
         () => true,
@@ -559,7 +568,7 @@ async function smoke(out, homeId) {
             labels.every((t) => cm.test(t.trim())) &&
             listed.length >= labels.length &&
             listed.every((t) => cm.test(t.trim())),
-          `${canvas ? 'canvas' : 'no canvas'}; ${labels.join(', ')}`,
+          `${canvas ? SCENE : 'no canvas'}; ${labels.join(', ')}`,
         );
         if (id.startsWith('garden.')) {
           // Outdoor pieces stand on the ground outside; agents place them (Place adds to a room).

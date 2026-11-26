@@ -1,6 +1,7 @@
 import type { Photo, PhotoRequest, PhotoSensors } from '@my-home/shared';
 import { useEffect, useRef, useState } from 'react';
 import type { PhotosApi } from '../api';
+import { SakugaProgress } from '../loading/SakugaProgress';
 import { poseOf, type Figure } from './figure';
 import { prepareImage, takenAtOf, type CameraHints, type PreparedImage } from './prepareImage';
 
@@ -90,7 +91,10 @@ export function CaptureSheet({
   const prepared = useRef<Promise<PreparedImage> | undefined>(undefined);
   prepared.current ??= prepareImage(file, camera);
 
+  // The upload's bar stays once the photo is saved, until it has played its end.
+  const [barShown, setBarShown] = useState(false);
   const save = async () => {
+    setBarShown(true);
     setPhase({ step: 'uploading', progress: 0 });
     try {
       const image = await prepared.current!;
@@ -175,6 +179,17 @@ export function CaptureSheet({
         </div>
       </div>
 
+      {(phase.step === 'uploading' || (phase.step === 'saved' && barShown)) && (
+        <div className="capture-progress">
+          <SakugaProgress
+            // Every byte sent is not saved yet: the bar is full when the api has answered.
+            value={phase.step === 'uploading' ? Math.min(phase.progress, 0.99) : 1}
+            label="Upload progress"
+            onEnd={() => setBarShown(false)}
+          />
+        </div>
+      )}
+
       {phase.step === 'saved' ? (
         <>
           <p className="hint">
@@ -240,12 +255,6 @@ export function CaptureSheet({
           )}
           <p className="hint">The photo is saved at the figure's position and view. Adjust:</p>
           {nudges}
-          {phase.step === 'uploading' && (
-            <div className="capture-progress">
-              <progress max={1} value={phase.progress} aria-label="Upload progress" />
-              <span>{Math.round(phase.progress * 100)}%</span>
-            </div>
-          )}
           {phase.step === 'failed' && (
             <p role="alert" className="error">
               Upload failed: {phase.message}. The photo stays here: try again, or save a copy on the

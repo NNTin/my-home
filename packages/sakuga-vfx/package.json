@@ -1,0 +1,14 @@
+{
+  "name": "@my-home/sakuga-vfx",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The app's HUD: Sakuga VFX controls, copied from finktheartist/sakuga-vfx (MIT) and owned here (AGENTS.md).",
+  "license": "MIT",
+  "exports": {
+    "./progress.js": "./progress/progress.js"
+  },
+  "scripts": {
+    "stamp": "node tools/build.mjs",
+    "test": "node tools/build.mjs --check && node --test test/build-check.test.mjs"
+  }
+}
