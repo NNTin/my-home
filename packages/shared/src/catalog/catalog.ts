@@ -1,4 +1,5 @@
 import { appliances } from './definitions/appliances';
+import { bath } from './definitions/bath';
 import { doors } from './definitions/doors';
 import { fixtures } from './definitions/fixtures';
 import { furniture } from './definitions/furniture';
@@ -88,7 +89,7 @@ export function createCatalog(types: readonly CatalogType[]): Catalog {
   return { types: [...byId.values()], get: (id) => byId.get(id) };
 }
 
-/** Every piece type, in catalogue order (windows, doors, gates, furniture, kitchen, fixtures, garden). */
+/** Every piece type, in catalogue order (windows, doors, gates, furniture, kitchen, bath room, fixtures, garden). */
 export const catalog = createCatalog([
   ...windows,
   ...doors,
@@ -96,6 +97,7 @@ export const catalog = createCatalog([
   ...furniture,
   ...kitchen,
   ...appliances,
+  ...bath,
   ...fixtures,
   ...garden,
 ]);

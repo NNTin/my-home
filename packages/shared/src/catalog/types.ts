@@ -15,7 +15,15 @@ export type Mounting = 'floor' | 'wall' | 'ceiling';
 
 /** The families: the first part of a type id, and the folder of its piece module. */
 export type CatalogFamily =
-  'window' | 'door' | 'gate' | 'furniture' | 'kitchen' | 'appliance' | 'fixture' | 'garden';
+  | 'window'
+  | 'door'
+  | 'gate'
+  | 'furniture'
+  | 'kitchen'
+  | 'appliance'
+  | 'bath'
+  | 'fixture'
+  | 'garden';
 
 /**
  * A catalogue type: one kind of piece (a casement window, a bed) with its metadata and parameters.

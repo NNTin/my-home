@@ -134,6 +134,7 @@ describe('gate piece', () => {
 describe('furniture types', () => {
   it('lists every furniture type by category then name', () => {
     expect(furniture.categories.map((c) => c.name)).toEqual([
+      'Bath room',
       'Bed room',
       'Corridor',
       'Dining',
@@ -145,6 +146,12 @@ describe('furniture types', () => {
     ]);
     const types = furniture.categories.flatMap((c) => c.types);
     expect(types.map((t) => t.id)).toEqual([
+      'bath.corner-tub',
+      'bath.ledge',
+      'bath.shower',
+      'bath.toilet',
+      'bath.vanity',
+      'appliance.washing-machine',
       'furniture.bed',
       'furniture.wardrobe',
       'furniture.shoe-cabinet',

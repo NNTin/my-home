@@ -211,6 +211,34 @@ export const slab = (
     Math.PI / 2,
   );
 
+/**
+ * A plan outline (`[x, z]` points in the piece's frame) standing from `bottom` to `top`: a tub's
+ * wall, a bowl, a bent screen. Its `size` is the box before the tilt: `[x, z, height]`.
+ */
+export function upright(
+  outline: Vec2[],
+  bottom: number,
+  top: number,
+  color: string,
+  role: PartRole,
+  material?: PartMaterial,
+): Part {
+  const x = span(outline.map((p) => p[0]));
+  const z = span(outline.map((p) => p[1]));
+  return tilted(
+    extrude(
+      [x.middle, (bottom + top) / 2, z.middle],
+      outline.map(([px, pz]): Vec2 => [px - x.middle, pz - z.middle]),
+      top - bottom,
+      color,
+      role,
+      0,
+      material,
+    ),
+    Math.PI / 2,
+  );
+}
+
 /** The part tilted about its own x axis by `angle` radians (see `Part.rotationX`). */
 export const tilted = (part: Part, angle: number): Part => ({ ...part, rotationX: angle });
 

@@ -11,7 +11,7 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
   (`home.seed.json`: placements, opening overrides, notes; `docs/deployment.md` § The seed comes from git); the test fixture is `packages/shared/test-fixtures/`; model docs in
   `docs/home-model.md`
 - `apps/web/src/catalog/<family>/<variant>/`: one piece module per catalogue type (windows, doors, gates,
-  furniture, kitchen units, appliances, the `fixtures` kind: lights, the radiator, and the `outdoor` kind: patio and
+  furniture, kitchen units, appliances, the bath room's pieces, the `fixtures` kind: lights, the radiator, and the `outdoor` kind: patio and
   garden pieces), auto-registered (`docs/adding-piece-type.md`); the furniture (one placement set per home) and its editor in `docs/furniture.md`;
   the phone layout (top bar, sheet) in `docs/mobile.md`
 - `packages/shared/src/finishes/`: the finish library (surface materials: one definition per finish, its
@@ -123,6 +123,13 @@ What reading CI has taught us:
   (canvas shots of the model).
 - **Staging is shared:** a check counts only for the commit staging ran before and after it, and the owner may
   be editing there. A difference in a screenshot can be data, not rendering: look at `seed.sh staging diff`.
+
+- **The catalogue smoke pins the "Fixtures" section to its two types** (Heating, Lighting:
+  `catalog-smoke.mjs`). A new built-in piece is kind `furniture` (the bath room's are, #146), or the check
+  changes with the owner's leave.
+- **The worktree has no `node_modules`:** `pnpm install --frozen-lockfile --prefer-offline` takes seconds (the
+  store is on the machine). The binaries are in the root's `node_modules/.bin` only: `pnpm --filter
+@my-home/web exec vitest run <files>`.
 
 ## Keeping this file useful
 

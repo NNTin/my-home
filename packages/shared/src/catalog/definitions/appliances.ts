@@ -49,4 +49,26 @@ export const microwave = defineType({
   footprint: 'rectangle',
 });
 
-export const appliances = [fridgeFreezer, microwave];
+export const washingMachine = defineType({
+  id: 'appliance.washing-machine',
+  kind: 'furniture',
+  family: 'appliance',
+  name: 'Washing machine',
+  description:
+    'A front loader; from 1.2 m of height it is a column, a dryer stacked on the washing machine.',
+  icon: '🧺',
+  category: 'Bath room',
+  placement: 'floor',
+  mounting: 'floor',
+  params: {
+    color: color('Colour', '#f1f1ef'),
+    width: length('Width', 0.6, 0.55, 0.7),
+    height: length('Height', 0.85, 0.8, 1.8),
+    depth: length('Depth', 0.6, 0.45, 0.7),
+    doorColor: color('Door colour', '#1d1e20', 'design'),
+  },
+  snapping: { wall: 'back' },
+  footprint: 'rectangle',
+});
+
+export const appliances = [fridgeFreezer, microwave, washingMachine];

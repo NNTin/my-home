@@ -220,6 +220,7 @@ export const CatalogTypeSummary = z.object({
     'furniture',
     'kitchen',
     'appliance',
+    'bath',
     'fixture',
     'garden',
   ]),
