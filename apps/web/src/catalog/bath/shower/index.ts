@@ -8,7 +8,11 @@ import { wallSide } from '../sanitary';
 /** The profiles' width and the panes' thickness. */
 const PROFILE = 0.03;
 const PANE = 0.008;
-/** The rail: its bottom and top above the floor, and how far it stands off the wall. */
+/**
+ * The rail: its bottom and top above the floor, and how far it stands off the wall. Fixed on
+ * purpose: a rail hangs at a person's height, whatever the glass's (`height`, 1.8 to 2.2 m), so
+ * the head is over a low screen and under a high one.
+ */
 const RAIL = { bottom: 1.0, top: 2.1, off: 0.05 };
 
 /**
@@ -55,7 +59,8 @@ export default definePiece({
       chrome([-gx, h / 2, gz], [PROFILE, h, PROFILE]),
       chrome([gx, h / 2, gz], [PROFILE, h, PROFILE]),
       chrome([gx, h / 2, -gz], [PROFILE, h, PROFILE]),
-      // The door's handle, outside the side pane.
+      // The door's handle, outside the side pane: 5 cm past the footprint, as a fridge's handle
+      // is past its front. Collisions and the walking figure go by the footprint.
       chrome([gx + open * 0.045, 1.05, 0], [0.014, 0.26, 0.014]),
       ...[-0.1, 0.1].map((y) => chrome([gx + open * 0.023, 1.05 + y, 0], [0.038, 0.014, 0.014])),
       // The panes last: they are see-through, and drawn over what stands behind them.

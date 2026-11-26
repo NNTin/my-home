@@ -27,6 +27,10 @@ the camera, fix the scale, then cast pixels onto known planes.
     inner face, an interior wall end, a known product against a wall.
   - Then chain the other features from that anchor, using near distances only.
 - So calibrate from the image. Use the stored pose only as a rough start.
+- **The stored height is the walking figure's eye (floor + 1.6 m), not the phone's:** a photo taken looking down
+  from 1.25 m (the bath room floor, #146) shows far things higher than the model's "view from here" does, by
+  100 px at 3 m. `pose.sh` cannot change it: judge an overlay by the order and sides of things, and project model
+  points with `measure.py` (`"at"`, `"height"`, `"project"`) for the distances.
 
 ## Calibration
 
@@ -115,6 +119,10 @@ known length standing on the floor). Then check it with a second reference in th
 | Floor planks                   | count joints across a known width; plank widths vary by product                                              | Weak.                                                                   |
 | Tiles                          | 0.30 × 0.60, 0.20 × 0.20, mosaic 0.025                                                                       | Count tiles between features.                                           |
 | Window (German)                | common widths 0.885 / 1.01 / 1.135 (rough opening); sill heights ≈0.9 inside, higher in basements            |                                                                         |
+
+A **tiled floor is a ruler:** two joints and one known length beside them (a door's clear opening on its threshold)
+give the tile size, and then every foot on the floor is a count of tiles (the bath room's 60 cm tiles, #146). Far
+points of a photo tilted down move 0.3 m for 3° of pitch: fix the pitch on a wall foot whose place is known.
 
 Ratio tests need no calibration. Use them first:
 

@@ -2481,9 +2481,14 @@
       ],
       "finishes": {
         "floor": {
-          "finish": "floor.neutral",
-          "source": "mock",
-          "note": "Default: no photo shows the floor (photo request eb97ee82)"
+          "finish": "tile.light-60",
+          "tint": "#c2b7a8",
+          "source": "estimated-from-photo",
+          "photos": [
+            "5726165a-7628-424f-b48c-9c57f26d3f4b",
+            "c3d258bf-4959-4b07-a4b7-9ccb91cd87af"
+          ],
+          "note": "Grey-beige stone-look tiles, 60 x 60 cm (two tiles are 1.2 m beside the 0.82 m door opening in 5726165a), laid square to the walls and through the level shower. Tint from the lit floor in both photos, against the white door"
         },
         "walls": {
           "finish": "tile.light-60",
@@ -2491,9 +2496,11 @@
           "source": "estimated-from-photo",
           "photos": [
             "0e7191b4-fabc-4d1c-9fbf-90a4ccbccef2",
-            "c7ba57e6-2a94-493b-b49a-95fdbad50d1e"
+            "c7ba57e6-2a94-493b-b49a-95fdbad50d1e",
+            "2505beb2-70bc-4c6c-b613-6d4c0f373697",
+            "c3d258bf-4959-4b07-a4b7-9ccb91cd87af"
           ],
-          "note": "Light warm-grey wall tiles, about 30 x 60 cm laid flat: to the window sill on the north and west walls, to the ceiling on the east wall, white paint above, one dark strip beside the window. A finish is per room, and the library has a square tile only. Tint from the tiles in both photos"
+          "note": "Light warm-grey tiles, about 20 x 50 cm laid flat. East and south-west walls: tiled to about 2.1 m, white above. North wall and the west wall at the bathtub: tiled only on the ledges in front of them (1.05 m, the bath.ledge pieces), white paint above. South wall by the door: white. The shower and the wall behind the toilet have larger, darker tiles. A finish is per room and has no height: the tiles cover most of the walls. Tint from the tiles in the first two photos"
         },
         "ceiling": {
           "finish": "paint.plain",

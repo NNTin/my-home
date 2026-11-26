@@ -310,8 +310,14 @@ describe('the finishes of the real home (#113)', () => {
     });
   });
 
+  it('tiles the bath room floor in its own tint, darker than its walls (#146)', () => {
+    expect(item('souterrain-bath-room:floor')).toMatchObject({
+      finish: 'tile.light-60',
+      tint: '#c2b7a8',
+    });
+  });
+
   it('keeps the defaults where no photo shows the surface', () => {
-    expect(item('souterrain-bath-room:floor').finish).toBe('floor.neutral');
     expect(new Set(real.roofPlanes.map((r) => r.finish.finish))).toEqual(
       new Set(['roof.clay-tile']),
     );

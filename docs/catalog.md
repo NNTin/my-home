@@ -270,7 +270,8 @@ limits); each placement sets its own (#64). The kitchen soffit is geometry, not 
 | `fixture.downlight`        | ceiling                      | 8.5 cm round, white trim, 7 cm housing                                | light colour (2700 K, 4000 K, 6500 K)                                                                                                |
 | `fixture.radiator`         | wall, bottom at 10 cm        | 75 × 60 cm, 14 cm from the wall (4 cm brackets: two panels)           | valve side                                                                                                                           |
 
-The kitchen and appliance types are kind `furniture` (category "Kitchen"); the fixtures are kind `fixtures`
+The kitchen types and the kitchen's appliances are kind `furniture` (category "Kitchen"; the washing machine is
+in "Bath room", below); the fixtures are kind `fixtures`
 (categories "Lighting" and "Heating"), placed like furniture, each with its own stable placement id
 ([userdata.md](userdata.md#ids-and-names-of-new-furniture-and-fixtures)).
 
