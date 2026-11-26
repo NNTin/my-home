@@ -111,6 +111,18 @@
       "params": {}
     },
     {
+      "id": "souterrain-corner-tub-1",
+      "typeId": "bath.corner-tub",
+      "name": "Bath room · bathtub",
+      "levelId": "souterrain",
+      "position": {
+        "x": 7.42,
+        "z": -9.57
+      },
+      "rotationY": 0,
+      "params": {}
+    },
+    {
       "id": "souterrain-downlight-10",
       "typeId": "fixture.downlight",
       "name": "Kitchen · downlight 4",
@@ -255,6 +267,38 @@
       }
     },
     {
+      "id": "souterrain-ledge-1",
+      "typeId": "bath.ledge",
+      "name": "Bath room · north ledge",
+      "levelId": "souterrain",
+      "position": {
+        "x": 7.645,
+        "z": -10.37
+      },
+      "rotationY": 0,
+      "params": {
+        "depth": 0.2,
+        "height": 1.05,
+        "width": 2.15
+      }
+    },
+    {
+      "id": "souterrain-ledge-2",
+      "typeId": "bath.ledge",
+      "name": "Bath room · west ledge",
+      "levelId": "souterrain",
+      "position": {
+        "x": 6.645,
+        "z": -9.57
+      },
+      "rotationY": 1.5707963267948966,
+      "params": {
+        "depth": 0.15,
+        "height": 1.05,
+        "width": 1.4
+      }
+    },
+    {
       "id": "souterrain-log-1",
       "typeId": "garden.log",
       "name": "Garden · log",
@@ -372,6 +416,21 @@
       "params": {}
     },
     {
+      "id": "souterrain-shower-1",
+      "typeId": "bath.shower",
+      "name": "Bath room · shower",
+      "levelId": "souterrain",
+      "position": {
+        "x": 8.845,
+        "z": -8.085
+      },
+      "rotationY": 3.141592653589793,
+      "params": {
+        "depth": 1.4,
+        "width": 0.95
+      }
+    },
+    {
       "id": "souterrain-shrub-1",
       "typeId": "garden.shrub",
       "name": "Patio · rose bush",
@@ -472,6 +531,34 @@
       "params": {}
     },
     {
+      "id": "souterrain-toilet-1",
+      "typeId": "bath.toilet",
+      "name": "Bath room · toilet",
+      "levelId": "souterrain",
+      "position": {
+        "x": 9.05,
+        "z": -9.82
+      },
+      "rotationY": -1.5707963267948966,
+      "mounting": "wall",
+      "elevation": 0.08,
+      "params": {}
+    },
+    {
+      "id": "souterrain-vanity-1",
+      "typeId": "bath.vanity",
+      "name": "Bath room · washbasin",
+      "levelId": "souterrain",
+      "position": {
+        "x": 9.09,
+        "z": -9.12
+      },
+      "rotationY": -1.5707963267948966,
+      "mounting": "wall",
+      "elevation": 0.3,
+      "params": {}
+    },
+    {
       "id": "souterrain-wall-cabinet-2",
       "typeId": "kitchen.wall-cabinet",
       "name": "Kitchen · wall cabinet left",
@@ -533,6 +620,20 @@
       "params": {
         "rail": "hooks",
         "width": 2.27
+      }
+    },
+    {
+      "id": "souterrain-washing-machine-1",
+      "typeId": "appliance.washing-machine",
+      "name": "Bath room · washing machine and dryer",
+      "levelId": "souterrain",
+      "position": {
+        "x": 6.9,
+        "z": -7.745
+      },
+      "rotationY": 1.5707963267948966,
+      "params": {
+        "height": 1.7
       }
     }
   ],
