@@ -5,7 +5,9 @@
 // sheet with the phone held across. Then the frame loop, on a phone and on a desktop: the draw calls of a
 // moving frame against the budgets, and nothing drawn while idle in every value of the quality setting. Then
 // the named views: each opens from its link, the section's cut and caps stay within the budget and compile
-// nothing when switched off and on, and "Save image" downloads a PNG of twice the canvas size.
+// nothing when switched off and on, and "Save image" downloads a PNG of twice the canvas size. Then render
+// mode: "Render" is offered on a desktop only, its chunk is not asked for before the press, and a browser
+// without a graphics card for WebGPU (this one) gets the sentence and keeps its view.
 // Read-only: nothing is written to the environment. MOBILE_SMOKE_ONLY=views runs the named views alone.
 // Playwright is loaded from MY_HOME_PLAYWRIGHT_DIR.
 /* global document, window, WebGL2RenderingContext */
@@ -524,6 +526,77 @@ function pngSize(file) {
   return isPng ? { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) } : undefined;
 }
 
+/** The sentence of a browser that cannot make path-traced renders (`views/renderSupport.ts`). */
+const NO_RENDER = 'This browser cannot make path-traced renders';
+
+/**
+ * Render mode (docs/design/realistic-render.md §9), as far as a browser without a graphics card
+ * can show it: the button, the WebGPU check and what is downloaded. The traced image itself is
+ * the owner's check. `renderChunk` holds the requests for the lazy chunk since the page opened.
+ */
+async function renderChecks(page, { device, where, views, renderChunk }) {
+  const button = views.getByRole('button', { name: 'Render', exact: true });
+  if (device === 'phone') {
+    check(`${where}: "Render" is not offered`, (await button.count()) === 0);
+    check(
+      `${where}: render mode's chunk is never asked for`,
+      renderChunk.length === 0,
+      renderChunk[0] ?? '',
+    );
+    return;
+  }
+  check(`${where}: "Render" is in the Views control`, (await button.count()) === 1);
+  if ((await button.count()) !== 1) return;
+  check(
+    `${where}: render mode's chunk is not asked for before "Render" is pressed`,
+    renderChunk.length === 0,
+    renderChunk[0] ?? '',
+  );
+  const before = await page.locator('canvas').first().getAttribute('data-tier');
+  const view = new URL(page.url()).searchParams.get('view');
+  await button.scrollIntoViewIfNeeded();
+  await button.click();
+  // Either the sentence (no graphics card for WebGPU: a runner, the agents' machine) or the still.
+  const outcome = await Promise.race([
+    page
+      .getByText(NO_RENDER, { exact: true })
+      .waitFor({ timeout: 30_000 })
+      .then(() => 'sentence'),
+    page
+      .locator('.render-still')
+      .waitFor({ timeout: 30_000 })
+      .then(() => 'still'),
+  ]).catch(() => 'nothing');
+  if (outcome === 'still') {
+    // A browser with a graphics card: the chunk came with the press, and "Close" ends the mode.
+    check(`${where}: "Render" opens the still`, renderChunk.length > 0);
+    await page.locator('.render-still').getByRole('button', { name: 'Close', exact: true }).click();
+    check(
+      `${where}: "Close" ends render mode`,
+      (await page.locator('.render-still').count()) === 0,
+    );
+    return;
+  }
+  check(
+    `${where}: a browser without a graphics card for WebGPU gets the sentence`,
+    outcome === 'sentence',
+    outcome,
+  );
+  check(
+    `${where}: nothing of render mode is downloaded for it`,
+    renderChunk.length === 0,
+    renderChunk[0] ?? '',
+  );
+  const after = await page.locator('canvas').first().getAttribute('data-tier');
+  check(
+    `${where}: it keeps its tier and its view`,
+    after === before &&
+      new URL(page.url()).searchParams.get('view') === view &&
+      (await button.getAttribute('aria-pressed')) === 'false',
+    `tier ${before} then ${after}, view ${view}`,
+  );
+}
+
 /**
  * The named views (docs/views.md) on one kind of device, in a context of its own: each opens from
  * its link and settles; the section stays within the whole house's draw-call budget, also while
@@ -549,6 +622,12 @@ async function viewChecks(browser, { device, base, host, homeId }) {
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (error) => errors.push(String(error)));
+  // Render mode's lazy chunk: asked for by "Render" alone, after the WebGPU check.
+  const renderChunk = [];
+  page.on('request', (request) => {
+    if (/\/assets\/render-path-[\w-]+\.js$/.test(new URL(request.url()).pathname))
+      renderChunk.push(request.url());
+  });
   const perf = () => page.evaluate(() => window.__myHomePerf?.());
   const settled = (tier) =>
     page
@@ -749,6 +828,7 @@ async function viewChecks(browser, { device, base, host, homeId }) {
         (await settled('fast')),
       `${restored.width}x${restored.height}, before ${buffer.width}x${buffer.height}`,
     );
+    await renderChecks(page, { device, where, views, renderChunk });
     check(`${where}: the named views log no page error`, errors.length === 0, errors[0] ?? '');
   } finally {
     await context.close();

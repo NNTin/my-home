@@ -86,7 +86,7 @@ import type { FurnitureHandlers } from './scene/FurnitureLayer';
 import { furnitureViews } from './scene/furnitureViews';
 import type { PhotoMarkerView, RequestGhostView, Viewpoint } from './scene/PhotoMarkers';
 import { Scene } from './scene/Scene';
-import type { SaveImage } from './views/ImageExport';
+import type { SaveImage, ViewCamera } from './views/ImageExport';
 import type { NamedView } from './views/named';
 import { calibrationTargets } from './walk/calibration';
 import type { Figure } from './walk/figure';
@@ -212,6 +212,10 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   );
   const saveImage = useRef<SaveImage | undefined>(undefined);
   const [saving, setSaving] = useState(false);
+  // Render mode (§9): on from "Render" until "Close"; its still is what "Save image" saves then.
+  const [rendering, setRendering] = useState(false);
+  const viewCamera = useRef<ViewCamera | undefined>(undefined);
+  const saveRender = useRef<SaveImage | undefined>(undefined);
   const [chosenBackdrop, setBackdrop] = useState<Backdrop | undefined>(() =>
     backdropRequested(window.location.search),
   );
@@ -781,7 +785,10 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
       setVisibility(v);
       leaveView();
     },
-    onWalk: () => setWalkView('first'),
+    onWalk: () => {
+      setRendering(false);
+      setWalkView('first');
+    },
     photoCount: photos.photos.length,
     openRequests: openRequests(photos.requests).length,
   };
@@ -855,13 +862,16 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
       levelId={view && view.view.kind !== 'cutaway' ? undefined : level?.id}
       saving={saving}
       onSave={() => {
-        const save = saveImage.current;
+        const save = saveRender.current ?? saveImage.current;
         if (!save || saving) return;
         setSaving(true);
         save(presented?.view.kind ?? 'free')
           .catch(() => setToast('The image could not be saved'))
           .finally(() => setSaving(false));
       }}
+      // Not on a phone, and not over a photo's view.
+      onRender={mobile || viewed ? undefined : () => setRendering((on) => !on)}
+      rendering={rendering}
     />
   );
   const tabs: SheetTab<PanelId>[] = [
@@ -940,7 +950,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
             stage={
               views && (
                 <>
-                  <views.ImageExport actionRef={saveImage} />
+                  <views.ImageExport actionRef={saveImage} cameraRef={viewCamera} />
                   {presented && (
                     <views.Stage
                       scene={scene}
@@ -986,6 +996,15 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
               loading={placements.loading}
               planColours={planColours}
               phone={mobile}
+              on={rendering && !walking && !viewed}
+              visibility={visibility}
+              furniture={furniture}
+              view={presented?.view}
+              backdrop={shownBackdrop}
+              camera={viewCamera}
+              saveRef={saveRender}
+              onClose={() => setRendering(false)}
+              onNotice={setToast}
             />
           )}
           {mobile && !walking && inspected && (

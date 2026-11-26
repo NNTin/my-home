@@ -23,5 +23,10 @@ describe('whether the browser can make path-traced renders', () => {
     expect(
       await renderSupport({ requestAdapter: () => Promise.resolve({ isFallbackAdapter: true }) }),
     ).toBe('software');
+    expect(
+      await renderSupport({
+        requestAdapter: () => Promise.resolve({ info: { architecture: 'swiftshader' } }),
+      }),
+    ).toBe('software');
   });
 });

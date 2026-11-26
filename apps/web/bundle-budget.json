@@ -3,6 +3,6 @@
   "lazy": {
     "render-beautiful": { "maxGzipBytes": 150000, "required": true },
     "render-views": { "maxGzipBytes": 20000, "required": true },
-    "render-path": { "required": false }
+    "render-path": { "maxGzipBytes": 340000, "required": true }
   }
 }

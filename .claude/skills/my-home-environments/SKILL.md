@@ -167,7 +167,10 @@ $S/seed.sh staging diff                                # drift between git's see
   also with its cut moved by the slider (the address follows), and switching it off ("Free") and on again
   compiles no shader; and **Save image** downloads `my-home-section-<date>-<time>.png` at twice the canvas size
   with `quality=fast` in the address, after which the canvas has its own size again. A build before #114 skips
-  them, one without the section its part. Read-only: every
+  them, one without the section its part. Then **render mode** (`docs/render-mode.md`): "Render" is in the Views
+  control on a desktop and not on a phone, its chunk `render-path` is not asked for before the press, and after
+  it a browser without a graphics card for WebGPU (a runner, the agents' machine) shows "This browser cannot
+  make path-traced renders", downloads nothing and keeps its tier and view. Read-only: every
   placement write is **answered inside the browser** (as the api would, merged into the placement reads), every
   other write is refused there.
 - `catalog-smoke.sh <env> [--out file.png] [--home ID]`: the catalogue pages (`docs/catalog.md`) at 1440x900 and

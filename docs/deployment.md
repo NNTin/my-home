@@ -136,12 +136,12 @@ seed). A rollback deploys the older commit's seed too (§ Roll back production).
 After a pull request (or a tag, or a dispatch) is deployed to staging, the CI job **`staging-checks`** runs the
 browser checks against it, one runner each, in headless Chromium:
 
-| Check         | Runs                                                 | Passes when                                                                               |
-| ------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `walk`        | `walk-smoke.sh staging`                              | the smoke passes                                                                          |
-| `mobile`      | `mobile-smoke.sh staging`                            | the smoke passes: phone layout, frame loop, budgets, named views, section, "Save image"   |
-| `catalog`     | `catalog-smoke.sh staging`                           | the smoke passes: the catalogue, thumbnails, every piece page in 3D, sections, playground |
-| `visual-diff` | `visual-diff.sh staging shoot`, twice, and `compare` | every view is byte-identical in both shoots (`orbit-180`, a drag view, may differ)        |
+| Check         | Runs                                                 | Passes when                                                                                                               |
+| ------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `walk`        | `walk-smoke.sh staging`                              | the smoke passes                                                                                                          |
+| `mobile`      | `mobile-smoke.sh staging`                            | the smoke passes: phone layout, frame loop, budgets, named views, section, "Save image", "Render" without a graphics card |
+| `catalog`     | `catalog-smoke.sh staging`                           | the smoke passes: the catalogue, thumbnails, every piece page in 3D, sections, playground                                 |
+| `visual-diff` | `visual-diff.sh staging shoot`, twice, and `compare` | every view is byte-identical in both shoots (`orbit-180`, a drag view, may differ)                                        |
 
 - Each is `staging-checks.sh <check> <commit>` of the `my-home-environments` skill. All are read-only.
 - **Results:** the run's summary page has a section per check (the smoke's failed checks, or the comparison

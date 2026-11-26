@@ -45,6 +45,11 @@ setting), at twice the canvas size and at most 3840 px wide, without compass let
 downloads `my-home-<view>-<yyyymmdd-hhmm>.png` (`<view>`: `cutaway`, `section`, `eye` or `free`). An exported
 image is a render of the model: it holds no photo and no location.
 
+## Render
+
+**Render**, next to it on a desktop, makes a path-traced still of the view: the one tier with bounce light. While
+it is on, **Save image** saves the still. `docs/render-mode.md` has what it needs and what it does.
+
 ## Backdrop
 
 `sky` (the flat blue of the free view), `studio-light` (white, the named views' default) and `studio-dark`

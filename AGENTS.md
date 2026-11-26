@@ -20,8 +20,8 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
   surface names a finish in `home.json` (`docs/home-model.md` § Finishes)
 - `apps/web/src/views/`: the named views (`?view=cutaway|section|eye`, the Views control, backdrops, the
   section's cut and caps, "Save image"), a lazy chunk (`docs/views.md`)
-- `apps/web/src/render-mode/`: render mode, path-traced stills with WebGPU, the lazy chunk `render-path`; so far
-  its measuring page `/?render=measure` (`docs/render-mode.md`)
+- `apps/web/src/render-mode/`: render mode, path-traced stills with WebGPU ("Render" in the Views control, on
+  desktops), the lazy chunk `render-path`, and its measuring page `/?render=measure` (`docs/render-mode.md`)
 - `apps/web/src/routing/` (no router library) and `apps/web/src/catalog-page/`: the pages `/catalog` and
   `/catalog/<kind>/<typeId>`, lazy chunks; thumbnails cached in the browser (`docs/catalog.md`)
 - `docs/`: project docs (designs not built yet in `docs/design/`: the realistic render, `realistic-render.md`);
