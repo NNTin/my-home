@@ -125,7 +125,8 @@ What reading CI has taught us:
 - **The main chunk is one file** since #119 (`codeSplitting` in `apps/web/vite.config.ts`): what a lazy chunk
   imports no longer cuts it in pieces that compress worse (1.4 kB in #116). Piece modules are in it (the builder
   needs them for the first frame): a rebuilt type costs about 0.1 kB (#117). Read `pnpm check:bundle` in the
-  `check` job.
+  `check` job. A classic script in `index.html` (the loading bar, #166) is not in the main chunk: it has a
+  `first` budget, and the check prints the first load in all.
 - **What only a lazy page reads must not be exported by `@my-home/shared`'s index:** the index is in the main
   chunk, and a bundler keeps a module where its first importer is. Texts and tables for the catalogue page go
   in a module of their own behind an entry of the package (`@my-home/shared/finish-listing`: 1.2 kB, #118).

@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 // Checks the web build against apps/web/bundle-budget.json (docs/design/realistic-render.md §10.2):
 // - the main chunk (the entry and everything it imports statically) has not grown beyond its budget;
-// - each lazy chunk is within its budget and is not imported statically by the main chunk.
+// - each lazy chunk is within its budget and is not imported statically by the main chunk;
+// - each script that loads first (a classic <script src> in index.html, ahead of the main chunk: the loading
+//   bar, docs/loading.md) is within its budget. It also prints what the first load fetches in all: index.html,
+//   those scripts, the main chunk and its CSS.
 // Run after `pnpm build`:  node tools/check-bundle.mjs [--dist DIR] [--budget FILE]
 // Exit 0 within budget, 1 over budget or on an error.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -42,6 +45,24 @@ function mainChunks() {
   return [...reached];
 }
 
+/** The classic scripts of index.html: `<script src>` without `type="module"`, run before the main chunk. */
+function firstScripts() {
+  const html = readFileSync(path.join(dist, 'index.html'), 'utf8');
+  return [...html.matchAll(/<script\b([^>]*)>/g)]
+    .map((m) => m[1])
+    .filter((attrs) => !/type="module"/.test(attrs))
+    .map((attrs) => attrs.match(/\bsrc="\/([^"]+\.js)"/)?.[1])
+    .filter(Boolean);
+}
+
+/** The stylesheets index.html links: the main chunk's CSS. */
+function firstStyles() {
+  const html = readFileSync(path.join(dist, 'index.html'), 'utf8');
+  return [...html.matchAll(/<link[^>]+rel="stylesheet"[^>]+href="\/([^"]+\.css)"/g)].map(
+    (m) => m[1],
+  );
+}
+
 function main() {
   if (!existsSync(dist)) throw new Error(`${dist} does not exist: run pnpm build first`);
   const budget = JSON.parse(readFileSync(budgetFile, 'utf8'));
@@ -79,6 +100,36 @@ function main() {
       if (chunks.includes(file))
         failures.push(`the main chunk imports the lazy chunk ${file} statically`);
   }
+
+  const first = firstScripts();
+  for (const [name, script] of Object.entries(budget.first ?? {})) {
+    const files = first.filter((file) => path.basename(file).startsWith(`${name}-`));
+    if (files.length === 0) {
+      if (script.required)
+        failures.push(`the first script ${name} is missing from index.html: is it loaded first?`);
+      else console.log(`${name.padEnd(13)} not loaded first`);
+      continue;
+    }
+    const scriptSize = files.reduce((sum, file) => sum + gzipped(file), 0);
+    console.log(
+      `${name.padEnd(13)} ${kB(scriptSize)} gzipped, loaded first (${files.join(', ')}), budget ${kB(script.maxGzipBytes)}`,
+    );
+    if (scriptSize > script.maxGzipBytes)
+      failures.push(
+        `the first script ${name} is ${kB(scriptSize)}, more than ${kB(script.maxGzipBytes)}`,
+      );
+  }
+  const parts = { 'index.html': gzipped('index.html') };
+  for (const file of first) parts[file] = gzipped(file);
+  for (const file of chunks) parts[file] = gzipped(file);
+  for (const file of firstStyles()) parts[file] = gzipped(file);
+  const total = Object.values(parts).reduce((a, b) => a + b, 0);
+  console.log(
+    `first load    ${kB(total)} gzipped: ` +
+      Object.entries(parts)
+        .map(([file, bytes]) => `${file} ${kB(bytes)}`)
+        .join(', '),
+  );
 
   for (const failure of failures) console.error(`FAILED: ${failure}`);
   if (failures.length === 0) console.log('bundle within budget');

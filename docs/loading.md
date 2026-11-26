@@ -14,6 +14,9 @@ stands in the middle of the page. It replaced the plain "Loading home…" and "L
   paint, while the main chunk is still on its way. The browser fetches both at once.
 - Upstream's rule holds: the file is loaded with a script tag, never bundled, split or rewritten
   (`packages/sakuga-vfx/AGENTS.md`).
+- Its size has a budget of its own: `first` in `apps/web/bundle-budget.json` (25 kB gzipped; 21.0 kB in #166).
+  `pnpm check:bundle` measures each classic script of `index.html` and prints the first load in all (index.html,
+  those scripts, the main chunk and its CSS: 487.3 kB in #166, 464.6 kB before).
 
 ## It shows real progress only
 
