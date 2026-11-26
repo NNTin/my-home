@@ -22,6 +22,7 @@
   "appliance.fridge-freezer": 692,
   "appliance.microwave": 516,
   "appliance.washing-machine": 624,
+  "appliance.satellite-dish": 360,
   "bath.corner-tub": 272,
   "bath.shower": 456,
   "bath.toilet": 396,
@@ -41,5 +42,8 @@
   "garden.rock-pile": 1488,
   "garden.stepping-stone": 240,
   "garden.log": 672,
-  "garden.bird-house": 312
+  "garden.bird-house": 312,
+  "garden.bin": 408,
+  "garden.pillar": 24,
+  "garden.kerb": 20
 }

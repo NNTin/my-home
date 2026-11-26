@@ -71,4 +71,25 @@ export const washingMachine = defineType({
   footprint: 'rectangle',
 });
 
-export const appliances = [fridgeFreezer, microwave, washingMachine];
+export const satelliteDish = defineType({
+  id: 'appliance.satellite-dish',
+  kind: 'furniture',
+  family: 'appliance',
+  name: 'Satellite dish',
+  description:
+    'A dish on a bracket on an outer wall, its receiver on an arm in front of it. It hangs on the facade, outside the rooms.',
+  icon: '📡',
+  category: 'Facade',
+  placement: 'floor',
+  mounting: 'wall',
+  elevation: 2.4,
+  params: {
+    color: color('Colour', '#c4c5bf'),
+    diameter: length('Diameter', 0.8, 0.45, 1.2),
+    bracketColor: color('Bracket colour', '#8e9296', 'design'),
+  },
+  snapping: { wall: 'back' },
+  footprint: 'none',
+});
+
+export const appliances = [fridgeFreezer, microwave, washingMachine, satelliteDish];

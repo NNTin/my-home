@@ -42,6 +42,40 @@ describe('garden pieces', () => {
     expect(trunk!.center[1]).toBeCloseTo(0.35 / 2);
   });
 
+  it('a wheelie bin narrows to its foot, its wheels and handle at the back', () => {
+    const parts = draw('garden.bin');
+    const body = parts.find((p) => p.shape === 'extrude');
+    const profile = body?.shape === 'extrude' ? body.profile : [];
+    const foot = profile.filter(([, y]) => y < 0);
+    const top = profile.filter(([, y]) => y > 0);
+    const span = (points: [number, number][]) =>
+      Math.max(...points.map(([x]) => x)) - Math.min(...points.map(([x]) => x));
+    expect(span(foot)).toBeLessThan(span(top));
+    const wheels = parts.filter((p) => p.size[0] === 0.2);
+    expect(wheels).toHaveLength(2);
+    for (const p of [...wheels, parts.find((p) => p.role === 'handle')!])
+      expect(p.center[2]).toBeLessThan(-0.25);
+    const { max } = boundsOf(parts);
+    expect(max[1]).toBeCloseTo(1.07);
+  });
+
+  it('a brick pillar is its width square under a cap that overhangs it', () => {
+    const [shaft, cap] = draw('garden.pillar', { diameter: 0.49, height: 1.2 });
+    expect(shaft!.size[0]).toBe(0.49);
+    expect(shaft!.size[1]).toBeCloseTo(1.12);
+    expect(cap!.size[0]).toBeCloseTo(0.55);
+    expect(cap!.center[1] + cap!.size[1] / 2).toBeCloseTo(1.2);
+  });
+
+  it('a kerb runs along its length, its top edges bevelled', () => {
+    const [kerb] = draw('garden.kerb', { width: 6, depth: 0.15, height: 0.25 });
+    const { min, max } = boundsOf([kerb!]);
+    expect(max[0] - min[0]).toBeCloseTo(6);
+    expect(max[2] - min[2]).toBeCloseTo(0.15);
+    expect(max[1]).toBeCloseTo(0.25);
+    expect(kerb!.shape === 'extrude' && kerb!.profile).toHaveLength(6);
+  });
+
   it('draws a dry-stone pile the same every time, within its size', () => {
     const a = draw('garden.rock-pile');
     expect(draw('garden.rock-pile')).toEqual(a);
@@ -84,6 +118,13 @@ describe('the rebuilt garden pieces', () => {
     ['garden.stepping-stone', {}, 1],
     ['garden.bird-house', {}, 1],
     ['garden.bird-house', { height: 2, color: '#6b4a2b' }, 2],
+    ['garden.bin', {}, 1],
+    ['garden.bin', { width: 0.8, depth: 1.1, height: 1.3, color: '#4a5a3c' }, 1],
+    ['garden.bin', { width: 0.45, depth: 0.5, height: 0.85 }, 1],
+    ['garden.pillar', {}, 1],
+    ['garden.pillar', { diameter: 1, height: 2.5 }, 1],
+    ['garden.kerb', {}, 1],
+    ['garden.kerb', { width: 15, depth: 0.06, height: 0.08 }, 1],
   ] as [string, Record<string, unknown>, number][])(
     '%s %j is %i mesh(es), within a piece\u2019s triangles, on the ground',
     (id, overrides, meshes) => {

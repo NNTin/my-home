@@ -26,6 +26,9 @@ const CASES: [string, Record<string, unknown>, number][] = [
   ['appliance.fridge-freezer', { height: 1.2 }, 1],
   ['appliance.microwave', {}, 2],
   ['appliance.microwave', { width: 0.4, height: 0.24, depth: 0.3 }, 2],
+  ['appliance.satellite-dish', {}, 3],
+  ['appliance.satellite-dish', { diameter: 0.45 }, 3],
+  ['appliance.satellite-dish', { diameter: 1.2 }, 3],
   ['fixture.radiator', {}, 1],
   ['fixture.radiator', { width: 2, height: 0.9, depth: 0.2, valveSide: 'left' }, 1],
   ['fixture.radiator', { width: 0.4, height: 0.3, depth: 0.09 }, 1],
@@ -97,6 +100,21 @@ describe('the appliances and fixtures', () => {
       expect(bar.max[1] - bar.min[1]).toBeCloseTo(Math.min(0.5, height - 0.85));
     },
   );
+
+  it('the satellite dish hangs off its wall plate and looks forward, its receiver in front', () => {
+    for (const diameter of [0.45, 0.8, 1.2]) {
+      const { parts, size } = draw('appliance.satellite-dish', { diameter });
+      const [reflector] = parts.filter((p) => p.shape === 'lathe');
+      // Turned from upright to lying along z: its skin opens towards the front (+z).
+      expect(reflector!.rotationX).toBeCloseTo(Math.PI / 2);
+      expect(reflector!.center[1]).toBeCloseTo(size.height / 2);
+      const plate = parts[0]!;
+      expect(plate.center[2] - plate.size[2] / 2).toBeCloseTo(-size.depth / 2);
+      const receiver = parts.at(-1)!;
+      expect(receiver.center[2]).toBeGreaterThan(reflector!.center[2] + 0.1);
+      expect(receiver.center[1]).toBeLessThan(reflector!.center[1]);
+    }
+  });
 
   it('the microwave has a glass window and a control panel with a display, keys and a dial', () => {
     const { parts } = draw('appliance.microwave');

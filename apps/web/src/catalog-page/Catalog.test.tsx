@@ -53,6 +53,7 @@ describe('catalogSections', () => {
       ['Bed room', ['Bed', 'Wardrobe']],
       ['Corridor', ['Shoe cabinet']],
       ['Dining', ['Chair', 'Round table']],
+      ['Facade', ['Satellite dish']],
       [
         'Kitchen',
         [
@@ -73,10 +74,13 @@ describe('catalogSections', () => {
       ['Lighting', ['fixture.downlight']],
     ]);
     expect(sections[3]!.groups.map((g) => [g.name, g.types.map((t) => t.name)])).toEqual([
-      ['Garden', ['Bird house']],
+      ['Garden', ['Bird house', 'Wheelie bin']],
       ['Patio', ['Garden bench', 'Garden chair', 'Garden table', 'Lean-to pergola']],
       ['Plants', ['Hedge', 'Ornamental grass', 'Planter', 'Shrub', 'Tree']],
-      ['Stone & wood', ['Dry-stone pile', 'Log', 'Stepping stone']],
+      [
+        'Stone & wood',
+        ['Brick pillar', 'Concrete kerb', 'Dry-stone pile', 'Log', 'Stepping stone'],
+      ],
     ]);
   });
 
@@ -133,6 +137,7 @@ describe('CatalogPage', () => {
       'Bed room',
       'Corridor',
       'Dining',
+      'Facade',
       'Kitchen',
       'Living room',
       'Work room',
