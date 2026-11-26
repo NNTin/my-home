@@ -82,6 +82,18 @@ export function groundPlace(scene: Pick<HomeScene, 'bounds' | 'terrain' | 'slabs
 export const nearFor = (distance: number, radius: number): number =>
   Math.max(NEAR, (distance - radius) * 0.9);
 
+/** The ground of a named view under a backdrop, and where it lies: also what render mode traces. */
+export function stageGround(
+  scene: Pick<HomeScene, 'bounds' | 'terrain' | 'slabs'>,
+  backdrop: Backdrop,
+) {
+  const place = groundPlace(scene);
+  return {
+    place,
+    geometry: groundGeometry(place.radius * FADE_START, place.radius * FADE_END, GROUND[backdrop]),
+  };
+}
+
 export function Stage({
   scene,
   view,
@@ -96,10 +108,9 @@ export function Stage({
   visibility: Visibility;
   furniture: readonly PlacementDraw[];
 }) {
-  const place = useMemo(() => groundPlace(scene), [scene]);
-  const ground = useMemo(
-    () => groundGeometry(place.radius * FADE_START, place.radius * FADE_END, GROUND[backdrop]),
-    [place, backdrop],
+  const { place, geometry: ground } = useMemo(
+    () => stageGround(scene, backdrop),
+    [scene, backdrop],
   );
   useEffect(() => () => ground.dispose(), [ground]);
   // Whatever the stage draws is compiled before its first frame (§4.5).

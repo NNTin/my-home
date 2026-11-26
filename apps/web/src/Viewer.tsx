@@ -979,6 +979,15 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
               {toast}
             </p>
           )}
+          {views && (
+            <views.RenderMode
+              scene={scene}
+              furnitureFor={(v) => furnitureViews(ctx, items, scene, v)}
+              loading={placements.loading}
+              planColours={planColours}
+              phone={mobile}
+            />
+          )}
           {mobile && !walking && inspected && (
             <PieceToolbar
               name={inspected.name}

@@ -16,11 +16,18 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
-      // three.js + drei make up most of the bundle.
-      chunkSizeWarningLimit: 1500,
+      // three.js + drei make up most of the main chunk; the path tracer is a lazy one.
+      chunkSizeWarningLimit: 1700,
       // A texture is a file a device fetches when a finish is first drawn, in one size
       // (docs/design/realistic-render.md §5.3): never inlined into the script, however small.
       assetsInlineLimit: (file) => (file.endsWith('.webp') ? false : undefined),
+      // Everything the entry reaches statically is one chunk (D95 of the design). Left to itself
+      // the bundler cuts shared modules by which lazy chunks import them: a lazy chunk that
+      // imports one more module of the viewer splits the main chunk again, and the pieces
+      // compress worse (1.4 kB in #116; 0.4 kB for render mode, which shares three.js' core).
+      rolldownOptions: {
+        output: { codeSplitting: { groups: [{ name: 'main', tags: ['$initial'] }] } },
+      },
     },
     server: {
       port: 5173,

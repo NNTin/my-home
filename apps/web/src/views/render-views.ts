@@ -9,3 +9,4 @@ export * from './named';
 export { ImageExport, type SaveImage } from './ImageExport';
 export { Stage } from './Stage';
 export { ViewsControl } from './ViewsControl';
+export { RenderMode } from './RenderMode';

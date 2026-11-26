@@ -13,3 +13,9 @@ packageExtensions:
     peerDependenciesMeta:
       postprocessing:
         optional: true
+  # three-gpu-pathtracer (render mode, D14) names `xatlas-web` as a peer for its UV unwrapper,
+  # which the WebGPU tracer does not use: it is not installed.
+  three-gpu-pathtracer@*:
+    peerDependenciesMeta:
+      xatlas-web:
+        optional: true
