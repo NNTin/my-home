@@ -192,7 +192,7 @@ ceiling; every other piece may stand on the floor or hang on a wall.
   panel (Enter or leaving the field saves; one undo step); on a phone the toolbar's **▲ ▼** move it 5 cm. A
   piece must not reach above the ceiling over it: the editor raises it at most until its top meets the ceiling,
   a drag stops before a lower ceiling, and the api refuses a create or a change that would (422, unless it
-  already did).
+  already did). A piece outside every room of its level (a satellite dish on the facade) has no ceiling over it.
 - **Walking**: pieces on a wall or under the ceiling never block the figure ([walking.md](walking.md)).
 - **Needs attention** (panel and where-used): a wall piece whose back no longer touches a wall ("hangs on no
   wall (its wall is gone or moved)", e.g. after a git change of the floor plan), a ceiling piece outside every

@@ -114,10 +114,11 @@ export function wallBehind(
 
 /**
  * Why a placement does not fit in height, as sentences (empty when it fits, or on an unknown
- * level): a piece on the floor or a wall must not reach above the ceiling over its position.
+ * level): a piece on the floor or a wall must not reach above the ceiling over its position. A
+ * piece outside every room of its level (a satellite dish on the facade, #147) has the sky over it.
  */
 export function heightFitIssues(
-  model: Pick<HomeModel, 'levels' | 'ceilings'>,
+  model: Pick<HomeModel, 'levels' | 'ceilings' | 'rooms'>,
   type: Pick<CatalogType, 'name' | 'kind'>,
   values: ParamValues,
   at: Pick<PlacedAt, 'levelId' | 'x' | 'z'>,
@@ -126,6 +127,8 @@ export function heightFitIssues(
 ): string[] {
   // Outdoor pieces have the sky over them, not their level's ceiling.
   if (mounting === 'ceiling' || isOutdoorKind(type)) return [];
+  const rooms = model.rooms.filter((r) => r.levelId === at.levelId);
+  if (rooms.length > 0 && !rooms.some((r) => insideOutline(at.x, at.z, r.outline))) return [];
   const ceiling = ceilingHeightAt(model, at.levelId, at.x, at.z);
   if (ceiling === undefined) return [];
   const { height } = furnitureSize(values);

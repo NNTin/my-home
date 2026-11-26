@@ -3,6 +3,20 @@
   "homeId": "home",
   "placements": [
     {
+      "id": "ground-floor-satellite-dish-1",
+      "typeId": "appliance.satellite-dish",
+      "name": "Facade · satellite dish",
+      "levelId": "ground-floor",
+      "position": {
+        "x": 1.2,
+        "z": 0.4
+      },
+      "rotationY": 0,
+      "mounting": "wall",
+      "elevation": 2.47,
+      "params": {}
+    },
+    {
       "id": "souterrain-base-cabinet-1",
       "typeId": "kitchen.base-cabinet",
       "name": "Kitchen · north counter",
@@ -48,6 +62,60 @@
         "z": -9.9
       },
       "rotationY": 1.5707963267948966,
+      "params": {}
+    },
+    {
+      "id": "souterrain-bin-1",
+      "typeId": "garden.bin",
+      "name": "Driveway · green bin 1",
+      "levelId": "souterrain",
+      "position": {
+        "x": -4.43,
+        "z": 0.7
+      },
+      "rotationY": 1.5707963267948966,
+      "params": {
+        "color": "#4a5a3c"
+      }
+    },
+    {
+      "id": "souterrain-bin-2",
+      "typeId": "garden.bin",
+      "name": "Driveway · green bin 2",
+      "levelId": "souterrain",
+      "position": {
+        "x": -4.43,
+        "z": 1.32
+      },
+      "rotationY": 1.5707963267948966,
+      "params": {
+        "color": "#4a5a3c"
+      }
+    },
+    {
+      "id": "souterrain-bin-3",
+      "typeId": "garden.bin",
+      "name": "Driveway · grey bin",
+      "levelId": "souterrain",
+      "position": {
+        "x": -3.4,
+        "z": 1
+      },
+      "rotationY": 3.141592653589793,
+      "params": {
+        "color": "#3b3d40"
+      }
+    },
+    {
+      "id": "souterrain-bin-4",
+      "typeId": "garden.bin",
+      "name": "Driveway · black bin",
+      "levelId": "souterrain",
+      "position": {
+        "x": -0.6,
+        "z": 9.2
+      },
+      "rotationY": 3.141592653589793,
       "params": {}
     },
     {
@@ -267,6 +335,126 @@
       }
     },
     {
+      "id": "souterrain-kerb-1",
+      "typeId": "garden.kerb",
+      "name": "Front garden · kerb, street",
+      "levelId": "souterrain",
+      "position": {
+        "x": 8.7,
+        "z": 10.375
+      },
+      "rotationY": 0,
+      "params": {
+        "height": 0.2,
+        "width": 13.6
+      }
+    },
+    {
+      "id": "souterrain-kerb-2",
+      "typeId": "garden.kerb",
+      "name": "Front garden · kerb, corner",
+      "levelId": "souterrain",
+      "position": {
+        "x": 17.4,
+        "z": 8.075
+      },
+      "rotationY": 0,
+      "params": {
+        "height": 0.2,
+        "width": 3.8
+      }
+    },
+    {
+      "id": "souterrain-kerb-3",
+      "typeId": "garden.kerb",
+      "name": "Front garden · kerb, corner west",
+      "levelId": "souterrain",
+      "position": {
+        "x": 15.575,
+        "z": 9.15
+      },
+      "rotationY": 1.5707963267948966,
+      "params": {
+        "height": 0.2,
+        "width": 2.3
+      }
+    },
+    {
+      "id": "souterrain-kerb-4",
+      "typeId": "garden.kerb",
+      "name": "Front garden · kerb, lane 1",
+      "levelId": "souterrain",
+      "position": {
+        "x": 19.375,
+        "z": 7.25
+      },
+      "rotationY": 1.5707963267948966,
+      "params": {
+        "height": 0.41,
+        "width": 1.5
+      }
+    },
+    {
+      "id": "souterrain-kerb-5",
+      "typeId": "garden.kerb",
+      "name": "Front garden · kerb, lane 2",
+      "levelId": "souterrain",
+      "position": {
+        "x": 19.375,
+        "z": 5.75
+      },
+      "rotationY": 1.5707963267948966,
+      "params": {
+        "height": 0.51,
+        "width": 1.5
+      }
+    },
+    {
+      "id": "souterrain-kerb-6",
+      "typeId": "garden.kerb",
+      "name": "Front garden · kerb, lane 3",
+      "levelId": "souterrain",
+      "position": {
+        "x": 19.375,
+        "z": 4.25
+      },
+      "rotationY": 1.5707963267948966,
+      "params": {
+        "height": 0.61,
+        "width": 1.5
+      }
+    },
+    {
+      "id": "souterrain-kerb-7",
+      "typeId": "garden.kerb",
+      "name": "Front garden · kerb, lane 4",
+      "levelId": "souterrain",
+      "position": {
+        "x": 19.375,
+        "z": 2.75
+      },
+      "rotationY": 1.5707963267948966,
+      "params": {
+        "height": 0.71,
+        "width": 1.5
+      }
+    },
+    {
+      "id": "souterrain-kerb-8",
+      "typeId": "garden.kerb",
+      "name": "Front garden · kerb, lane 5",
+      "levelId": "souterrain",
+      "position": {
+        "x": 19.375,
+        "z": 1.25
+      },
+      "rotationY": 1.5707963267948966,
+      "params": {
+        "height": 0.8,
+        "width": 1.5
+      }
+    },
+    {
       "id": "souterrain-ledge-1",
       "typeId": "bath.ledge",
       "name": "Bath room · north ledge",
@@ -344,6 +532,18 @@
         "height": 2.65,
         "width": 2.9
       }
+    },
+    {
+      "id": "souterrain-pillar-1",
+      "typeId": "garden.pillar",
+      "name": "Driveway · brick pillar",
+      "levelId": "souterrain",
+      "position": {
+        "x": -4.6,
+        "z": 10.05
+      },
+      "rotationY": 0,
+      "params": {}
     },
     {
       "id": "souterrain-planter-1",
