@@ -298,24 +298,39 @@ in its colour (D81).
 - Not types yet, for want of a photo that shows them whole: a mirror or cabinet over the washbasin, the wall
   cabinet beside the window. A door has no leaf (D82), so the hooks on the door have nowhere to hang.
 
+## Street side (#147)
+
+From the street-side reference images (`1bc79960`, `56b09dad`, `8808ee82`, `a8359a1e`; cited by id only). The
+wheelie bin, the brick pillar at the end of the trellis fence and the kerb along the front garden are outdoor
+types (below). The **satellite dish** hangs on the facade: an outdoor piece stands on the ground, so it is kind
+`furniture` (family `appliance`, category "Facade"), mounted on a wall of the ground floor outside its rooms.
+It shows and hides with that level, like the rest of the facade it hangs on.
+
+| Type                       | Mounting               | Defaults                                                       | Basic besides colours and sizes |
+| -------------------------- | ---------------------- | -------------------------------------------------------------- | ------------------------------- |
+| `appliance.satellite-dish` | wall, bottom at 240 cm | 80 cm across, as deep; a bracket, the receiver on an arm; open |                                 |
+
 ## Patio and garden types (outdoor)
 
 Identified in the owner's photos of the souterrain patio and garden. Kind `outdoor`, family `garden`: they stand on
 the ground outside ([furniture.md](furniture.md#outdoor-pieces)). Their piece pages say so and offer no **Place**
 (agents place them).
 
-| Type                    | Category     | Defaults                                                            | Basic besides colours and sizes |
-| ----------------------- | ------------ | ------------------------------------------------------------------- | ------------------------------- |
-| `garden.pergola`        | Patio        | lean-to, 320 × 260 cm, 245 cm at the facade, 215 at the posts; open | posts (2–4)                     |
-| `garden.table`          | Patio        | 140 × 80 × 74 cm, dark metal frame, glass top                       |                                 |
-| `garden.chair`          | Patio        | 58 × 62 × 105 cm, seat at 45 cm, mesh seat and back                 |                                 |
-| `garden.bench`          | Patio        | 120 × 55 × 85 cm, seat at 45 cm, weathered slats, leaning back      |                                 |
-| `garden.planter`        | Plants       | 38 cm across, pot 50 cm, plant 40 cm (zinc pot, lavender)           | shape (round, square)           |
-| `garden.shrub`          | Plants       | 90 cm across, 110 cm high                                           | flowers (none, roses)           |
-| `garden.grass`          | Plants       | 60 cm across, 120 cm high                                           |                                 |
-| `garden.hedge`          | Plants       | 200 × 60 × 150 cm, a clipped run of rounded blocks; 50 cm to 12 m   |                                 |
-| `garden.tree`           | Plants       | crown 350 cm across, 500 cm high, 180 cm of clear trunk; open       |                                 |
-| `garden.rock-pile`      | Stone & wood | 160 × 80 × 60 cm of dry-laid natural stones                         |                                 |
-| `garden.stepping-stone` | Stone & wood | 45 cm round, 3 cm thick; open                                       |                                 |
-| `garden.log`            | Stone & wood | 80 cm long, 35 cm across, lying                                     |                                 |
-| `garden.bird-house`     | Garden       | 150 cm high on a three-legged stand 60 cm wide, two-tier roof       |                                 |
+| Type                    | Category     | Defaults                                                             | Basic besides colours and sizes |
+| ----------------------- | ------------ | -------------------------------------------------------------------- | ------------------------------- |
+| `garden.pergola`        | Patio        | lean-to, 320 × 260 cm, 245 cm at the facade, 215 at the posts; open  | posts (2–4)                     |
+| `garden.table`          | Patio        | 140 × 80 × 74 cm, dark metal frame, glass top                        |                                 |
+| `garden.chair`          | Patio        | 58 × 62 × 105 cm, seat at 45 cm, mesh seat and back                  |                                 |
+| `garden.bench`          | Patio        | 120 × 55 × 85 cm, seat at 45 cm, weathered slats, leaning back       |                                 |
+| `garden.planter`        | Plants       | 38 cm across, pot 50 cm, plant 40 cm (zinc pot, lavender)            | shape (round, square)           |
+| `garden.shrub`          | Plants       | 90 cm across, 110 cm high                                            | flowers (none, roses)           |
+| `garden.grass`          | Plants       | 60 cm across, 120 cm high                                            |                                 |
+| `garden.hedge`          | Plants       | 200 × 60 × 150 cm, a clipped run of rounded blocks; 50 cm to 12 m    |                                 |
+| `garden.tree`           | Plants       | crown 350 cm across, 500 cm high, 180 cm of clear trunk; open        |                                 |
+| `garden.rock-pile`      | Stone & wood | 160 × 80 × 60 cm of dry-laid natural stones                          |                                 |
+| `garden.stepping-stone` | Stone & wood | 45 cm round, 3 cm thick; open                                        |                                 |
+| `garden.log`            | Stone & wood | 80 cm long, 35 cm across, lying                                      |                                 |
+| `garden.bird-house`     | Garden       | 150 cm high on a three-legged stand 60 cm wide, two-tier roof        |                                 |
+| `garden.bin`            | Garden       | 58 × 73 × 107 cm, a 240 l wheelie bin, wheels and handle at the back |                                 |
+| `garden.pillar`         | Stone & wood | 49 cm square, 120 cm high, clinker bricks under a concrete cap       |                                 |
+| `garden.kerb`           | Stone & wood | 100 cm long, 15 thick, 25 high; up to 15 m; open (you step over it)  |                                 |

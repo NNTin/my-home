@@ -277,6 +277,70 @@ export const birdHouse = defineType({
   footprint: 'ellipse',
 });
 
+export const bin = defineType({
+  id: 'garden.bin',
+  kind: 'outdoor',
+  family: 'garden',
+  name: 'Wheelie bin',
+  description:
+    'A plastic waste bin on two wheels, its hinged lid and handle at the back; 240 litres by default.',
+  icon: '🗑️',
+  category: 'Garden',
+  placement: 'floor',
+  mounting: 'floor',
+  params: {
+    color: color('Colour', '#232325'),
+    width: length('Width', 0.58, 0.45, 0.8),
+    depth: length('Depth', 0.73, 0.5, 1.1),
+    height: length('Height', 1.07, 0.85, 1.3),
+    wheelColor: color('Wheel colour', '#1a1a1b', 'design'),
+  },
+  snapping: { wall: 'back' },
+  footprint: 'rectangle',
+});
+
+export const pillar = defineType({
+  id: 'garden.pillar',
+  kind: 'outdoor',
+  family: 'garden',
+  name: 'Brick pillar',
+  description:
+    'A square pillar of clinker bricks with a concrete cap, at the end of a fence or beside a gate.',
+  icon: '🧱',
+  category: 'Stone & wood',
+  placement: 'floor',
+  mounting: 'floor',
+  params: {
+    color: color('Brick colour', '#634539'),
+    capColor: color('Cap colour', '#9b928e'),
+    diameter: length('Width', 0.49, 0.24, 1),
+    height: length('Height', 1.2, 0.4, 2.5),
+  },
+  snapping: { wall: 'any' },
+  footprint: 'rectangle',
+});
+
+export const kerb = defineType({
+  id: 'garden.kerb',
+  kind: 'outdoor',
+  family: 'garden',
+  name: 'Concrete kerb',
+  description:
+    'A low concrete edging along a bed, a lawn or a drive, its top edges bevelled; you step over it.',
+  icon: '➖',
+  category: 'Stone & wood',
+  placement: 'floor',
+  mounting: 'floor',
+  params: {
+    color: color('Colour', '#a89e8c'),
+    width: length('Length', 1, 0.3, 15),
+    depth: length('Thickness', 0.15, 0.06, 0.4),
+    height: length('Height', 0.25, 0.08, 0.8),
+  },
+  snapping: { wall: 'none' },
+  footprint: 'none',
+});
+
 export const garden = [
   pergola,
   table,
@@ -291,4 +355,7 @@ export const garden = [
   steppingStone,
   log,
   birdHouse,
+  bin,
+  pillar,
+  kerb,
 ];

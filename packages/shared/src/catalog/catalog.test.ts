@@ -53,6 +53,7 @@ describe('catalog', () => {
       'appliance.fridge-freezer',
       'appliance.microwave',
       'appliance.washing-machine',
+      'appliance.satellite-dish',
       'bath.corner-tub',
       'bath.shower',
       'bath.toilet',
@@ -73,6 +74,9 @@ describe('catalog', () => {
       'garden.stepping-stone',
       'garden.log',
       'garden.bird-house',
+      'garden.bin',
+      'garden.pillar',
+      'garden.kerb',
     ]);
     expect(catalog.get('furniture.bed')?.category).toBe('Bed room');
     expect(catalog.get('window.fixed')).toBeUndefined();
@@ -188,6 +192,7 @@ describe('catalog', () => {
       'appliance.fridge-freezer': ['color', 'width', 'height', 'depth'],
       'appliance.microwave': ['color', 'width', 'height', 'depth'],
       'appliance.washing-machine': ['color', 'width', 'height', 'depth'],
+      'appliance.satellite-dish': ['color', 'diameter'],
       'bath.corner-tub': ['apronColor', 'width', 'depth', 'height', 'corner'],
       'bath.shower': ['width', 'depth', 'height', 'corner'],
       'bath.toilet': ['depth'],
@@ -216,6 +221,9 @@ describe('catalog', () => {
       'garden.stepping-stone': ['color', 'diameter'],
       'garden.log': ['color', 'width', 'diameter'],
       'garden.bird-house': ['color', 'roofColor', 'height'],
+      'garden.bin': ['color', 'width', 'depth', 'height'],
+      'garden.pillar': ['color', 'capColor', 'diameter', 'height'],
+      'garden.kerb': ['color', 'width', 'depth', 'height'],
     });
     expect(type('furniture.bed').params.width).toEqual({
       type: 'length',
@@ -241,6 +249,7 @@ describe('catalog', () => {
       'appliance.microwave': ['floor', 0.9],
       'bath.toilet': ['wall', 0.08],
       'bath.vanity': ['wall', 0.3],
+      'appliance.satellite-dish': ['wall', 2.4],
       'fixture.downlight': ['ceiling', undefined],
       'fixture.radiator': ['wall', 0.1],
     });
