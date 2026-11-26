@@ -5,6 +5,9 @@ server {
     root /usr/share/nginx/html;
 
     gzip on;
+    # Level 6, not nginx's default 1: the main chunk goes out about 16% smaller (546 kB to 459 kB).
+    # Cloudflare caches the assets, so nginx compresses each file rarely.
+    gzip_comp_level 6;
     gzip_types text/css application/javascript application/json image/svg+xml;
 
     location /api/ {
