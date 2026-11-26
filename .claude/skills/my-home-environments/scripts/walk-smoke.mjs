@@ -203,8 +203,9 @@ async function smoke(out) {
       const screenOf = ([x, z]) =>
         page.evaluate(
           ([x, z]) => {
-            const m = document.querySelector('.walk-map-large .walk-map-svg > g').getScreenCTM();
-            return [m.a * x + m.c * z + m.e, m.b * x + m.d * z + m.f];
+            // No enlarged map (it closed a moment ago): nowhere to tap.
+            const m = document.querySelector('.walk-map-large .walk-map-svg > g')?.getScreenCTM();
+            return m ? [m.a * x + m.c * z + m.e, m.b * x + m.d * z + m.f] : null;
           },
           [x, z],
         );
@@ -225,9 +226,11 @@ async function smoke(out) {
       await page.mouse.click(fx, fy);
       if (!(await closed())) {
         // Not free there: the first tread itself.
-        const [tx, ty] = await screenOf(first);
-        await page.mouse.click(tx, ty);
-        await closed();
+        const spot = await screenOf(first);
+        if (spot) {
+          await page.mouse.click(spot[0], spot[1]);
+          await closed();
+        }
       }
       let placed = await figure();
       for (const deadline = Date.now() + 3000; !atStair(placed) && Date.now() < deadline;) {

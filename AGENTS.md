@@ -99,8 +99,9 @@ What reading CI has taught us:
   re-running jobs one by one, or while someone else does, hides the logs for a long time. Wait for the run.
 - **`gh run rerun <run> --failed` hides every job's log again** until the re-run is complete: read the logs you
   need (check counts, draw calls) before you re-run a flaky job.
-- **`walk`'s "a tap on the enlarged map puts the figure at the stair" fails now and then** without a change to
-  walking (#150, #151, #154). Re-run the failed job once before looking for a cause in your change.
+- **`walk`'s "a tap on the enlarged map puts the figure at the stair" is no flake any more:** it read the figure
+  before the app had moved it (#150 to #162) and now waits for the map to close and the figure to arrive (#172).
+  If it fails, look for the cause in your change instead of re-running.
 - **What the page gets on a CI runner is not what it gets here:** Cloudflare adds its analytics beacon
   (`POST /cdn-cgi/rum`) there. The browser scripts answer `/cdn-cgi/*` themselves
   (`scripts/infrastructure.mjs`); a new script must use the same filter.
