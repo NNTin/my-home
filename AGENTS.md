@@ -20,6 +20,8 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
   surface names a finish in `home.json` (`docs/home-model.md` § Finishes)
 - `apps/web/src/views/`: the named views (`?view=cutaway|section|eye`, the Views control, backdrops, the
   section's cut and caps, "Save image"), a lazy chunk (`docs/views.md`)
+- `apps/web/src/render-mode/`: render mode, path-traced stills with WebGPU, the lazy chunk `render-path`; so far
+  its measuring page `/?render=measure` (`docs/render-mode.md`)
 - `apps/web/src/routing/` (no router library) and `apps/web/src/catalog-page/`: the pages `/catalog` and
   `/catalog/<kind>/<typeId>`, lazy chunks; thumbnails cached in the browser (`docs/catalog.md`)
 - `docs/`: project docs (designs not built yet in `docs/design/`: the realistic render, `realistic-render.md`);
@@ -102,15 +104,17 @@ What reading CI has taught us:
 - **What the page gets on a CI runner is not what it gets here:** Cloudflare adds its analytics beacon
   (`POST /cdn-cgi/rum`) there. The browser scripts answer `/cdn-cgi/*` themselves
   (`scripts/infrastructure.mjs`); a new script must use the same filter.
-- **A lazy page that imports a big module of the main chunk makes the bundler split that chunk,** and the pieces
-  compress worse: 1.4 kB of the main budget for one import of the frame loop's hook from the piece page (#116).
-  Piece modules are in the main chunk too (the builder needs them for the first frame): a rebuilt type costs
-  about 0.1 kB of it (#117).
-  Import the small thing from a small module (`scene/frameControl.ts`) and read `pnpm check:bundle` in the
+- **The main chunk is one file** since #119 (`codeSplitting` in `apps/web/vite.config.ts`): what a lazy chunk
+  imports no longer cuts it in pieces that compress worse (1.4 kB in #116). Piece modules are in it (the builder
+  needs them for the first frame): a rebuilt type costs about 0.1 kB (#117). Read `pnpm check:bundle` in the
   `check` job.
 - **What only a lazy page reads must not be exported by `@my-home/shared`'s index:** the index is in the main
   chunk, and a bundler keeps a module where its first importer is. Texts and tables for the catalogue page go
   in a module of their own behind an entry of the package (`@my-home/shared/finish-listing`: 1.2 kB, #118).
+- **Headless Chromium has WebGPU, drawn by the processor** (a fallback adapter, SwiftShader): seen on the
+  agents' machine, expected on a runner. The path tracer does not run on it: its kernels never finish
+  compiling, or the GPU process dies and takes the page's WebGL context along. The app treats such a browser as
+  one without WebGPU; a traced image is the owner's check (#119).
 - **A smoke's screenshots are not artifacts:** a page can show the owner's photos. Only `visual-diff` uploads
   (canvas shots of the model).
 - **Staging is shared:** a check counts only for the commit staging ran before and after it, and the owner may
