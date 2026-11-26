@@ -263,9 +263,10 @@ export function buildStair(stair: Stair, from: number, to: number): StairDescrip
       const rail = (along: number) => nosings(f, along) + R.height;
       const bottom = (along: number) => nosings(f, along) - rise - R.stringer.below;
       if (i === 0) post(f, a0, floor, rail(a0) + R.handrail + R.postAbove);
-      // A post at a turn also holds the handrail of the flight above it.
-      const above = upper ? 0 : rise;
-      post(f, a1, Math.max(bottom(a1), floor), rail(a1) + above + R.handrail + R.postAbove);
+      // A post at a turn also holds the handrail of the next flight, which starts higher on it.
+      const next = walked[i + 1];
+      const held = Math.max(rail(a1), next ? nosings(next, aside + R.post / 2) + R.height : 0);
+      post(f, a1, Math.max(bottom(a1), floor), held + R.handrail + R.postAbove);
       const [r0, r1] = [a0 + R.post / 2, a1 - R.post / 2];
       if (r1 - r0 < R.baluster.spacing) return;
       // The board ends on the floor or landing the flight starts from.

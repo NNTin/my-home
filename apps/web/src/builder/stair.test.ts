@@ -157,8 +157,12 @@ describe('the railing', () => {
     expect(turn!.center[2]).toBeCloseTo(-9.965 + (2.09 - 0.985) / 2);
     const landing = top(stair.steps[7]!);
     expect(bottom(turn!)).toBeLessThan(landing - 0.2);
-    expect(top(turn!)).toBeGreaterThan(landing + 1.1);
-    expect(top(turn!)).toBeLessThan(landing + 1.3);
+    // It stands 10 cm over the top of the upper flight's handrail, which starts at its face.
+    const upper = rails[3]!;
+    const handrailTop = FLOOR + Math.max(upper.outline[0]![1], upper.outline[3]![1]);
+    expect(upper.outline[0]![0]).toBeCloseTo((2.09 - 0.985) / 2 + R.post / 2);
+    expect(top(turn!)).toBeCloseTo(handrailTop + R.postAbove);
+    expect(top(turn!)).toBeGreaterThan(FLOOR + rails[1]!.outline[2]![1] + R.postAbove);
     expect(last!.center[2]).toBeCloseTo(-8.165 - R.post / 2);
     expect(top(last!)).toBeCloseTo(
       R.height + R.handrail + R.postAbove - stair.rise * (R.post / 2 / 0.26),
