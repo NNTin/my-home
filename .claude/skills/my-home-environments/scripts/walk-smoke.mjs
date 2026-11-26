@@ -208,18 +208,35 @@ async function smoke(out) {
           },
           [x, z],
         );
+      // A tap that places the figure closes the map. The app does both a moment after the click:
+      // reading the figure at once raced it, and failed about one run in three on staging (#117).
+      const closed = () =>
+        page
+          .locator('.walk-map-large')
+          .waitFor({ state: 'detached', timeout: 3000 })
+          .then(
+            () => true,
+            () => false,
+          );
+      const atStair = (at) =>
+        moved(at, { x: foot[0], z: foot[1] }) < 0.5 ||
+        moved(at, { x: first[0], z: first[1] }) < 0.5;
       const [fx, fy] = await screenOf(foot);
       await page.mouse.click(fx, fy);
-      if ((await page.locator('.walk-map-large').count()) > 0) {
+      if (!(await closed())) {
         // Not free there: the first tread itself.
         const [tx, ty] = await screenOf(first);
         await page.mouse.click(tx, ty);
+        await closed();
       }
-      const placed = await figure();
+      let placed = await figure();
+      for (const deadline = Date.now() + 3000; !atStair(placed) && Date.now() < deadline;) {
+        await page.waitForTimeout(100);
+        placed = await figure();
+      }
       check(
         'a tap on the enlarged map puts the figure at the stair',
-        moved(placed, { x: foot[0], z: foot[1] }) < 0.5 ||
-          moved(placed, { x: first[0], z: first[1] }) < 0.5,
+        atStair(placed),
         `${placed.x.toFixed(2)}, ${placed.z.toFixed(2)}`,
       );
       /** Steers with the pad towards a plan point until it is reached (closed loop: slow frames). */
