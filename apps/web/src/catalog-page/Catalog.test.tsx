@@ -39,6 +39,17 @@ describe('catalogSections', () => {
       catalog.types.filter((t) => t.kind === 'openings').map((t) => t.id),
     ]);
     expect(sections[1]!.groups.map((g) => [g.name, g.types.map((t) => t.name)])).toEqual([
+      [
+        'Bath room',
+        [
+          'Corner bathtub',
+          'Tiled ledge',
+          'Walk-in shower',
+          'Wall-hung toilet',
+          'Washbasin cabinet',
+          'Washing machine',
+        ],
+      ],
       ['Bed room', ['Bed', 'Wardrobe']],
       ['Corridor', ['Shoe cabinet']],
       ['Dining', ['Chair', 'Round table']],
@@ -117,7 +128,15 @@ describe('CatalogPage', () => {
       section('Furniture')
         .getAllByRole('heading', { level: 3 })
         .map((h) => h.textContent),
-    ).toEqual(['Bed room', 'Corridor', 'Dining', 'Kitchen', 'Living room', 'Work room']);
+    ).toEqual([
+      'Bath room',
+      'Bed room',
+      'Corridor',
+      'Dining',
+      'Kitchen',
+      'Living room',
+      'Work room',
+    ]);
     // Fixtures are a section of their own.
     expect(section('Fixtures').getByRole('link', { name: 'Downlight, 0 uses' })).toHaveAttribute(
       'href',

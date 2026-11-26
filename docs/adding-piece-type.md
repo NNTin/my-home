@@ -16,12 +16,12 @@ the editor and the furniture catalogue panel pick the new type up. Openings refe
 `typeId` in the home model ([home-model.md](home-model.md)); furniture and fixtures are placements, versioned in
 the home's seed (`data/homes/home.seed.json`, [userdata.md](userdata.md)).
 
-| Kind        | Families                                                                            | Placed                               |
-| ----------- | ----------------------------------------------------------------------------------- | ------------------------------------ |
-| `openings`  | `window`, `door`, `gate` (`definitions/windows.ts`, `doors.ts`, `gates.ts`)         | in the home model: wall, roof, fence |
-| `furniture` | `furniture`, `kitchen`, `appliance` (`furniture.ts`, `kitchen.ts`, `appliances.ts`) | in a room (`placement: 'floor'`)     |
-| `fixtures`  | `fixture` (`fixtures.ts`): lights, the radiator                                     | in a room (`placement: 'floor'`)     |
-| `outdoor`   | `garden` (`garden.ts`): patio and garden pieces                                     | on the ground outside (`'floor'`)    |
+| Kind        | Families                                                                                               | Placed                               |
+| ----------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------ |
+| `openings`  | `window`, `door`, `gate` (`definitions/windows.ts`, `doors.ts`, `gates.ts`)                            | in the home model: wall, roof, fence |
+| `furniture` | `furniture`, `kitchen`, `appliance`, `bath` (`furniture.ts`, `kitchen.ts`, `appliances.ts`, `bath.ts`) | in a room (`placement: 'floor'`)     |
+| `fixtures`  | `fixture` (`fixtures.ts`): lights, the radiator                                                        | in a room (`placement: 'floor'`)     |
+| `outdoor`   | `garden` (`garden.ts`): patio and garden pieces                                                        | on the ground outside (`'floor'`)    |
 
 ## 1. Define the type
 
@@ -147,6 +147,9 @@ export default definePiece({
     board whose grain runs along it (below). For `extrude`: `strip(path, gauge)` is the outline of a bent bar or
     a tube seen from its side (a handle, a hook, a tap: `kitchen.base-cabinet`), `arc(center, radius, from, to)`
     the points of a bend, `roundedRect(width, height, radius)` a rectangle with rounded corners.
+  - **A plan outline standing up:** `upright(outline, bottom, top, …)` takes `[x, z]` points in the piece's frame
+    and stands them from `bottom` to `top`: a tub's rim round its front, a bowl (`bath.corner-tub`, `bath.toilet`).
+    With `strip` it is a bent wall. Its `size` is `[x, z, height]`, the box before the tilt.
   - **Everything else ignores the shape.** Dimensions, the footprint, collisions and snapping come from the
     type's parameters (`furnitureSize`), as for boxes. The piece page frames a part by its `size`, and a
     section (`sectionOf`) cuts a rounded box and an extruded outline by that box and a lathed part by the

@@ -274,6 +274,29 @@ The kitchen and appliance types are kind `furniture` (category "Kitchen"); the f
 (categories "Lighting" and "Heating"), placed like furniture, each with its own stable placement id
 ([userdata.md](userdata.md#ids-and-names-of-new-furniture-and-fixtures)).
 
+## Bath room types (#146)
+
+From the owner's photos of the souterrain bath room (`2505beb2`, `5726165a`, `c3d258bf`). All are kind
+`furniture`, category "Bath room"; the sanitary ware is the family `bath`. Sizes are defaults: each placement
+sets its own. Everything is parametric (no mesh files); ceramic is the finish `ceramic.white`, chrome is lacquer
+in its colour (D81).
+
+| Type                        | Mounting             | Defaults                                                     | Basic besides colours and sizes        |
+| --------------------------- | -------------------- | ------------------------------------------------------------ | -------------------------------------- |
+| `bath.corner-tub`           | floor                | 140 × 140 cm, rim at 58, a quarter-round apron               | corner (the second wall left or right) |
+| `bath.shower`               | floor                | 90 × 90 cm, glass 200 high on the front and one side, a rail | corner (the second wall left or right) |
+| `bath.toilet`               | wall, bottom at 8 cm | 36 × 54 cm, seat at 43, the flush plate 58 above the seat    |                                        |
+| `bath.vanity`               | wall, bottom at 30   | 60 × 46 cm, 55 high with its basin (5), two drawers, a tap   | drawers (1 to 3)                       |
+| `bath.ledge`                | floor                | 200 × 20 cm, 105 high: a tiled wall in front of a wall       |                                        |
+| `appliance.washing-machine` | floor                | 60 × 60 × 85 cm; from 120 cm of height a dryer stacked on it |                                        |
+
+- A **corner piece** stands with its back and one side at walls: `corner` says which side. The tub's front is a
+  quarter of an ellipse about that corner; the shower's glass is on the front and on the other side.
+- The **ledge**'s tiles are lacquer in the tile's colour: the tile finishes are for floors and walls, not for
+  parts. The tub's apron is plain for the same reason (the real one is a mosaic).
+- Not types yet, for want of a photo that shows them whole: a mirror or cabinet over the washbasin, the wall
+  cabinet beside the window. A door has no leaf (D82), so the hooks on the door have nowhere to hang.
+
 ## Patio and garden types (outdoor)
 
 Identified in the owner's photos of the souterrain patio and garden. Kind `outdoor`, family `garden`: they stand on

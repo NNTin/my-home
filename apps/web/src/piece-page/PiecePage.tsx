@@ -42,6 +42,7 @@ const FAMILY_NAMES = {
   furniture: 'Furniture',
   kitchen: 'Kitchen',
   appliance: 'Appliance',
+  bath: 'Bath room',
   fixture: 'Fixtures',
   garden: 'Garden',
 } as const;
