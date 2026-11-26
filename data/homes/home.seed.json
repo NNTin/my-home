@@ -179,6 +179,62 @@
       "params": {}
     },
     {
+      "id": "souterrain-chair-5",
+      "typeId": "furniture.chair",
+      "name": "Living room · chair 1",
+      "levelId": "souterrain",
+      "position": {
+        "x": 4.5,
+        "z": -2.62
+      },
+      "rotationY": 0,
+      "params": {
+        "color": "#3b3d40"
+      }
+    },
+    {
+      "id": "souterrain-chair-6",
+      "typeId": "furniture.chair",
+      "name": "Living room · chair 2",
+      "levelId": "souterrain",
+      "position": {
+        "x": 5.2,
+        "z": -2.62
+      },
+      "rotationY": 0,
+      "params": {
+        "color": "#3b3d40"
+      }
+    },
+    {
+      "id": "souterrain-chair-7",
+      "typeId": "furniture.chair",
+      "name": "Living room · chair 3",
+      "levelId": "souterrain",
+      "position": {
+        "x": 4.5,
+        "z": -1.28
+      },
+      "rotationY": 3.141592653589793,
+      "params": {
+        "color": "#3b3d40"
+      }
+    },
+    {
+      "id": "souterrain-chair-8",
+      "typeId": "furniture.chair",
+      "name": "Living room · chair 4",
+      "levelId": "souterrain",
+      "position": {
+        "x": 5.2,
+        "z": -1.28
+      },
+      "rotationY": 3.141592653589793,
+      "params": {
+        "color": "#3b3d40"
+      }
+    },
+    {
       "id": "souterrain-corner-tub-1",
       "typeId": "bath.corner-tub",
       "name": "Bath room · bathtub",
@@ -189,6 +245,21 @@
       },
       "rotationY": 0,
       "params": {}
+    },
+    {
+      "id": "souterrain-dining-table-1",
+      "typeId": "furniture.dining-table",
+      "name": "Living room · dining table",
+      "levelId": "souterrain",
+      "position": {
+        "x": 4.85,
+        "z": -1.95
+      },
+      "rotationY": 0,
+      "params": {
+        "depth": 0.8,
+        "width": 1.8
+      }
     },
     {
       "id": "souterrain-downlight-10",
@@ -572,6 +643,38 @@
       "params": {}
     },
     {
+      "id": "souterrain-radiator-2",
+      "typeId": "fixture.radiator",
+      "name": "Living room · radiator",
+      "levelId": "souterrain",
+      "position": {
+        "x": 3.2,
+        "z": -0.55
+      },
+      "rotationY": 3.141592653589793,
+      "mounting": "wall",
+      "elevation": 0.1,
+      "params": {
+        "width": 1.65
+      }
+    },
+    {
+      "id": "souterrain-radiator-3",
+      "typeId": "fixture.radiator",
+      "name": "Work room · radiator",
+      "levelId": "souterrain",
+      "position": {
+        "x": 4.68,
+        "z": -10.4
+      },
+      "rotationY": 0,
+      "mounting": "wall",
+      "elevation": 0.1,
+      "params": {
+        "width": 1
+      }
+    },
+    {
       "id": "souterrain-rock-pile-1",
       "typeId": "garden.rock-pile",
       "name": "Patio · dry-stone pile",
@@ -604,6 +707,23 @@
       }
     },
     {
+      "id": "souterrain-rug-1",
+      "typeId": "furniture.rug",
+      "name": "Stair hall · doormat",
+      "levelId": "souterrain",
+      "position": {
+        "x": 2.3,
+        "z": -6.59
+      },
+      "rotationY": 1.5707963267948966,
+      "params": {
+        "borderColor": "#1a1a1a",
+        "color": "#262626",
+        "depth": 0.5,
+        "width": 0.8
+      }
+    },
+    {
       "id": "souterrain-shoe-cabinet-1",
       "typeId": "furniture.shoe-cabinet",
       "name": "Boiler room · shoe cabinet",
@@ -614,6 +734,43 @@
       },
       "rotationY": 3.141592653589793,
       "params": {}
+    },
+    {
+      "id": "souterrain-shoe-rack-1",
+      "typeId": "furniture.shoe-rack",
+      "name": "Stair hall · shoe rack",
+      "levelId": "souterrain",
+      "position": {
+        "x": 1.1,
+        "z": -6.58
+      },
+      "rotationY": 3.141592653589793,
+      "params": {
+        "depth": 0.3,
+        "height": 0.4,
+        "tiers": 2,
+        "width": 1
+      }
+    },
+    {
+      "id": "souterrain-shoe-rack-2",
+      "typeId": "furniture.shoe-rack",
+      "name": "Stair hall · shoe rack on the landing",
+      "levelId": "souterrain",
+      "position": {
+        "x": 1,
+        "z": -10.315
+      },
+      "rotationY": 0,
+      "elevation": 1.486,
+      "params": {
+        "barColor": "#1e1e1e",
+        "color": "#1e1e1e",
+        "depth": 0.3,
+        "height": 0.5,
+        "tiers": 3,
+        "width": 0.9
+      }
     },
     {
       "id": "souterrain-shower-1",
@@ -731,6 +888,25 @@
       "params": {}
     },
     {
+      "id": "souterrain-tall-cabinet-2",
+      "typeId": "kitchen.tall-cabinet",
+      "name": "Living room · glass cabinet",
+      "levelId": "souterrain",
+      "position": {
+        "x": 1.87,
+        "z": -0.68
+      },
+      "rotationY": 3.141592653589793,
+      "params": {
+        "carcassColor": "#e9e9e7",
+        "depth": 0.4,
+        "door": "glass",
+        "glassColor": "#c7d0d3",
+        "height": 1.9,
+        "width": 0.45
+      }
+    },
+    {
       "id": "souterrain-toilet-1",
       "typeId": "bath.toilet",
       "name": "Bath room · toilet",
@@ -820,6 +996,25 @@
       "params": {
         "rail": "hooks",
         "width": 2.27
+      }
+    },
+    {
+      "id": "souterrain-wardrobe-1",
+      "typeId": "furniture.wardrobe",
+      "name": "Stair hall · tall cabinet",
+      "levelId": "souterrain",
+      "position": {
+        "x": 1.65,
+        "z": -6.23
+      },
+      "rotationY": 3.141592653589793,
+      "mounting": "wall",
+      "elevation": 0.18,
+      "params": {
+        "color": "#f1f1ee",
+        "depth": 0.4,
+        "height": 1.95,
+        "width": 0.85
       }
     },
     {

@@ -100,7 +100,12 @@ describe('the seed (data/homes/<home>.seed.json)', () => {
       agent,
     );
     expect(res.statusCode, res.body).toBe(201);
-    expect(res.json().id).toBe('souterrain-tall-cabinet-2');
+    // The next number after the seed's own tall cabinets: never one the seed already uses.
+    const used = gitSeed.placements
+      .map((p) => /^souterrain-tall-cabinet-(\d+)$/.exec(p.id)?.[1])
+      .filter((n): n is string => n !== undefined)
+      .map(Number);
+    expect(res.json().id).toBe(`souterrain-tall-cabinet-${Math.max(...used) + 1}`);
   });
 
   it('replaces unexported edits on the next deploy, visible in history as seed changes', async () => {
