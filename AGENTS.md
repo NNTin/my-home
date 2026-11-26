@@ -83,6 +83,11 @@ src/catalog/shapes.test.ts -u`, the flag **last**. `-u` takes the word after it:
 - **`overlay-shots.sh` takes about 6 minutes a photo here** (SwiftShader) and holds the heavy slot all along:
   a batch of 20 blocks every install and test for two hours (#148). Shoot only the poses that settle a question,
   in batches of a few; a night photo or a pose far off measures nothing.
+- **A measurement only another device can make** (a real graphics card, the owner's phone): add a page that
+  makes it, reachable by a URL parameter and lazy like the rest. Opened, it runs by itself and ends with
+  paste-ready markdown ("Copy the table": the commit, the device, the numbers) and the images to save; post the
+  exact link and say what to paste. The owner only opens it and pastes. The example is `/?render=measure`
+  (`render-mode/Gate.tsx`, `docs/render-mode.md` § The measuring page). Never fake its numbers here.
 - **Not locally:** the whole `pnpm test`, `pnpm build` with `pnpm check:bundle`, real Postgres, Docker, and
   anything with a browser (the smokes, `visual-diff`, screenshots in bulk). CI runs all of them on every push:
   `check`, `test-postgres`, `docker`, `chart`, then `publish`, `deploy` and, on staging, `staging-checks`

@@ -18,6 +18,7 @@ import {
   checkpoints,
   imageDifference,
   type Checkpoint,
+  type ChunkSize,
   type GateContext,
   type ViewMeasurement,
 } from './measure';
@@ -41,6 +42,8 @@ import {
 export interface GateSettings extends TraceSettings {
   /** Seconds after which a view is given up. */
   limit: number;
+  /** The fixed views measured, in their order: `&views=eye,section` measures two. All without it. */
+  views: readonly string[];
 }
 
 const whole = (value: string | null, fallback: number, min: number, max: number) => {
@@ -59,6 +62,10 @@ export function gateSettings(search: string): GateSettings {
     bounces: whole(params.get('bounces'), BOUNCES, 1, 32),
     limit: whole(params.get('limit'), 180, 5, 3600),
     megakernel: params.get('kernel') === 'mega',
+    views: (params.get('views') ?? '')
+      .split(',')
+      .map((kind) => kind.trim())
+      .filter((kind) => (VIEW_KINDS as readonly string[]).includes(kind)),
   };
 }
 
@@ -70,9 +77,11 @@ export interface GateInputs {
   materials: FinishMaterials;
 }
 
-/** The three fixed views (§11.3), as they open without parameters. */
-export const gateViews = (scene: HomeScene): NamedView[] =>
-  VIEW_KINDS.flatMap((kind) => defaultView(scene, kind) ?? []);
+/** The three fixed views (§11.3), as they open without parameters; `only` keeps some of them. */
+export const gateViews = (scene: HomeScene, only: readonly string[] = []): NamedView[] =>
+  VIEW_KINDS.filter((kind) => only.length === 0 || only.includes(kind)).flatMap(
+    (kind) => defaultView(scene, kind) ?? [],
+  );
 
 /** What the tracer is given for a named view. */
 export function viewInputs(inputs: GateInputs, view: NamedView): TraceInputs {
@@ -220,7 +229,7 @@ export async function runGate(
   on: { status(status: GateStatus): void; result(result: GateResult): void },
   signal: AbortSignal,
 ): Promise<void> {
-  for (const view of gateViews(inputs.scene)) {
+  for (const view of gateViews(inputs.scene, settings.views)) {
     if (signal.aborted) return;
     const canvas = document.createElement('canvas');
     canvas.width = settings.width;
@@ -283,16 +292,47 @@ export async function graphicsNames(): Promise<Pick<GateContext, 'adapter' | 'gr
   return { adapter, graphics };
 }
 
-/** The bytes of the lazy chunk's files as the browser downloaded them; undefined if it does not say. */
-export function chunkBytes(): number | undefined {
+/** The bytes `body` gives when gzipped by the browser (zlib's default level, 6). */
+async function gzippedBytes(body: ReadableStream<Uint8Array>): Promise<number> {
+  // The DOM types give the compressor a wider input than a fetched body: it takes this one.
+  const gzip = new CompressionStream('gzip') as unknown as TransformStream<Uint8Array, Uint8Array>;
+  return (await new Response(body.pipeThrough(gzip)).arrayBuffer()).byteLength;
+}
+
+/**
+ * The lazy chunk's size (`ChunkSize`): what the browser downloaded and unpacked, from its resource
+ * timings, and its files gzipped here again, from the cache, to compare with the budget.
+ * Undefined if the browser does not say.
+ */
+export async function chunkSize(): Promise<ChunkSize | undefined> {
   const entries = performance
     .getEntriesByType('resource')
-    .filter((entry) => /\/render-path-[\w-]+\.(js|css)$/.test(new URL(entry.name).pathname));
-  const bytes = entries.reduce(
-    (sum, entry) => sum + ((entry as PerformanceResourceTiming).encodedBodySize || 0),
-    0,
-  );
-  return bytes > 0 ? bytes : undefined;
+    .filter((entry): entry is PerformanceResourceTiming =>
+      /\/render-path-[\w-]+\.(js|css)$/.test(new URL(entry.name).pathname),
+    );
+  const served = entries.reduce((sum, entry) => sum + (entry.encodedBodySize || 0), 0);
+  if (served === 0) return undefined;
+  const decoded = entries.reduce((sum, entry) => sum + (entry.decodedBodySize || 0), 0);
+  // Newer browsers name the server's compression; older ones leave it out.
+  const encodings = [
+    ...new Set(
+      entries.map((entry) => (entry as { contentEncoding?: string }).contentEncoding || ''),
+    ),
+  ].filter((name) => name !== '');
+  let gzip: number | undefined;
+  try {
+    const sizes = await Promise.all(
+      entries.map(async (entry) => {
+        const response = await fetch(entry.name, { cache: 'force-cache' });
+        if (!response.ok || !response.body) throw new Error(String(response.status));
+        return gzippedBytes(response.body);
+      }),
+    );
+    gzip = sizes.reduce((sum, size) => sum + size, 0);
+  } catch {
+    // Without the files again there is no number to compare with the budget.
+  }
+  return { served, decoded, encoding: encodings.join(', ') || undefined, gzip };
 }
 
 /** The commit of the running release, as the api's public liveness answer has it. */

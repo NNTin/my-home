@@ -66,6 +66,13 @@ export class Still {
   private built: TraceScene | undefined;
   private size = '';
   private request = 0;
+  /**
+   * The views shown, counted, and the one whose scene the tracer has. Only an image of the last
+   * view shown is the still: one of an earlier view stays on the tracer when "Stop" comes before
+   * the new view started, and must neither show nor be saved under the new view's name.
+   */
+  private shown = 0;
+  private traced = 0;
   private queue: Promise<void> = Promise.resolve();
   private startedAt = 0;
   private endedAt: number | undefined;
@@ -83,11 +90,14 @@ export class Still {
   /** Starts the still of a view, over whatever was being traced. */
   show(inputs: TraceInputs, view: { camera: PerspectiveCamera; width: number; height: number }) {
     const request = ++this.request;
+    const shown = ++this.shown;
     this.halted = false;
     this.trace?.stop();
+    // The image of the view before is not this one's: hidden until this one's first sample.
+    this.host.style.visibility = 'hidden';
     // One at a time: a view changed twice in a row starts once, with the last of them.
     this.queue = this.queue
-      .then(() => (request === this.request ? this.begin(request, inputs, view) : undefined))
+      .then(() => (request === this.request ? this.begin(request, shown, inputs, view) : undefined))
       .catch((error: unknown) => {
         this.failed = error instanceof Error ? error.message : String(error);
       });
@@ -100,6 +110,7 @@ export class Still {
    */
   private async begin(
     request: number,
+    shown: number,
     inputs: TraceInputs,
     view: { camera: PerspectiveCamera; width: number; height: number },
   ) {
@@ -141,6 +152,7 @@ export class Still {
     this.trace.start(built, view.camera);
     this.built?.dispose();
     this.built = built;
+    this.traced = shown;
     this.startedAt = this.now();
     this.endedAt = undefined;
     this.failed = undefined;
@@ -150,12 +162,17 @@ export class Still {
   progress(): StillProgress {
     const { trace, built } = this;
     if (this.failed !== undefined) return { ...NO_PROGRESS, running: false, failed: this.failed };
-    // Stopped while it was being prepared: nothing runs, and nothing will.
-    if (!trace || !built) return this.halted ? { ...NO_PROGRESS, running: false } : NO_PROGRESS;
+    // Stopped while it was being prepared: nothing runs, and nothing will. What the tracer has
+    // then is the view before, which is not shown.
+    if (!trace || !built || this.traced !== this.shown)
+      return this.halted ? { ...NO_PROGRESS, running: false } : NO_PROGRESS;
     if (trace.lost !== undefined)
       return { ...trace.progress, seconds: 0, running: false, failed: trace.lost };
     const { progress, running } = trace;
-    if (progress.samples >= 1) this.host.style.background = built.backdrop;
+    if (progress.samples >= 1) {
+      this.host.style.background = built.backdrop;
+      this.host.style.visibility = '';
+    }
     if (!running) this.endedAt ??= this.now();
     return {
       ...progress,
@@ -171,15 +188,20 @@ export class Still {
     this.trace?.stop();
   }
 
-  /** Whether there is an image to save: a first sample is on the canvas. */
+  /** Whether there is an image to save: a first sample of the view shown is on the canvas. */
   get hasImage(): boolean {
-    return this.trace !== undefined && this.built !== undefined && this.trace.progress.samples >= 1;
+    return (
+      this.trace !== undefined &&
+      this.built !== undefined &&
+      this.traced === this.shown &&
+      this.trace.progress.samples >= 1
+    );
   }
 
   /** The still as it is, over its backdrop, as a PNG. */
   async image(): Promise<Blob> {
     const { trace, built } = this;
-    if (!trace || !built) throw new Error('nothing is traced yet');
+    if (!trace || !built || !this.hasImage) throw new Error('nothing is traced yet');
     const canvas = document.createElement('canvas');
     canvas.width = trace.settings.width;
     canvas.height = trace.settings.height;

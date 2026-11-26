@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  chunkBytes,
+  chunkSize,
   gateSettings,
   graphicsNames,
   releaseCommit,
@@ -58,6 +58,8 @@ export function Gate({ inputs }: { inputs: GateInputs }) {
         signal,
       );
       if (signal.aborted) return;
+      const chunk = await chunkSize();
+      if (signal.aborted) return;
       const context: GateContext = {
         commit,
         time: new Date(),
@@ -67,8 +69,9 @@ export function Gate({ inputs }: { inputs: GateInputs }) {
         height: settings.height,
         samples: settings.samples,
         bounces: settings.bounces,
+        limit: settings.limit,
         kernel: settings.megakernel ? 'megakernel' : 'wavefront',
-        chunkBytes: chunkBytes(),
+        chunk,
       };
       setReport(
         gateReport(
@@ -102,8 +105,12 @@ export function Gate({ inputs }: { inputs: GateInputs }) {
     >
       <h1>Render mode: measurement</h1>
       <p>
-        This page traces the three fixed views of the home, one after the other, at {settings.width}{' '}
-        x {settings.height} px to {settings.samples} samples a pixel
+        This page traces{' '}
+        {settings.views.length > 0
+          ? `the fixed views ${settings.views.join(', ')}`
+          : 'the three fixed views'}{' '}
+        of the home, one after the other, at {settings.width} x {settings.height} px to{' '}
+        {settings.samples} samples a pixel
         {settings.megakernel ? ' (megakernel)' : ''}. Leave the tab in front until the table
         appears.
       </p>

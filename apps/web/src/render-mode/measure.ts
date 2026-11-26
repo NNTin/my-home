@@ -106,15 +106,49 @@ export interface GateContext {
   height: number;
   samples: number;
   bounces: number;
+  /** Seconds after which a view was given up. */
+  limit: number;
   /** The tracer's backend: the library's default (wavefront) or its megakernel. */
   kernel: string;
-  /** The size of the lazy chunk as downloaded, if the browser says. */
-  chunkBytes: number | undefined;
+  /** The size of the lazy chunk, in the three ways it can be counted (`ChunkSize`). */
+  chunk: ChunkSize | undefined;
+}
+
+/**
+ * The `render-path` chunk's size. The budget (D104, `bundle-budget.json`) is the built files
+ * gzipped at level 9, as CI measures them; what a browser downloads is what the server sent,
+ * whose compression is the server's (nginx's default gzip is level 1: about a fifth larger).
+ */
+export interface ChunkSize {
+  /** The bytes that came over the network, as the server compressed them. */
+  served: number;
+  /** How the server compressed them (`gzip`, `br`, ...), if the browser says. */
+  encoding?: string | undefined;
+  /** The files as they run: uncompressed. */
+  decoded: number;
+  /** The files gzipped in this browser (level 6): about a kilobyte over CI's level 9. */
+  gzip?: number | undefined;
 }
 
 const seconds = (value: number | undefined) => (value === undefined ? 'n/a' : value.toFixed(1));
 const percent = (value: number | undefined) =>
   value === undefined ? '' : `${(value * 100).toFixed(2)} %`;
+
+const kB = (bytes: number) => `${(bytes / 1000).toFixed(1)} kB`;
+
+/** The chunk's sizes as rows of the report's first table; the gzipped one is the budget's. */
+function chunkRows(chunk: ChunkSize | undefined): string[] {
+  if (!chunk) return ['| `render-path` chunk | not reported |'];
+  return [
+    `| \`render-path\`, gzipped as CI measures it (budget 340 kB) | ${
+      chunk.gzip === undefined ? 'not measured' : kB(chunk.gzip)
+    } |`,
+    `| \`render-path\`, as the server sent it | ${kB(chunk.served)}${
+      chunk.encoding ? ` (${chunk.encoding})` : ''
+    } |`,
+    `| \`render-path\`, uncompressed | ${kB(chunk.decoded)} |`,
+  ];
+}
 
 /** The measurement as markdown, to paste into the issue. */
 export function gateReport(context: GateContext, views: readonly ViewMeasurement[]): string {
@@ -129,10 +163,8 @@ export function gateReport(context: GateContext, views: readonly ViewMeasurement
     `| WebGPU adapter | ${context.adapter} |`,
     `| Graphics (WebGL) | ${context.graphics} |`,
     `| Image | ${context.width} x ${context.height} px |`,
-    `| Sample target, bounces, backend | ${context.samples}, ${context.bounces}, ${context.kernel} |`,
-    `| \`render-path\` chunk, as downloaded | ${
-      context.chunkBytes ? `${(context.chunkBytes / 1000).toFixed(1)} kB` : 'not reported'
-    } |`,
+    `| Sample target, bounces, backend, time limit | ${context.samples}, ${context.bounces}, ${context.kernel}, ${context.limit} s |`,
+    ...chunkRows(context.chunk),
     '',
     '| View | Clean still | Sample target | First sample | Scene | Gate (60 s) |',
     '| --- | --- | --- | --- | --- | --- |',
