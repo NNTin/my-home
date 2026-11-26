@@ -8,8 +8,8 @@ This document is a plan, not a description of the code: nothing in it exists yet
 `packages/sakuga-vfx/AGENTS.md` first (the package's role, the art style, the core build, a new element frame by
 frame); this document does not repeat it.
 
-**Status: draft.** The owner's questions are in [§14](#14-open-questions). Each has a recommended default, and
-the document is written with the defaults in place.
+**Status: ready.** The owner answered the design's questions on #167 (2026-11-26, §13); none are open
+([§14](#14-open-questions)).
 
 ## Contents
 
@@ -43,14 +43,14 @@ the document is written with the defaults in place.
 
 ### Non-goals
 
-| Not in this design                                  | Where it goes                                                      |
-| --------------------------------------------------- | ------------------------------------------------------------------ |
-| The 3D scene, its render, the compass letters in it | The realistic-render epic #106                                     |
-| The layout of the viewer (what is in which panel)   | Stays as it is today (`docs/mobile.md`); only the elements change  |
-| Following upstream automatically                    | Never; by hand, as a reviewed PR (`packages/sakuga-vfx/AGENTS.md`) |
-| Effects on scene gestures (dragging a sofa, orbit)  | Never: effects come from HUD controls only (§8.3)                  |
-| A night look of the scene                           | #18; the HUD is checked against the dark backdrop instead (§3.4)   |
-| HUD code in this PR                                 | #168. The mock-ups in `docs/design/hud/` were throwaway prototypes |
+| Not in this design                                  | Where it goes                                                                                          |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| The 3D scene, its render, the compass letters in it | The realistic-render epic #106                                                                         |
+| The layout of the viewer (what is in which panel)   | Stays as it is today (`docs/mobile.md`); only the elements change. One exception: Edit's place (§5.13) |
+| Following upstream automatically                    | Never; by hand, as a reviewed PR (`packages/sakuga-vfx/AGENTS.md`)                                     |
+| Effects on scene gestures (dragging a sofa, orbit)  | Never: effects come from HUD controls only (§8.3)                                                      |
+| A night look of the scene                           | #18; the HUD is checked against the dark backdrop instead (§3.4)                                       |
+| HUD code in this PR                                 | #168. The mock-ups in `docs/design/hud/` were throwaway prototypes                                     |
 
 ## 2. Where we start
 
@@ -99,7 +99,7 @@ sketched in CSS: they show the theme, not the final elements.
 Why paper and not a dark Sakuga palette (the alternative from #166's handoff): the drawn effects are always light
 (the palette `P` is not a CSS variable), so a dark HUD would have light effects and light words on dark cards and
 dark controls next to them; the art style is "white paper, two tones and a line"; and a paper card with an ink
-line reads on every backdrop (§3.4). Owner question 1.
+line reads on every backdrop (§3.4). The owner chose it (#167, answer 1).
 
 ### 3.2 The values
 
@@ -124,7 +124,7 @@ Warnings and errors are ink text with a pink shadow and a pink ✕ or ! mark, ne
 **Type** is upstream's: the system stack, labels of buttons 800 italic, body text 500. **Icons** are ink-line
 icons in the art style (one line, one flat light tone, one flat shadow tone), inline SVG in the package
 (`packages/sakuga-vfx/icons/`, about a dozen: walk, photos, catalogue, edit, view, furniture, requests, reset,
-rotate left and right, duplicate, delete, info, more, close, camera, gallery, map). The emoji go. Owner question 2.
+rotate left and right, duplicate, delete, info, more, close, camera, gallery, map). The emoji go. The owner chose it (#167, answer 2).
 
 ### 3.3 Two sizes
 
@@ -172,46 +172,49 @@ The beats of upstream's elements are as upstream made them (their READMEs); the 
 
 ### 4.1 The top bar (phone, `overlay/TopBar.tsx`)
 
-| Today                       | Becomes                                                           | Press                | Hit                                                                               | Follow-through                                | Settle               | Word                 | States                                            |
-| --------------------------- | ----------------------------------------------------------------- | -------------------- | --------------------------------------------------------------------------------- | --------------------------------------------- | -------------------- | -------------------- | ------------------------------------------------- |
-| The bar itself              | A paper strip (CSS on the app's `div`), compact                   | —                    | —                                                                                 | —                                             | —                    | —                    | —                                                 |
-| Home name / home `<select>` | Text; _`sakuga-field`_ around the select when there are two homes | as field             | as field                                                                          |                                               |                      | カチッ               | rest, focus, open                                 |
-| Edit / Done                 | _`sakuga-button` compact_, pressed state                          | squash               | entering edit: inversion frame, burst behind, three wedges; leaving: a small puff | two smoke rings                               | spring back          | ドン (entering only) | rest, pressed (edit mode on: ink fill, card text) |
-| Walk                        | _`sakuga-button` compact_                                         | squash               | burst behind, speed lines toward the view                                         | puffs off the corners                         | spring back          | ドン                 | rest, disabled while loading                      |
-| Photos (n) + requests badge | _`sakuga-button` compact_ + _`sakuga-badge`_                      | squash               | three wedges                                                                      | —                                             | spring back          | —                    | rest, pressed (sheet shows photos)                |
-| Catalogue (link)            | _`sakuga-icon-button` compact `href`_                             | squash               | three wedges                                                                      | —                                             | spring back          | —                    | rest                                              |
-| Level switch (radiogroup)   | _`sakuga-segmented` compact_                                      | the segment squashes | the raised piece slides, stretching, lands                                        | wedges above, a puff on the side it came from | overshoot and settle | カチッ               | one selected; arrow keys move it                  |
+| Today                       | Becomes                                                           | Press                | Hit                                        | Follow-through                                | Settle               | Word   | States                             |
+| --------------------------- | ----------------------------------------------------------------- | -------------------- | ------------------------------------------ | --------------------------------------------- | -------------------- | ------ | ---------------------------------- |
+| The bar itself              | A paper strip (CSS on the app's `div`), compact                   | —                    | —                                          | —                                             | —                    | —      | —                                  |
+| Home name / home `<select>` | Text; _`sakuga-field`_ around the select when there are two homes | as field             | as field                                   |                                               |                      | カチッ | rest, focus, open                  |
+| Edit / Done                 | Moves to the stage tools as the painted toggle (§4.3, §5.13)      | —                    | —                                          | —                                             | —                    | —      | —                                  |
+| Walk                        | _`sakuga-button` compact_                                         | squash               | burst behind, speed lines toward the view  | puffs off the corners                         | spring back          | ドン   | rest, disabled while loading       |
+| Photos (n) + requests badge | _`sakuga-button` compact_ + _`sakuga-badge`_                      | squash               | three wedges                               | —                                             | spring back          | —      | rest, pressed (sheet shows photos) |
+| Catalogue (link)            | _`sakuga-icon-button` compact `href`_                             | squash               | three wedges                               | —                                             | spring back          | —      | rest                               |
+| Level switch (radiogroup)   | _`sakuga-segmented` compact_                                      | the segment squashes | the raised piece slides, stretching, lands | wedges above, a puff on the side it came from | overshoot and settle | カチッ | one selected; arrow keys move it   |
 
 ### 4.2 Panels and the sheet
 
-| Today                                                                               | Becomes                                                                       | Reaction (beats)                                                                                                    | Word                  | States                          |
-| ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------- | ------------------------------- |
-| Desktop control panel (`ControlPanel.tsx`)                                          | _`sakuga-panel`_ (regular), scrolls inside                                    | On first show only: it lands (§5.4). No idle, no effect on scroll                                                   | —                     | rest                            |
-| Its groups (`fieldset` + legend)                                                    | Group headings in 800 italic, a dashed `--sk-soft` rule                       | —                                                                                                                   | —                     | —                               |
-| Furniture panel (`FurniturePanel.tsx`)                                              | _`sakuga-panel`_ right                                                        | as panel; content swaps without effects                                                                             | —                     | rest                            |
-| Phone sheet (`Sheet.tsx`): tab bar, snaps                                           | _`sakuga-sheet`_ (§5.5): its tabs are `sakuga-segmented`-like with `role=tab` | tab: as segmented; open/close/snap: the sheet springs to its snap, overshoots, lands with a puff at each top corner | —                     | collapsed, half, full; dragging |
-| Sheet size ⤢/⤡, close arrow                                                         | _`sakuga-icon-button` compact_                                                | squash, three wedges                                                                                                | —                     | rest                            |
-| Phone view panel (`ViewPanel.tsx`)                                                  | Content of the sheet                                                          | —                                                                                                                   | —                     | —                               |
-| "Show / hide…" groups (`details`)                                                   | _`sakuga-fold`_ (§5.6)                                                        | press: squash of the summary; hit: the chevron flips; follow-through: the body springs open; close: shrinks         | —                     | open, closed                    |
-| Show all / Hide all                                                                 | _`sakuga-button` compact secondary_                                           | upstream's secondary (small squash, three wedges)                                                                   | —                     | disabled when nothing to do     |
-| Room names, Plan colours, each level, apartment, outdoor area, Terrain (checkboxes) | `sakuga-checkbox` (compact on the phone)                                      | upstream: crescents, crystals, the tick draws, glint; untick: a small puff                                          | ズザッ (ticking only) | checked, unchecked, disabled    |
-| Furniture panel: catalogue items                                                    | _`sakuga-card`_ (§5.9)                                                        | squash, three wedges at the corner                                                                                  | —                     | rest, selected                  |
-| Furniture panel: `<select>`s, number input                                          | _`sakuga-field`_                                                              | §5.3                                                                                                                | カチッ on a change    | focus, invalid                  |
-| Furniture panel: checkboxes                                                         | `sakuga-checkbox`                                                             | upstream                                                                                                            | ズザッ                | as above                        |
-| Furniture panel: errors, conflict (`role=alert`)                                    | _`sakuga-badge` `kind="warn"`_ inline                                         | arrives: pops in on a spring, a puff; leaves: shrinks                                                               | —                     | warn                            |
+| Today                                                     | Becomes                                                                           | Reaction (beats)                                                                                                    | Word                  | States                          |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------- | ------------------------------- |
+| Desktop control panel (`ControlPanel.tsx`)                | _`sakuga-panel`_ (regular), scrolls inside                                        | On first show only: it lands (§5.4). No idle, no effect on scroll                                                   | —                     | rest                            |
+| Its groups (`fieldset` + legend)                          | Group headings in 800 italic, a dashed `--sk-soft` rule                           | —                                                                                                                   | —                     | —                               |
+| Furniture panel (`FurniturePanel.tsx`)                    | _`sakuga-panel`_ right                                                            | as panel; content swaps without effects                                                                             | —                     | rest                            |
+| Phone sheet (`Sheet.tsx`): tab bar, snaps                 | _`sakuga-sheet`_ (§5.5): its tabs are `sakuga-segmented`-like with `role=tab`     | tab: as segmented; open/close/snap: the sheet springs to its snap, overshoots, lands with a puff at each top corner | —                     | collapsed, half, full; dragging |
+| Sheet size ⤢/⤡, close arrow                               | _`sakuga-icon-button` compact_                                                    | squash, three wedges                                                                                                | —                     | rest                            |
+| Phone view panel (`ViewPanel.tsx`)                        | Content of the sheet                                                              | —                                                                                                                   | —                     | —                               |
+| "Show / hide…" groups (`details`)                         | _`sakuga-fold`_ (§5.6)                                                            | press: squash of the summary; hit: the chevron flips; follow-through: the body springs open; close: shrinks         | —                     | open, closed                    |
+| Show all / Hide all                                       | _`sakuga-button` compact secondary_                                               | upstream's secondary (small squash, three wedges)                                                                   | —                     | disabled when nothing to do     |
+| Room names, Plan colours (switches)                       | _`sakuga-toggle`_, the painted switch (§5.13), in a row: label left, switch right | the drawn flip (§5.13)                                                                                              | カチッ (painted)      | on, off, disabled               |
+| Each level, apartment, outdoor area, Terrain (checkboxes) | `sakuga-checkbox` (compact on the phone)                                          | upstream: crescents, crystals, the tick draws, glint; untick: a small puff                                          | ズザッ (ticking only) | checked, unchecked, disabled    |
+| Effects (new, §10.4)                                      | _`sakuga-toggle`_                                                                 | the drawn flip; switching on plays nothing (effects were off), switching off plays the flip, then effects stop      | カチッ (painted)      | on, off                         |
+| Furniture panel: catalogue items                          | _`sakuga-card`_ (§5.9)                                                            | squash, three wedges at the corner                                                                                  | —                     | rest, selected                  |
+| Furniture panel: `<select>`s, number input                | _`sakuga-field`_                                                                  | §5.3                                                                                                                | カチッ on a change    | focus, invalid                  |
+| Furniture panel: checkboxes                               | `sakuga-checkbox`                                                                 | upstream                                                                                                            | ズザッ                | as above                        |
+| Furniture panel: errors, conflict (`role=alert`)          | _`sakuga-badge` `kind="warn"`_ inline                                             | arrives: pops in on a spring, a puff; leaves: shrinks                                                               | —                     | warn                            |
 
 ### 4.3 The furniture toolbar and the stage tools
 
-| Today                                                     | Becomes                                                            | Reaction (beats)                                                                                                | Word   | States              |
-| --------------------------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- | ------ | ------------------- |
-| Item toolbar strip (`FurnitureToolbar.tsx`), name         | Paper strip, compact                                               | —                                                                                                               | —      | —                   |
-| Rotate ⟲ ⟳, raise ▲, lower ▼, duplicate, piece page, more | _`sakuga-icon-button` compact_ (piece page with `href`)            | squash, three wedges toward the direction (rotate: a crescent `slash` around the icon)                          | —      | rest, disabled      |
-| Delete                                                    | _`sakuga-icon-button` compact_                                     | squash; hit: a puff where the icon was                                                                          | —      | rest                |
-| Piece toolbar (`PieceToolbar`): "Open piece page", ✕      | _`sakuga-button` compact secondary `href`_, _`sakuga-icon-button`_ | as secondary; ✕ as icon button                                                                                  | —      | rest                |
-| Reset view (`StageTools.tsx`)                             | _`sakuga-button` compact secondary_                                | squash, a `slash` crescent around it (the view turns back)                                                      | —      | rest                |
-| Status chip ("Saving…", "Saved", "Offline…", warnings)    | _`sakuga-badge`_ (`kind="warn"` for problems)                      | arrives: pops in; "Saved": the check draws, a glint (`kira`); leaves by shrinking (today it fades: it must not) | —      | info, warn, hidden  |
-| Edit badge ("✏️ Edit mode")                               | _`sakuga-badge`_                                                   | pops in, leaves by shrinking                                                                                    | —      | shown while editing |
-| Toast (`p.toast`, `role=alert`)                           | `sakuga-toast`, _`kind`_ (§6.3)                                    | upstream: streaks in as a smear, lands in dust; leaves by shrinking                                             | ズザッ | info, warn          |
+| Today                                                                        | Becomes                                                            | Reaction (beats)                                                                                                 | Word             | States                          |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- | ---------------- | ------------------------------- |
+| Item toolbar strip (`FurnitureToolbar.tsx`), name                            | Paper strip, compact                                               | —                                                                                                                | —                | —                               |
+| Rotate ⟲ ⟳, raise ▲, lower ▼, duplicate, piece page, more                    | _`sakuga-icon-button` compact_ (piece page with `href`)            | squash, three wedges toward the direction (rotate: a crescent `slash` around the icon)                           | —                | rest, disabled                  |
+| Delete                                                                       | _`sakuga-icon-button` compact_                                     | squash; hit: a puff where the icon was                                                                           | —                | rest                            |
+| Piece toolbar (`PieceToolbar`): "Open piece page", ✕                         | _`sakuga-button` compact secondary `href`_, _`sakuga-icon-button`_ | as secondary; ✕ as icon button                                                                                   | —                | rest                            |
+| Edit mode (from the top bar on the phone; the panel's header on the desktop) | _`sakuga-toggle` compact_ labelled "Edit" (§5.13)                  | the drawn flip: the knob smears across, slams into the end, the splash and the painted カチッ rise over the view | カチッ (painted) | off (view mode), on (edit mode) |
+| Reset view (`StageTools.tsx`)                                                | _`sakuga-button` compact secondary_                                | squash, a `slash` crescent around it (the view turns back)                                                       | —                | rest                            |
+| Status chip ("Saving…", "Saved", "Offline…", warnings)                       | _`sakuga-badge`_ (`kind="warn"` for problems)                      | arrives: pops in; "Saved": the check draws, a glint (`kira`); leaves by shrinking (today it fades: it must not)  | —                | info, warn, hidden              |
+| Edit badge ("✏️ Edit mode")                                                  | _`sakuga-badge`_                                                   | pops in, leaves by shrinking                                                                                     | —                | shown while editing             |
+| Toast (`p.toast`, `role=alert`)                                              | `sakuga-toast`, _`kind`_ (§6.3)                                    | upstream: streaks in as a smear, lands in dust; leaves by shrinking                                              | ズザッ           | info, warn                      |
 
 ### 4.4 The views and quality controls
 
@@ -293,11 +296,12 @@ The beats of upstream's elements are as upstream made them (their READMEs); the 
 | History: Undo                                | `sakuga-button` secondary                               | upstream secondary               | —                  | —            |
 | Uses, use editor fields                      | _`sakuga-card`_, _`sakuga-field`_, `sakuga-input`       | as theirs                        | —                  | —            |
 
-### 4.8 What upstream has that the app does not use
+### 4.8 Upstream's toggle, and what the app does not use
 
-- **`sakuga-toggle`, the painted switch,** is not used: the app's switches are lists of show/hide settings, and
-  the toggle is 108 × 54 px plus 89 px of room above it for the splash, and 363 kB gzipped. The checkbox is the
-  switch everywhere. The files stay in the package. Owner question 4.
+- **`sakuga-toggle`, the painted switch, is used for four switches** (owner, #167 answer 4): Edit mode, Room
+  names, Plan colours and Effects, the settings that stand alone. Lists of show/hide settings (levels,
+  apartments, outdoor areas, Terrain, a photo's tags, the piece page's options) stay checkboxes: a column of
+  painted switches with a splash each would be too much, and too tall. Its frames load lazily (§5.13, §9.3).
 - **`sakuga-rating`** has no use in the app.
 - **`sakuga-radio`** has no use: every single choice of a few short values is `sakuga-segmented`, a longer list
   is a select in `sakuga-field`. It stays in `sakuga-hud` only if a family needs it.
@@ -322,6 +326,7 @@ graph LR
     input["sakuga-input<br/>+ search"]
     progress[sakuga-progress]
     toast["sakuga-toast<br/>+ kind"]
+    toggle["sakuga-toggle<br/>+ compact, lazy frames"]
   end
   subgraph new["New, made here (§5)"]
     icon[sakuga-icon-button]
@@ -498,6 +503,44 @@ The status chip, the counts, the edit badge, "where", the notices.
   fade).
 - **Word:** none (the status chip changes often: Saving…, Saved).
 
+### 5.13 `sakuga-toggle` in the app
+
+Upstream's painted switch (43 frames painted from keyframes, played at 30 a second), used for Edit mode, Room
+names, Plan colours and Effects (§4.8). Its drawing and its beats stay as painted; what changes is where it
+draws, its size and how its frames arrive (§6.1).
+
+![The painted toggle: off at rest, mid-flip, on at rest](hud/toggle-frames.jpg)
+
+- **Control:** upstream's `role="switch"` button with `aria-checked`, Space and Enter, `change`; `label` is its
+  accessible name. In the app it always has a visible text label beside it (a row: "Room names" left, the switch
+  right), and the label's click flips it.
+- **At rest it is the switch alone:** the rest frames (0 and 42) are 108 × 55 px, the button's size; only the
+  "on" frame's glint rises 14 px above. The host keeps that much margin (15 px above), no more.
+- **The flip is drawn on the effects canvas, not inside the element.** Upstream draws all 43 frames on a canvas
+  inside the shadow root that reaches 89 px above the switch; a scrolling panel or the sheet's body would clip
+  the splash. In the app, the rest frame stays on the element's own canvas and the frames in between are drawn on
+  the page-wide effects canvas at the element's place, then handed back. Nothing clips the splash but the
+  viewport.
+- **Beats** (painted): press: the knob squashes; hit: the knob smears across with a torn tail and slams into the
+  end; follow-through: the splash crown and the painted カチッ!, pink wedges; settle: the track floods, sloshes and
+  settles with a glint. Off plays the dash back.
+- **Word:** the painted カチッ! inside the frames. It is the toggle's one word; no other word is added.
+- **Compact (the phone, and the desktop panel's header):** `size="compact"` scales the whole drawing by 0.6: the
+  switch 65 × 32 px (a 44 px hit area), the flip's drawing 90 × 98 px, rising 53 px above the switch. The frames
+  are painted at twice the regular size, so 0.6 is still sharp on a phone's 3× screen.
+- **Where Edit goes:** a switch at the very top of the screen would have its splash cut off by the screen's edge.
+  - _Phone:_ Edit leaves the top bar and becomes the first of the stage tools at the foot of the 3D view
+    (`StageTools.tsx`, left of "Reset view"), where the splash rises over the view. The top bar keeps the home,
+    Walk, Photos and Catalogue, which also gives it the room it lacks at 390 px (§3.3). With the sheet full (the
+    stage tools hidden), the edit badge says that edit mode is on, as today.
+  - _Desktop:_ a compact switch on the second line of the control panel's header (the home's name, then "Edit"
+    and the switch on the right), at least 58 px below the top of the window.
+- **Before the frames are there:** the switch is drawn in CSS (a paper track with the ink line, a white knob,
+  the track `--sk-pri` when on), flips at once, and works. The rest frames replace it when they arrive.
+- **Reduced motion or Effects off:** it jumps to the end frame (upstream), and the full sheet is never fetched.
+- **The states:** off, on, disabled (the switch at half strength, upstream), flipping. Set from code (edit mode
+  left by a route change, Effects from storage), it goes straight to the end frame, without the drawing.
+
 ## 6. Changes to upstream's elements and the core
 
 All in `packages/sakuga-vfx`, each named in its README and in the package's `AGENTS.md` (§ "Changes made here"),
@@ -511,6 +554,12 @@ so a later upstream update carries them over by hand.
   to 320 px, and two lines before the ellipsis. The app's toasts are warnings today.
 - **`sakuga-input`:** `type="search"` passes through (it does already), `size="compact"`.
 - **`sakuga-checkbox`, `-slider`, `-tabs`:** `size="compact"`.
+- **`sakuga-toggle`** (§5.13): `size="compact"` (the drawing at 0.6); the flip drawn on the effects canvas, the
+  rest frame on its own canvas; a margin of 15 px above instead of 89; a CSS switch until the frames arrive; and
+  **frames from URLs** instead of the inline sheet: `SakugaToggle.frames = { rest, all }`, set by the app before
+  the first toggle is drawn. `tools/build.mjs` writes `toggle/rest.webp` (frames 0 and 42, 8.3 kB) next to
+  `toggle/frames.webp`; the inline sheet stays in `toggle.js` for the package's own pages, and the app's build
+  strips it as it strips the core (§7.1).
 
 ### 6.2 The core
 
@@ -522,7 +571,7 @@ so a later upstream update carries them over by hand.
 - **C2. Effects scale with their element:** an element's `--sk-fx-scale` (1 regular, 0.7 compact) multiplies the
   size and travel of the effects it fires, and the size of its word.
 - **C3. An app switch for effects:** `SakugaFX.calm` can be set by the page as well as by `prefers-reduced-motion`
-  (either turns effects off). The app sets it from the "Effects" setting (§10.4). Owner question 6.
+  (either turns effects off). The app sets it from the "Effects" setting (§10.4). The owner chose it (#167, answer 6).
 - **C4. The core is loaded once by the app's build** (§9.2): a build step, not a change to `core.js`.
 
 A core change changes every element: each of C1 to C3 is checked on every element the app uses, frame by frame
@@ -553,7 +602,7 @@ The web build's plugin (`sakugaProgress()` in `apps/web/vite.config.ts` today) g
 `sakuga-hud-<hash>.js`: every element the app uses, each **with its core block removed** (between the
 `// >>> sakuga core` markers; what remains ends in `component(window.SakugaFX)`, which the progress bar's core
 has set), concatenated in `NAMES` order, unchanged otherwise. The package's files stay as upstream shapes them;
-only the app's build output leaves the core out. Owner question 5.
+only the app's build output leaves the core out. The owner chose it (#167, answer 5).
 
 ### 7.2 Wrappers
 
@@ -652,13 +701,14 @@ clip.
 
 ### 9.1 What loads first, and what loads lazily
 
-| When                         | What                                                                                   | gzip (est.) |
-| ---------------------------- | -------------------------------------------------------------------------------------- | ----------- |
-| First, blocking (#166)       | `sakuga-progress` with the core                                                        | 20.8 kB     |
-| First, deferred, in parallel | `sakuga-hud`: every other element the app uses, no core; the icons                     | about 40 kB |
-| Main chunk                   | The wrappers and the fallback (`apps/web/src/hud/`)                                    | about 4 kB  |
-| Lazy                         | Nothing new: the elements are small once the core is shared (1.7 to 2.8 kB each alone) | —           |
-| Never                        | `sakuga-toggle`'s frames (§4.8), `sakuga-rating`                                       | —           |
+| When                                                        | What                                                                                   | gzip (est.) |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------------------- | ----------- |
+| First, blocking (#166)                                      | `sakuga-progress` with the core                                                        | 20.8 kB     |
+| First, deferred, in parallel                                | `sakuga-hud`: every other element the app uses, no core; the icons                     | about 40 kB |
+| Main chunk                                                  | The wrappers and the fallback (`apps/web/src/hud/`)                                    | about 4 kB  |
+| Lazy, once the loading screen is gone                       | `sakuga-toggle-rest`: the toggle's two rest frames (WebP)                              | 8.3 kB      |
+| Lazy, on idle after that, or on the first press of a toggle | `sakuga-toggle-frames`: all 43 frames (WebP); never with reduced motion or Effects off | 346 kB      |
+| Never                                                       | `sakuga-rating`, `sakuga-radio`, `sakuga-tooltip` (no use, §4.8)                       | —           |
 
 Why one deferred file and no lazy elements: the catalogue page, the piece page and the walk HUD use most of the
 same elements as the viewer; splitting 40 kB into lazy groups would save one or two round trips' worth of bytes
@@ -675,9 +725,32 @@ first anyway, and every other element is its own code only.
 
 ### 9.3 The toggle
 
-Not used (§4.8): its frames would be the single largest file of the app's first load. Owner question 4 asks if
-the painted switch should be used somewhere anyway; then it loads lazily (its `frames.webp` fetched on the first
-flip, the switch flipping plain until then).
+The owner's answer 4: the painted toggle is used, with its frames loaded lazily, neither in the first load nor
+in the main chunk. Its code (about 2 kB without the core and the frames) is in `sakuga-hud`; its pictures are two
+WebP files the build emits as hashed assets (`assets/sakuga-toggle-rest-<hash>.webp`,
+`assets/sakuga-toggle-frames-<hash>.webp`), whose URLs only are in the main chunk (`hud/toggle.ts` imports them
+with `?url` and sets `SakugaToggle.frames`).
+
+```mermaid
+sequenceDiagram
+  participant A as The app
+  participant T as sakuga-toggle
+  participant N as Network
+  A->>T: first paint: the CSS switch (it works)
+  Note over A: the loading screen is gone
+  A->>N: fetch sakuga-toggle-rest (8.3 kB)
+  N-->>T: the painted rest frames replace the CSS switch
+  Note over A: idle, effects on (or a toggle is pressed first)
+  A->>N: fetch sakuga-toggle-frames (346 kB)
+  N-->>T: flips play the drawing from now on
+  Note over T: a flip before that: the state changes at once, no drawing
+```
+
+- **Why two files:** with reduced motion or Effects off the toggle only ever shows its rest frames, so a phone set
+  that way never fetches the 346 kB. And the rest frames come early and small, so the CSS switch is seen only
+  while the scene loads.
+- **The WebP is not compressed again** (it compresses itself): its size on the wire is its file size.
+- **Cached for good** like every hashed asset.
 
 ### 9.4 The budget, and `bundle-budget.json` in #168
 
@@ -690,6 +763,13 @@ flip, the switch flipping plain until then).
 }
 ```
 
+```json
+"lazy": {
+  "sakuga-toggle-rest": { "maxGzipBytes": 12000, "required": true, "ext": ".webp" },
+  "sakuga-toggle-frames": { "maxGzipBytes": 360000, "required": true, "ext": ".webp" }
+}
+```
+
 - **`sakuga-hud`: 50 kB** gzipped (the estimate of 40 kB and a quarter of room for the elements' frame-by-frame
   rounds). `check:bundle` already measures every classic script in `index.html` against `first`.
 - **The main chunk** keeps its `maxGrowthGzipBytes` (50 kB over `d4df5df`). On `91b4dca` it is 459.0 kB, +38.4 kB:
@@ -698,8 +778,12 @@ flip, the switch flipping plain until then).
   room.
 - **The first load in all** (index.html, the first scripts, the main chunk and its CSS) was 487.3 kB after
   #166; it becomes about 530 kB. `check:bundle` prints it; no budget is set on the sum.
+- **The toggle's frames: 12 kB and 360 kB** (8.3 kB and 346 kB today, with room for a re-encode). `check:bundle`
+  measures lazy chunks among the `.js` files only today; #168 gives a lazy entry an optional `ext` (default `.js`)
+  and checks that no file of an `ext` entry is named in `index.html` (it is not part of the first load) and that
+  the main chunk does not contain its bytes (only its URL). Its offline test covers both.
 - **A test of the build:** an offline unit test of the plugin checks that each element in `sakuga-hud` has no core
-  block, that it ends in `component(window.SakugaFX)`, and that `index.html` has the progress script before
+  block (and the toggle no inline frames), that it ends in `component(window.SakugaFX)`, and that `index.html` has the progress script before
   `sakuga-hud` and `sakuga-hud` before the module entry.
 
 ## 10. Phones and accessibility
@@ -748,8 +832,9 @@ are limited to its own back layers. Without the page that question waits for the
 
 - `prefers-reduced-motion: reduce` turns every effect off (upstream's core) and the app's own springs too: the
   sheet, the panel and the fold jump to their size, the map enlarges at once. States still change at once.
-- **An "Effects" switch** in the View panel (on by default, remembered on the device, like Quality): off is the
-  same as reduced motion (C3). For a slow phone, a screen recording or a quiet evening. Owner question 6.
+- **An "Effects" switch** (a painted toggle, §5.13) in the View panel on the phone and in the Quality group on
+  the desktop (on by default, remembered on the device, like Quality): off is the same as reduced motion (C3).
+  For a slow phone, a screen recording or a quiet evening. The owner chose it (#167, answer 6).
 
 ### 10.5 Touch
 
@@ -788,21 +873,23 @@ graph TD
   p1["1. Foundation: core C1–C3, the sakuga-hud build and budget,<br/>wrappers and fallback, icons, the measuring page"] --> p2
   p2["2. Paper: the theme on every panel, bar and page by CSS,<br/>native controls drawn in paper, room-name tags"] --> p3
   p3["3. Buttons: button size/href/pressed, icon-button, badge, toast kind;<br/>top bar, stage tools, toolbars, hints, status"] --> p4
-  p4["4. Choices: segmented, checkbox, slider, input, field;<br/>views, quality, levels, show/hide, furniture panel fields"] --> p5
+  p4["4. Choices: segmented, checkbox, slider, input, field, the painted toggle;<br/>views, quality, levels, show/hide, furniture panel fields,<br/>Edit, Room names, Plan colours, Effects"] --> p5
   p5["5. Containers: panel, fold, sheet, card;<br/>desktop panels, the phone's sheet, perf readout"] --> p6
   p6["6. Walking: pad, shutter, map, compass;<br/>walk HUD, capture sheet, the orbit compass"] --> p7
   p7["7. Photos and pages: the photos panel, the catalogue and piece pages;<br/>old HUD styles removed; the real-phone pass listed"]
 ```
 
-| PR  | Family        | New or changed elements                                                                                      | Size |
-| --- | ------------- | ------------------------------------------------------------------------------------------------------------ | ---- |
-| 1   | Foundation    | core C1–C3; `sakuga-hud` build, its test and budget; `hud/` wrappers and fallback; `icons/`; `/?hud=measure` | M    |
-| 2   | Paper         | none (CSS: `--sk-*` and the paper look on today's native controls)                                           | S    |
-| 3   | Buttons       | `sakuga-button` (compact, href, pressed), `sakuga-icon-button`, `sakuga-badge`, `sakuga-toast` (kind)        | M    |
-| 4   | Choices       | `sakuga-segmented`, `sakuga-field`, compact checkbox, slider, input                                          | L    |
-| 5   | Containers    | `sakuga-panel`, `sakuga-fold`, `sakuga-sheet`, `sakuga-card`                                                 | L    |
-| 6   | Walking       | `sakuga-pad`, `sakuga-shutter`, `sakuga-map`, `sakuga-compass`                                               | L    |
-| 7   | Photos, pages | none new; remove the old HUD CSS                                                                             | M    |
+| PR  | Family        | New or changed elements                                                                                                                                                                                          | Size |
+| --- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| 1   | Foundation    | core C1–C3; `sakuga-hud` build, its test and budget; `hud/` wrappers and fallback; `icons/`; `/?hud=measure`                                                                                                     | M    |
+| 2   | Paper         | none (CSS: `--sk-*` and the paper look on today's native controls)                                                                                                                                               | S    |
+| 3   | Buttons       | `sakuga-button` (compact, href, pressed), `sakuga-icon-button`, `sakuga-badge`, `sakuga-toast` (kind)                                                                                                            | M    |
+| 4   | Choices       | `sakuga-segmented`, `sakuga-field`, compact checkbox, slider, input; `sakuga-toggle` (compact, lazy frames, the flip on the effects canvas), its two WebP assets and their budget; Edit moves to the stage tools | L    |
+| 5   | Containers    | `sakuga-panel`, `sakuga-fold`, `sakuga-sheet`, `sakuga-card`                                                                                                                                                     | L    |
+| 6   | Walking       | `sakuga-pad`, `sakuga-shutter`, `sakuga-map`, `sakuga-compass`                                                                                                                                                   | L    |
+| 7   | Photos, pages | none new; remove the old HUD CSS                                                                                                                                                                                 | M    |
+
+Edit stays the paper button of PR 2 until PR 4 turns it into the toggle and moves it on the phone (§5.13).
 
 Why this order: the foundation makes every later element cheap (the core once) and sleeping at rest before there
 are many elements on the page; paper second, so production never shows a mix of dark panels and paper controls
@@ -820,6 +907,19 @@ section are panels.
 - Larger sizes are accepted; keep it optimised.
 - Opus implements, Sonnet reviews, one worker at a time.
 
+### The owner's answers to this design's questions (#167, 2026-11-26)
+
+1. **Theme:** paper on the scene (§3.1).
+2. **Icons:** ink-line icons instead of the emoji (§3.2).
+3. **Words:** as designed (§4, H6).
+4. **The painted toggle is used,** with its frames loaded lazily, neither in the first load nor in the main
+   chunk; the design decides which switches get it, its compact size and its lazy budget (§5.13, §9.3, §9.4).
+5. **The core once** in the app's build (§7.1, §9.2).
+6. **An "Effects" switch** (§10.4).
+7. **Paper first,** then family by family (§12).
+
+Agreed with the orchestrator (2026-11-26): the measuring page `/?hud=measure` is built in #168's first PR (§10.2).
+
 ### Design decisions
 
 | #   | Decision                                                                                              | Why                                                                                              |
@@ -830,7 +930,7 @@ section are panels.
 | H4  | Ink-line SVG icons instead of emoji (§3.2)                                                            | Emoji are full colour with gradients; the style is two tones and a line                          |
 | H5  | Twelve new elements (§5); `sakuga-field` wraps every native control without one                       | One element for selects, numbers, dates, colours, files and textareas keeps the platform pickers |
 | H6  | Words: on confirms and changes of a choice; none on icon buttons, cards, badges, panels, the pad (§4) | Repeated small actions with a word each are noise; the rule is at most one per reaction          |
-| H7  | The painted toggle is not used; the checkbox is the switch (§4.8)                                     | 363 kB gzipped and too large for a list of switches                                              |
+| H7  | The painted toggle for Edit mode, Room names, Plan colours and Effects; checkboxes for lists (§4.8)   | The owner's answer 4; a column of painted switches would be too much and too tall                |
 | H8  | The clock sleeps at rest (C1)                                                                         | Today a connected element keeps a frame loop running for as long as the app is open              |
 | H9  | The core loaded once: the app's build strips it from every element but the progress bar (§7.1)        | About 400 kB becomes about 40 kB                                                                 |
 | H10 | One deferred `sakuga-hud` script, no lazy element groups (§9.1)                                       | The elements are small once the core is shared, and most pages use most of them                  |
@@ -843,27 +943,10 @@ section are panels.
 | H17 | Paper first, by CSS, before the families (§12)                                                        | Production deploys each merge; no mix of dark panels and paper controls                          |
 | H18 | Budget: `first.sakuga-hud` 50 kB gzipped (§9.4)                                                       | 40 kB estimated, a quarter of room                                                               |
 | H19 | A measuring page `/?hud=measure` for the owner's phone (§10.2), agreed                                | Frame cost with effects over the view can only be measured on the phone                          |
+| H20 | The toggle's flip drawn on the effects canvas, its rest frame on its own (§5.13)                      | Upstream's in-element canvas reaching 89 px up is clipped by a scrolling panel or the sheet      |
+| H21 | Edit moves to the stage tools on the phone, the panel's header on the desktop (§5.13)                 | The splash would be cut off by the top of the screen; the phone's top bar gains room             |
+| H22 | Two lazy WebP assets: the rest frames, then all frames only when effects are on (§9.3)                | A phone with effects off never fetches 346 kB; the CSS switch is seen only while loading         |
 
 ## 14. Open questions
 
-For the owner (posted on #167). Each has the recommended default this document is written with.
-
-1. **Theme.** Paper HUD on the scene (white cards, ink line, lavender shadow; the mock-ups in §3.1), or a dark
-   Sakuga palette like today's dark panels? _Default: paper._ The catalogue and piece pages become white paper
-   too.
-2. **Icons.** Ink-line icons in the art style instead of the emoji (🚶 📷 📚 ✏️ …)? _Default: yes, ink-line
-   icons._
-3. **How often a word.** As designed (§4): words on confirms (ドン), choices (カチッ), ticks (ズザッ), fast slider
-   drags (シュッ), the map (シュッ, ポン), the shutter and the compass (カチッ); none on icon buttons, cards, badges,
-   panels and the pad. Or fewer: words only on confirms (Save, Take photo, Place, Walk, Render)? _Default: as
-   designed._
-4. **The painted toggle** (the 43 drawn frames, 363 kB gzipped): leave it out and use the checkbox as the switch
-   everywhere, or use it for one or two switches (Edit mode, Room names) with its frames loaded lazily?
-   _Default: leave it out._
-5. **The core once.** The app's build strips the shared core from every element except the progress bar (the
-   package's files stay as upstream has them): about 40 kB instead of about 400 kB. This changes the package's
-   rule "never split" for the app's build output. _Default: yes._
-6. **An "Effects" switch** in the View panel (on by default, remembered on the device; off works like reduced
-   motion)? _Default: yes._
-7. **Rollout.** Paper first for the whole HUD by CSS, then the Sakuga elements family by family (§12): production
-   shows the paper theme with plain controls for a while. _Default: yes._
+None. The owner's answers are in §13.
