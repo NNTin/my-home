@@ -404,7 +404,9 @@ export type Outbuilding = z.infer<typeof Outbuilding>;
 /**
  * A stair from one level up to another. `path` is its walking line going up: straight flights
  * between consecutive points, with a square landing (`width` on each side) at every turning
- * point, so turns must be right angles. The builder spreads the steps over the rise.
+ * point, so turns must be right angles. Two turning points with no room for a tread between
+ * their landings share one landing: the half landing of a stair that turns back beside itself.
+ * The builder spreads the steps over the rise, and puts a railing on the inside of the turn.
  */
 export const Stair = z
   .strictObject({
@@ -419,6 +421,10 @@ export const Stair = z
     width: PositiveDimension,
     /** The treads and landings; omitted means the default. */
     finish: FinishUse.optional(),
+    /** The risers, the sides and the underside; omitted means the default. */
+    risers: FinishUse.optional(),
+    /** The handrail, its posts and the board the balusters stand on; omitted means the default. */
+    railing: FinishUse.optional(),
   })
   .meta({ id: 'Stair' });
 export type Stair = z.infer<typeof Stair>;
@@ -938,7 +944,11 @@ function checkFinishes(
   check(model.building.finishes?.roof, 'roof', ['building', 'finishes', 'roof']);
   model.outdoorAreas.forEach((a, i) => check(a.finish, 'ground', ['outdoorAreas', i, 'finish']));
   model.outbuildings?.forEach((b, i) => check(b.finish, 'facade', ['outbuildings', i, 'finish']));
-  model.stairs?.forEach((s, i) => check(s.finish, 'floor', ['stairs', i, 'finish']));
+  model.stairs?.forEach((s, i) => {
+    check(s.finish, 'floor', ['stairs', i, 'finish']);
+    check(s.risers, 'wall', ['stairs', i, 'risers']);
+    check(s.railing, 'part', ['stairs', i, 'railing']);
+  });
 }
 
 const openingTypePlural: Record<OpeningType, string> = {

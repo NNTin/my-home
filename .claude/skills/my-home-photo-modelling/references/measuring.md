@@ -154,6 +154,20 @@ on a far door. `"project"` with `"at"` draws model points into the photo, to com
 - Recessed downlights mean a suspended ceiling. Its height is the finished ceiling (an interior value), not the
   level's structural height (slab and floor levels stay).
 
+## Stairs
+
+- **Count first.** Risers and treads per flight, from below and from above: a count is exact, a going is not.
+  A tread seen from above hides the riser under it; the lowest bright line is the first nosing, not the floor.
+- **The nosings of a flight give three numbers, not four.** They are equal steps on one line, so one photo fixes
+  the ratio of going to rise only together with the camera's pitch: a pitch 3° off moved the going from 0.245 to
+  0.28 (#145). Take the rise from the level difference and the count, and the going from a **fixed length**: the
+  room's length less the landing, in goings (the foot of the stair to the far wall came out the same, 6.8 goings,
+  with two different calibrations).
+- A flight's width against its riser's height in a level photo is a ratio test (5.4 risers wide: 1.0 m).
+- The stored height of a photo taken on a stair is the model's step under the figure, not a measurement.
+- What a photo from below cannot show (the steps above the ceiling's edge) and what it shows dark (the space under
+  a landing): ask for it.
+
 ## A folding rule in the photo
 
 When the owner lays a folding rule (Zollstock) or tape in the picture, it is the best scale there is:

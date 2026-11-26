@@ -36,6 +36,12 @@ export const DEFAULT_FINISHES = {
   facade: 'render.facade',
   roof: 'roof.clay-tile',
   stair: 'wood.oak-laminate',
+  /** A stair's risers, sides and underside. */
+  stairRisers: 'paint.plain',
+  /** A stair's handrail, posts and the board its balusters stand on. */
+  stairRailing: 'wood.veneer',
+  /** The bars of a stair's railing. */
+  stairBalusters: 'metal.brushed',
   /** The ground itself: terrain where nothing covers it, and where a section cuts it. */
   terrain: 'soil.plain',
   /** Cut faces of walls, slabs and furniture. */
@@ -143,8 +149,24 @@ export const outbuildingFinishes = (b: Pick<Outbuilding, 'kind' | 'finish'>) => 
   roof: resolveFinish(undefined, OUTBUILDING_ROOF),
 });
 
-export const stairFinish = (stair: Pick<Stair, 'finish'>): ResolvedFinish =>
-  resolveFinish(stair.finish, { finish: DEFAULT_FINISHES.stair });
+export interface StairFinishes {
+  /** The treads and landings. */
+  treads: ResolvedFinish;
+  /** The risers, the sides and the underside. */
+  risers: ResolvedFinish;
+  /** The handrail, its posts and the board the balusters stand on. */
+  railing: ResolvedFinish;
+  balusters: ResolvedFinish;
+}
+
+export const stairFinishes = (
+  stair: Pick<Stair, 'finish' | 'risers' | 'railing'>,
+): StairFinishes => ({
+  treads: resolveFinish(stair.finish, { finish: DEFAULT_FINISHES.stair }),
+  risers: resolveFinish(stair.risers, { finish: DEFAULT_FINISHES.stairRisers }),
+  railing: resolveFinish(stair.railing, { finish: DEFAULT_FINISHES.stairRailing }),
+  balusters: plain(DEFAULT_FINISHES.stairBalusters),
+});
 
 export const TERRAIN_FINISH = plain(DEFAULT_FINISHES.terrain);
 export const CUT_FINISH = plain(DEFAULT_FINISHES.cut);
@@ -159,6 +181,10 @@ export function withoutFinishes(model: HomeModel): HomeModel {
   for (const room of bare.rooms) delete room.finishes;
   for (const area of bare.outdoorAreas) delete area.finish;
   for (const outbuilding of bare.outbuildings ?? []) delete outbuilding.finish;
-  for (const stair of bare.stairs ?? []) delete stair.finish;
+  for (const stair of bare.stairs ?? []) {
+    delete stair.finish;
+    delete stair.risers;
+    delete stair.railing;
+  }
   return bare;
 }

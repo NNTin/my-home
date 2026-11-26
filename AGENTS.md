@@ -77,6 +77,9 @@ src/catalog/shapes.test.ts -u`, the flag **last**. `-u` takes the word after it:
   other files, updates nothing in that one and still says "passed" (#117).
 - **Run prettier from the repository root** (`node_modules/.bin/prettier --write apps/web/src/...`). From
   `apps/web` it does not see the root's ignore file and reformats the goldens in `__golden__/`, which then fail.
+- **A local look at one view** (a shell change you must see before a push): the api on PGlite and Vite, started
+  directly, and one `screenshot.mjs` at a time. Vite listens on `localhost` only: `SITE_BASE=http://localhost:<port>`,
+  not `127.0.0.1` (connection refused, #145). `?view=eye&room=<id>&look=<deg>` stands back in the room.
 - **Not locally:** the whole `pnpm test`, `pnpm build` with `pnpm check:bundle`, real Postgres, Docker, and
   anything with a browser (the smokes, `visual-diff`, screenshots in bulk). CI runs all of them on every push:
   `check`, `test-postgres`, `docker`, `chart`, then `publish`, `deploy` and, on staging, `staging-checks`
@@ -138,6 +141,10 @@ read them. Do not turn it into a log of what you did.
   owner in an issue.
 - **Still approximate, improve when photos allow**: window positions and sizes (along their walls), doors, stairs,
   ceilings, floor levels, and the furniture and fixtures (catalogue types and placements).
+- **A stair is its walking line and its width** (`docs/home-model.md` § Stairs): the builder
+  (`apps/web/src/builder/stair.ts`) makes the steps, the flights, the landing and the railing from them. Count the
+  risers in the photos first: fourteen equal ones are the model's 2.6 m (#145; the upper flight's count is asked
+  in a photo request).
 - **Finishes are appearance, and may be refined from photos**: the finish of a souterrain room's floor, walls and
   ceiling, of the facade, the roof, outdoor areas, outbuildings and stairs is a value in `home.json` with its
   provenance and photo ids (`docs/home-model.md` § Finishes). Choosing one never moves, resizes or re-angles

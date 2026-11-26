@@ -4,7 +4,6 @@ import realHomeJson from '../../../../data/homes/home.json';
 import mockHomeJson from '../../../../packages/shared/test-fixtures/mock-home.json';
 import {
   buildHome,
-  boxCorners,
   gableOf,
   gableRoofPlanes,
   SHELL_DETAIL,
@@ -312,17 +311,5 @@ describe('the trim of the roof', () => {
         expect(z).toBeLessThan(home.bounds.max[2] + reach + 1e-9);
       }
     }
-  });
-});
-
-describe('what shell detail leaves alone', () => {
-  it('the stair is the boxes it was: its rebuild is its own step', () => {
-    const [stair] = home.stairs;
-    expect(stair!.steps.length).toBeGreaterThan(10);
-    for (const step of stair!.steps) {
-      expect(item(step.id).shape).toEqual({ kind: 'box', size: step.size });
-      expect(boxCorners(step)).toHaveLength(8);
-    }
-    expect(items.some((i) => /stringer|handrail|nosing/.test(i.id))).toBe(false);
   });
 });

@@ -141,17 +141,19 @@ describe('walking through the souterrain apartment', () => {
 });
 
 describe('the stair between the souterrain and the ground floor', () => {
-  // The walking line going up: north along the hall's east side, west, then south.
+  // The walking line going up: north along the hall's west wall, east across the landing, south.
   const path: Vec2[] = [
-    [2.09, -8.43],
-    [2.09, -9.97],
-    [0.985, -9.97],
-    [0.985, -8.43],
+    [0.985, -7.645],
+    [0.985, -9.965],
+    [2.09, -9.965],
+    [2.09, -8.165],
   ];
+  const rise = scene.stairs[0]!.rise;
+  const LANDING = SOUTERRAIN + 8 * rise;
 
-  it('climbs to the ground floor counter-clockwise and comes back down', () => {
-    let at = stand(2.09, -7.8);
-    // From the foot of the stair (still on the floor) over the two landings to the last tread.
+  it('climbs to the ground floor clockwise and comes back down', () => {
+    let at = stand(0.985, -7.2);
+    // From the foot of the stair (still on the floor) over the landing to the last tread.
     const heights: number[] = [];
     // Stop 5 cm short of the first tread and of the end of the last one, not on their edges.
     const foot: Vec2 = [path[0]![0], path[0]![1] + 0.05];
@@ -160,46 +162,72 @@ describe('the stair between the souterrain and the ground floor', () => {
       at = go(at, [corner]);
       heights.push(at.y);
     }
-    // Every leg is higher than the last, and the turns are left turns (counter-clockwise).
-    expect(heights).toEqual([...heights].sort((a, b) => a - b));
-    expect(new Set(heights).size).toBe(heights.length);
+    // Eight risers to the landing, which is level from one flight to the other, then five more.
     expect(heights[0]).toBe(SOUTERRAIN);
-    expect(heights.at(-1)).toBeCloseTo(-scene.stairs[0]!.rise);
-    const up = go(at, [[0.985, -7.6]]);
+    expect(heights[1]).toBeCloseTo(LANDING);
+    expect(heights[2]).toBeCloseTo(LANDING);
+    expect(heights[3]).toBeCloseTo(-rise);
+    const up = go(at, [[2.09, -7.6]]);
     expect(up).toMatchObject({ y: 0, levelId: 'ground-floor' });
     expect(roomOf(up)).toBe('ground-floor-interior');
 
-    const down = go(up, [...path].reverse().concat([[2.09, -7.8]]));
+    const down = go(up, [...path].reverse().concat([[0.985, -7.2]]));
     expect(down).toMatchObject({ y: SOUTERRAIN, levelId: 'souterrain' });
     expect(roomOf(down)).toBe('souterrain-stair-hall');
   });
 
   it('switches level half-way up', () => {
-    const low = go(stand(2.09, -7.8), [[2.09, -9.2]]);
+    const low = go(stand(0.985, -7.2), [[0.985, -8.6]]);
     expect(low.y).toBeGreaterThan(SOUTERRAIN);
     expect(low.levelId).toBe('souterrain');
-    const high = go(low, [path[1]!, path[2]!, [0.985, -8.8]]);
-    expect(high.y).toBeGreaterThan(-1.3);
+    const landing = go(low, [path[1]!]);
+    expect(landing.levelId).toBe('ground-floor');
+    const high = go(landing, [path[2]!, [2.09, -9]]);
+    expect(high.y).toBeGreaterThan(LANDING);
     expect(high.y).toBeLessThan(0);
     expect(high.levelId).toBe('ground-floor');
   });
 
-  it('does not step off the side of a flight or into the stairwell from above', () => {
-    const onFlight = go(stand(2.09, -7.8), [path[0]!, path[1]!, path[2]!, [0.985, -9]]);
-    expect(onFlight.y).toBeGreaterThan(-1.2);
-    const sideways = go(onFlight, [[2.2, -9]]);
-    // The west flight's east edge is at x 1.485.
-    expect(sideways.x).toBeLessThan(1.53);
+  it('is kept on a flight by the railing, and out of the stairwell from above', () => {
+    const onFlight = go(stand(0.985, -7.2), [[0.985, -8.6]]);
+    expect(onFlight.y).toBeGreaterThan(SOUTERRAIN + 0.5);
+    const sideways = go(onFlight, [[2.2, -8.6]]);
+    // The railing's board is 4 cm thick about x 1.5375.
+    expect(sideways.x).toBeCloseTo(1.5375 - 0.02 - FIGURE_RADIUS, 2);
     expect(sideways.y).toBe(onFlight.y);
+    // And from the upper flight towards the lower one.
+    const upper = go(stand(0.985, -7.2), [path[0]!, path[1]!, path[2]!, [2.09, -9]]);
+    const back = go(upper, [[0.9, -9]]);
+    expect(back.x).toBeCloseTo(1.5375 + 0.02 + FIGURE_RADIUS, 2);
+    expect(back.y).toBe(upper.y);
 
-    // On the ground floor, walking at the opening in the floor from the east.
+    // On the ground floor, walking at the opening in the floor from the east and from the south.
     const upstairs = go(stand(5, -9.5, 0), [[1.5, -9.5]]);
     expect(upstairs.y).toBe(0);
     expect(upstairs.x).toBeGreaterThan(2.59);
+    const over = go(stand(1, -6.5, 0), [[1, -9.5]]);
+    expect(over.y).toBe(0);
+    // The floor goes on over the first two steps of the lower flight.
+    expect(over.z).toBeCloseTo(-8.165, 1);
+  });
+
+  it('steps off the first step past the post, and goes under the upper flight as far as it can stand', () => {
+    const first = go(stand(0.985, -7.2), [[0.985, -7.85]]);
+    expect(first.y).toBeCloseTo(SOUTERRAIN + rise);
+    const off = go(first, [[2.09, -7.85]]);
+    expect(off).toMatchObject({ y: SOUTERRAIN, levelId: 'souterrain' });
+    expect(off.x).toBeCloseTo(2.09, 1);
+    // Under the upper flight: on, until the treads overhead are lower than the figure is tall.
+    const under = go(off, [[2.09, -10.2]]);
+    expect(under.y).toBe(SOUTERRAIN);
+    expect(under.z).toBeLessThan(-8.5);
+    expect(under.z).toBeGreaterThan(-9.465);
   });
 
   it('has nothing to stand on in the stairwell at ground-floor height', () => {
     expect(supportAt(world, [1.9, -9.5], 0)).toBeUndefined();
+    expect(supportAt(world, [1, -9], 0)).toBeUndefined();
+    expect(supportAt(world, [1, -8], 0)?.y).toBe(0);
     expect(supportAt(world, [5, -9.5], 0)?.y).toBe(0);
   });
 });
@@ -282,8 +310,8 @@ describe('start pose', () => {
     }
     const start = startPose(stairsOnly, world)!;
     expect(roomOf(start)).toBe('souterrain-stair-hall');
-    expect(start.x).toBeCloseTo(2.09);
-    expect(start.z).toBeCloseTo(-7.93);
+    expect(start.x).toBeCloseTo(0.985);
+    expect(start.z).toBeCloseTo(-7.145);
     // Looking north, up the first flight.
     expect(start.yaw).toBeCloseTo(0);
   });

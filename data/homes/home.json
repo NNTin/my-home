@@ -2326,19 +2326,32 @@
       ],
       "finishes": {
         "floor": {
-          "finish": "floor.neutral",
-          "source": "mock",
-          "note": "Default: no photo shows the stair hall (photo request 9c5e1cee)"
+          "finish": "wood.oak-laminate",
+          "tint": "#edd5b0",
+          "source": "estimated-from-photo",
+          "photos": [
+            "95302bfd-4226-4d48-8051-a4f9ea997510",
+            "8631d272-1e6f-4378-8d76-330733f3857e"
+          ],
+          "note": "Wood-look plank tiles laid east-west, the corridor's floor carried on through the door. The tint is the corridor floor's, measured there"
         },
         "walls": {
-          "finish": "paint.plain",
-          "source": "mock",
-          "note": "Default: no photo shows the stair hall (photo request 9c5e1cee)"
+          "finish": "plaster.fine",
+          "source": "estimated-from-photo",
+          "photos": [
+            "bc0cfc94-bf36-49eb-b327-fca34f49543e",
+            "458ffbe5-8ea1-4cb5-9641-9191fa4d0180"
+          ],
+          "note": "White paint on a fine-grained plaster. The finish's own white. A skirting of light tiles steps up along the stair; it is not drawn"
         },
         "ceiling": {
           "finish": "paint.plain",
-          "source": "mock",
-          "note": "Default: no photo shows the stair hall (photo request 9c5e1cee)"
+          "source": "estimated-from-photo",
+          "photos": [
+            "8631d272-1e6f-4378-8d76-330733f3857e",
+            "bc0cfc94-bf36-49eb-b327-fca34f49543e"
+          ],
+          "note": "Smooth and white"
         }
       }
     },
@@ -4622,21 +4635,23 @@
       "wallId": "ground-floor-wall-north",
       "type": "window",
       "offset": {
-        "value": 11.14,
+        "value": 11.2,
         "source": "estimated-from-photo",
-        "note": "Seen only at a grazing angle"
+        "note": "The window over the stair's landing. Frame x ≈0.88–1.86 (±0.07), scaled on the Work room window below it in c51a59e4; from inside its east part is behind the railing (bc0cfc94)"
       },
       "width": {
-        "value": 1.1,
+        "value": 0.98,
         "source": "estimated-from-photo"
       },
       "height": {
-        "value": 1.25,
-        "source": "estimated-from-photo"
+        "value": 1.0,
+        "source": "estimated-from-photo",
+        "note": "As high as the Work room window in c51a59e4 (±0.07)"
       },
       "sill": {
-        "value": 0.95,
-        "source": "estimated-from-photo"
+        "value": 0.1,
+        "source": "estimated-from-photo",
+        "note": "≈0.10 above the ground floor's level in c51a59e4 (±0.07), ≈1.07 above the landing in bc0cfc94. Before: 0.95, seen only at a grazing angle"
       }
     },
     {
@@ -7692,49 +7707,73 @@
       "path": [
         {
           "x": {
-            "value": 2.09,
-            "source": "mock",
-            "note": "Assumed position in the stair hall, 5 mm clear of its walls (#78); it turns counter-clockwise going up"
+            "value": 0.985,
+            "source": "estimated-from-photo",
+            "note": "The lower flight runs north along the west wall, 1.0 wide (two 0.6 riser tiles less a cut, 458ffbe5; ±0.05) and 5 mm clear of it"
           },
           "z": {
-            "value": -8.43,
-            "source": "mock"
-          }
-        },
-        {
-          "x": {
-            "value": 2.09,
-            "source": "mock"
-          },
-          "z": {
-            "value": -9.97,
-            "source": "mock"
+            "value": -7.645,
+            "source": "estimated-from-photo",
+            "note": "First riser: 8 risers and 7 treads to the landing (f8268144, 458ffbe5, 95302bfd). Going 0.26 (±0.02): the camera fits of 95302bfd, which has the hall's south wall in the picture, and of f8268144 are best between 0.25 and 0.28, and two risers and a going are then 0.63"
           }
         },
         {
           "x": {
             "value": 0.985,
-            "source": "mock"
+            "source": "estimated-from-photo"
           },
           "z": {
-            "value": -9.97,
-            "source": "mock"
+            "value": -9.965,
+            "source": "estimated-from-photo",
+            "note": "The landing lies across the hall under the north window, level with the eighth riser (bc0cfc94, 0b683b6f); its depth is taken as the flight's width, 1.0 (±0.15)"
           }
         },
         {
           "x": {
-            "value": 0.985,
-            "source": "mock"
+            "value": 2.09,
+            "source": "estimated-from-photo",
+            "note": "The upper flight comes back south along the east wall beside the lower one, a railing between them (0b683b6f, 95302bfd): the stair turns clockwise going up. Its width is taken as the lower flight's"
           },
           "z": {
-            "value": -8.43,
-            "source": "mock"
+            "value": -9.965,
+            "source": "estimated-from-photo"
+          }
+        },
+        {
+          "x": {
+            "value": 2.09,
+            "source": "estimated-from-photo"
+          },
+          "z": {
+            "value": -8.165,
+            "source": "estimated-from-photo",
+            "note": "Top riser. The photos show four treads (0b683b6f, bc0cfc94) and a taller last riser; the model has five treads of the same going, so that fourteen equal risers reach the ground floor 2.6 above (photo request 2ec17fe2)"
           }
         }
       ],
       "width": {
         "value": 1.0,
-        "source": "mock"
+        "source": "estimated-from-photo",
+        "note": "Lower flight between the west wall and the railing: 5.4 to 5.5 riser heights in 458ffbe5 (±0.05)"
+      },
+      "finish": {
+        "finish": "wood.oak-laminate",
+        "tint": "#edd5b0",
+        "source": "estimated-from-photo",
+        "photos": ["f8268144-64ed-49ba-8afb-ce51d0618a9a", "0b683b6f-eb25-4f6c-ba3c-c521f852b929"],
+        "note": "Wood-look tiles, the same as the stair hall's floor, with a metal nosing strip that is not drawn. The tint is the corridor floor's, measured there"
+      },
+      "risers": {
+        "finish": "paint.plain",
+        "source": "estimated-from-photo",
+        "photos": ["f8268144-64ed-49ba-8afb-ce51d0618a9a", "bc0cfc94-bf36-49eb-b327-fca34f49543e"],
+        "note": "White: light tiles on the risers, white plaster on the sides and under the upper flight. The finish's own white; the tiles' joints are not drawn"
+      },
+      "railing": {
+        "finish": "wood.veneer",
+        "source": "estimated-from-photo",
+        "photos": ["0b683b6f-eb25-4f6c-ba3c-c521f852b929", "bc0cfc94-bf36-49eb-b327-fca34f49543e"],
+        "note": "Posts, handrail and the board under the balusters are a light wood (beech or maple), lighter than this oak veneer, which cannot be tinted lighter; the balusters are round steel bars"
       }
     }
   ],

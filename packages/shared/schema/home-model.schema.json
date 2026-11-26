@@ -819,6 +819,12 @@
         },
         "finish": {
           "$ref": "#/$defs/FinishUse"
+        },
+        "risers": {
+          "$ref": "#/$defs/FinishUse"
+        },
+        "railing": {
+          "$ref": "#/$defs/FinishUse"
         }
       },
       "required": ["id", "name", "levelId", "toLevelId", "path", "width"],

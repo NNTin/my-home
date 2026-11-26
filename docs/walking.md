@@ -178,8 +178,9 @@ the real home:
 - **Surfaces carry it**: level floors, stair treads, terrain patches and outbuilding floors. It stands on the
   highest surface within one step (0.4 m) of its feet. That makes stairs, outdoor steps and gentle slopes work;
   a higher drop, a void (the stairwell seen from above) or a slope steeper than about 31° stops it. Under a stair
-  flight it needs headroom.
-- **Blockers stop it**: walls, fences, outbuilding walls and the home's furniture standing on the floor,
+  flight it needs headroom: it goes under the upper flight as far as the treads overhead are higher than it is
+  tall.
+- **Blockers stop it**: walls, fences, a stair's railing, outbuilding walls and the home's furniture standing on the floor,
   wherever they overlap its body in height (a raised piece from its elevation up: the microwave on the worktop).
   Pieces on a wall or under the ceiling (wall cabinets, shelves, the radiator, lights) never block it: it walks
   under them. **Doorways are open** (`door` and `french-door` openings; windows and garage doors
