@@ -4948,7 +4948,7 @@
         "finish": "gravel.fine",
         "source": "estimated-from-photo",
         "photos": ["8808ee82-aa25-43f5-81fb-54b2a14dcb2e", "56b09dad-9b4a-4585-83f0-f96a665f3b4c"],
-        "note": "Grey gravel from the street to the garage; the paving beyond the lattice fence is not this plot's. The images show works in progress (pallets of pavers): the owner was asked whether it is paved today"
+        "note": "Grey gravel from the street to the garage. The images show works in progress (pallets of pavers): the owner was asked whether it is paved today"
       }
     },
     {
@@ -7409,7 +7409,7 @@
         "finish": "asphalt.plain",
         "source": "estimated-from-photo",
         "photos": ["8808ee82-aa25-43f5-81fb-54b2a14dcb2e", "a8359a1e-48a7-404e-a808-0dbf013804de"],
-        "note": "Grey asphalt, a row of setts along its edge (not modelled)"
+        "note": "The road default, kept: beyond the plot is a neutral ground, and nothing of the real street is modelled"
       }
     },
     {
