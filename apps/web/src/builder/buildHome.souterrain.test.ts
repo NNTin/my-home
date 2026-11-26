@@ -8,10 +8,8 @@ import {
   boxCorners,
   buildFence,
   buildHome,
-  buildStair,
   centroid,
   FENCE_BAY,
-  MAX_RISER,
   slopeY,
   SURFACE_OFFSET,
   type Box,
@@ -229,130 +227,6 @@ describe('room names', () => {
     expect(roomLabels(scene, hidden)).toHaveLength(8);
     const noFlat = { ...base, maxLevelIndex: 0, hiddenApartments: ['apt-souterrain'] };
     expect(roomLabels(scene, noFlat)).toEqual([]);
-  });
-});
-
-describe('stairs', () => {
-  const model = home();
-  const scene = buildHome(model);
-  const stair = scene.stairs[0]!;
-
-  it('climb from the souterrain floor to the ground floor in even steps', () => {
-    expect(stair).toMatchObject({ levelId: 'souterrain', toLevelId: 'ground-floor' });
-    expect(stair.rise).toBeLessThanOrEqual(MAX_RISER);
-    expect(stair.rise).toBeGreaterThan(0.15);
-    const tops = stair.steps.map((s) => s.center[1] + s.size[1] / 2);
-    tops.forEach((top, i) => expect(top).toBeCloseTo(-2.6 + stair.rise * (i + 1)));
-    // The last riser arrives on the upper floor.
-    expect(tops.at(-1)! + stair.rise).toBeCloseTo(0);
-    // No step hangs in the air: each reaches down to the top of the one below, or the floor.
-    stair.steps.forEach((s, i) => {
-      const below = i === 0 ? -2.6 : tops[i - 1]!;
-      expect(s.center[1] - s.size[1] / 2).toBeLessThanOrEqual(below + 1e-9);
-    });
-  });
-
-  it('turn counter-clockwise going up: north, then west, then south', () => {
-    expect(stair.turn).toBe('counter-clockwise');
-    expect(stair.steps.map((s) => s.part).filter((p) => p === 'landing')).toHaveLength(2);
-    const [first, last] = [stair.steps[0]!, stair.steps.at(-1)!];
-    const landings = stair.steps.filter((s) => s.part === 'landing');
-    // Up the east side going north, across the north end going west, back south on the west.
-    expect(landings[0]!.center[2]).toBeLessThan(first.center[2]);
-    expect(landings[0]!.center[0]).toBeCloseTo(first.center[0]);
-    expect(landings[1]!.center[0]).toBeLessThan(landings[0]!.center[0]);
-    expect(landings[1]!.center[2]).toBeCloseTo(landings[0]!.center[2]);
-    expect(last.center[2]).toBeGreaterThan(landings[1]!.center[2]);
-    expect(last.center[0]).toBeCloseTo(landings[1]!.center[0]);
-  });
-
-  it('report the turn of a mirrored and of a straight stair', () => {
-    const source = model.stairs![0]!;
-    const mirrored = {
-      ...source,
-      path: [point(0, 0), point(0, -2), point(2, -2), point(2, 0)],
-    };
-    expect(buildStair(mirrored, 0, 2.6).turn).toBe('clockwise');
-    const straight = buildStair({ ...source, path: [point(0, 0), point(3, 0)] }, 0, 1.9);
-    expect(straight.turn).toBe('straight');
-    expect(straight.steps).toHaveLength(9);
-    expect(straight.steps.every((s) => s.part === 'tread')).toBe(true);
-    expect(straight.steps[0]!.size).toEqual([expect.closeTo(3 / 9), expect.closeTo(0.19), 1]);
-    expect(straight.well).toEqual([
-      [expect.closeTo(0), -0.5],
-      [expect.closeTo(3), -0.5],
-      [expect.closeTo(3), 0.5],
-      [expect.closeTo(0), 0.5],
-    ]);
-  });
-
-  it('never exceed the maximum riser, however the treads divide over the flights', () => {
-    const source = model.stairs![0]!;
-    // Three equal flights of 2 m (after the landings) and a 2.4 m rise: 13 risers are needed, so
-    // 10 treads over three flights; rounding each share of 3.33 down would leave only 12 risers.
-    const equal = buildStair(
-      { ...source, path: [point(0, 0), point(0, -2.5), point(3, -2.5), point(3, 0)] },
-      0,
-      2.4,
-    );
-    expect(equal.rise).toBeLessThanOrEqual(MAX_RISER + 1e-9);
-    expect(equal.steps.filter((s) => s.part === 'tread')).toHaveLength(10);
-    expect(equal.rise).toBeCloseTo(2.4 / 13);
-    for (const rise of [0.5, 1.1, 2.4, 2.6, 2.75, 3.3, 5]) {
-      for (const far of [1.2, 2.5, 4, 7.3]) {
-        const stair = buildStair(
-          { ...source, path: [point(0, 0), point(0, -far), point(3, -far), point(3, 1)] },
-          0,
-          rise,
-        );
-        expect(stair.rise).toBeLessThanOrEqual(MAX_RISER + 1e-9);
-        expect((stair.steps.length + 1) * stair.rise).toBeCloseTo(rise);
-      }
-    }
-  });
-
-  it('stay inside the stair hall and clear of the corridor door', () => {
-    const hall = scene.roomFloors.find((r) => r.roomId === 'souterrain-stair-hall')!;
-    const xs = hall.outline.map((p) => p[0]);
-    const zs = hall.outline.map((p) => p[1]);
-    for (const step of stair.steps) {
-      const [x0, x1, z0, z1] = planBounds(step);
-      expect(x0).toBeGreaterThanOrEqual(Math.min(...xs));
-      expect(x1).toBeLessThanOrEqual(Math.max(...xs));
-      expect(z0).toBeGreaterThanOrEqual(Math.min(...zs));
-      // The door from the corridor is at the south end of the hall (z > -7.12).
-      expect(z1).toBeLessThan(-7.12 - 1);
-    }
-  });
-
-  it('open a stairwell in the floor slab and the room floor of the level above', () => {
-    const slab = scene.slabs.find((s) => s.id === 'ground-floor:floor')!;
-    expect(slab.holes).toEqual([stair.well]);
-    expect(scene.slabs.find((s) => s.id === 'souterrain:floor')!.holes).toEqual([]);
-    const floor = scene.roomFloors.find((r) => r.roomId === 'ground-floor-interior')!;
-    expect(floor.holes).toEqual([stair.well]);
-    expect(
-      scene.roomFloors.find((r) => r.roomId === 'souterrain-stair-hall')!.holes,
-    ).toBeUndefined();
-    const xs = stair.well.map((p) => p[0]);
-    const zs = stair.well.map((p) => p[1]);
-    expect([Math.min(...xs), Math.max(...xs)]).toEqual([
-      expect.closeTo(0.485),
-      expect.closeTo(2.59),
-    ]);
-    expect([Math.min(...zs), Math.max(...zs)]).toEqual([
-      expect.closeTo(-10.47),
-      expect.closeTo(-8.43),
-    ]);
-  });
-
-  it('are hidden with their level or apartment', () => {
-    const base = wholeVisibility(scene);
-    expect(visibleScene(scene, { ...base, maxLevelIndex: 0 }).stairs).toHaveLength(1);
-    expect(visibleScene(scene, { ...base, hiddenLevels: ['souterrain'] }).stairs).toEqual([]);
-    expect(visibleScene(scene, { ...base, hiddenApartments: ['apt-souterrain'] }).stairs).toEqual(
-      [],
-    );
   });
 });
 

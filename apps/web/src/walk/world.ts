@@ -1,6 +1,6 @@
 import { wallLength, type HomeModel, type Point } from '@my-home/shared';
 import type { Box, HomeScene, Vec2 } from '../builder/buildHome';
-import { slopeY } from '../builder/buildHome';
+import { slopeY, solidPoint } from '../builder/buildHome';
 import {
   add,
   distanceToSegment,
@@ -161,6 +161,30 @@ export function buildWalkWorld(
         holes: [],
         margin: 0,
         heightAt: () => top,
+      });
+    }
+  }
+
+  // A railing stops the figure, from the foot of its board to the top of its handrail.
+  for (const { railing } of scene.stairs) {
+    for (const stringer of railing.rails.filter((r) => r.part === 'stringer')) {
+      const handrail = railing.rails.find(
+        (r) => r.id === stringer.id.replace(':stringer:', ':handrail:'),
+      );
+      const alongs = stringer.outline.map(([along]) => along);
+      const heights = [...stringer.outline, ...(handrail?.outline ?? [])].map(([, y]) => y);
+      const end = (along: number): Vec2 => {
+        const [x, , z] = solidPoint(stringer, [along, 0]);
+        return [x, z];
+      };
+      blockers.push({
+        polygon: segmentRectangle(
+          end(Math.min(...alongs)),
+          end(Math.max(...alongs)),
+          stringer.depth,
+        ),
+        bottom: stringer.center[1] + Math.min(...heights),
+        top: stringer.center[1] + Math.max(...heights),
       });
     }
   }

@@ -79,7 +79,12 @@ describe('default finishes of a home that names none', () => {
       tint: '#e4e0d6',
       rotation: 0,
     });
-    expect(home.stairs[0]!.finish.finish).toBe('wood.oak-laminate');
+    expect(home.stairs[0]!.finishes).toMatchObject({
+      treads: { finish: 'wood.oak-laminate' },
+      risers: { finish: 'paint.plain' },
+      railing: { finish: 'wood.veneer' },
+      balusters: { finish: 'metal.brushed' },
+    });
     const terrain = shellItems(home).filter((i) => i.group.kind === 'terrain');
     expect(new Set(terrain.map((i) => i.finish))).toEqual(new Set(['soil.plain']));
   });
@@ -227,6 +232,8 @@ describe('finishes of the home model', () => {
     model.building.finishes = { facade: chosen('render.facade', { tint: '#e8e0d0' }) };
     model.outdoorAreas.find((a) => a.id === 'driveway')!.finish = chosen('gravel.fine');
     model.stairs![0]!.finish = chosen('tile.light-60');
+    model.stairs![0]!.risers = chosen('plaster.fine', { tint: '#e2d5c2' });
+    model.stairs![0]!.railing = chosen('plastic.matt', { tint: '#303030' });
     model.outbuildings!.find((b) => b.kind === 'shed')!.finish = chosen('paint.plain', {
       tint: '#ffffff',
     });
@@ -250,6 +257,13 @@ describe('finishes of the home model', () => {
     expect(
       items.filter((i) => i.id.includes(':tread') || i.id.includes(':landing'))[0]!.finish,
     ).toBe('tile.light-60');
+    const stair = (part: string) => items.find((i) => i.id.includes(`:${part}:`))!;
+    expect(stair('flight')).toMatchObject({ finish: 'plaster.fine', tint: '#e2d5c2' });
+    expect(items.find((i) => i.id.endsWith(':slab'))!.finish).toBe('plaster.fine');
+    for (const part of ['post', 'stringer', 'handrail']) {
+      expect(stair(part)).toMatchObject({ finish: 'plastic.matt', tint: '#303030' });
+    }
+    expect(stair('baluster').finish).toBe('metal.brushed');
   });
 
   it('a floor turned by a quarter runs its texture along plan z', () => {
@@ -283,6 +297,12 @@ describe('the finishes of the real home (#113)', () => {
     expect(walls('bath-room')).toEqual(new Set(['tile.light-60']));
     expect(walls('corridor')).toEqual(new Set(['plaster.fine']));
     expect(walls('kitchen')).toEqual(new Set(['paint.plain']));
+    // The stair hall (#145): the corridor's floor carried on, and its plaster.
+    expect(item('souterrain-stair-hall:floor')).toMatchObject({
+      finish: 'wood.oak-laminate',
+      tint: '#edd5b0',
+    });
+    expect(walls('stair-hall')).toEqual(new Set(['plaster.fine']));
     expect(item('souterrain-boiler-room:floor').finish).toBe('concrete.screed');
     expect(item('souterrain-boiler-room:ceiling')).toMatchObject({
       finish: 'paint.plain',
@@ -291,8 +311,6 @@ describe('the finishes of the real home (#113)', () => {
   });
 
   it('keeps the defaults where no photo shows the surface', () => {
-    expect(item('souterrain-stair-hall:floor').finish).toBe('floor.neutral');
-    expect(item('souterrain-stair-hall:ceiling').finish).toBe('paint.plain');
     expect(item('souterrain-bath-room:floor').finish).toBe('floor.neutral');
     expect(new Set(real.roofPlanes.map((r) => r.finish.finish))).toEqual(
       new Set(['roof.clay-tile']),

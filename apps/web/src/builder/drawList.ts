@@ -560,9 +560,25 @@ export function shellItems(scene: HomeScene, options: ShellOptions = {}): DrawIt
     ...scene.roofTrim.map((r) =>
       profileItem({ id: r.id, group: { kind: 'roof', levelId: r.levelId } }, r, r.finish),
     ),
-    ...scene.stairs.flatMap((s) =>
-      s.steps.map((step) => boxItem({ id: step.id, group: levelGroup(s) }, step, s.finish)),
-    ),
+    ...scene.stairs.flatMap((s) => {
+      const group = levelGroup(s);
+      const { treads, risers, railing, balusters } = s.finishes;
+      return [
+        ...s.steps.map((step) => boxItem({ id: step.id, group }, step, treads)),
+        ...s.flights.map((flight) => profileItem({ id: flight.id, group }, flight, risers)),
+        ...s.slabs.map((slab) => boxItem({ id: slab.id, group }, slab, risers)),
+        ...s.railing.posts.map((post) => boxItem({ id: post.id, group }, post, railing)),
+        ...s.railing.rails.map((rail) => profileItem({ id: rail.id, group }, rail, railing)),
+        ...s.railing.balusters.map((b) =>
+          solid(
+            { id: b.id, group },
+            { kind: 'cylinder', diameter: b.diameter, height: b.height },
+            transform(b.center),
+            balusters,
+          ),
+        ),
+      ];
+    }),
     ...scene.fences.flatMap((f) => {
       if (f.parts) return [];
       const group: DrawGroup = { kind: 'structure', id: f.id };

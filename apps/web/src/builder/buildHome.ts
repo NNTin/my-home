@@ -11,7 +11,6 @@ import {
   roofOf,
   roomFinishes,
   SHELL_FINISHES,
-  stairFinish,
   wallLength,
   type HomeModel,
   type Opening,
@@ -19,7 +18,6 @@ import {
   type ResolvedFinish,
   type RoomFinishes,
   type Slope,
-  type Stair,
   type Wall,
 } from '@my-home/shared';
 import { gateParts, gateSpec } from '../catalog/gate/swing';
@@ -39,12 +37,14 @@ import {
 } from './shellDetail';
 import { simplify, wallFaceShapes, wallUv, type WallEnd, type WallFaceShape } from './wallFaces';
 import { EPS, rotationFor, toOutline, toVec2 } from './plan';
+import { buildStair, type StairDescriptor } from './stair';
 
 export { FENCE_BAY } from './fence';
 export { rotationFor } from './plan';
 export type { DoorRevealDescriptor, RoofTrimDescriptor, SkirtingDescriptor } from './shellDetail';
 export { SHELL_DETAIL } from './shellDetail';
 export type { WallFacePart } from './wallFaces';
+export { buildStair, MAX_RISER, type StairDescriptor } from './stair';
 
 /**
  * Pure model -> render descriptor builder. No three.js or GPU here, so it is unit-tested directly;
@@ -275,23 +275,6 @@ export interface OutdoorAreaDescriptor extends Surface {
   name: string;
   kind: HomeModel['outdoorAreas'][number]['kind'];
   ownerApartmentId?: string;
-  finish: ResolvedFinish;
-}
-
-/** A stair: one box per tread and landing, bottom to top. */
-export interface StairDescriptor {
-  id: string;
-  name: string;
-  levelId: string;
-  toLevelId: string;
-  apartmentId?: string;
-  /** Which way it turns going up, seen from above. */
-  turn: 'clockwise' | 'counter-clockwise' | 'straight';
-  /** Height of one step. */
-  rise: number;
-  steps: (Box & { id: string; part: 'tread' | 'landing' })[];
-  /** Plan rectangle the stair covers: the stairwell opening in the floor it leads up to. */
-  well: Vec2[];
   finish: ResolvedFinish;
 }
 
@@ -1200,93 +1183,6 @@ function inside([x, z]: Vec2, outline: Vec2[]): boolean {
     if (az > z !== bz > z && x < ax + ((z - az) / (bz - az)) * (bx - ax)) result = !result;
   });
   return result;
-}
-
-/** Steps are at most this high; the builder adds steps until they are. */
-export const MAX_RISER = 0.19;
-
-/**
- * Treads and landings of a stair climbing from `from` to `to` along its walking line. Every
- * turning point gets a square landing; the remaining steps are shared out over the flights by
- * their length. The last riser arrives on the upper floor, so there is no tread at `to`.
- */
-export function buildStair(stair: Stair, from: number, to: number): StairDescriptor {
-  const width = stair.width.value;
-  const points = toOutline(stair.path);
-  const flights = points.slice(0, -1).map(([sx, sz], i) => {
-    const [ex, ez] = points[i + 1]!;
-    const length = Math.hypot(ex - sx, ez - sz);
-    const dir: Vec2 = [(ex - sx) / length, (ez - sz) / length];
-    // A landing takes half a width from the flight on either side of it.
-    const start = i > 0 ? width / 2 : 0;
-    const end = length - (i < points.length - 2 ? width / 2 : 0);
-    return {
-      origin: [sx, sz] as Vec2,
-      dir,
-      start,
-      run: Math.max(end - start, 0),
-      corner: [ex, ez] as Vec2,
-    };
-  });
-  const landings = flights.length - 1;
-  const totalRun = flights.reduce((sum, f) => sum + f.run, 0);
-  const wanted = Math.ceil((to - from) / MAX_RISER - EPS) - 1 - landings;
-  // Largest-remainder rounding, at least one tread per flight: the sum never falls short of
-  // `wanted`, so no riser exceeds MAX_RISER.
-  const shares = flights.map((f) => (wanted * f.run) / Math.max(totalRun, EPS));
-  const treads = shares.map((share) => Math.max(1, Math.floor(share + EPS)));
-  const byRemainder = shares
-    .map((share, i) => ({ i, remainder: share - Math.floor(share + EPS) }))
-    .sort((a, b) => b.remainder - a.remainder || a.i - b.i);
-  for (let k = 0; treads.reduce((sum, n) => sum + n, 0) < wanted; k++) {
-    treads[byRemainder[k % byRemainder.length]!.i]!++;
-  }
-  const rise = (to - from) / (treads.reduce((sum, n) => sum + n, 0) + landings + 1);
-
-  const steps: StairDescriptor['steps'] = [];
-  const add = (part: 'tread' | 'landing', [x, z]: Vec2, dir: Vec2, depth: number) => {
-    const top = from + rise * (steps.length + 1);
-    // Two risers thick, so each step closes the gap down to the one below.
-    const thickness = Math.min(2 * rise, top - from);
-    steps.push({
-      id: `${stair.id}:${steps.length}:${part}`,
-      part,
-      center: [x, top - thickness / 2, z],
-      size: [depth, thickness, width],
-      rotationY: rotationFor(dir[0], dir[1]),
-    });
-  };
-  flights.forEach((f, i) => {
-    const going = f.run / treads[i]!;
-    for (let j = 0; j < treads[i]!; j++) {
-      const along = f.start + (j + 0.5) * going;
-      add('tread', [f.origin[0] + f.dir[0] * along, f.origin[1] + f.dir[1] * along], f.dir, going);
-    }
-    if (i < landings) add('landing', f.corner, f.dir, width);
-  });
-
-  // On the plan (x east, z south) a left turn, counter-clockwise from above, has a negative cross.
-  const cross = flights
-    .slice(1)
-    .reduce((sum, f, i) => sum + flights[i]!.dir[0] * f.dir[1] - flights[i]!.dir[1] * f.dir[0], 0);
-  const { min, max } = boundsOf(steps.flatMap(boxCorners));
-  return {
-    id: stair.id,
-    name: stair.name,
-    levelId: stair.levelId,
-    toLevelId: stair.toLevelId,
-    ...(stair.apartmentId !== undefined && { apartmentId: stair.apartmentId }),
-    turn: Math.abs(cross) < EPS ? 'straight' : cross < 0 ? 'counter-clockwise' : 'clockwise',
-    rise,
-    steps,
-    finish: stairFinish(stair),
-    well: [
-      [min[0], min[2]],
-      [max[0], min[2]],
-      [max[0], max[2]],
-      [min[0], max[2]],
-    ],
-  };
 }
 
 /**

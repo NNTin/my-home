@@ -14,7 +14,7 @@ import {
   resolveFinish,
   roomFinishes,
   SHELL_FINISHES,
-  stairFinish,
+  stairFinishes,
   TERRAIN_FINISH,
   textureFiles,
   withoutFinishes,
@@ -248,7 +248,13 @@ describe('default finishes', () => {
       expectFits(outbuildingFinishes(b).walls, 'facade', b.id);
       expectFits(outbuildingFinishes(b).roof, 'facade', `${b.id} roof`);
     }
-    for (const stair of home.stairs ?? []) expectFits(stairFinish(stair), 'floor', stair.id);
+    for (const stair of home.stairs ?? []) {
+      const { treads, risers, railing, balusters } = stairFinishes(stair);
+      expectFits(treads, 'floor', stair.id);
+      expectFits(risers, 'wall', `${stair.id} risers`);
+      expectFits(railing, 'part', `${stair.id} railing`);
+      expectFits(balusters, 'part', `${stair.id} balusters`);
+    }
   });
 
   it('resolves the real home’s own finishes, each for its kind of surface', () => {

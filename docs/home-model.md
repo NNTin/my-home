@@ -176,9 +176,20 @@ stair that is passed to get in.
 `path` is the walking line **going up**: straight flights between consecutive points, with a square
 landing (`width` on each side) at every turning point, so turns are right angles. The order of the
 points therefore gives the direction of travel: seen from above with north (`-z`) up, a path that
-keeps turning left climbs counter-clockwise. The builder spreads steps of at most 0.19 m over the
+keeps turning right climbs clockwise. The builder spreads steps of at most 0.19 m over the
 rise between the two levels, shows the stair with `levelId` (and `apartmentId`), and cuts a
-stairwell opening over it in the floor of `toLevelId`.
+stairwell opening in the floor of `toLevelId` over every step that is less than 2.2 m below it.
+
+- **A half landing.** Two turning points with no room for a tread between their landings (less than 0.15 m)
+  share one level landing: the stair turns back beside itself. The distance between the two flights' lines
+  is then their width plus the gap the railing stands in.
+- **What the builder makes of it** (`apps/web/src/builder/stair.ts`, sizes in `STAIR_DETAIL`): treads 3 cm
+  thick that stand out 2 cm over the riser below; the first flight as a solid standing on the floor, every
+  later flight and every landing as a slab 0.2 m thick, open below; and on the inside of the turn a railing:
+  a post beside the second riser, one at each turn and one at the top, a handrail 0.9 m above the nosings, a
+  board under it along each flight, and round bars at most 12.5 cm apart. A straight stair has no railing.
+- **Finishes:** `finish` (treads and landings), `risers` (risers, sides and underside) and `railing`
+  (posts, handrail and board); the bars are `metal.brushed`. See § Finishes.
 
 ### Ceilings
 
@@ -373,7 +384,7 @@ A **finish use** is:
 | The building    | `building.finishes.facade`, `.roof`                    | `facade`, `roof`           | `render.facade`, `roof.clay-tile`                                                                                                                       |
 | An outdoor area | `finish`                                               | `ground`                   | By kind: garden `grass.lawn`; patio, path and driveway `paving.concrete-slab`; road `asphalt.plain`; gravel `gravel.fine`; embankment `concrete.screed` |
 | An outbuilding  | `finish` (its walls)                                   | `facade`                   | By kind, with the colours they have always had: garage, carport and porch `render.facade`; shed and compost `paint.plain`                               |
-| A stair         | `finish`                                               | `floor`                    | `wood.oak-laminate`                                                                                                                                     |
+| A stair         | `finish` (treads and landings), `risers`, `railing`    | `floor`, `wall`, `part`    | `wood.oak-laminate`, `paint.plain`, `wood.veneer`                                                                                                       |
 
 - **Finishes are appearance.** They may be refined from photos like windows and furniture. They never move,
   resize or re-angle anything: the geometry rules are unchanged.
@@ -515,8 +526,9 @@ There are exactly **two ways into the apartment** (`apartments[].entrances`):
 | `entrance-souterrain-stair-hall` | Stair hall entrance | the house's entrance on the ground floor, then down `stair-souterrain-stair-hall-ground-floor` into the stair hall, then `door-souterrain-corridor-stair-hall`                                                                     |
 | `entrance-souterrain-patio`      | Patio entrance      | from the lane through `gate-souterrain-patio-lane` (north end of the patio), west down the straight flight of the sunken entry (seven stone steps) and across its landing, then `door-souterrain-corridor-patio` into the corridor |
 
-The stair in the stair hall climbs counter-clockwise (north along the east side, west across the
-north end, south along the west side). The ground floor and the attic are not laid out yet: each has
+The stair in the stair hall climbs clockwise (#145, from the owner's photos): eight risers north along
+the west wall, a landing across the north end under the window, and six back south along the east wall,
+with the railing between the two flights and a storage space under the upper one. The ground floor and the attic are not laid out yet: each has
 one placeholder room covering its floor. The corridor and the kitchen have a suspended ceiling at 2.15
 with a box down to 2.00 at the east end of the corridor's north wall (#61); the level's clear height stays 2.35.
 Never add the house's address or location (coordinates, map
@@ -565,7 +577,8 @@ Every descriptor carries its **finish**, resolved from the model or its default 
     stays the door piece's.
   - `roofTrim`: on a gable roof an eaves board on each eave's edge, a half-round gutter in front of it and a cap
     over the ridge, shown and hidden with the roof.
-  - The stair is still one box per tread: its rebuild, with stringers and a handrail, is #145.
+  - `stairs`: treads and landings (`steps`, what walk mode stands on), the flights as solids seen from their
+    side (`flights`), the slabs under the landings and the railing (§ Stairs).
 - Every room has a ceiling surface just under the slab above (`roomCeilings`), shown and hidden like a lowered
   ceiling, with the room's ceiling finish; a lowered ceiling takes the ceiling finish of the room it hangs in.
   The top level under a pitched roof has none.

@@ -1046,6 +1046,8 @@ describe('finishes', () => {
     home.outdoorAreas[0]!.finish = use('gravel.fine', { source: 'measured' });
     home.outbuildings![0]!.finish = use('paint.plain', { tint: '#ffffff' });
     home.stairs![0]!.finish = use('wood.oak-laminate');
+    home.stairs![0]!.risers = use('plaster.fine', { tint: '#e2d5c2' });
+    home.stairs![0]!.railing = use('metal.brushed');
     const result = HomeModel.safeParse(home);
     expect(result.error && describeIssues(formatIssues(result.error))).toBeUndefined();
   });
@@ -1072,6 +1074,8 @@ describe('finishes', () => {
     home.building.finishes = { facade: use('roof.clay-tile'), roof: use('cut.dark') };
     home.outdoorAreas[0]!.finish = use('paint.plain');
     home.stairs![0]!.finish = use('wood.veneer');
+    home.stairs![0]!.risers = use('wood.veneer');
+    home.stairs![0]!.railing = use('paint.plain');
     expect(issuesOf(home)).toEqual([
       {
         path: `rooms[${index}].finishes.floor.finish`,
@@ -1097,6 +1101,15 @@ describe('finishes', () => {
       {
         path: 'stairs[0].finish.finish',
         message: 'Finish "wood.veneer" is not for a floor (it is for a catalogue part)',
+      },
+      {
+        path: 'stairs[0].risers.finish',
+        message: 'Finish "wood.veneer" is not for a wall (it is for a catalogue part)',
+      },
+      {
+        path: 'stairs[0].railing.finish',
+        message:
+          'Finish "paint.plain" is not for a catalogue part (it is for a wall, a ceiling, a facade)',
       },
     ]);
   });
