@@ -526,13 +526,6 @@ function pngSize(file) {
   return isPng ? { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) } : undefined;
 }
 
-/**
- * The named views (docs/views.md) on one kind of device, in a context of its own: each opens from
- * its link and settles; the section stays within the whole house's draw-call budget, also while
- * its cut moves; switching it off and on again compiles no shader; and "Save image" downloads a
- * PNG of twice the canvas size in the beautiful tier, whatever the quality setting, and leaves
- * the view as it was. Read-only: only GET requests leave the browser.
- */
 /** The sentence of a browser that cannot make path-traced renders (`views/renderSupport.ts`). */
 const NO_RENDER = 'This browser cannot make path-traced renders';
 
@@ -604,6 +597,13 @@ async function renderChecks(page, { device, where, views, renderChunk }) {
   );
 }
 
+/**
+ * The named views (docs/views.md) on one kind of device, in a context of its own: each opens from
+ * its link and settles; the section stays within the whole house's draw-call budget, also while
+ * its cut moves; switching it off and on again compiles no shader; and "Save image" downloads a
+ * PNG of twice the canvas size in the beautiful tier, whatever the quality setting, and leaves
+ * the view as it was. Read-only: only GET requests leave the browser.
+ */
 async function viewChecks(browser, { device, base, host, homeId }) {
   const phone = device === 'phone';
   const context = await browser.newContext(

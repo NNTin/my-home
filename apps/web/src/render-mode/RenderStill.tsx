@@ -92,15 +92,22 @@ export function RenderStill({
 
   useEffect(() => {
     if (!still) return;
-    saveRef.current = async (view) =>
-      download(await still.image(), imageName(`${view}-render`, new Date()));
+    // The panel's "Save image": nothing to save before the first sample, and nothing to say.
+    saveRef.current = async (view) => {
+      if (still.hasImage) download(await still.image(), imageName(`${view}-render`, new Date()));
+    };
     return () => {
       saveRef.current = undefined;
     };
   }, [still, saveRef]);
 
   useEffect(() => {
-    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && onClose();
+    // Escape closes, but not out of a field of the panel: there it is that field's own key.
+    const onKey = (event: KeyboardEvent) => {
+      const field =
+        event.target instanceof HTMLElement && event.target.closest('input, select, textarea');
+      if (event.key === 'Escape' && !field) onClose();
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
