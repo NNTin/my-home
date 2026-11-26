@@ -995,10 +995,10 @@ viewer's own renderer instead, and the PR says so. Either way the tier's interfa
 
 **The measuring page (#119).** `/?render=measure` on a desktop traces the three fixed views one after the
 other at 1920 x 1080 px, to 256 samples a pixel with 8 bounces, and ends with a table to paste into the issue:
-the graphics card, the browser, the chunk's size as downloaded and, per view, the seconds to a clean still and
+the graphics card, the browser, the chunk's size (gzipped as CI measures it, and as the server sent it) and, per view, the seconds to a clean still and
 to the sample target. "Clean" is a number (D96): the image is kept at 16, 32, 64, 128 and 256 samples, and it is
 clean at the first of these after which twice the samples change fewer than 1 % of its pixels by more than 4 of
-255 levels. `&size=1280x720`, `&samples=`, `&bounces=`, `&limit=<seconds a view>` and `&kernel=mega` (the
+255 levels. `&size=1280x720`, `&samples=`, `&bounces=`, `&limit=<seconds a view>`, `&views=eye,section` and `&kernel=mega` (the
 library's other backend) change what is measured. How to read it: `docs/render-mode.md`.
 
 **What the tracer is given (#119).** The draw items of what the view shows, merged by the viewer's own batching;

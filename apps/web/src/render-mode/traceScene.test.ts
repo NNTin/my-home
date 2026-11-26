@@ -12,7 +12,7 @@ import { FinishTextures } from '../finishes/textures';
 import { furnitureViews } from '../scene/furnitureViews';
 import { CAP_FINISH } from '../views/caps';
 import { viewFrame } from '../views/named';
-import { gateViews, viewInputs, type GateInputs } from './gate';
+import { gateSettings, gateViews, viewInputs, type GateInputs } from './gate';
 import {
   buildTraceScene,
   frameCamera,
@@ -58,6 +58,14 @@ const named = (kind: string) => views.find((v) => v.kind === kind)!;
 describe('the scene render mode traces', () => {
   it('measures the three fixed views', () => {
     expect(views.map((v) => v.kind)).toEqual(['cutaway', 'section', 'eye']);
+  });
+
+  it('measures some of them when the address names them', () => {
+    const { views: only } = gateSettings('?render=measure&views=eye,section,nonsense');
+    expect(only).toEqual(['eye', 'section']);
+    // In the fixed order, whatever the address' order.
+    expect(gateViews(scene, only).map((v) => v.kind)).toEqual(['section', 'eye']);
+    expect(gateSettings('?render=measure').views).toEqual([]);
   });
 
   it("is the viewer's batches of what the view shows, and the ground", () => {

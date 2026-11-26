@@ -37,7 +37,7 @@ function gate() {
 }
 
 /** A still whose tracer and texture files are stand-ins, with what happened to them. */
-function fakeStill() {
+function fakeStill(host = document.createElement('div')) {
   const textures = gate();
   const tracer = gate();
   const log = {
@@ -93,7 +93,7 @@ function fakeStill() {
       return trace;
     },
   };
-  const still = new Still(document.createElement('div'), () => 0, parts);
+  const still = new Still(host, () => 0, parts);
   const show = (name: string) =>
     still.show({ name, materials: {} } as unknown as TraceInputs, {
       camera: {} as PerspectiveCamera,
@@ -181,6 +181,44 @@ describe('starting and stopping a still', () => {
     expect(log.started).toEqual(['cutaway', 'section']);
     expect(log.created).toBe(1);
     expect(log.disposedScenes).toBe(1);
+  });
+
+  it('"Stop" before a new view of the same size started keeps no image of the view before', async () => {
+    const { still, show, settle, textures, tracer, log } = fakeStill();
+    textures.open();
+    tracer.open();
+    show('cutaway');
+    await settle();
+    expect(still.hasImage).toBe(true);
+    // The next view has the same size: the tracer, with the cutaway's image, is kept for it.
+    show('section');
+    still.stop();
+    await settle();
+    expect(log.started).toEqual(['cutaway']);
+    expect(still.hasImage).toBe(false);
+    await expect(still.image()).rejects.toThrow('nothing is traced yet');
+    expect(still.progress()).toMatchObject({ running: false, samples: 0, done: false });
+    // "Render" on it again traces it, and that image is the still.
+    show('section');
+    await settle();
+    expect(log.started).toEqual(['cutaway', 'section']);
+    expect(still.hasImage).toBe(true);
+  });
+
+  it('hides the image of the view before until the new view has its first sample', async () => {
+    const host = document.createElement('div');
+    const { still, show, settle, textures, tracer } = fakeStill(host);
+    textures.open();
+    tracer.open();
+    show('cutaway');
+    await settle();
+    still.progress();
+    expect(host.style.visibility).toBe('');
+    show('section');
+    expect(host.style.visibility).toBe('hidden');
+    await settle();
+    still.progress();
+    expect(host.style.visibility).toBe('');
   });
 
   it('closed while it is prepared, it starts nothing and frees the tracer', async () => {

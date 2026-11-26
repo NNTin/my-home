@@ -39,8 +39,9 @@ const context: GateContext = {
   height: 1080,
   samples: 256,
   bounces: 8,
+  limit: 180,
   kernel: 'wavefront',
-  chunkBytes: 290000,
+  chunk: { served: 356_940, encoding: 'gzip', decoded: 1_064_400, gzip: 296_200 },
 };
 
 describe('the gate of render mode', () => {
@@ -83,7 +84,14 @@ describe('the gate of render mode', () => {
     ]);
     expect(report).toContain('| Commit | 0123456 |');
     expect(report).toContain('| Graphics (WebGL) | A card |');
-    expect(report).toContain('| `render-path` chunk, as downloaded | 290.0 kB |');
+    expect(report).toContain(
+      '| `render-path`, gzipped as CI measures it (budget 340 kB) | 296.2 kB |',
+    );
+    expect(report).toContain('| `render-path`, as the server sent it | 356.9 kB (gzip) |');
+    expect(report).toContain('| `render-path`, uncompressed | 1064.4 kB |');
+    expect(gateReport({ ...context, chunk: undefined }, [])).toContain(
+      '| `render-path` chunk | not reported |',
+    );
     expect(report).toContain('| cutaway | 13.0 s at 64 samples | 256 samples in 49.0 s |');
     expect(report).toContain('| pass |');
     expect(report).toContain('| section | not reached | 40 samples in 180.0 s (time limit) |');

@@ -51,19 +51,27 @@ still. On a desktop with a graphics card:
 
 What the table says:
 
-| Row or column                       | Meaning                                                                    |
-| ----------------------------------- | -------------------------------------------------------------------------- |
-| WebGPU adapter, Graphics (WebGL)    | The graphics card as the browser names it, twice: the second has the model |
-| `render-path` chunk                 | The lazy chunk's size as this browser downloaded it                        |
-| Clean still                         | Seconds until the image was clean, and the samples it had then             |
-| Sample target                       | Seconds to 256 samples a pixel, or what was reached at the time limit      |
-| First sample                        | Seconds until the tracer had compiled and drawn anything                   |
-| Gate (60 s)                         | `pass` when the view was clean within 60 s                                 |
-| Pixels changed since the one before | The share of pixels that changed by more than 4 of 255 levels              |
+| Row or column                        | Meaning                                                                    |
+| ------------------------------------ | -------------------------------------------------------------------------- |
+| WebGPU adapter, Graphics (WebGL)     | The graphics card as the browser names it, twice: the second has the model |
+| `render-path`, gzipped as CI         | The chunk gzipped in the browser: the number the 340 kB budget is about    |
+| `render-path`, as the server sent it | The bytes downloaded, compressed as the server chose (named if it says)    |
+| `render-path`, uncompressed          | The chunk's files as they run                                              |
+| Clean still                          | Seconds until the image was clean, and the samples it had then             |
+| Sample target                        | Seconds to 256 samples a pixel, or what was reached at the time limit      |
+| First sample                         | Seconds until the tracer had compiled and drawn anything                   |
+| Gate (60 s)                          | `pass` when the view was clean within 60 s                                 |
+| Pixels changed since the one before  | The share of pixels that changed by more than 4 of 255 levels              |
 
 **Clean** is a number, so that two machines can be compared: the image is kept at 16, 32, 64, 128 and 256
 samples, and it is clean at the first of these after which twice the samples change fewer than 1 % of its
 pixels by more than 4 levels. Look at the stills as well: the number does not see a wrong colour.
+
+**The chunk's three sizes.** The budget (`apps/web/bundle-budget.json`, D104) is the built files gzipped at
+level 9, which CI measures (`pnpm check:bundle`). What a browser downloads is what the server sends: nginx
+(`apps/web/nginx/default.conf.template`) gzips at its default level 1, which is about a fifth larger (356.9 kB
+against 295.5 kB for the same file in #119). The page gzips the files once more in the browser, at level 6: about
+a kilobyte over CI's number.
 
 On a fast graphics card two of these sample counts can fall between two looks at the tracer (it is asked
 five times a second). The image is then compared with one of a quarter of its samples instead of half: the
@@ -78,6 +86,7 @@ The address takes more, for trying things without a new build:
 | `bounces=5`     | How often a path may scatter                                 | `8`         |
 | `limit=300`     | Seconds after which a view is given up                       | `180`       |
 | `kernel=mega`   | The tracer's other backend (one kernel instead of wavefront) | wavefront   |
+| `views=eye`     | Only these fixed views, comma separated, in the fixed order  | all three   |
 | `adapter=any`   | Lets a software WebGPU adapter through (also for **Render**) | refused     |
 
 ## For developers
