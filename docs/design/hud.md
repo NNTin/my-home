@@ -281,20 +281,21 @@ The beats of upstream's elements are as upstream made them (their READMEs); the 
 
 ### 4.7 The catalogue page and the piece pages
 
-| Today                                        | Becomes                                                 | Reaction (beats)                 | Word               | States       |
-| -------------------------------------------- | ------------------------------------------------------- | -------------------------------- | ------------------ | ------------ |
-| Back link ("← my-home")                      | _`sakuga-button` compact secondary `href`_              | upstream secondary               | —                  | rest         |
-| Search the catalogue                         | `sakuga-input` `type="search"`                          | upstream                         | —                  | focus        |
-| Catalogue cards, finish cards                | _`sakuga-card` `href`_                                  | squash, wedges at the corner     | —                  | rest         |
-| Piece page: 3D / Section view switch         | _`sakuga-segmented`_                                    | as the level switch              | カチッ             | one selected |
-| Piece page: toggles (dimensions, mounting)   | `sakuga-checkbox`                                       | upstream                         | ズザッ             | —            |
-| Playground: ranges                           | `sakuga-slider`                                         | upstream                         | シュッ             | —            |
-| Playground: colour, select                   | _`sakuga-field`_                                        | §5.3                             | カチッ on a change | —            |
-| Notes: textarea, Add, Edit, Save             | _`sakuga-field`_, `sakuga-button` (Save: primary)       | upstream                         | ドン (Save)        | busy         |
-| Photos strip, photo viewer (`role=dialog`)   | _`sakuga-card`_; the viewer a modal _`sakuga-panel`_    | panel lands; leaves by shrinking | —                  | open         |
-| Place form: home, level, room selects; Place | _`sakuga-field`_; `sakuga-button` primary `type=submit` | upstream primary                 | ドン               | busy         |
-| History: Undo                                | `sakuga-button` secondary                               | upstream secondary               | —                  | —            |
-| Uses, use editor fields                      | _`sakuga-card`_, _`sakuga-field`_, `sakuga-input`       | as theirs                        | —                  | —            |
+| Today                                        | Becomes                                                       | Reaction (beats)                 | Word               | States       |
+| -------------------------------------------- | ------------------------------------------------------------- | -------------------------------- | ------------------ | ------------ |
+| Back link ("← my-home")                      | _`sakuga-button` compact secondary `href`_                    | upstream secondary               | —                  | rest         |
+| Piece page: Edit (header)                    | _`sakuga-toggle` compact_ on the header's second line (§5.13) | the drawn flip                   | カチッ (painted)   | off, on      |
+| Search the catalogue                         | `sakuga-input` `type="search"`                                | upstream                         | —                  | focus        |
+| Catalogue cards, finish cards                | _`sakuga-card` `href`_                                        | squash, wedges at the corner     | —                  | rest         |
+| Piece page: 3D / Section view switch         | _`sakuga-segmented`_                                          | as the level switch              | カチッ             | one selected |
+| Piece page: toggles (dimensions, mounting)   | `sakuga-checkbox`                                             | upstream                         | ズザッ             | —            |
+| Playground: ranges                           | `sakuga-slider`                                               | upstream                         | シュッ             | —            |
+| Playground: colour, select                   | _`sakuga-field`_                                              | §5.3                             | カチッ on a change | —            |
+| Notes: textarea, Add, Edit, Save             | _`sakuga-field`_, `sakuga-button` (Save: primary)             | upstream                         | ドン (Save)        | busy         |
+| Photos strip, photo viewer (`role=dialog`)   | _`sakuga-card`_; the viewer a modal _`sakuga-panel`_          | panel lands; leaves by shrinking | —                  | open         |
+| Place form: home, level, room selects; Place | _`sakuga-field`_; `sakuga-button` primary `type=submit`       | upstream primary                 | ドン               | busy         |
+| History: Undo                                | `sakuga-button` secondary                                     | upstream secondary               | —                  | —            |
+| Uses, use editor fields                      | _`sakuga-card`_, _`sakuga-field`_, `sakuga-input`             | as theirs                        | —                  | —            |
 
 ### 4.8 Upstream's toggle, and what the app does not use
 
@@ -535,6 +536,10 @@ draws, its size and how its frames arrive (§6.1).
     stage tools hidden), the edit badge says that edit mode is on, as today.
   - _Desktop:_ a compact switch on the second line of the control panel's header (the home's name, then "Edit"
     and the switch on the right), at least 58 px below the top of the window.
+  - _The piece pages:_ the same, in their sticky header (`PiecePage.tsx`, the third place `EditToggle` is used):
+    the name and the kind on the first line, "Edit", the switch and the edit badge on a second line at the right.
+  - The three places share one wrapper (`editMode/EditToggle.tsx` renders the toggle); its accessible name stays
+    "Edit" with `role="switch"` and `aria-checked`, which the smokes then look for instead of a pressed button.
 - **Before the frames are there:** the switch is drawn in CSS (a paper track with the ink line, a white knob,
   the track `--sk-pri` when on), flips at once, and works. The rest frames replace it when they arrive.
 - **Reduced motion or Effects off:** it jumps to the end frame (upstream), and the full sheet is never fetched.
