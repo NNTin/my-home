@@ -1959,6 +1959,8 @@ body {
    compass rose in the top right corner. */
 .piece-toolbar {
   position: absolute;
+  /* Its line and padding inside its width: it stays clear of the compass. */
+  box-sizing: border-box;
   top: 0.75rem;
   left: calc(0.75rem + env(safe-area-inset-left, 0px));
   z-index: 7;
@@ -2278,16 +2280,31 @@ body:has(.page) {
   height: 100%;
 }
 
-/* The viewer's warnings (sakuga-toast kind="warn"): over the foot of the view, clear of the stage tools. */
+/*
+ * The viewer's warnings (sakuga-toast kind="warn"): over the foot of the view, clear of the stage
+ * tools. It never takes a touch (§8.2; B25): its host keeps its place while hidden, over the view, and
+ * it leaves by itself. Walking, it sits in the middle of the screen, clear of the pad and the map.
+ */
 .viewer-toast {
   position: absolute;
   bottom: 4.5rem;
   left: calc(50% - 118px);
   z-index: 12;
+  pointer-events: none;
+}
+
+.viewer-toast::part(toast),
+.viewer-toast::part(close) {
+  pointer-events: none;
 }
 
 .viewer.mobile .viewer-toast {
   left: calc(0.75rem + env(safe-area-inset-left, 0px));
+}
+
+.viewer.walking .viewer-toast {
+  top: 40%;
+  bottom: auto;
 }
 
 /* A badge without Sakuga (hud/fallback.ts) shows its count as text. */
