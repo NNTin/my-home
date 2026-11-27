@@ -11,6 +11,9 @@ import { WALK_SESSION_KEY } from './walk/walkSession';
 // jsdom has no WebGL, so the R3F canvas is replaced with a stub that exposes what it would draw.
 let lastScene: SceneProps | undefined;
 const shown = () => lastScene && shownScene(lastScene);
+/** The desktop's surfaces open from the lower right corner (HUD v2 #200). */
+const views = async () => fireEvent.click(await screen.findByRole('button', { name: 'Views' }));
+const tools = async () => fireEvent.click(await screen.findByRole('button', { name: 'Tools' }));
 vi.mock('./scene/Scene', () => ({
   Scene: (props: SceneProps) => {
     lastScene = props;
@@ -59,6 +62,7 @@ describe('App', () => {
     expect(lastScene?.quality).toBe('fast');
     // The URL is for this visit only.
     expect(localStorage.getItem('my-home.quality')).toBeNull();
+    await views();
     const quality = within(screen.getByRole('group', { name: 'Quality' }));
     expect(quality.getByLabelText('Fast')).toBeChecked();
     fireEvent.click(quality.getByLabelText('Auto'));
@@ -73,11 +77,13 @@ describe('App', () => {
     expect(await screen.findByTestId('scene')).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith('/api/homes', expect.anything());
     expect(fetchMock).toHaveBeenCalledWith('/api/homes/mock-home', expect.anything());
+    await tools();
     expect(screen.getByText('Mock home')).toBeInTheDocument();
     expect(levelsOf()).toEqual(new Set(['souterrain']));
     expect(shown()?.roofPlanes).toEqual([]);
-    const cutaway = within(screen.getByRole('group', { name: 'Show up to level' }));
+    const cutaway = within(screen.getByRole('radiogroup', { name: 'Show up to level' }));
     expect(cutaway.getByLabelText('Souterrain')).toBeChecked();
+    await views();
     const levels = within(screen.getByRole('group', { name: 'Levels' }));
     expect(levels.getByRole('checkbox', { name: 'Souterrain' })).toBeChecked();
     expect(levels.getByRole('checkbox', { name: 'Ground floor' })).not.toBeChecked();
@@ -94,7 +100,7 @@ describe('App', () => {
   it('cuts away the upper levels to look into the souterrain', async () => {
     stubApi();
     render(<App />);
-    const cutaway = within(await screen.findByRole('group', { name: 'Show up to level' }));
+    const cutaway = within(await screen.findByRole('radiogroup', { name: 'Show up to level' }));
 
     fireEvent.click(cutaway.getByLabelText('Souterrain'));
     expect(levelsOf()).toEqual(new Set(['souterrain']));
@@ -107,7 +113,7 @@ describe('App', () => {
     stubApi();
     enterEditMode();
     render(<App />);
-    const cutaway = within(await screen.findByRole('group', { name: 'Show up to level' }));
+    const cutaway = within(await screen.findByRole('radiogroup', { name: 'Show up to level' }));
     fireEvent.click(cutaway.getByLabelText('Roof'));
     expect(shown()?.roofPlanes).toHaveLength(2);
     expect(levelsOf()).toEqual(new Set(['souterrain', 'ground-floor', 'first-floor']));
@@ -124,6 +130,7 @@ describe('App', () => {
   it('toggles apartments, levels and outdoor areas', async () => {
     stubApi();
     render(<App />);
+    await views();
     const apartments = within(await screen.findByRole('group', { name: 'Apartments' }));
     fireEvent.click(apartments.getByRole('checkbox', { name: 'Ground-floor apartment' }));
     expect(levelsOf().has('ground-floor')).toBe(false);
@@ -144,6 +151,7 @@ describe('App', () => {
     const tiny = { ...mockHome, id: 'tiny', name: 'Tiny home', outdoorAreas: [] };
     stubApi([homeSummary('mock-home', 'Mock home'), homeSummary('tiny', 'Tiny home')], { tiny });
     render(<App />);
+    await tools();
     fireEvent.change(await screen.findByLabelText('Home'), { target: { value: 'tiny' } });
     await vi.waitFor(() => expect(shown()?.outdoorAreas).toEqual([]));
     expect(window.location.search).toBe('?home=tiny');
@@ -201,13 +209,13 @@ describe('App', () => {
     it('returns to the viewer as it was on exit', async () => {
       stubApi();
       render(<App />);
-      const cutaway = within(await screen.findByRole('group', { name: 'Show up to level' }));
+      const cutaway = within(await screen.findByRole('radiogroup', { name: 'Show up to level' }));
       fireEvent.click(cutaway.getByLabelText('Ground floor'));
       fireEvent.click(screen.getByRole('button', { name: /Walk and take photos/ }));
       fireEvent.click(screen.getByRole('button', { name: /Exit/ }));
 
       expect(lastScene?.walk).toBeUndefined();
-      expect(screen.getByRole('region', { name: 'View controls' })).toBeInTheDocument();
+      expect(screen.getByRole('toolbar', { name: 'Views, Edit and Tools' })).toBeInTheDocument();
       expect(levelsOf()).toEqual(new Set(['souterrain', 'ground-floor']));
     });
 
@@ -332,13 +340,35 @@ describe('App', () => {
     });
   });
 
+  it('opens one surface at a time from the corner; Escape closes it and gives the focus back (HUD v2 #200)', async () => {
+    stubApi();
+    render(<App />);
+    await views();
+    expect(screen.getByRole('region', { name: 'View controls' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Views' })).toHaveAttribute('aria-pressed', 'true');
+    // Tools replaces Views: one surface at a time.
+    await tools();
+    expect(screen.queryByRole('region', { name: 'View controls' })).toBeNull();
+    expect(screen.getByRole('region', { name: 'Tools' })).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('region', { name: 'Tools' })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Tools' }));
+    // Pressed again, a trigger closes its surface.
+    await views();
+    await views();
+    expect(screen.queryByRole('region', { name: 'View controls' })).toBeNull();
+  });
+
   describe('pages', () => {
     it('shows the viewer on / with the title of the app', async () => {
       stubApi();
       render(<App />);
       expect(await screen.findByTestId('scene')).toBeInTheDocument();
       expect(document.title).toBe('my-home');
-      expect(screen.getByRole('region', { name: 'View controls' })).toBeInTheDocument();
+      // At rest the desktop is the corners alone (HUD v2 #200).
+      expect(screen.getByRole('toolbar', { name: 'Mode and level' })).toBeInTheDocument();
+      expect(screen.getByRole('toolbar', { name: 'Views, Edit and Tools' })).toBeInTheDocument();
+      expect(screen.queryByRole('region', { name: 'View controls' })).toBeNull();
     });
 
     it('shows the catalogue on /catalog, without loading the home or reading ?walk', async () => {
@@ -389,7 +419,8 @@ describe('App', () => {
       await screen.findByTestId('scene');
       // The stub scene never draws a frame: the viewer is still loading.
       expect(document.getElementById('boot')).not.toBeNull();
-      fireEvent.click(screen.getByRole('link', { name: '📚 Catalogue' }));
+      await tools();
+      fireEvent.click(screen.getByRole('link', { name: 'Catalogue' }));
       expect(await screen.findByRole('heading', { name: 'Catalogue' })).toBeInTheDocument();
       expect(document.getElementById('boot')).toBeNull();
     });
@@ -399,7 +430,9 @@ describe('App', () => {
       stubApi();
       render(<App />);
       expect(await screen.findByRole('region', { name: 'Photos' })).toBeInTheDocument();
-      const entry = screen.getByRole('link', { name: '📚 Catalogue' });
+      // Tools over the photos goes back to its menu.
+      await tools();
+      const entry = screen.getByRole('link', { name: 'Catalogue' });
       expect(entry).toHaveAttribute('href', '/catalog?home=mock-home');
       fireEvent.click(entry);
       expect(await screen.findByRole('heading', { name: 'Catalogue' })).toBeInTheDocument();
@@ -426,9 +459,13 @@ describe('App', () => {
       const tiny = { ...mockHome, id: 'tiny', name: 'Tiny home', outdoorAreas: [] };
       stubApi([homeSummary('mock-home', 'Mock home'), homeSummary('tiny', 'Tiny home')], { tiny });
       render(<App />);
+      await tools();
       fireEvent.change(await screen.findByLabelText('Home'), { target: { value: 'tiny' } });
+      // The other home's viewer starts at rest: Tools again.
+      await vi.waitFor(() => expect(shown()?.outdoorAreas).toEqual([]));
+      await tools();
       await vi.waitFor(() =>
-        expect(screen.getByRole('link', { name: '📚 Catalogue' })).toHaveAttribute(
+        expect(screen.getByRole('link', { name: 'Catalogue' })).toHaveAttribute(
           'href',
           '/catalog?home=tiny',
         ),

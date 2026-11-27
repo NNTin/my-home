@@ -13,7 +13,8 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - `apps/web/src/catalog/<family>/<variant>/`: one piece module per catalogue type (windows, doors, gates,
   furniture, kitchen units, appliances, the bath room's pieces, the `fixtures` kind: lights, the radiator, and the `outdoor` kind: patio and
   garden pieces), auto-registered (`docs/adding-piece-type.md`); the furniture (one placement set per home) and its editor in `docs/furniture.md`;
-  the phone layout (top bar, sheet) in `docs/mobile.md`
+  the viewer's HUD layout (the desktop's corners and one surface, the phone's top bar, Tools and sheet) in
+  `docs/mobile.md`; the desktop rests with no panel open: a test or smoke opens **Views** or **Tools** first (#200)
 - `packages/shared/src/finishes/`: the finish library (surface materials: one definition per finish, its
   description and texture source apart in `definitions/*.about.ts`), and
   `apps/web/src/finishes/`: their texture files (CC0 only, `ASSETS.md`), loader and materials; a room or exterior
@@ -152,6 +153,10 @@ What reading CI has taught us:
   (canvas shots of the model).
 - **Staging is shared:** a check counts only for the commit staging ran before and after it, and the owner may
   be editing there. A difference in a screenshot can be data, not rendering: look at `seed.sh staging diff`.
+
+- **A window `keydown` listener re-added on every render misses the key that re-rendered:** React renders a key's
+  update at once, and the listener taken off mid-event is not called. One listener calling the latest handler
+  through a ref (the viewer's Escape, #200); jsdom's `fireEvent` did not show it, the real key did.
 
 - **The Sakuga clock sleeps at rest** (#168): a HUD element runs frames only while awake (a press, a key, an
   attribute, a spring moved). A new element's state that moves outside its springs must call `wake()` or say

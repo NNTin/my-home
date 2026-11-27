@@ -172,7 +172,8 @@ none)`, and `BASE_CSS`'s `:host` resets the variable so it never reaches another
 
 - `button` and `icon-button` (HUD v2 #199): `appearance="clear"`: no box at rest, a crisp edge (`-webkit-text-stroke`
   under the fill), `tone="dark|light"`, `backing`; focus with an edge ring, pressed as an ink fill with a paper edge;
-  in `tone="light"` an icon is a paper line on an ink shape. CSS only. Demo: `gallery/clear.html` (light, dark, busy).
+  in `tone="light"` an icon is a paper line on an ink shape. CSS only. Hover's backing leaves a pressed control alone (#200: a
+  pressed Views under the mouse lost its ink fill). Demo: `gallery/clear.html` (light, dark, busy).
 
 ### Elements of our own
 

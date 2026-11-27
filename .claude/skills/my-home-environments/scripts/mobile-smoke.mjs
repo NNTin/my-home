@@ -233,7 +233,11 @@ async function frameChecks(browser, { device, base, host, homeId }) {
           .first()
           .tap();
       } else {
-        await page.getByRole('group', { name: 'Show up to level' }).getByLabel('Roof').check();
+        // The level row in the upper left corner (HUD v2 #200), the same radios as before in the panel.
+        await page
+          .getByRole('radiogroup', { name: 'Show up to level' })
+          .getByRole('radio', { name: 'Roof' })
+          .click();
       }
       await page.waitForTimeout(1500);
       await nudge();
@@ -335,6 +339,13 @@ async function tierSwitch(page, { device, where, perf, settled }) {
     // The control is in the View panel of the sheet.
     await page.getByRole('tab', { name: /View/ }).tap();
     await page.waitForTimeout(800);
+  } else {
+    // On the desktop, in the Views surface (HUD v2 #200); a build before it shows the panel at rest.
+    const button = page.getByRole('button', { name: 'Views', exact: true });
+    if ((await button.count()) > 0 && (await button.getAttribute('aria-pressed')) !== 'true') {
+      await button.click();
+      await page.waitForTimeout(800);
+    }
   }
   const group = page.getByRole('group', { name: 'Quality' });
   const choose = async (name) => {
@@ -662,7 +673,8 @@ async function viewChecks(browser, { device, base, host, homeId }) {
       hints: 'off',
       stepdown: 'off',
     });
-    if (phone) query.set('panel', 'view');
+    // The phone's View tab; the desktop's Views surface (HUD v2 #200; a build before it ignores it there).
+    query.set('panel', 'view');
     if (homeId) query.set('home', homeId);
     await page.goto(new URL(`/?${query}&${view}`, base).href, {
       waitUntil: 'networkidle',
@@ -1047,7 +1059,7 @@ async function smoke(out, homeId) {
     // control stands for its host, which `elementFromPoint` returns for it.
     const small = await page
       .locator(
-        '.topbar button, .topbar select, .topbar sakuga-icon-button, .sheet-bar button, .reset-view',
+        '.topbar button, .topbar select, .topbar sakuga-icon-button, .sheet-bar button, .reset-view, .stage-tools .hud-tools',
       )
       .evaluateAll(missedTouches, TOUCH);
     check(

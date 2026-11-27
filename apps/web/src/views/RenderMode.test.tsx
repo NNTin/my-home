@@ -35,6 +35,10 @@ async function open(path: string) {
   fakeApi({ homes: [homeSummary('mock-home', 'Mock home')], models: {} });
   window.history.replaceState(null, '', path);
   render(<App />);
+  // Render is in the desktop's Views surface (HUD v2 #200); a phone's View tab has none.
+  await screen.findByTestId('scene');
+  const button = screen.queryByRole('button', { name: 'Views' });
+  if (button) fireEvent.click(button);
   return screen.findByRole('group', { name: 'Views' }, { timeout: 10_000 });
 }
 
