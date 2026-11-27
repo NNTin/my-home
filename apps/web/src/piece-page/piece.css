@@ -8,18 +8,17 @@
 .piece-kind {
   flex-basis: 100%;
   margin: -0.25rem 0 0;
-  color: #aab0b8;
+  color: var(--sk-dim);
   font-size: 0.875rem;
 }
 
 .piece-description {
   margin: 1rem 0;
-  color: #c5c9d0;
 }
 
 .piece-note {
   margin: 0 0 0.75rem;
-  color: #aab0b8;
+  color: var(--sk-dim);
   font-size: 0.875rem;
 }
 
@@ -45,9 +44,11 @@
   position: relative;
   height: min(65vh, 40rem);
   overflow: hidden;
-  border: 1px solid rgb(255 255 255 / 0.12);
-  border-radius: 0.5rem;
+  /* The 3D preview keeps its own backdrop, inside a paper frame (§3.5). */
+  border: var(--hud-line);
+  border-radius: var(--sk-r);
   background: #cfdde8;
+  box-shadow: var(--sk-sh);
 }
 
 /* Upright: the preview takes 40 % of the height, the panel scrolls below it. */
@@ -79,9 +80,11 @@
   position: absolute;
   top: 0;
   left: 0;
-  padding: 0.0625rem 0.3125rem;
-  border-radius: 0.25rem;
-  background: rgb(255 255 255 / 0.9);
+  padding: 0 0.3125rem;
+  /* A paper tag like the room names, in the dimension lines' colour. */
+  border: 2px solid #1f4e8c;
+  border-radius: 0.5rem;
+  background: var(--sk-card);
   color: #1f4e8c;
   font-size: 0.75rem;
   font-weight: 600;
@@ -96,48 +99,42 @@
   min-height: 44px;
   box-sizing: border-box;
   padding: 0.375rem 0.75rem;
-  border: 1px solid rgb(255 255 255 / 0.3);
-  border-radius: 0.375rem;
-  background: rgb(255 255 255 / 0.1);
-  color: inherit;
   font: inherit;
+  font-style: italic;
+  font-weight: 800;
   cursor: pointer;
   touch-action: manipulation;
 }
 
 .piece-page button:disabled {
-  opacity: 0.4;
   cursor: default;
 }
 
-.piece-page button:focus-visible,
-.piece-page input:focus-visible {
-  outline: 2px solid #8ab4f8;
-  outline-offset: 2px;
-}
-
+/* One segmented row: the chosen one filled with the primary tone (§5.2). */
 .piece-views {
   display: inline-flex;
   margin-bottom: 0.5rem;
+  border-radius: var(--hud-r-compact);
+  box-shadow: var(--hud-sh-compact);
 }
 
-.piece-views button {
+.piece-page .piece-views button {
   border-radius: 0;
+  box-shadow: none;
 }
 
-.piece-views button:first-child {
-  border-radius: 0.375rem 0 0 0.375rem;
+.piece-page .piece-views button:first-child {
+  border-radius: var(--hud-r-compact) 0 0 var(--hud-r-compact);
 }
 
-.piece-views button:last-child {
+.piece-page .piece-views button:last-child {
   border-left: none;
-  border-radius: 0 0.375rem 0.375rem 0;
+  border-radius: 0 var(--hud-r-compact) var(--hud-r-compact) 0;
 }
 
-.piece-views button[aria-pressed='true'] {
-  background: #3d8bff;
-  border-color: #3d8bff;
-  color: #fff;
+.piece-page .piece-views button[aria-pressed='true'] {
+  background: var(--sk-pri);
+  color: var(--sk-ink);
 }
 
 .piece-tools {
@@ -176,13 +173,13 @@
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.25rem 0;
-  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  border-bottom: var(--hud-rule);
 }
 
 .piece-dimensions dt,
 .design-params dt,
 .section-labels dt {
-  color: #aab0b8;
+  color: var(--sk-dim);
 }
 
 .piece-dimensions dd,
@@ -235,7 +232,8 @@ svg.section rect {
 
 .section-view figcaption {
   padding: 0.5rem 0.75rem;
-  background: #1d2129;
+  border-top: var(--hud-line-compact);
+  background: var(--sk-card);
   font-size: 0.875rem;
 }
 
@@ -257,12 +255,12 @@ svg.section rect {
 .section-swatch {
   width: 1rem;
   height: 1rem;
-  border: 1px solid rgb(255 255 255 / 0.4);
+  border: 2px solid var(--sk-ink);
 }
 
 .section-note {
   margin: 0.5rem 0 0;
-  color: #aab0b8;
+  color: var(--sk-dim);
   font-size: 0.8125rem;
 }
 
@@ -283,7 +281,7 @@ svg.section rect {
 .playground-label {
   display: block;
   margin-bottom: 0.25rem;
-  font-weight: 600;
+  font-weight: 800;
 }
 
 .playground-control {
@@ -297,9 +295,10 @@ svg.section rect {
   width: 44px;
   height: 44px;
   padding: 0;
-  border: 1px solid rgb(255 255 255 / 0.3);
-  border-radius: 0.375rem;
-  background: none;
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  background: var(--sk-card);
+  box-shadow: var(--hud-sh-compact);
   cursor: pointer;
 }
 
@@ -308,10 +307,10 @@ svg.section rect {
   min-height: 44px;
   box-sizing: border-box;
   padding: 0.375rem 0.5rem;
-  border: 1px solid rgb(255 255 255 / 0.3);
-  border-radius: 0.375rem;
-  background: rgb(255 255 255 / 0.08);
-  color: inherit;
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  background: var(--sk-card);
+  color: var(--sk-ink);
   /* 16 px: iOS does not zoom the page when the field is focused. */
   font-size: 1rem;
   font-variant-numeric: tabular-nums;
@@ -324,8 +323,9 @@ select.playground-field {
   max-width: 100%;
 }
 
+/* Invalid: a pink shadow (§5.3). */
 .playground-field[aria-invalid='true'] {
-  border-color: #ff8a80;
+  box-shadow: 3px 4px 0 var(--sk-acc);
 }
 
 .playground-slider {
@@ -344,22 +344,22 @@ select.playground-field {
 
 .playground-hint {
   margin: 0.25rem 0 0;
-  color: #aab0b8;
+  color: var(--sk-dim);
   font-size: 0.8125rem;
 }
 
 .playground-error {
   margin: 0.25rem 0 0;
-  color: #ff8a80;
   font-size: 0.875rem;
 }
 
+/* A warning's box: paper with the ink line and a pink shadow. */
 .fit-issues {
   margin: 0 0 0.75rem;
   padding: 0.5rem 0.75rem 0.5rem 1.75rem;
-  border-radius: 0.375rem;
-  background: rgb(255 193 7 / 0.12);
-  color: #ffe082;
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  box-shadow: 3px 4px 0 var(--sk-acc);
   font-size: 0.875rem;
 }
 
@@ -368,7 +368,8 @@ select.playground-field {
   width: 1.5rem;
   height: 1.5rem;
   flex: none;
-  border: 1px solid rgb(255 255 255 / 0.4);
+  box-sizing: border-box;
+  border: 2px solid var(--sk-ink);
   border-radius: 0.25rem;
 }
 
@@ -379,12 +380,6 @@ select.playground-field {
 
 /* #45: Place, where-used, the per-use editor, history, photos and notes. */
 
-.piece-page .button.primary {
-  background: #3d8bff;
-  border-color: #3d8bff;
-  color: #fff;
-}
-
 .piece-page a.button {
   display: inline-flex;
   align-items: center;
@@ -394,7 +389,9 @@ select.playground-field {
 .piece-page .link-button {
   border-color: transparent;
   background: none;
-  color: #8ab4f8;
+  color: var(--sk-ink);
+  font-style: normal;
+  font-weight: 500;
   text-decoration: underline;
 }
 
@@ -410,7 +407,7 @@ select.playground-field {
   flex-direction: column;
   gap: 0.25rem;
   margin-bottom: 0.5rem;
-  font-weight: 600;
+  font-weight: 800;
 }
 
 .piece-page .field input,
@@ -419,10 +416,10 @@ select.playground-field {
   min-height: 44px;
   box-sizing: border-box;
   padding: 0.375rem 0.5rem;
-  border: 1px solid rgb(255 255 255 / 0.3);
-  border-radius: 0.375rem;
-  background: rgb(255 255 255 / 0.08);
-  color: inherit;
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  background: var(--sk-card);
+  color: var(--sk-ink);
   font: inherit;
   /* 16 px: iOS does not zoom the page when the field is focused. */
   font-size: 1rem;
@@ -430,7 +427,7 @@ select.playground-field {
 }
 
 .piece-page select option {
-  color: #111;
+  color: var(--sk-ink);
 }
 
 .piece-page textarea {
@@ -438,26 +435,23 @@ select.playground-field {
   resize: vertical;
 }
 
-.piece-page .error {
-  color: #ff8a80;
-}
-
 .piece-showing {
   margin: 0 0 0.5rem;
-  color: #aab0b8;
+  color: var(--sk-dim);
   font-size: 0.875rem;
 }
 
 .uses-count {
   margin: 0 0 0.75rem;
-  color: #aab0b8;
+  color: var(--sk-dim);
 }
 
 .uses-attention {
   margin-bottom: 1rem;
   padding: 0.5rem 0.75rem;
-  border-left: 3px solid #ffb74d;
-  background: rgb(255 193 7 / 0.08);
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  box-shadow: 3px 4px 0 var(--sk-acc);
 }
 
 .uses-attention h3,
@@ -480,7 +474,7 @@ select.playground-field {
 
 .uses-level-name {
   margin: 0.75rem 0 0.25rem;
-  color: #aab0b8;
+  color: var(--sk-dim);
   font-size: 0.875rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -495,14 +489,15 @@ select.playground-field {
 
 .use-row {
   padding: 0.5rem 0;
-  border-top: 1px solid rgb(255 255 255 / 0.12);
+  border-top: var(--hud-rule);
   scroll-margin-top: 5rem;
 }
 
 .use-row.open {
   padding: 0.5rem;
-  border-radius: 0.375rem;
-  background: rgb(255 255 255 / 0.05);
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  box-shadow: var(--hud-sh-compact);
 }
 
 .use-name {
@@ -513,7 +508,7 @@ select.playground-field {
 .use-where,
 .use-counts {
   margin: 0.125rem 0;
-  color: #aab0b8;
+  color: var(--sk-dim);
   font-size: 0.875rem;
 }
 
@@ -539,8 +534,11 @@ select.playground-field {
 .use-problems {
   margin: 0.25rem 0;
   padding-left: 1.25rem;
-  color: #ffe082;
   font-size: 0.875rem;
+}
+
+.use-problems li::marker {
+  color: var(--sk-acc);
 }
 
 .use-actions {
@@ -548,12 +546,6 @@ select.playground-field {
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 0.25rem;
-}
-
-.use-actions button[aria-pressed='true'] {
-  background: #3d8bff;
-  border-color: #3d8bff;
-  color: #fff;
 }
 
 .use-body {
@@ -576,26 +568,27 @@ select.playground-field {
   gap: 0.5rem;
   align-items: center;
   margin: 0.125rem 0 0;
-  color: #aab0b8;
+  color: var(--sk-dim);
   font-size: 0.8125rem;
 }
 
 .use-param.overridden .use-param-source > span {
-  color: #8ab4f8;
-  font-weight: 600;
+  color: var(--sk-ink);
+  font-weight: 800;
 }
 
 .use-conflict {
   margin: 0.5rem 0;
   padding: 0.5rem 0.75rem;
-  border-radius: 0.375rem;
-  background: rgb(255 138 128 / 0.12);
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  box-shadow: 3px 4px 0 var(--sk-acc);
 }
 
 .use-furniture {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 1px solid rgb(255 255 255 / 0.12);
+  border-top: var(--hud-rule);
 }
 
 .history-list {
@@ -611,20 +604,20 @@ select.playground-field {
   gap: 0.25rem;
   align-items: center;
   padding: 0.375rem 0;
-  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  border-bottom: var(--hud-rule);
 }
 
 .history-list li.undone .history-what {
-  color: #8a9099;
+  color: var(--sk-dim);
 }
 
 .history-list time {
-  color: #aab0b8;
+  color: var(--sk-dim);
 }
 
 .history-list .declared,
 .history-undone {
-  color: #8a9099;
+  color: var(--sk-dim);
   font-size: 0.8125rem;
 }
 
@@ -650,6 +643,11 @@ select.playground-field {
 .photo-strip .thumbnail {
   padding: 0;
   overflow: hidden;
+  border: 2px solid var(--sk-ink);
+  border-radius: var(--hud-r-compact);
+  background: var(--sk-card);
+  box-shadow: var(--hud-sh-compact);
+  cursor: pointer;
 }
 
 .photo-strip .thumbnail img {
@@ -670,7 +668,7 @@ select.playground-field {
 }
 
 .use-requests a {
-  color: #8ab4f8;
+  color: var(--sk-ink);
 }
 
 .photo-viewer {
@@ -683,7 +681,8 @@ select.playground-field {
   justify-content: center;
   padding: max(1rem, env(safe-area-inset-top)) var(--page-right, 1rem)
     max(1rem, env(safe-area-inset-bottom)) var(--page-left, 1rem);
-  background: rgb(10 12 16 / 0.92);
+  /* Opaque paper over the page, never a translucent veil (§3.4). */
+  background: var(--hud-page);
   overflow: auto;
 }
 
@@ -701,7 +700,7 @@ select.playground-field {
 
 .note-item {
   padding: 0.5rem 0;
-  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  border-bottom: var(--hud-rule);
 }
 
 .note-body {
@@ -725,7 +724,7 @@ select.playground-field {
   display: flex;
   align-items: center;
   cursor: pointer;
-  color: #aab0b8;
+  color: var(--sk-dim);
 }
 
 .place-form select {

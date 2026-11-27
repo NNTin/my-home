@@ -1,3 +1,34 @@
+/*
+ * The HUD is white paper on the scene (docs/design/hud.md §3): the Sakuga values, set here so they
+ * win over the core's :where(:root). They are upstream's; the app adds the compact size (§3.3) and
+ * the pages' background (§3.5). Today's native controls are drawn in paper with these values until
+ * their family turns them into Sakuga elements (#168).
+ */
+:root {
+  --sk-card: #fff;
+  --sk-ink: #1d1a4a;
+  --sk-dim: #8580b0;
+  --sk-soft: #b8b3ff;
+  --sk-pri: #8f8df7;
+  --sk-acc: #ff5fa8;
+  --sk-r: 15px;
+  --sk-bw: 3.2px;
+  --sk-sh: 6px 7px 0 var(--sk-soft);
+  --hud-r-compact: 11px;
+  --hud-bw-compact: 2.5px;
+  --hud-sh-compact: 3px 4px 0 var(--sk-soft);
+  /* A panel, bar or sheet: opaque paper, the ink line (no translucency, no blur). */
+  --hud-line: var(--sk-bw) solid var(--sk-ink);
+  --hud-line-compact: var(--hud-bw-compact) solid var(--sk-ink);
+  /* A thin rule inside a card, between rows; dashed between groups. */
+  --hud-rule: 1.5px solid var(--sk-soft);
+  --hud-focus: 2.5px solid var(--sk-acc);
+  --hud-page: #fff;
+  /* Light native controls: select lists, date pickers, scroll bars. */
+  color-scheme: light;
+  accent-color: var(--sk-pri);
+}
+
 html,
 body,
 #root,
@@ -9,7 +40,7 @@ body,
 
 body {
   background: #1d2129;
-  color: #e8eaed;
+  color: var(--sk-ink);
   font-family: system-ui, sans-serif;
   /* No pull-to-refresh or rubber-band scrolling under a drag on the 3D view. */
   overscroll-behavior: none;
@@ -41,11 +72,141 @@ body {
   left: 1rem;
   min-width: 14rem;
   padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  background: rgb(0 0 0 / 0.6);
+  border: var(--hud-line);
+  border-radius: var(--sk-r);
+  background: var(--sk-card);
+  box-shadow: var(--sk-sh);
   font-size: 0.875rem;
   /* Above the room names drawn over the canvas. */
   z-index: 10;
+}
+
+/*
+ * A warning or an error: ink text with a pink mark, never pink text (pink is an accent, §3.2).
+ * The mark is not read out (the text says what is wrong).
+ */
+.overlay .error::before,
+.panel .warning::before,
+.panel .save-status.offline::before,
+.panel .save-status.rejected::before,
+.panel .save-status.conflict::before,
+.walk-bar .walk-notice::before,
+.walk-compass.poor::before,
+.capture-sheet .error::before,
+.status-chip.warn::before,
+.playground-error::before,
+.piece-page .error::before {
+  margin-right: 0.3em;
+  color: var(--sk-acc);
+  font-weight: 800;
+  content: '!';
+  content: '!' / '';
+}
+
+/*
+ * Today's native buttons and fields in paper (until their family, #168): the paper face, the ink
+ * line and a hard shadow, labels in 800 italic like upstream's buttons; pressed is an ink fill
+ * (upstream's impact frame), and the focus is the pink ring.
+ */
+.panel button:not(.link, .thumbnail),
+.panel .button,
+.walk-hud button,
+.walk-hud .shutter,
+.walk-hud .chip,
+.walk-hud .camera-alt,
+.topbar button,
+.topbar select,
+.topbar-link,
+.reset-view,
+.hints button,
+.perf-readout button,
+.render-still-bar button,
+.piece-page button:not(.link-button, .thumbnail),
+.piece-page .button:not(.link-button) {
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  background: var(--sk-card);
+  box-shadow: var(--hud-sh-compact);
+  color: var(--sk-ink);
+}
+
+.panel button:not(.link, .thumbnail, .chip),
+.panel .button,
+.walk-hud button,
+.walk-hud .camera-alt,
+.topbar button,
+.topbar-link,
+.reset-view,
+.hints button,
+.perf-readout button,
+.render-still-bar button,
+.piece-page button:not(.link-button, .thumbnail),
+.piece-page .button:not(.link-button) {
+  font-style: italic;
+  font-weight: 800;
+}
+
+.panel button:not(.link, .thumbnail):hover:not(:disabled),
+.walk-hud button:hover:not(:disabled),
+.topbar button:hover,
+.topbar-link:hover,
+.reset-view:hover,
+.hints button:hover,
+.piece-page button:not(.link-button, .thumbnail):hover:not(:disabled),
+.piece-page .button:not(.link-button):hover {
+  box-shadow: 4px 5px 0 var(--sk-soft);
+}
+
+.panel button[aria-pressed='true'],
+.panel [role='tab'][aria-selected='true'],
+.panel .chip.on,
+.walk-hud button[aria-pressed='true'],
+.walk-hud .chip.on,
+.topbar button[aria-pressed='true'],
+.piece-page button[aria-pressed='true'] {
+  background: var(--sk-ink);
+  color: var(--sk-card);
+}
+
+.panel button:disabled,
+.walk-hud button:disabled,
+.piece-page button:disabled {
+  border-color: var(--sk-dim);
+  box-shadow: none;
+  color: var(--sk-dim);
+  opacity: 1;
+}
+
+.panel select,
+.panel input:not([type='checkbox'], [type='radio'], [type='range'], [type='color']),
+.panel textarea,
+.walk-hud select,
+.walk-hud input:not([type='checkbox'], [type='radio'], [type='range'], [type='file']),
+.walk-hud textarea,
+.perf-manual textarea {
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  background: var(--sk-card);
+  color: var(--sk-ink);
+}
+
+.panel :is(button, select, input, textarea, summary, a):focus-visible,
+.walk-hud :is(button, select, input, textarea, a):focus-visible,
+.walk-hud .shutter:focus-within,
+.walk-hud .camera-alt:focus-within,
+.panel .chip:focus-within,
+.walk-hud .chip:focus-within,
+.perf-readout :is(button, textarea):focus-visible,
+.render-still-bar button:focus-visible,
+.topbar :is(button, select, a):focus-visible,
+.sheet-bar button:focus-visible,
+.reset-view:focus-visible,
+.hints button:focus-visible,
+.item-toolbar :is(button, a):focus-visible,
+.compass:focus-visible,
+.page :is(a, button, input, select, textarea, summary):focus-visible {
+  outline: var(--hud-focus);
+  outline-offset: 3px;
 }
 
 .overlay h1 {
@@ -59,7 +220,7 @@ body {
 }
 
 .overlay .error {
-  color: #ff8a80;
+  color: var(--sk-ink);
 }
 
 .panel {
@@ -68,16 +229,18 @@ body {
   box-sizing: border-box;
 }
 
+/* A group: its heading in 800 italic over a dashed lavender rule (§4.2). */
 .panel fieldset {
   margin: 0.5rem 0 0;
-  padding: 0.25rem 0.5rem 0.5rem;
-  border: 1px solid rgb(255 255 255 / 0.2);
-  border-radius: 0.375rem;
+  padding: 0.25rem 0 0.5rem;
+  border: 0;
+  border-top: 2px dashed var(--sk-soft);
 }
 
 .panel legend {
-  padding: 0 0.25rem;
-  font-weight: 600;
+  padding: 0 0.375rem 0 0;
+  font-style: italic;
+  font-weight: 800;
 }
 
 .panel .toggle,
@@ -99,10 +262,10 @@ body {
 
 .panel h2 {
   margin: 0.375rem 0 0.125rem;
+  color: var(--sk-dim);
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 800;
   text-transform: uppercase;
-  opacity: 0.75;
 }
 
 .panel p {
@@ -117,11 +280,6 @@ body {
 }
 
 /* The Views control: the named views, what each can be set to, the backdrop. */
-.views-control button[aria-pressed='true'] {
-  border-color: #6aa9ff;
-  background: rgb(61 139 255 / 0.35);
-}
-
 .views-control .field input[type='range'] {
   width: 9rem;
   vertical-align: middle;
@@ -133,19 +291,16 @@ body {
 
 .panel button,
 .panel .button {
-  padding: 0.25rem 0.5rem;
-  border: 1px solid rgb(255 255 255 / 0.3);
-  border-radius: 0.25rem;
-  background: rgb(255 255 255 / 0.1);
-  color: inherit;
+  padding: 0.25rem 0.625rem;
   font: inherit;
+  font-style: italic;
+  font-weight: 800;
   text-decoration: none;
   cursor: pointer;
   touch-action: manipulation;
 }
 
 .panel button:disabled {
-  opacity: 0.4;
   cursor: default;
 }
 
@@ -161,25 +316,29 @@ body {
   padding: 0;
   border: none;
   background: none;
+  color: var(--sk-ink);
+  font-style: normal;
+  font-weight: 500;
   text-decoration: underline;
 }
 
 .panel .note,
 .panel .save-status {
-  opacity: 0.8;
+  color: var(--sk-dim);
 }
 
 .panel .save-status.offline,
 .panel .save-status.rejected,
 .panel .save-status.conflict {
-  color: #ffcc80;
-  opacity: 1;
+  color: var(--sk-ink);
 }
 
+/* A warning's box: paper with the ink line and a pink shadow. */
 .panel .conflict {
   padding: 0.25rem 0.5rem;
-  border: 1px solid #ffcc80;
-  border-radius: 0.25rem;
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  box-shadow: 3px 4px 0 var(--sk-acc);
 }
 
 .panel .flagged {
@@ -196,18 +355,14 @@ body {
   height: 4.5rem;
   padding: 0;
   transform: translateX(-50%);
-  border: 1px solid rgb(255 255 255 / 0.35);
+  border: var(--hud-line);
   border-radius: 50%;
-  background: rgb(0 0 0 / 0.6);
-  color: #e8eaed;
+  background: var(--sk-card);
+  box-shadow: var(--sk-sh);
+  color: var(--sk-ink);
   font: inherit;
   cursor: pointer;
   touch-action: manipulation;
-}
-
-.compass:focus-visible {
-  outline: 2px solid #a8d4ff;
-  outline-offset: 2px;
 }
 
 .compass-rose {
@@ -223,7 +378,8 @@ body {
   width: 0.55rem;
   height: 2.3rem;
   transform: translate(-50%, -50%);
-  background: linear-gradient(#ff6b5b 50%, #cfd3d8 50%);
+  /* Two flat tones, no blend: the north half pink, the south half lavender (§5.7). */
+  background: linear-gradient(var(--sk-acc) 50%, var(--sk-soft) 50%);
   clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
 }
 
@@ -240,7 +396,7 @@ body {
 }
 
 .compass-N {
-  color: #ff8a80;
+  color: var(--sk-acc);
 }
 
 .viewer.mobile .compass {
@@ -251,6 +407,8 @@ body {
   width: 3.75rem;
   height: 3.75rem;
   transform: none;
+  border-width: var(--hud-bw-compact);
+  box-shadow: var(--hud-sh-compact);
 }
 
 /* While walking there is no top bar: keep clear of the notch. */
@@ -278,16 +436,18 @@ body {
   pointer-events: none;
 }
 
+/* A small paper tag: white, a 2 px ink line, no shadow, no effects (§3.4). */
 .room-label {
   position: absolute;
   top: 0;
   left: 0;
-  padding: 0.1rem 0.4rem;
-  border-radius: 0.25rem;
-  background: rgb(0 0 0 / 0.55);
-  color: #fff;
+  padding: 0.05rem 0.4rem;
+  border: 2px solid var(--sk-ink);
+  border-radius: 0.5rem;
+  background: var(--sk-card);
+  color: var(--sk-ink);
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
@@ -319,10 +479,6 @@ body {
 .walk-hud button,
 .walk-hud .shutter,
 .walk-hud .chip {
-  border: 1px solid rgb(255 255 255 / 0.35);
-  border-radius: 0.5rem;
-  background: rgb(0 0 0 / 0.6);
-  color: inherit;
   font: inherit;
   cursor: pointer;
   touch-action: manipulation;
@@ -331,16 +487,11 @@ body {
 .walk-hud button {
   min-height: 2.5rem;
   padding: 0.25rem 0.75rem;
-}
-
-.walk-hud button[aria-pressed='true'],
-.walk-hud button.primary {
-  border-color: #a8d4ff;
-  background: rgb(40 90 140 / 0.85);
+  font-style: italic;
+  font-weight: 800;
 }
 
 .walk-hud button:disabled {
-  opacity: 0.5;
   cursor: default;
 }
 
@@ -361,16 +512,19 @@ body {
   pointer-events: auto;
 }
 
+/* Paper strips and chips over the walk view, compact (§4.5). */
 .walk-where,
 .walk-notice,
 .walk-keys {
   padding: 0.375rem 0.625rem;
-  border-radius: 0.5rem;
-  background: rgb(0 0 0 / 0.6);
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  background: var(--sk-card);
+  box-shadow: var(--hud-sh-compact);
 }
 
 .walk-where {
-  font-weight: 600;
+  font-weight: 800;
 }
 
 /* In the flow of the bar, on a row of its own, so it never covers a button. */
@@ -379,7 +533,7 @@ body {
   position: static;
   flex-basis: 100%;
   margin: 0;
-  color: #ffcc80;
+  box-shadow: 3px 4px 0 var(--sk-acc);
   pointer-events: none;
 }
 
@@ -410,7 +564,7 @@ body {
 }
 
 .walk-bar .walk-keys {
-  opacity: 0.85;
+  color: var(--sk-dim);
   pointer-events: none;
 }
 
@@ -426,9 +580,11 @@ body {
   flex: none;
   width: 8.25rem;
   height: 8.25rem;
-  border: 2px solid rgb(255 255 255 / 0.4);
+  box-sizing: border-box;
+  border: var(--hud-line);
   border-radius: 50%;
-  background: rgb(0 0 0 / 0.45);
+  background: var(--sk-card);
+  box-shadow: var(--sk-sh);
   touch-action: none;
   cursor: grab;
 }
@@ -439,10 +595,12 @@ body {
   left: 50%;
   width: 3.5rem;
   height: 3.5rem;
+  box-sizing: border-box;
   margin: -1.75rem 0 0 -1.75rem;
+  border: var(--hud-line);
   border-radius: 50%;
-  background: rgb(255 255 255 / 0.85);
-  box-shadow: 0 2px 6px rgb(0 0 0 / 0.5);
+  background: var(--sk-card);
+  box-shadow: inset -4px -5px 0 var(--sk-soft);
   pointer-events: none;
 }
 
@@ -452,9 +610,9 @@ body {
   place-items: center;
   width: 4.5rem;
   height: 4.5rem;
-  border: 3px solid #fff;
+  border: var(--hud-line);
   border-radius: 50%;
-  background: rgb(228 87 46 / 0.9);
+  box-shadow: var(--sk-sh);
   font-size: 1.75rem;
 }
 
@@ -492,8 +650,10 @@ body {
   left: 1rem;
   margin: 0;
   padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-  background: rgb(0 0 0 / 0.7);
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  background: var(--sk-card);
+  box-shadow: var(--hud-sh-compact);
 }
 
 .camera-actions {
@@ -511,13 +671,15 @@ body {
 .walk-hud .camera-shutter {
   width: 4.5rem;
   height: 4.5rem;
-  border: 4px solid #fff;
+  border: var(--hud-line);
   border-radius: 50%;
-  background: rgb(255 255 255 / 0.85);
+  background: var(--sk-card);
+  box-shadow: var(--sk-sh);
 }
 
-.camera-shutter:disabled {
-  opacity: 0.4;
+.walk-hud .camera-shutter:disabled {
+  border-color: var(--sk-dim);
+  box-shadow: none;
 }
 
 .camera-more {
@@ -533,9 +695,6 @@ body {
   align-items: center;
   min-height: 2.5rem;
   padding: 0 0.75rem;
-  border: 1px solid rgb(255 255 255 / 0.35);
-  border-radius: 0.5rem;
-  background: rgb(0 0 0 / 0.6);
   cursor: pointer;
 }
 
@@ -548,9 +707,10 @@ body {
   gap: 0.75rem;
   align-items: center;
   padding: 0.5rem 0.75rem;
-  border: 1px solid #ffd23f;
-  border-radius: 0.5rem;
-  background: rgb(20 24 30 / 0.92);
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  background: var(--sk-card);
+  box-shadow: 3px 4px 0 var(--sk-acc);
 }
 
 .walk-notice p {
@@ -560,7 +720,8 @@ body {
 .capture-copy {
   display: block;
   margin: 0.25rem 0 0.5rem;
-  color: #9fd3ff;
+  color: var(--sk-ink);
+  text-decoration: underline;
 }
 
 .capture-copy[hidden] {
@@ -578,8 +739,10 @@ body {
   margin: 0 auto;
   padding: 0.75rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
-  border-radius: 0.75rem 0.75rem 0 0;
-  background: rgb(20 24 30 / 0.92);
+  border: var(--hud-line);
+  border-bottom: 0;
+  border-radius: var(--sk-r) var(--sk-r) 0 0;
+  background: var(--sk-card);
   user-select: text;
   -webkit-user-select: text;
 }
@@ -593,7 +756,9 @@ body {
 .capture-head img {
   width: 4.5rem;
   height: 4.5rem;
-  border-radius: 0.375rem;
+  box-sizing: border-box;
+  border: 2px solid var(--sk-ink);
+  border-radius: var(--hud-r-compact);
   object-fit: cover;
 }
 
@@ -603,11 +768,7 @@ body {
 
 .capture-sheet .hint,
 .capture-sheet .where {
-  opacity: 0.8;
-}
-
-.capture-sheet .error {
-  color: #ff8a80;
+  color: var(--sk-dim);
 }
 
 .capture-note {
@@ -621,10 +782,6 @@ body {
   width: 100%;
   margin-top: 0.25rem;
   padding: 0.375rem;
-  border: 1px solid rgb(255 255 255 / 0.3);
-  border-radius: 0.375rem;
-  background: rgb(0 0 0 / 0.4);
-  color: inherit;
   /* 16px keeps iOS from zooming the page when the field is focused. */
   font: inherit;
   font-size: 1rem;
@@ -643,11 +800,6 @@ body {
   position: relative;
   padding: 0.375rem 0.625rem;
   border-radius: 1rem;
-}
-
-.walk-hud .chip.on {
-  border-color: #a8d4ff;
-  background: rgb(40 90 140 / 0.85);
 }
 
 .nudges {
@@ -669,15 +821,12 @@ body {
   flex: 1;
 }
 
-/* The upload's Sakuga bar (loading/SakugaProgress.tsx) on paper, like the loading screen's card:
-   its ink outline does not read on the dark sheet. It leaves by shrinking, not by fading. */
+/* The upload's Sakuga bar (loading/SakugaProgress.tsx) on the paper sheet, with room for its
+   effects. It leaves by shrinking, not by fading. */
 .capture-progress:has(.sakuga-progress) {
   justify-content: center;
   margin: 0.5rem 0;
   padding: 1.5rem 1rem 0.5rem;
-  border-radius: var(--sk-r, 15px);
-  background: var(--sk-card, #fff);
-  box-shadow: var(--sk-sh, 6px 7px 0 #b8b3ff);
   transition: transform 0.18s ease-in;
 }
 
@@ -697,12 +846,6 @@ body {
   justify-content: space-between;
 }
 
-.panel [role='tab'][aria-selected='true'],
-.panel button[aria-pressed='true'] {
-  border-color: #a8d4ff;
-  background: rgb(40 90 140 / 0.85);
-}
-
 .thumbnails {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
@@ -710,16 +853,22 @@ body {
   margin-top: 0.5rem;
 }
 
+/* A photo on a paper card; selected: a pink shadow (§4.6). */
 .panel .thumbnail {
   display: block;
+  box-sizing: border-box;
   padding: 0;
   overflow: hidden;
-  border-radius: 0.25rem;
+  border: 2px solid var(--sk-ink);
+  border-radius: var(--hud-r-compact);
+  background: var(--sk-card);
+  box-shadow: var(--hud-sh-compact);
+  cursor: pointer;
   aspect-ratio: 1;
 }
 
 .panel .thumbnail.selected {
-  outline: 2px solid #ffd23f;
+  box-shadow: 3px 4px 0 var(--sk-acc);
 }
 
 .thumbnail img {
@@ -731,9 +880,8 @@ body {
 
 .photo-detail {
   margin-top: 0.5rem;
-  padding: 0.5rem;
-  border: 1px solid rgb(255 255 255 / 0.2);
-  border-radius: 0.375rem;
+  padding: 0.5rem 0 0;
+  border-top: 2px dashed var(--sk-soft);
 }
 
 /* Correcting a photo's pose against the model (docs/photos.md § Correcting a pose). */
@@ -772,22 +920,18 @@ body {
   display: block;
   width: 100%;
   max-height: 16rem;
-  border-radius: 0.25rem;
+  box-sizing: border-box;
+  border: 2px solid var(--sk-ink);
+  border-radius: var(--hud-r-compact);
   object-fit: contain;
-  background: #000;
+  background: var(--sk-ink);
 }
 
 .panel textarea {
   display: block;
   box-sizing: border-box;
   width: 100%;
-  background: rgb(0 0 0 / 0.4);
-  color: inherit;
   font: inherit;
-}
-
-.panel .warning {
-  color: #ffcc80;
 }
 
 .chips {
@@ -800,14 +944,7 @@ body {
 .panel .chip {
   position: relative;
   padding: 0.125rem 0.5rem;
-  border: 1px solid rgb(255 255 255 / 0.3);
-  border-radius: 1rem;
   cursor: pointer;
-}
-
-.panel .chip.on {
-  border-color: #a8d4ff;
-  background: rgb(40 90 140 / 0.85);
 }
 
 .panel input.new-tag {
@@ -824,7 +961,7 @@ body {
 .request-list li,
 .trash-list li {
   padding: 0.375rem 0;
-  border-top: 1px solid rgb(255 255 255 / 0.15);
+  border-top: var(--hud-rule);
 }
 
 .trash-list li {
@@ -840,8 +977,8 @@ body {
 
 .request-list li.cancelled strong,
 .request-list li.fulfilled strong {
+  color: var(--sk-dim);
   font-weight: 400;
-  opacity: 0.75;
 }
 
 /* "View from here": the photo over the 3D view, scaled like the matched camera expects. */
@@ -863,12 +1000,15 @@ body {
   max-width: 28rem;
   margin: 0 auto;
   padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-  background: rgb(20 24 30 / 0.9);
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  background: var(--sk-card);
+  box-shadow: var(--hud-sh-compact);
 }
 
+/* A request to take here: the accent's shadow. */
 .walk-request {
-  border: 1px solid #ffd23f;
+  box-shadow: 3px 4px 0 var(--sk-acc);
 }
 
 /* Above the minimap, which sits above the camera button. */
@@ -890,12 +1030,22 @@ body {
   bottom: calc(7.75rem + env(safe-area-inset-bottom, 0px));
   width: 10rem;
   height: 10rem;
+  box-sizing: border-box;
   padding: 0;
   overflow: hidden;
-  border-radius: 0.75rem;
-  background: rgb(10 14 20 / 0.72);
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  background: var(--sk-card);
+  box-shadow: var(--hud-sh-compact);
+  color: var(--sk-ink);
   cursor: zoom-in;
   pointer-events: auto;
+}
+
+/* The small map is a button: its room names keep the body type, not a label's 800 italic. */
+.walk-hud .walk-map {
+  font-style: normal;
+  font-weight: 500;
 }
 
 .viewer.mobile .walk-hud .walk-map {
@@ -920,8 +1070,10 @@ body {
   width: min(26rem, calc(100% - 2.5rem));
   height: min(30rem, calc(100% - 14rem));
   padding: 0.5rem 0.75rem;
-  border-radius: 0.75rem;
-  background: rgb(20 24 30 / 0.97);
+  border: var(--hud-line);
+  border-radius: var(--sk-r);
+  background: var(--sk-card);
+  box-shadow: var(--sk-sh);
   pointer-events: auto;
 }
 
@@ -955,11 +1107,6 @@ body {
   cursor: pointer;
 }
 
-.walk-map-large button[aria-pressed='true'] {
-  border-color: #a8d4ff;
-  background: rgb(40 90 140 / 0.85);
-}
-
 .viewer.mobile .walk-map-large {
   right: 0;
   bottom: 0;
@@ -969,7 +1116,9 @@ body {
   /* Below the bar, like the calibration sheet. */
   height: min(75%, calc(100% - 16.5rem));
   padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
-  border-radius: 0.75rem 0.75rem 0 0;
+  border-bottom: 0;
+  border-radius: var(--sk-r) var(--sk-r) 0 0;
+  box-shadow: none;
 }
 
 /* Held across, the bar is one row: the map takes the height below it. */
@@ -981,55 +1130,56 @@ body {
   display: none;
 }
 
+/* The map on paper, in the two tones and the line: rooms paper, walls ink (§5.8). */
 .map-footprint {
-  fill: rgb(255 255 255 / 0.04);
-  stroke: rgb(255 255 255 / 0.25);
+  fill: #ecebff;
+  stroke: var(--sk-ink);
   stroke-width: 1px;
   vector-effect: non-scaling-stroke;
 }
 
 .map-room {
-  fill: rgb(255 255 255 / 0.08);
-  stroke: rgb(255 255 255 / 0.2);
+  fill: var(--sk-card);
+  stroke: var(--sk-soft);
   stroke-width: 0.5px;
   vector-effect: non-scaling-stroke;
 }
 
 .map-room.here {
-  fill: rgb(120 180 255 / 0.3);
+  fill: var(--sk-soft);
 }
 
 .map-wall {
-  fill: #e8eaed;
+  fill: var(--sk-ink);
 }
 
 .map-window {
-  fill: #6ec3ff;
+  fill: var(--sk-pri);
 }
 
 .map-door {
-  fill: #c9925a;
+  fill: var(--sk-dim);
 }
 
 .map-stair {
-  fill: rgb(255 210 63 / 0.35);
-  stroke: rgb(255 210 63 / 0.8);
+  fill: #ecebff;
+  stroke: var(--sk-pri);
   stroke-width: 0.5px;
   vector-effect: non-scaling-stroke;
 }
 
 .map-fence {
-  fill: rgb(255 255 255 / 0.55);
+  fill: var(--sk-dim);
 }
 
 .map-gate {
-  fill: #8bd17c;
+  fill: var(--sk-pri);
 }
 
 .map-label {
-  fill: #fff;
+  fill: var(--sk-ink);
   paint-order: stroke;
-  stroke: rgb(0 0 0 / 0.75);
+  stroke: var(--sk-card);
   stroke-linejoin: round;
   text-anchor: middle;
   dominant-baseline: middle;
@@ -1037,43 +1187,44 @@ body {
 }
 
 .map-request {
-  fill: rgb(255 210 63 / 0.25);
-  stroke: #ffd23f;
+  fill: rgb(255 95 168 / 0.15);
+  stroke: var(--sk-acc);
   stroke-dasharray: 2 2;
   stroke-width: 1.5px;
   vector-effect: non-scaling-stroke;
 }
 
 .map-request.active {
-  fill: rgb(255 210 63 / 0.6);
+  fill: rgb(255 95 168 / 0.4);
   stroke-dasharray: none;
 }
 
 .map-photo path {
-  fill: rgb(110 195 255 / 0.35);
+  fill: rgb(143 141 247 / 0.35);
 }
 
 .map-photo circle {
-  fill: #6ec3ff;
+  fill: var(--sk-pri);
 }
 
+/* The figure pink with a lavender cone. */
 .map-cone {
-  fill: rgb(255 210 63 / 0.45);
+  fill: rgb(184 179 255 / 0.7);
 }
 
 .map-figure circle {
-  fill: #e4572e;
-  stroke: #fff;
+  fill: var(--sk-acc);
+  stroke: var(--sk-ink);
   stroke-width: 1.5px;
   vector-effect: non-scaling-stroke;
 }
 
 .map-north path {
-  fill: #e4572e;
+  fill: var(--sk-acc);
 }
 
 .map-north text {
-  fill: #fff;
+  fill: var(--sk-card);
   font-weight: 700;
   text-anchor: middle;
 }
@@ -1087,7 +1238,7 @@ body {
 .walk-requests li + li {
   margin-top: 0.5rem;
   padding-top: 0.5rem;
-  border-top: 1px solid rgb(255 255 255 / 0.15);
+  border-top: var(--hud-rule);
 }
 
 .walk-requests p {
@@ -1102,12 +1253,15 @@ body {
 /* Follow mode: compass status, and the calibration sheet. */
 .walk-compass {
   padding: 0.375rem 0.625rem;
-  border-radius: 0.5rem;
-  background: rgb(0 0 0 / 0.6);
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  background: var(--sk-card);
+  box-shadow: var(--hud-sh-compact);
 }
 
+/* Poor accuracy: a dashed ink line and a pink mark (§5.7). */
 .walk-compass.poor {
-  color: #ffcc80;
+  border-style: dashed;
 }
 
 .walk-calibrate {
@@ -1120,8 +1274,10 @@ body {
   margin: 0 auto;
   padding: 0.5rem 0.75rem;
   overflow-y: auto;
-  border-radius: 0.5rem;
-  background: rgb(20 24 30 / 0.92);
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  background: var(--sk-card);
+  box-shadow: var(--hud-sh-compact);
 }
 
 .walk-calibrate p {
@@ -1129,7 +1285,7 @@ body {
 }
 
 .walk-calibrate .hint {
-  opacity: 0.8;
+  color: var(--sk-dim);
 }
 
 .walk-declination input {
@@ -1159,8 +1315,6 @@ body {
  */
 .viewer.mobile {
   --sheet-collapsed: calc(3.5rem + env(safe-area-inset-bottom, 0px));
-  /* Dark native controls: select lists, date pickers, checkboxes. */
-  color-scheme: dark;
   /* Panels scroll, but a pinch or a double tap on them does not zoom the page under the 3D view. */
   touch-action: pan-x pan-y;
   display: flex;
@@ -1188,14 +1342,20 @@ body {
   bottom: 0;
 }
 
+/* A paper strip, compact (§4.1). Its controls keep 4 px below them for their hard shadow. */
 .topbar {
+  position: relative;
+  /* Its line over the 3D view's top edge. */
+  z-index: 21;
   display: flex;
   flex: none;
   flex-wrap: wrap;
   gap: 0.375rem 0.5rem;
   padding: calc(0.375rem + env(safe-area-inset-top, 0px))
-    calc(0.5rem + env(safe-area-inset-right, 0px)) 0.375rem
+    calc(0.5rem + env(safe-area-inset-right, 0px)) 0.5rem
     calc(0.5rem + env(safe-area-inset-left, 0px));
+  border-bottom: var(--hud-line-compact);
+  background: var(--sk-card);
   font-size: 0.9375rem;
 }
 
@@ -1211,7 +1371,8 @@ body {
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  font-weight: 600;
+  font-style: italic;
+  font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1221,11 +1382,9 @@ body {
 .topbar-link {
   box-sizing: border-box;
   min-height: 2.75rem;
-  border: 1px solid rgb(255 255 255 / 0.3);
-  border-radius: 0.5rem;
-  background: rgb(255 255 255 / 0.1);
-  color: inherit;
   font: inherit;
+  font-style: italic;
+  font-weight: 800;
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -1237,7 +1396,9 @@ body {
 }
 
 .topbar option {
-  color: #1d2129;
+  color: var(--sk-ink);
+  font-style: normal;
+  font-weight: 500;
 }
 
 .topbar-link {
@@ -1256,29 +1417,37 @@ body {
 .topbar-row button,
 .topbar-link {
   flex: none;
-  padding: 0 0.75rem;
+  padding: 0 0.625rem;
   white-space: nowrap;
 }
 
-.topbar button[aria-pressed='true'],
+/* Compact (§3.3): 13 px type, so the home, Edit, Walk, Photos and Catalogue fit at 390 px. */
+.topbar button,
+.topbar-link {
+  font-size: 0.8125rem;
+}
+
+/*
+ * One segmented row: the chosen one is the raised paper piece filled with the primary tone
+ * (§3.2), the others a flat row inside one ink line (§5.2). Not bold, which would need more room.
+ */
 .segmented button[aria-checked='true'] {
-  border-color: #a8d4ff;
-  background: rgb(40 90 140 / 0.85);
+  background: var(--sk-pri);
+  color: var(--sk-ink);
 }
 
-/* The chosen level is marked by colour and a line, not by bold text that would need more room. */
-.segmented button[aria-checked='true'] {
-  box-shadow: inset 0 -3px #a8d4ff;
+.topbar .segmented button,
+.walk-hud .segmented button,
+.panel .segmented button {
+  box-shadow: none;
 }
 
-.topbar button:focus-visible,
-.topbar select:focus-visible,
-.topbar-link:focus-visible,
-.sheet-bar button:focus-visible {
-  outline: 2px solid #a8d4ff;
-  outline-offset: -2px;
+.segmented {
+  border-radius: var(--hud-r-compact);
+  box-shadow: var(--hud-sh-compact);
 }
 
+/* A count: a pink disc with card text (§5.12). */
 .badge {
   display: inline-block;
   min-width: 1.25rem;
@@ -1286,8 +1455,9 @@ body {
   padding: 0 0.25rem;
   border-radius: 0.625rem;
   box-sizing: border-box;
-  background: #ffd23f;
-  color: #1d2129;
+  background: var(--sk-acc);
+  color: var(--sk-card);
+
   font-size: 0.75rem;
   font-weight: 700;
   line-height: 1.25rem;
@@ -1317,11 +1487,11 @@ body {
 }
 
 .segmented button:first-child {
-  border-radius: 0.5rem 0 0 0.5rem;
+  border-radius: var(--hud-r-compact) 0 0 var(--hud-r-compact);
 }
 
 .segmented button:last-child {
-  border-radius: 0 0.5rem 0.5rem 0;
+  border-radius: 0 var(--hud-r-compact) var(--hud-r-compact) 0;
 }
 
 .sheet {
@@ -1336,9 +1506,10 @@ body {
   box-sizing: border-box;
   height: var(--sheet-size);
   padding: 0 env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px);
-  border-top: 1px solid rgb(255 255 255 / 0.2);
-  border-radius: 0.75rem 0.75rem 0 0;
-  background: #262b35;
+  /* A paper card with rounded top corners over the view (§5.5). */
+  border-top: var(--hud-line-compact);
+  border-radius: var(--sk-r) var(--sk-r) 0 0;
+  background: var(--sk-card);
   transition: height 0.2s ease;
 }
 
@@ -1365,7 +1536,7 @@ body {
   height: 0.25rem;
   margin-left: -1.125rem;
   border-radius: 0.125rem;
-  background: rgb(255 255 255 / 0.35);
+  background: var(--sk-ink);
   content: '';
   pointer-events: none;
 }
@@ -1387,7 +1558,7 @@ body {
   padding: 0.375rem 0 0;
   border: 0;
   background: none;
-  color: inherit;
+  color: var(--sk-ink);
   font: inherit;
   font-size: 0.75rem;
   cursor: pointer;
@@ -1397,12 +1568,13 @@ body {
 .sheet-tabs button {
   flex: 1 1 0;
   min-width: 0;
-  color: #c3c8cf;
 }
 
+/* The open tab: its label in 800 italic over a primary-tone line. */
 .sheet-tabs button[aria-selected='true'] {
-  color: #a8d4ff;
-  font-weight: 600;
+  box-shadow: inset 0 -3px var(--sk-pri);
+  font-style: italic;
+  font-weight: 800;
 }
 
 .sheet-tab-icon {
@@ -1445,7 +1617,7 @@ body {
   padding: 0.25rem 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
   overscroll-behavior: contain;
-  border-top: 1px solid rgb(255 255 255 / 0.12);
+  border-top: var(--hud-rule);
 }
 
 /* At the side: a rail of tabs with the panel to its right. */
@@ -1457,8 +1629,8 @@ body {
   height: auto;
   padding: 0 env(safe-area-inset-right, 0px) 0 0;
   border-top: 0;
-  border-left: 1px solid rgb(255 255 255 / 0.2);
-  border-radius: 0.75rem 0 0 0.75rem;
+  border-left: var(--hud-line-compact);
+  border-radius: var(--sk-r) 0 0 var(--sk-r);
   transition: width 0.2s ease;
 }
 
@@ -1484,6 +1656,10 @@ body {
   padding: 0;
 }
 
+.sheet-side .sheet-tabs button[aria-selected='true'] {
+  box-shadow: inset -3px 0 var(--sk-pri);
+}
+
 .sheet-side .sheet-bar .sheet-size,
 .sheet-side .sheet-bar .sheet-toggle {
   width: auto;
@@ -1504,7 +1680,7 @@ body {
 .sheet-side .sheet-body {
   padding-bottom: 0.75rem;
   border-top: 0;
-  border-left: 1px solid rgb(255 255 255 / 0.12);
+  border-left: var(--hud-rule);
 }
 
 /* A panel inside the sheet is plain content: the sheet is its box and its tab is its title. */
@@ -1516,8 +1692,10 @@ body {
   max-height: none;
   padding: 0;
   overflow: visible;
+  border: 0;
   border-radius: 0;
   background: none;
+  box-shadow: none;
   font-size: 0.9375rem;
 }
 
@@ -1540,10 +1718,6 @@ body {
 .sheet .panel input:not([type='checkbox'], [type='radio'], [type='range']),
 .sheet .panel textarea {
   padding: 0.25rem 0.5rem;
-  border: 1px solid rgb(255 255 255 / 0.3);
-  border-radius: 0.375rem;
-  background: rgb(0 0 0 / 0.35);
-  color: inherit;
 }
 
 .sheet .panel button:not(.link, .thumbnail),
@@ -1593,38 +1767,36 @@ body {
   width: 2.875rem;
   height: 1.75rem;
   margin: 0;
-  border: 1px solid rgb(255 255 255 / 0.4);
+  box-sizing: border-box;
+  /* The CSS switch of §5.13: a paper track with the ink line, a white knob, the track primary when on. */
+  border: var(--hud-line-compact);
   border-radius: 0.875rem;
   appearance: none;
-  background: rgb(255 255 255 / 0.18);
+  background: var(--sk-card);
   cursor: pointer;
   transition: background 0.15s ease;
 }
 
 .sheet .panel .toggle input::before {
   position: absolute;
-  top: 0.125rem;
-  left: 0.125rem;
-  width: 1.375rem;
-  height: 1.375rem;
+  top: 0.0625rem;
+  left: 0.0625rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  box-sizing: border-box;
+  border: 2px solid var(--sk-ink);
   border-radius: 50%;
-  background: #fff;
+  background: var(--sk-card);
   content: '';
   transition: transform 0.15s ease;
 }
 
 .sheet .panel .toggle input:checked {
-  border-color: #a8d4ff;
-  background: #2f7fd0;
+  background: var(--sk-pri);
 }
 
 .sheet .panel .toggle input:checked::before {
   transform: translateX(1.125rem);
-}
-
-.sheet .panel .toggle input:focus-visible {
-  outline: 2px solid #a8d4ff;
-  outline-offset: 2px;
 }
 
 .sheet .panel .catalog-item {
@@ -1651,23 +1823,27 @@ body {
 .toggle-group {
   margin-top: 0.5rem;
   padding: 0 0.75rem;
-  border: 1px solid rgb(255 255 255 / 0.2);
-  border-radius: 0.5rem;
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  box-shadow: var(--hud-sh-compact);
 }
 
+/* The summary in 800 italic, its note in the dim tone (§5.6). */
 .toggle-group summary {
   display: flex;
   gap: 0.5rem;
   align-items: center;
   justify-content: space-between;
   min-height: 2.75rem;
-  font-weight: 600;
+  font-style: italic;
+  font-weight: 800;
   cursor: pointer;
 }
 
 .toggle-group summary .note {
   margin-right: auto;
-  font-weight: 400;
+  font-style: normal;
+  font-weight: 500;
 }
 
 .toggle-group summary::after {
@@ -1712,10 +1888,11 @@ body {
 .reset-view,
 .status-chip {
   box-sizing: border-box;
-  border: 1px solid rgb(255 255 255 / 0.35);
-  border-radius: 1.375rem;
-  background: rgb(20 24 30 / 0.85);
-  color: #e8eaed;
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  background: var(--sk-card);
+  box-shadow: var(--hud-sh-compact);
+  color: var(--sk-ink);
   font: inherit;
   font-size: 0.875rem;
   white-space: nowrap;
@@ -1724,13 +1901,10 @@ body {
 .reset-view {
   min-height: 2.75rem;
   padding: 0 0.875rem;
+  font-style: italic;
+  font-weight: 800;
   cursor: pointer;
   touch-action: manipulation;
-}
-
-.reset-view:focus-visible {
-  outline: 2px solid #a8d4ff;
-  outline-offset: 2px;
 }
 
 .status-chip {
@@ -1743,9 +1917,9 @@ body {
   display: none;
 }
 
+/* A problem: ink text, a pink mark and a pink shadow. */
 .status-chip.warn {
-  border-color: #ffcc80;
-  color: #ffcc80;
+  box-shadow: 3px 4px 0 var(--sk-acc);
 }
 
 .status-chip.fading {
@@ -1776,9 +1950,10 @@ body {
   margin: 0 auto;
   padding: 0.75rem 1rem;
   overflow-y: auto;
-  border: 1px solid #a8d4ff;
-  border-radius: 0.75rem;
-  background: rgb(20 24 30 / 0.95);
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  background: var(--sk-card);
+  box-shadow: var(--hud-sh-compact);
   font-size: 0.9375rem;
 }
 
@@ -1798,12 +1973,11 @@ body {
   min-height: 2.75rem;
   margin: 0.75rem 0 0 auto;
   padding: 0 1rem;
-  border: 1px solid #a8d4ff;
-  border-radius: 0.5rem;
-  background: rgb(40 90 140 / 0.85);
-  color: inherit;
   font: inherit;
+  font-style: italic;
+  font-weight: 800;
   cursor: pointer;
+
   touch-action: manipulation;
 }
 
@@ -1813,10 +1987,12 @@ body {
   gap: 0.125rem;
   align-items: center;
   padding: 0.125rem;
-  border: 1px solid rgb(255 255 255 / 0.3);
-  border-radius: 0.75rem;
-  background: rgb(20 24 30 / 0.94);
-  color: #e8eaed;
+  /* A paper strip, compact (§4.3). */
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  background: var(--sk-card);
+  box-shadow: var(--hud-sh-compact);
+  color: var(--sk-ink);
   font-family: system-ui, sans-serif;
   white-space: nowrap;
   user-select: none;
@@ -1828,7 +2004,8 @@ body {
   padding: 0 0.375rem 0 0.5rem;
   overflow: hidden;
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-style: italic;
+  font-weight: 800;
   text-overflow: ellipsis;
 }
 
@@ -1878,23 +2055,30 @@ body {
 }
 
 .piece-toolbar .piece-type {
-  font-weight: 400;
-  opacity: 0.8;
+  color: var(--sk-dim);
+  font-style: normal;
+  font-weight: 500;
 }
 
+/* "Open piece page": a paper button inside the strip. */
 .piece-toolbar a.button {
+  height: 2.25rem;
+  margin: 0 0.125rem;
   padding: 0 0.75rem;
-  background: rgb(40 90 140 / 0.85);
+  border: var(--hud-line-compact);
+  border-radius: calc(var(--hud-r-compact) - 3px);
   font-size: 0.875rem;
+  font-style: italic;
+  font-weight: 800;
 }
 
-.item-toolbar button:active {
-  background: rgb(255 255 255 / 0.15);
+.item-toolbar button:active,
+.item-toolbar a.button:active {
+  background: var(--sk-soft);
 }
 
-.item-toolbar button:focus-visible {
-  outline: 2px solid #a8d4ff;
-  outline-offset: -2px;
+.item-toolbar :is(button, a):focus-visible {
+  outline-offset: -3px;
 }
 
 /* Walking on a phone: controls a thumb can hit. */
@@ -1923,7 +2107,7 @@ body {
   align-items: center;
   margin: -0.5rem -0.75rem 0;
   padding: 0.5rem 0.75rem;
-  background: rgb(20 24 30);
+  background: var(--sk-card);
 }
 
 .walk-calibrate-head strong {
@@ -1945,8 +2129,9 @@ body {
   /* Never up into the bar, which wraps to four rows (about 16 rem) on the narrowest phones. */
   max-height: min(70%, calc(100% - 16.5rem));
   padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
-  border-radius: 0.75rem 0.75rem 0 0;
-  background: rgb(20 24 30 / 0.97);
+  border-bottom: 0;
+  border-radius: var(--sk-r) var(--sk-r) 0 0;
+  box-shadow: none;
 }
 
 .viewer.mobile .walk-calibrate .capture-actions {
@@ -2009,12 +2194,20 @@ body {
   box-sizing: border-box;
   min-height: 100%;
   padding: 0 var(--page-right) max(1rem, env(safe-area-inset-bottom)) var(--page-left);
+  /* A white paper page with ink text (§3.5). */
+  background: var(--hud-page);
+  color: var(--sk-ink);
   font-size: 1rem;
   line-height: 1.4;
 }
 
+/* Past the page's end (a scroll's bounce) is paper too, not the viewer's dark ground. */
+body:has(.page) {
+  background: var(--hud-page);
+}
+
 .page a {
-  color: #8ab4f8;
+  color: var(--sk-ink);
 }
 
 .page h1 {
@@ -2032,14 +2225,16 @@ body {
   gap: 0.5rem 1rem;
   margin: 0 calc(-1 * var(--page-right)) 0 calc(-1 * var(--page-left));
   padding: max(0.75rem, env(safe-area-inset-top)) var(--page-right) 0.75rem var(--page-left);
-  background: #1d2129;
-  border-bottom: 1px solid rgb(255 255 255 / 0.12);
+  background: var(--hud-page);
+  border-bottom: var(--hud-line-compact);
 }
 
 .page-back {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
+  font-style: italic;
+  font-weight: 800;
   text-decoration: none;
 }
 
@@ -2048,11 +2243,13 @@ body {
   margin: 0 auto;
 }
 
-/* Edit mode (editMode/): the toggle is amber while it is on, a badge and a frame say so. */
+/*
+ * Edit mode (editMode/): the toggle is pressed (an ink fill) while it is on, a badge and a frame
+ * say so. Edit stays a paper button until its family makes it the painted toggle (#168, PR 4).
+ */
 .edit-toggle[aria-pressed='true'] {
-  border-color: #ffcc80;
-  background: rgb(120 80 10 / 0.85);
-  color: #fff3e0;
+  background: var(--sk-ink);
+  color: var(--sk-card);
 }
 
 .edit-badge {
@@ -2063,11 +2260,13 @@ body {
   transform: translateX(-50%);
   margin: 0;
   padding: 0.25rem 0.75rem;
-  border: 1px solid #ffcc80;
-  border-radius: 1rem;
-  background: rgb(120 80 10 / 0.9);
-  color: #fff3e0;
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  background: var(--sk-card);
+  box-shadow: 3px 4px 0 var(--sk-acc);
+  color: var(--sk-ink);
   font-size: 0.875rem;
+  font-weight: 800;
   white-space: nowrap;
   pointer-events: none;
 }
@@ -2078,7 +2277,7 @@ body {
 }
 
 .viewer.editing .stage {
-  box-shadow: inset 0 0 0 3px #ffcc80;
+  box-shadow: inset 0 0 0 3px var(--sk-acc);
 }
 
 /*
@@ -2092,9 +2291,11 @@ body {
   z-index: 11;
   padding: 0.3rem 0.5rem;
   transform: translateX(-50%);
-  border-radius: 0.4rem;
-  background: rgb(20 24 30 / 0.8);
-  color: #f1f3f4;
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  background: var(--sk-card);
+  box-shadow: var(--hud-sh-compact);
+  color: var(--sk-ink);
   font:
     0.7rem/1.35 ui-monospace,
     SFMono-Regular,
@@ -2133,12 +2334,11 @@ body {
   min-width: 3.5rem;
   min-height: 1.75rem;
   padding: 0.1rem 0.5rem;
-  border: 1px solid rgb(255 255 255 / 0.35);
-  border-radius: 0.3rem;
-  background: rgb(0 0 0 / 0.5);
-  color: inherit;
   font: inherit;
+  font-style: italic;
+  font-weight: 800;
   cursor: pointer;
+
   pointer-events: auto;
   touch-action: manipulation;
 }

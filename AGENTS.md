@@ -29,7 +29,8 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
   `AGENTS.md` (art style, core build, new elements, upstream updates) before touching a HUD element. Its
   progress bar is the loading screen, loaded ahead of the main chunk (`apps/web/src/loading/`, `docs/loading.md`);
   the other elements come in one deferred `sakuga-hud` script without the core, driven by the wrappers in
-  `apps/web/src/hud/` (fallback in jsdom), with the measuring page `/?hud=measure` (`docs/hud.md`)
+  `apps/web/src/hud/` (fallback in jsdom), with the measuring page `/?hud=measure` (`docs/hud.md`). The HUD is
+  white paper: restyle through the `--sk-*`/`--hud-*` values in `styles.css`'s `:root`, never a colour of its own
 - `docs/`: project docs (designs not built yet in `docs/design/`: the realistic render, `realistic-render.md`);
   `docker-compose.yml` runs postgres + api + web
 - `charts/my-home`: Helm chart deployed to Kubernetes by CI + Flux (`docs/deployment.md`); `tools/check-chart.sh`

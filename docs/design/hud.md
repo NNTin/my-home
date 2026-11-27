@@ -822,6 +822,21 @@ built with #168's first PR (agreed, 2026-11-26):
 **What it settles:** whether effects stay on over the view while walking (the default), or the walk HUD's effects
 are limited to its own back layers. Without the page that question waits for the owner's real-phone pass.
 
+**Measured (the owner's phone, 2026-11-27, #168): a pass.** Samsung Internet 31 on Android 10, 360 × 609 css px at
+×3, effects on, on commit `4cf84ac`:
+
+| Run                        | Effects over the view | 3D frame time p50 | p95     | Sakuga time per frame |
+| -------------------------- | --------------------- | ----------------- | ------- | --------------------- |
+| Orbit (scripted)           | none                  | 16.7 ms           | 18.3 ms | – (0 frames)          |
+| Orbit (scripted)           | 20 fired, 4 a second  | 16.7 ms           | 17.4 ms | 1.0 ms                |
+| Walk (forward and turning) | none                  | 16.7 ms           | 18.6 ms | – (0 frames)          |
+| Walk (forward and turning) | 20 fired, 4 a second  | 16.7 ms           | 18.0 ms | 0.9 ms                |
+
+The view keeps 60 frames a second with and without effects, orbiting and walking; Sakuga costs about 1 ms a frame
+while effects play, and **C1 holds on the phone**: 0 Sakuga frames and no frame asked for in each 2 s at rest,
+before and after the runs. The words at compact size: "images look fine" (the owner). So **effects stay on over
+the view while walking** (the default above); the walk HUD's effects are not limited to their back layers.
+
 ### 10.3 Screen readers
 
 - **Every element has a real control** with a role and a name: a `label` attribute, or its text. Icon-only
@@ -956,13 +971,22 @@ Agreed with the orchestrator (2026-11-26): the measuring page `/?hud=measure` is
 
 The owner asked (2026-11-27) that open points be decided with the most reasonable default and recorded here.
 
-| #   | Decision (PR)                                                                                                                                           | Why                                                                                                |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| B1  | C1 wakes an element when a spring made in its `setup()` is moved from outside, or an observed attribute changes; time-driven states say `busy()` (PR 1) | Generic: no element had to re-list its springs; the four that do more than springs got a line each |
-| B2  | C2 scales an effect about its origin and pulls an origin outside the element's box toward it by the same factor (PR 1)                                  | Wedges at a corner stay at the corner; a word above the element sits closer, as §3.3 needs         |
-| B3  | `/?hud=measure` reloads itself with `&walk=first` for the walk runs; results carry over in `sessionStorage` (PR 1)                                      | Walking is the viewer's own state; a reload reaches it without a hook into the viewer              |
-| B4  | The measuring page's walk is W and Q held (forward while turning) for 5 s; its 3D frame times are taken in the canvas, not from the governor (PR 1)     | A fixed key sequence repeats on every device; the governor keeps no per-run window                 |
-| B5  | `<sakuga-progress>` gets no plain fallback in `hud/fallback.ts`: its wrapper keeps its own native one (PR 1)                                            | One fallback per element, and the existing one is tested                                           |
+| #   | Decision (PR)                                                                                                                                            | Why                                                                                                |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| B1  | C1 wakes an element when a spring made in its `setup()` is moved from outside, or an observed attribute changes; time-driven states say `busy()` (PR 1)  | Generic: no element had to re-list its springs; the four that do more than springs got a line each |
+| B2  | C2 scales an effect about its origin and pulls an origin outside the element's box toward it by the same factor (PR 1)                                   | Wedges at a corner stay at the corner; a word above the element sits closer, as §3.3 needs         |
+| B3  | `/?hud=measure` reloads itself with `&walk=first` for the walk runs; results carry over in `sessionStorage` (PR 1)                                       | Walking is the viewer's own state; a reload reaches it without a hook into the viewer              |
+| B4  | The measuring page's walk is W and Q held (forward while turning) for 5 s; its 3D frame times are taken in the canvas, not from the governor (PR 1)      | A fixed key sequence repeats on every device; the governor keeps no per-run window                 |
+| B5  | `<sakuga-progress>` gets no plain fallback in `hud/fallback.ts`: its wrapper keeps its own native one (PR 1)                                             | One fallback per element, and the existing one is tested                                           |
+| B6  | Today's native controls in paper take the compact line, radius and shadow (2.5 px, 11 px, `3px 4px`); panels, the map and the compass the regular (PR 2) | The native controls are about 30 px tall: the regular 3.2 px line and 15 px radius swamp them      |
+| B7  | A native primary button looks like a secondary one at rest; the old blue fill goes (PR 2)                                                                | Upstream's primary and secondary are the same paper at rest; the primary differs in its reaction   |
+| B8  | Pressed buttons and chips (`aria-pressed`, a selected tab, Edit on) are an ink fill with card text; a segmented row's choice is filled `--sk-pri` (PR 2) | Upstream's impact frame is the ink fill; §3.2 gives the selected segment the primary tone          |
+| B9  | A warning is ink text after a pink "!" (CSS, `content: '!' / ''`, not read out); a warning's box gets a pink shadow (PR 2)                               | §3.2: never pink text; the text already says what is wrong                                         |
+| B10 | Edit mode's frame around the 3D view is pink, the edit badge a paper chip with a pink shadow (PR 2)                                                      | Amber is not in the palette; edit mode is the accent's case (a badge, §3.2)                        |
+| B11 | The minimap's SVG is redrawn in paper with its frame in PR 2 (rooms paper, walls ink, the figure pink, its cone lavender), not in PR 6 (PR 2)            | Its light-on-dark fills vanish on a paper frame; §5.8's colours are CSS only                       |
+| B12 | The phone's sheet has the ink line on its top edge (the left edge held across) and no hard shadow (PR 2)                                                 | A shadow offset down and right falls off the screen under a sheet at the foot                      |
+| B13 | The status chip still fades in PR 2; it shrinks instead as `sakuga-badge` in PR 3 (PR 2)                                                                 | PR 2 changes the look only; the chip's leaving is the badge's reaction                             |
+| B14 | The piece page's photo viewer is opaque page paper, not a dark veil (PR 2)                                                                               | §3.4: no translucency                                                                              |
 
 ## 14. Open questions
 
