@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sakuga Compass</title>
+<style>
+  :root { --text: #1d1a4a; --mute: #8580b0; }
+  html { overflow-x: clip; }
+  body { margin: 0; font: 15px/1.45 -apple-system, "Helvetica Neue", "Segoe UI", sans-serif; color: var(--text); background: #fff; overflow-x: clip; }
+  main { width: min(640px, 100vw - 32px); margin: 0 auto; padding: 32px 0 60px; }
+  h1 { margin: 0; font: italic 800 26px/1.1 "Avenir Next", "Nunito", -apple-system, sans-serif; }
+  .sub { margin: 4px 0 16px; color: var(--mute); }
+  .stage { position: relative; display: flex; gap: 28px; align-items: center; padding: 24px 8px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+  .row button { font: inherit; padding: 4px 10px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Compass</h1>
+  <p class="sub">Turned by the page through --rose; pressed, it turns north-up and the needle swings in. Made for my-home (#168 §5.7, HUD v2 #202), not from upstream.</p>
+  <div class="row"><button id="turn" type="button">Turn the view</button><button id="poor" type="button">Poor heading</button></div>
+  <div class="stage">
+    <sakuga-compass id="a" label="Compass: turn the view north-up" style="--rose: 120deg"></sakuga-compass>
+    <sakuga-compass id="b" size="compact" label="Compass: turn the view north-up" style="--rose: -60deg"></sakuga-compass>
+  </div>
+</main>
+<script src="../compass/compass.js"></script>
+<script>
+// The page owns the turn: a press turns the view north-up (here: --rose to 0).
+for (const c of document.querySelectorAll('sakuga-compass')) c.addEventListener('click', () => c.style.setProperty('--rose', '0deg'));
+document.getElementById('turn').onclick = () => { for (const c of document.querySelectorAll('sakuga-compass')) c.style.setProperty('--rose', `${Math.round(Math.random() * 300 + 30)}deg`); };
+document.getElementById('poor').onclick = () => { for (const c of document.querySelectorAll('sakuga-compass')) c.toggleAttribute('poor'); };
+</script>
+</body>
+</html>

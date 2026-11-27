@@ -315,7 +315,7 @@ export function Scene({
   onOrbit,
   busy = false,
 }: SceneProps) {
-  const roseRef = useRef<HTMLButtonElement>(null);
+  const roseRef = useRef<HTMLElement>(null);
   const labelsRef = useRef<HTMLDivElement>(null);
   const northUpRef = useRef<() => void>(undefined);
   /** Whether the orbit controls are in hand: between their `start` and `end`. */
@@ -459,7 +459,7 @@ export function Scene({
         </FrameLoop>
       </Canvas>
       <RoomLabels labels={labels} layerRef={labelsRef} />
-      <CompassRose roseRef={roseRef} onNorthUp={() => northUpRef.current?.()} />
+      <CompassRose roseRef={roseRef} onNorthUp={() => northUpRef.current?.()} compact={touch} />
       {hudMeasure && (
         <Suspense fallback={null}>
           <HudMeasurePage walking={walk?.view === 'first'} />

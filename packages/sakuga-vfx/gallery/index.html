@@ -70,6 +70,7 @@
 <script src="../fold/fold.js"></script>
 <script src="../card/card.js"></script>
 <script src="../sheet/sheet.js"></script>
+<script src="../compass/compass.js"></script>
 <script src="../icons/icons.js"></script>
 <script>
 // The gallery: every control live on one page, with its install line and a prompt that hands a coding agent the real file.
@@ -96,6 +97,7 @@ const ITEMS = [
   { id: 'panel', name: 'Panel (made here)', tag: 'sakuga-panel', how: 'Press Hide, then Show.', html: '<sakuga-button variant="secondary" size="compact" data-demo="panel-hide">Hide</sakuga-button> <sakuga-button variant="secondary" size="compact" data-demo="panel-show">Show</sakuga-button><sakuga-panel label="View controls" size="compact" shown style="margin-top:12px;padding:8px 12px"><b>View</b><br>Room names, levels.</sakuga-panel>' },
   { id: 'fold', name: 'Fold (made here)', tag: 'sakuga-fold', how: 'Open it, then close it.', html: '<sakuga-fold size="compact" style="width:220px"><span slot="summary">Levels</span><span slot="note">2 of 3 shown</span><div>Souterrain<br>Ground floor<br>First floor</div></sakuga-fold>' },
   { id: 'card', name: 'Card (made here)', tag: 'sakuga-card', how: 'Press a card.', html: '<div style="display:flex;gap:10px"><sakuga-card label="Armchair" description="2 uses" selected="false" data-demo="card-a"><b>Armchair</b><br>2 uses</sakuga-card><sakuga-card label="Bed" href="#bed" data-demo="card-b"><b>Bed</b><br>a link</sakuga-card></div>' },
+  { id: 'compass', name: 'Compass (made here)', tag: 'sakuga-compass', how: 'Press it: north-up.', html: '<sakuga-compass label="Compass: turn the view north-up" style="--rose: 120deg"></sakuga-compass>' },
   { id: 'sheet', name: 'Sheet (made here)', tag: 'sakuga-sheet', how: 'Press Half, Full, then Collapsed.', html: '<sakuga-button variant="secondary" size="compact" data-demo="sheet-half">Half</sakuga-button> <sakuga-button variant="secondary" size="compact" data-demo="sheet-full">Full</sakuga-button> <sakuga-button variant="secondary" size="compact" data-demo="sheet-collapsed">Collapsed</sakuga-button><div class="sheetwrap" style="position:relative;height:240px;margin-top:12px;overflow:hidden;border-radius:12px;background:linear-gradient(#dcebf7,#f6f3ea)"><sakuga-sheet snap="collapsed" style="position:absolute;left:0;right:0;bottom:0;flex-direction:column"><div style="padding:12px;font-weight:700">View · Furniture · Photos</div><div style="padding:0 12px">The open panel.</div></sakuga-sheet></div><style>sakuga-sheet[snap=collapsed]{height:44px}sakuga-sheet[snap=half]{height:50%}sakuga-sheet[snap=full]{height:100%}</style>', wide: true },
 ];
 
@@ -144,6 +146,8 @@ const WIRE = {
     'selected="true|false" makes it a choice (aria-pressed, or aria-current on a link); description="..." is read after its name.'],
   sheet: ['Use <sakuga-sheet snap="collapsed|half|full">…</sakuga-sheet> as the frame of a phone\'s bottom sheet; your CSS gives its size at each snap.',
     'Change snap and it springs from its size on screen to the new one, and lands with two puffs. Set the dragging attribute while a finger drags it; side="" puts it at the right.'],
+  compass: ['Use <sakuga-compass label="Compass: turn the view north-up"></sakuga-compass> and set its --rose CSS variable (degrees) as your view turns; it reads it in CSS only.',
+    'Listen for click to turn your view north-up and set --rose to 0deg: the needle swings in with an overshoot. poor shows a dashed ring; size="compact" is 60 px.'],
   tooltip: ['Use <sakuga-tooltip text="..." label="..."></sakuga-tooltip> next to the thing it explains. text is the hint; label is what a screen reader calls the button ("Help" by default).',
     'It opens on hover, focus and tap, and Escape closes it. Whatever is inside the element replaces the "?" on the button.'],
 };
@@ -185,6 +189,7 @@ for (const it of ITEMS) {
   else if (it.tag === 'sakuga-fold') el.addEventListener('toggle', () => say(`open: ${el.open}`));
   else if (it.tag === 'sakuga-card') for (const c of card.querySelectorAll('sakuga-card')) c.addEventListener('click', (e) => { e.preventDefault(); if (c.hasAttribute('selected')) c.selected = !c.selected; say(`Clicked: ${c.getAttribute('label')}`); });
   else if (it.tag === 'sakuga-sheet') for (const snap of ['half', 'full', 'collapsed']) card.querySelector(`[data-demo=sheet-${snap}]`).addEventListener('click', () => { el.setAttribute('snap', snap); say(`snap: ${snap}`); });
+  else if (it.tag === 'sakuga-compass') el.addEventListener('click', () => { el.style.setProperty('--rose', '0deg'); say('north-up'); });
   else if (it.tag === 'sakuga-toast') card.querySelector('[data-demo=save]').addEventListener('click', () => el.show('Saved successfully!'));
   else if (it.tag === 'sakuga-progress') el.addEventListener('sakuga:done', () => say('sakuga:done'));
   else if (it.tag === 'sakuga-tabs') el.addEventListener('change', (e) => say(`Tab: ${e.detail.label}`));

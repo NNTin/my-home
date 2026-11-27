@@ -5,19 +5,19 @@ import { yawFromCompass } from '../walk/figure';
 import { CompassRose, turnRose } from './Compass';
 
 describe('CompassRose', () => {
-  it('shows N/E/S/W and turns the view north-up on click', () => {
+  it('is a button named for north-up, and turns the view north-up on click', () => {
     const onNorthUp = vi.fn();
-    const roseRef = createRef<HTMLButtonElement>();
+    const roseRef = createRef<HTMLElement>();
     render(<CompassRose roseRef={roseRef} onNorthUp={onNorthUp} />);
     const button = screen.getByRole('button', { name: 'Compass: turn the view north-up' });
-    expect(button.textContent).toBe('NESW');
+    // N, E, S and W are the element's own (its shadow root; HUD v2 #202).
     expect(roseRef.current).toBe(button);
     fireEvent.click(button);
     expect(onNorthUp).toHaveBeenCalledOnce();
   });
 
   it('follows a first-person view: north on the rose points to true north on screen', () => {
-    const roseRef = createRef<HTMLButtonElement>();
+    const roseRef = createRef<HTMLElement>();
     render(<CompassRose roseRef={roseRef} onNorthUp={() => {}} />);
     const rose = { ref: roseRef, northBearing: 20 };
     const turned = () => roseRef.current!.style.getPropertyValue('--rose');
