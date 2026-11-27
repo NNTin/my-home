@@ -1041,7 +1041,7 @@ async function smoke(out, homeId) {
     // A control's hit area, not its box: a compact Sakuga control draws a 34 px face and takes touches
     // 44 px around it inside its shadow root (docs/design/hud.md §3.3), which no box shows. So each
     // control is hit-tested: the middle of each edge of the TOUCH-px square around its centre (or of
-    // its box, if larger) must land on the control itself. The CSS reaches into shadow roots: an inner
+    // its box, if larger), 1 px inside, and the centre must land on the control itself. The CSS reaches into shadow roots: an inner
     // control stands for its host, which `elementFromPoint` returns for it.
     const small = await page
       .locator(
@@ -1061,6 +1061,7 @@ async function smoke(out, homeId) {
                 [cx + w, cy],
                 [cx, cy - h],
                 [cx, cy + h],
+                [cx, cy],
               ].filter(([x, y]) => {
                 // A finger touches the screen only: a probe past its edge comes back to it.
                 const hit = document.elementFromPoint(
