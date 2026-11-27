@@ -1,6 +1,6 @@
 # HUD v2
 
-A minimal game HUD for the full-bleed 3D viewer. Use clear space between compact controls and minimal translucent backing. Keep the paper colours and motion from the [Sakuga HUD rollout](../hud.md). See the [visual design](visual-design.md) and the [current mockups](mocks/README.md).
+A minimal game HUD for the full-bleed 3D viewer. Use clear space between compact controls and minimal translucent backing. Keep the paper colours and motion from the [Sakuga HUD rollout](../hud.md). See the [layer behavior](layers.md), [hotkeys](hotkeys.md), [visual design](visual-design.md) and [current mockups](mocks/README.md).
 
 ## Today's HUD
 
@@ -23,11 +23,17 @@ On the baseline for this draft, the loading bar, shared Sakuga core, paper theme
 - **Clock** is a Utility control in the orientation area. Show the scene time and its live or manual state in a compact chip. Open the interactive clock for draggable hands and a keyboard-friendly time field. On narrow phones, put the chip in Tools when map and mode controls need the space. [Interactive HUD clock #18](https://github.com/NNTin/my-home/issues/18)
 - **Temporary states** give capture, rendering and measurement their own task controls and keep the way out visible. Image export continues to use the scene output.
 
-## Decisions to make together
+## Implementation order
 
-- **Hotkeys and configuration.** Start from the current Walk movement and Edit shortcuts. Decide which actions earn defaults, where the cheat sheet lives, how to record, clear and reset a binding, how overlapping modes handle conflicts, and which hints appear on touch.
-- **Visual design and palette.** The [visual draft](visual-design.md) specifies clear resting controls, contrast treatments and Sakuga reactions. Choose the action placement and test the compact layout against the bright and dark backgrounds in the [realistic render design](../realistic-render.md).
-- **What's missing.** Decide whether to make the minimap available by default in Orbit, where Photos and Catalogue belong on desktop, whether the clock chip should be digital or analog, and whether the first measuring tool needs distance, height or both. Make coordinates local to the model and give units to every reading.
-- **Model follow-ups.** [#189](https://github.com/NNTin/my-home/issues/189) and [#190](https://github.com/NNTin/my-home/issues/190) expand what a user may inspect. The room and placement follow-ups ([#191](https://github.com/NNTin/my-home/issues/191), [#192](https://github.com/NNTin/my-home/issues/192), [#193](https://github.com/NNTin/my-home/issues/193), [#194](https://github.com/NNTin/my-home/issues/194), [#195](https://github.com/NNTin/my-home/issues/195)) inform dense selection examples and the need for clear context around openings, fittings and adjacent rooms. The HUD can use the model data already available.
+1. Add a transparent resting appearance to the existing Sakuga controls.
+2. Move primary navigation into the responsive edge layout.
+3. Add selection labels and contextual inspectors.
+4. Consolidate the compass and minimap and provide the scene-clock entry when #18 supplies scene time.
+5. Move help, Effects and status into Tools.
+6. Route existing and new keyboard actions through shared defaults and scope rules.
+7. Add shortcut discovery, rebinding, conflict handling and reset.
+8. Add the two-point measurement tool and local coordinates.
 
-The next drafts will cover layer behavior and hotkey defaults and configuration. Compare the [corner layout and floating action row](mocks/README.md).
+Use [corner clusters](mocks/README.md#corner-clusters) as the first desktop layout and the [floating row](mocks/README.md#floating-action-row) as the dark-scene contrast reference. The compact Walk layout and expanded inspector are in-scope verification cases. Start implementation after [#168](https://github.com/NNTin/my-home/issues/168) so the two HUD rollouts can proceed in order.
+
+**Model follow-ups.** [#189](https://github.com/NNTin/my-home/issues/189) and [#190](https://github.com/NNTin/my-home/issues/190) expand what a user may inspect. The room and placement follow-ups ([#191](https://github.com/NNTin/my-home/issues/191), [#192](https://github.com/NNTin/my-home/issues/192), [#193](https://github.com/NNTin/my-home/issues/193), [#194](https://github.com/NNTin/my-home/issues/194), [#195](https://github.com/NNTin/my-home/issues/195)) inform dense selection examples and the need for clear context around openings, fittings and adjacent rooms. The HUD can use the model data already available.
