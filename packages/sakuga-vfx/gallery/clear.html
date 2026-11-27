@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sakuga: the clear appearance (my-home, HUD v2)</title>
+<style>
+  :root { --text: #1d1a4a; --mute: #8580b0; }
+  html { overflow-x: clip; }
+  body { margin: 0; font: 15px/1.45 -apple-system, "Helvetica Neue", "Segoe UI", sans-serif; color: var(--text); background: #fff; overflow-x: clip; }
+  main { width: min(760px, 100vw - 24px); margin: 0 auto; padding: 24px 0 48px; }
+  h1 { margin: 0; font: italic 800 24px/1.1 "Avenir Next", "Nunito", -apple-system, sans-serif; }
+  .sub { margin: 4px 0 16px; color: var(--mute); }
+  .scene { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 46px 22px; margin: 0 0 14px; border-radius: 12px; }
+  .scene h2 { flex-basis: 100%; margin: 0 0 4px; font: 700 12px/1 sans-serif; letter-spacing: .04em; text-transform: uppercase; }
+  /* three backgrounds the HUD sits on: a light sky, a dark studio, a busy textured room */
+  #light { background: linear-gradient(#dcebf7, #f6f3ea); } #light h2 { color: #1d1a4a; }
+  #dark { background: #1d2129; } #dark h2 { color: #fff; }
+  #busy { background: repeating-linear-gradient(35deg, #8a6a4a 0 7px, #d9c6a5 7px 12px, #3b2f28 12px 16px, #f0ebe0 16px 23px); } #busy h2 { color: #fff; background: #1d1a4a; padding: 3px 6px; flex-basis: auto; }
+  #busy h2 + * { margin-left: 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Clear appearance</h1>
+  <p class="sub">The resting HUD over the scene (my-home HUD v2, #199): no box at rest, a crisp edge, a local backing where the scene is busy; focus and pressed stay unambiguous.</p>
+  <section class="scene" id="light"><h2>Light scene, tone dark</h2>
+    <sakuga-button size="compact" appearance="clear" id="l-walk">Walk</sakuga-button>
+    <sakuga-icon-button size="compact" appearance="clear" label="Views" icon="view" id="l-views"></sakuga-icon-button>
+    <sakuga-icon-button size="compact" appearance="clear" label="Edit" icon="edit" pressed="true" id="l-edit"></sakuga-icon-button>
+    <sakuga-icon-button size="compact" appearance="clear" label="Tools" icon="more" backing id="l-tools"></sakuga-icon-button>
+    <sakuga-icon-button size="compact" appearance="clear" label="Delete" icon="delete" disabled id="l-off"></sakuga-icon-button>
+  </section>
+  <section class="scene" id="dark"><h2>Dark scene, tone light</h2>
+    <sakuga-button size="compact" appearance="clear" tone="light" id="d-walk">Walk</sakuga-button>
+    <sakuga-icon-button size="compact" appearance="clear" tone="light" label="Views" icon="view" id="d-views"></sakuga-icon-button>
+    <sakuga-icon-button size="compact" appearance="clear" tone="light" label="Edit" icon="edit" pressed="true" id="d-edit"></sakuga-icon-button>
+    <sakuga-icon-button size="compact" appearance="clear" tone="light" label="Tools" icon="more" backing id="d-tools"></sakuga-icon-button>
+    <sakuga-button size="compact" appearance="clear" tone="light" pressed="true" variant="secondary" id="d-pressed">Photos</sakuga-button>
+  </section>
+  <section class="scene" id="busy"><h2>Busy scene, with a backing</h2>
+    <sakuga-button size="compact" appearance="clear" backing id="b-walk">Walk</sakuga-button>
+    <sakuga-icon-button size="compact" appearance="clear" label="Views" icon="view" backing id="b-views"></sakuga-icon-button>
+    <sakuga-icon-button size="compact" appearance="clear" label="Edit" icon="edit" backing pressed="false" id="b-edit"></sakuga-icon-button>
+    <sakuga-button size="compact" appearance="clear" tone="light" backing variant="secondary" id="b-level">Souterrain</sakuga-button>
+  </section>
+</main>
+<script src="../button/button.js"></script>
+<script src="../icons/icons.js"></script>
+<script src="../icon-button/icon-button.js"></script>
+<script>
+// This page's own wiring: Edit is a toggle; every click says so on the console for tools/test.mjs.
+for (const b of document.querySelectorAll('[pressed]')) b.addEventListener('click', () => { b.pressed = !b.pressed; });
+window.clicks = []; for (const b of document.querySelectorAll('sakuga-button, sakuga-icon-button')) b.addEventListener('click', () => window.clicks.push(b.id));
+</script>
+</body>
+</html>

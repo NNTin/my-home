@@ -2366,3 +2366,46 @@ sakuga-badge[data-count]::after {
   font-style: italic;
   font-weight: 800;
 }
+
+/*
+ * Fallbacks (hud/fallback.ts: no shadow root, when sakuga-hud did not load): an icon button shows its name,
+ * and the clear appearance (HUD v2, #199) reads as the element's does: no box, an edge, focus and pressed.
+ */
+sakuga-icon-button[data-fallback]::before {
+  content: attr(label);
+}
+
+sakuga-button[data-fallback][appearance='clear'],
+sakuga-icon-button[data-fallback][appearance='clear'] {
+  display: inline-block;
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--hud-r-compact);
+  color: var(--sk-ink);
+  font-style: italic;
+  font-weight: 800;
+  -webkit-text-stroke: 3px var(--sk-card);
+  paint-order: stroke fill;
+  cursor: pointer;
+}
+
+sakuga-button[data-fallback][appearance='clear'][tone='light'],
+sakuga-icon-button[data-fallback][appearance='clear'][tone='light'] {
+  color: var(--sk-card);
+  -webkit-text-stroke-color: var(--sk-ink);
+}
+
+:is(sakuga-button, sakuga-icon-button)[data-fallback][appearance='clear'][backing] {
+  background: color-mix(in srgb, var(--sk-card) 72%, transparent);
+}
+
+:is(sakuga-button, sakuga-icon-button)[data-fallback][appearance='clear']:focus-visible {
+  outline: var(--hud-focus);
+  outline-offset: 3px;
+}
+
+:is(sakuga-button, sakuga-icon-button)[data-fallback][appearance='clear'][aria-pressed='true'] {
+  background: var(--sk-ink);
+  box-shadow: 0 0 0 2px var(--sk-card);
+  color: var(--sk-card);
+  -webkit-text-stroke: 0;
+}

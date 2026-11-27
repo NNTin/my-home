@@ -80,6 +80,18 @@ check('the four made here are defined', await ev(`['icon-button','badge','segmen
   check('field: the native select is in the page, slotted', await ev(`!!${sel} && ${sel}.assignedSlot !== null`));
   await ev(`(() => { const s = ${sel}; s.selectedIndex = 2; s.dispatchEvent(new Event('change', { bubbles: true })); })()`); await sleep(300);
   check('field: a change reaches the page', (await ev(`document.querySelector('sakuga-field').closest('section').querySelector('.said').textContent`)) === 'change: Studio, dark'); }
+// The clear appearance (my-home HUD v2, #199): the same control, hit area, keys and focus as the boxed one.
+{ const said = `document.querySelector('[data-demo=clear]').closest('section').querySelector('.said').textContent`;
+  await tap('[data-demo=clear] >>> .b'); await sleep(400); check('clear icon button: tap fires click', (await ev(said)) === 'Clicked: Views');
+  const [x, y] = await at('[data-demo=clear-btn] >>> .btn', 0.5, 0); await sleep(150); await touch('touchStart', x, y - 4); await touch('touchEnd', x, y - 4); await sleep(500);
+  check('clear compact button: a touch 4 px above its face still hits it (44 px)', (await ev(said)) === 'Clicked: Walk');
+  await tap('[data-demo=clear-toggle] >>> .b'); await sleep(400); check('clear icon button: pressed toggles aria-pressed', (await ev(`${find('[data-demo=clear-toggle] >>> .b')}.getAttribute('aria-pressed')`)) === 'true');
+  await ev(`${find('[data-demo=clear] >>> .b')}.focus()`); await key('Tab', 9); await sleep(200); await key('Tab', 9); await key('Tab', 9); await sleep(100);
+  await ev(`${find('[data-demo=clear] >>> .b')}.focus()`);
+  await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, text: '\r' }); await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }); await sleep(300);
+  check('clear icon button: Enter fires click', (await ev(said)) === 'Clicked: Views');
+  check('clear icon button: keyboard focus shows the pink ring', (await ev(`(() => { const b = ${find('[data-demo=clear] >>> .b')}; return b.matches(':focus-visible') && getComputedStyle(b).outlineStyle === 'solid'; })()`)) === true);
+  await ev(`window.__saidBefore = ${said}`); await tap('[data-demo=clear-off] >>> .btn'); await sleep(300); check('clear button: disabled takes no click', (await ev(said)) === (await ev('window.__saidBefore'))); }
 check('no horizontal scroll at 390', (await ev('document.documentElement.scrollWidth')) <= 390, await ev('document.documentElement.scrollWidth'));
 if (logs.length) { console.log(logs.join('\n')); fails++; }
 ws.close(); chrome.kill(); await sleep(300); try { rmSync(PROFILE, { recursive: true, force: true }); } catch {} process.exit(fails ? 1 : 0);

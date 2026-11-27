@@ -42,3 +42,14 @@ python3 -m http.server 8000     # from packages/sakuga-vfx
 - `icons.js` must load after a component file (it needs `window.SakugaFX`). An icon button on a page whose icons come
   later waits for the document to finish loading before it draws its icon.
 - The crescent of `dir="cw|ccw"` is drawn over the button's top corner only.
+
+## The clear appearance (my-home HUD v2, #199)
+
+| attribute | what it sets |
+|---|---|
+| `appearance="clear"` | the resting HUD over the scene: no box at rest, the label or icon with a crisp contrasting edge |
+| `tone="light"` | paper on dark scenes (default `dark`: ink on light scenes) |
+| `backing` | a small flat translucent backing, for a busy scene |
+
+Focus keeps the pink ring with an edge ring; pressed is a solid ink fill with a paper edge. The hit area, keys and
+reactions are unchanged. See `gallery/clear.html` (light, dark and busy backgrounds).

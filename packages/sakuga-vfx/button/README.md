@@ -69,3 +69,14 @@ el.disabled = true;
 | `href` | the control is a real `<a>` (open in a new tab, copy the link); while disabled it has no `href` and `aria-disabled` |
 | `label` | the accessible name, when the visible text is shorter ("Walk" named "Walk and take photos") |
 | `pressed` | a toggle button: `aria-pressed` and an ink fill with card text. Set from code it changes at once and plays nothing |
+
+## The clear appearance (my-home HUD v2, #199)
+
+| attribute | what it sets |
+|---|---|
+| `appearance="clear"` | the resting HUD over the scene: no box at rest, the label or icon with a crisp contrasting edge |
+| `tone="light"` | paper on dark scenes (default `dark`: ink on light scenes) |
+| `backing` | a small flat translucent backing, for a busy scene |
+
+Focus keeps the pink ring with an edge ring; pressed is a solid ink fill with a paper edge. The hit area, keys and
+reactions are unchanged. See `gallery/clear.html` (light, dark and busy backgrounds).

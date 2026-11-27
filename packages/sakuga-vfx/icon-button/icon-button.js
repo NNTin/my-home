@@ -24,7 +24,21 @@ class SakugaIconButton extends fx.Base {
     :host([size=compact]) { width: 34px; height: 34px; --sk-fx-scale: .7; }
     :host([size=compact]) .b { border-width: 2.5px; border-radius: 11px; box-shadow: 3px 4px 0 var(--sk-soft); }
     :host([size=compact]) .b svg, :host([size=compact]) ::slotted(svg) { width: 20px; height: 20px; }
-    :host([size=compact]) .b::before { content: ''; position: absolute; inset: -7.5px; }   /* the 44 px hit area, inside the shadow root (from the padding box: 5 px past the 2.5 px line) */`;
+    :host([size=compact]) .b::before { content: ''; position: absolute; inset: -7.5px; }
+    /* made here (my-home, HUD v2 #199): appearance="clear", the resting HUD over the scene. No box at rest: the glyph and
+       its label only, with a crisp contrasting edge (no blur); tone="dark" (ink, for light scenes, the default) or "light"
+       (paper, for dark scenes); backing: a small flat translucent backing for a busy scene. Focus and pressed stay
+       unambiguous on any scene: the pink ring with an edge ring, and a solid ink fill with a paper edge. */
+    :host([appearance=clear]) { --sk-clear-fg: var(--sk-ink); --sk-clear-edge: var(--sk-card); --sk-clear-backing: color-mix(in srgb, var(--sk-card) 72%, transparent); }
+    :host([appearance=clear][tone=light]) { --sk-clear-fg: var(--sk-card); --sk-clear-edge: var(--sk-ink); --sk-clear-backing: color-mix(in srgb, var(--sk-ink) 58%, transparent); }
+    /* tone dark: the icon as drawn, an ink line on its paper shape; tone light: a paper line on an ink shape (a paper-white
+       icon with an ink edge), so a dark scene does not swallow the line */
+    :host([appearance=clear]) .b { border-color: transparent; background: transparent; box-shadow: none; color: var(--sk-ink); }
+    :host([appearance=clear][tone=light]) .b:not(.on) { color: var(--sk-card); }
+    :host([appearance=clear][tone=light]) .b:not(.on) svg { --sk-card: var(--sk-ink); --sk-soft: color-mix(in srgb, var(--sk-ink) 60%, #000); }
+    :host([appearance=clear][backing]) .b, :host([appearance=clear]) .b:hover:not(:disabled) { background: var(--sk-clear-backing); }
+    :host([appearance=clear]) .b:focus-visible { box-shadow: 0 0 0 2px var(--sk-clear-edge); }
+    :host([appearance=clear]) .b.on { border-color: var(--sk-card); background: var(--sk-ink); color: var(--sk-card); }   /* the 44 px hit area, inside the shadow root (from the padding box: 5 px past the 2.5 px line) */`;
 
   get disabled() { return this.hasAttribute('disabled'); }
   set disabled(v) { this.toggleAttribute('disabled', !!v); }

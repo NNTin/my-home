@@ -25,6 +25,8 @@ class Plain extends HTMLElement {
   }
   connectedCallback() {
     if (this.role_) this.setAttribute('role', this.role_);
+    // The stand-in has no shadow root: the app's CSS draws it (styles.css, "Fallbacks").
+    this.dataset.fallback = '';
     this.sync();
   }
   attributeChangedCallback() {

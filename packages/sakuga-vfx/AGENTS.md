@@ -163,6 +163,10 @@ changes come in by hand). The design is `docs/design/hud.md` §6; the README's n
   the line to the inset.
 - **`aria-hidden=""` hides nothing;** write `"true"`.
 
+- `button` and `icon-button` (HUD v2 #199): `appearance="clear"`: no box at rest, a crisp edge (`-webkit-text-stroke`
+  under the fill), `tone="dark|light"`, `backing`; focus with an edge ring, pressed as an ink fill with a paper edge;
+  in `tone="light"` an icon is a paper line on an ink shape. CSS only. Demo: `gallery/clear.html` (light, dark, busy).
+
 ### Elements of our own
 
 Made here with the workflow above, in `NAMES`, each with a README and an `index.html`; not from upstream.
