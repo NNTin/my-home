@@ -40,6 +40,14 @@ design `docs/design/hud.md` (#167, #168). This page says what exists and how the
   `href` (a real link; `useLink` sends a plain click through the router), `pressed` (a toggle, even when off) and
   `size="compact"`; `SkBadge` takes `shown` (it pops in or shrinks away), `kind`, `count`, `done`, `duration`.
   `HudIcon` puts an ink-line icon in a control's text.
+- **What PR 4 added (choices):** `SkSegmented` (the levels, the quality, the named views), `SkField` (the selects and
+  the furniture panel's number), `SkToggle` (the painted switch: Edit, Room names, Plan colours, Effects; its words
+  flip it too), compact `SkCheckbox` in the panels' lists, `SkSlider` for "Cut at". Edit is in the stage tools on a
+  phone, on its own line under the home's name on a desktop, and on the piece page's second header line.
+- **The painted toggle's frames** come lazily (`hud/toggle.ts`, `virtual:sakuga-toggle-frames`): the two rest frames
+  once the loading screen has gone, all 43 on idle with effects on; their files are `sakuga-toggle-rest-*.webp` and
+  `sakuga-toggle-frames-*.webp` (lazy budgets with `ext: ".webp"`, checked by `check:bundle`).
+- **Effects** (`hud/effects.ts`): on by default, stored as `my-home.effects`; off sets `SakugaFX.calm` (C3).
 - **Touch size:** a compact control draws a 34 px face and takes touches 44 px across inside its shadow root. The
   smokes hit-test it (`elementFromPoint` at the edges of the 44 px square), never its box.
 
