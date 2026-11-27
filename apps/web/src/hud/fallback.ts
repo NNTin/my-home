@@ -117,6 +117,36 @@ class FallbackBadge extends HTMLElement {
   }
 }
 
+/** The painted toggle: a switch, flipped by a click, Space or Enter. */
+class FallbackToggle extends Plain {
+  static override observedAttributes = ['disabled', 'label', 'checked'];
+  override role_ = 'switch';
+  get checked() {
+    return this.hasAttribute('checked');
+  }
+  set checked(v: boolean) {
+    on(this, 'checked', v);
+  }
+  constructor() {
+    super();
+    const flip = () => {
+      if (this.disabled) return;
+      this.checked = !this.checked;
+      fire(this, 'change');
+    };
+    this.addEventListener('click', flip);
+    this.addEventListener('keydown', (e) => {
+      if (!isKey(e, ' ', 'Enter')) return;
+      e.preventDefault();
+      flip();
+    });
+  }
+  override sync() {
+    super.sync();
+    this.setAttribute('aria-checked', String(this.checked));
+  }
+}
+
 class FallbackCheckbox extends Plain {
   static override observedAttributes = ['disabled', 'label', 'checked'];
   override role_ = 'checkbox';
@@ -324,6 +354,7 @@ class FallbackToast extends Plain {
 /** The tags of `sakuga-hud` (apps/web/sakuga-plugin.ts `HUD_ELEMENTS`) and their plain stand-ins. */
 export const FALLBACKS: Record<string, CustomElementConstructor> = {
   'sakuga-button': FallbackButton,
+  'sakuga-toggle': FallbackToggle,
   'sakuga-slider': FallbackSlider,
   'sakuga-checkbox': FallbackCheckbox,
   'sakuga-input': FallbackInput,

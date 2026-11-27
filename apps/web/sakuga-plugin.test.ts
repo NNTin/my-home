@@ -10,6 +10,7 @@ import {
   hudSource,
   packageRoot,
   stripCore,
+  stripFrames,
   withSakugaScripts,
 } from './sakuga-plugin';
 
@@ -37,7 +38,7 @@ describe('sakuga-hud', () => {
       expect(stripped).not.toContain(CORE_LINE);
       expect(stripped).not.toContain('sakuga core');
       expect(stripped.trimEnd().endsWith(COMPONENT_END)).toBe(true);
-      expect(hud).toContain(stripped);
+      expect(hud).toContain(name === 'toggle' ? stripFrames(stripped, name) : stripped);
       expect(hud).toContain(`fx.define('sakuga-${name}'`);
     }
     expect(hud).not.toContain(CORE_LINE);
@@ -46,6 +47,14 @@ describe('sakuga-hud', () => {
     // It is a fraction of the files it comes from: the core is about 40 kB of each.
     const whole = HUD_ELEMENTS.reduce((sum, name) => sum + element(name).length, 0);
     expect(hud.length).toBeLessThan(whole / 3);
+  });
+
+  it('holds the painted toggle without its inline frames: they are two lazy files (§9.3, §9.4)', () => {
+    const hud = hudSource();
+    expect(element('toggle')).toContain('data:image/webp;base64,');
+    expect(hud).not.toContain('data:image/webp;base64,');
+    expect(hud).toContain("const SHEET = '';");
+    expect(() => stripFrames('const SHEET = 1;', 'x.js')).toThrow(/no frames markers/);
   });
 
   it('refuses a file without the core markers', () => {
