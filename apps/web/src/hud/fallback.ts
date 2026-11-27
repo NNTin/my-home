@@ -177,7 +177,7 @@ class FallbackCheckbox extends Plain {
 }
 
 class FallbackSlider extends Plain {
-  static override observedAttributes = ['disabled', 'label', 'value', 'min', 'max', 'step'];
+  static override observedAttributes = ['disabled', 'label', 'value', 'min', 'max', 'step', 'unit'];
   override role_ = 'slider';
   private num(name: string, fallback: number) {
     const v = parseFloat(this.getAttribute(name) ?? '');
@@ -209,6 +209,8 @@ class FallbackSlider extends Plain {
   override sync() {
     super.sync();
     this.setAttribute('aria-valuenow', String(this.value));
+    // The unit is read out too, as the element's (" m", "%").
+    this.setAttribute('aria-valuetext', `${this.value}${this.getAttribute('unit') ?? '%'}`);
     this.setAttribute('aria-valuemin', String(this.num('min', 0)));
     this.setAttribute('aria-valuemax', String(this.num('max', 100)));
   }
@@ -315,6 +317,101 @@ class FallbackTabs extends Plain {
   }
 }
 
+/** One choice of a few: a radiogroup of radio buttons from the `<option>` children, re-read when they change. */
+class FallbackSegmented extends HTMLElement {
+  static observedAttributes = ['value', 'label'];
+  private row = document.createElement('span');
+  private current = '';
+  private watch = new MutationObserver((list) => {
+    if (list.some((m) => !this.row.contains(m.target) && m.target !== this)) this.build();
+  });
+  get value() {
+    return this.current;
+  }
+  set value(v: string) {
+    this.setAttribute('value', v);
+  }
+  connectedCallback() {
+    this.setAttribute('role', 'radiogroup');
+    if (!this.row.isConnected) this.append(this.row);
+    this.watch.observe(this, { childList: true, subtree: true, characterData: true });
+    this.build();
+  }
+  disconnectedCallback() {
+    this.watch.disconnect();
+  }
+  attributeChangedCallback() {
+    if (this.isConnected) this.build();
+  }
+  private options() {
+    return [...this.querySelectorAll('option')];
+  }
+  private pick(i: number, focus: boolean) {
+    const option = this.options()[i];
+    if (!option || option.disabled) return;
+    this.setAttribute('value', option.value);
+    if (focus) (this.row.children[i] as HTMLElement | undefined)?.focus();
+    this.dispatchEvent(
+      new CustomEvent('change', { bubbles: true, detail: { index: i, value: option.value } }),
+    );
+  }
+  private build() {
+    const label = this.getAttribute('label');
+    if (label) this.setAttribute('aria-label', label);
+    const options = this.options();
+    for (const option of options) option.hidden = true;
+    const wanted = this.getAttribute('value');
+    const at = Math.max(
+      0,
+      options.findIndex((o) => o.value === wanted),
+    );
+    this.current = options[at]?.value ?? '';
+    const name = (o: HTMLOptionElement) => o.getAttribute('label') || (o.textContent ?? '');
+    const buttons = [...this.row.children] as HTMLButtonElement[];
+    // The same options: only the choice moves (a rebuild would drop the focus a key has moved).
+    const same =
+      buttons.length === options.length &&
+      buttons.every(
+        (b, i) =>
+          b.dataset.value === options[i]!.value &&
+          b.getAttribute('aria-label') === name(options[i]!),
+      );
+    if (!same)
+      this.row.replaceChildren(
+        ...options.map((option, i) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.dataset.value = option.value;
+          b.setAttribute('role', 'radio');
+          b.setAttribute('aria-label', name(option));
+          b.disabled = option.disabled;
+          b.textContent = option.textContent;
+          b.addEventListener('click', () => this.current !== option.value && this.pick(i, false));
+          b.addEventListener('keydown', (e) => {
+            const n = options.length;
+            const d = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+            const to =
+              d !== undefined
+                ? (i + d + n) % n
+                : e.key === 'Home'
+                  ? 0
+                  : e.key === 'End'
+                    ? n - 1
+                    : -1;
+            if (to < 0) return;
+            e.preventDefault();
+            this.pick(to, true);
+          });
+          return b;
+        }),
+      );
+    [...this.row.children].forEach((b, i) => {
+      b.setAttribute('aria-checked', String(i === at));
+      (b as HTMLElement).tabIndex = i === at ? 0 : -1;
+    });
+  }
+}
+
 class FallbackToast extends Plain {
   private status = Object.assign(document.createElement('span'), { hidden: true });
   private timer: ReturnType<typeof setTimeout> | undefined;
@@ -362,6 +459,7 @@ export const FALLBACKS: Record<string, CustomElementConstructor> = {
   'sakuga-toast': FallbackToast,
   'sakuga-icon-button': FallbackIconButton,
   'sakuga-badge': FallbackBadge,
+  'sakuga-segmented': FallbackSegmented,
 };
 
 /** Defines a plain stand-in for every HUD tag still undefined; returns the tags it defined. */

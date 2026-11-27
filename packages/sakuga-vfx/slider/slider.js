@@ -47,7 +47,7 @@ class SakugaSlider extends fx.Base {
       <input type="range" min="${a('min', 0)}" max="${a('max', 100)}" step="${a('step', 1)}" value="${a('value', 50)}" aria-label="${a('label', 'Slider')}"${this.disabled ? ' disabled' : ''}></div>`;
   }
   frac() { const r = this.r, lo = +r.min || 0, hi = r.max === '' ? 100 : +r.max; return hi > lo ? (+r.value - lo) / (hi - lo) : 0; }
-  sync() { this.s.to = this.frac(); this.val.textContent = this.r.value + (this.getAttribute('unit') ?? '%'); this.internals.setFormValue(this.r.value); }
+  sync() { const t = this.r.value + (this.getAttribute('unit') ?? '%'); this.s.to = this.frac(); this.val.textContent = t; this.r.setAttribute('aria-valuetext', t); this.internals.setFormValue(this.r.value); }   // made here: the unit is read out too
   setup() {
     const box = this.box = this.$('.sld'), r = this.r = this.$('input'); this.th = this.$('.th'); this.val = this.$('.val');
     this.s = new Spring(0, 420, 30); this.sync(); this.s.x = this.s.to; this.acc = 0; this.peak = 0; this.said = -9; this.t = 0;

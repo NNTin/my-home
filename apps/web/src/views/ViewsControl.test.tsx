@@ -1,5 +1,5 @@
 import { HomeModel } from '@my-home/shared';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import realHomeJson from '../../../../data/homes/home.json';
 import { buildHome } from '../builder/buildHome';
@@ -31,16 +31,16 @@ function show(view?: NamedView, saving = false) {
 describe('the Views control', () => {
   it('opens each named view with its defaults; the cutaway on the level looked into', () => {
     const { onView, group } = show();
-    expect(group.getByRole('button', { name: 'Free' })).toHaveAttribute('aria-pressed', 'true');
-    fireEvent.click(group.getByRole('button', { name: 'Cutaway' }));
+    expect(group.getByRole('radio', { name: 'Free' })).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(group.getByRole('radio', { name: 'Cutaway' }));
     expect(onView).toHaveBeenLastCalledWith({ kind: 'cutaway', levelId: 'ground-floor' });
-    fireEvent.click(group.getByRole('button', { name: 'Section' }));
+    fireEvent.click(group.getByRole('radio', { name: 'Section' }));
     expect(onView).toHaveBeenLastCalledWith({
       kind: 'section',
       look: 'north',
       at: sectionRange(home, 'north').depth / 2,
     });
-    fireEvent.click(group.getByRole('button', { name: 'Eye level' }));
+    fireEvent.click(group.getByRole('radio', { name: 'Eye level' }));
     expect(onView).toHaveBeenLastCalledWith(
       expect.objectContaining({ kind: 'eye', roomId: 'souterrain-stair-hall' }),
     );
@@ -48,8 +48,8 @@ describe('the Views control', () => {
 
   it('"Free" goes back to the free view', () => {
     const { onView, group } = show({ kind: 'cutaway', levelId: 'souterrain' });
-    expect(group.getByRole('button', { name: 'Cutaway' })).toHaveAttribute('aria-pressed', 'true');
-    fireEvent.click(group.getByRole('button', { name: 'Free' }));
+    expect(group.getByRole('radio', { name: 'Cutaway' })).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(group.getByRole('radio', { name: 'Free' }));
     expect(onView).toHaveBeenLastCalledWith(undefined);
   });
 
@@ -76,8 +76,12 @@ describe('the Views control', () => {
     const slider = group.getByLabelText(/Cut at/);
     expect(slider).toHaveAttribute('min', '0');
     expect(Number(slider.getAttribute('max'))).toBeCloseTo(sectionRange(home, 'north').depth);
-    expect(slider).toHaveAttribute('aria-valuetext', '2.00 m');
-    fireEvent.change(slider, { target: { value: '3.5' } });
+    expect(slider).toHaveAttribute('aria-valuetext', '2 m');
+    // A sakuga-slider (its fallback here): its value set and said, as a drag does.
+    act(() => {
+      (slider as HTMLElement & { value: string }).value = '3.5';
+      fireEvent.input(slider);
+    });
     expect(onView).toHaveBeenLastCalledWith({ kind: 'section', look: 'north', at: 3.5 });
     // Turning the look keeps the cut the same share of the way through the house.
     fireEvent.change(group.getByLabelText('Looking'), { target: { value: 'east' } });

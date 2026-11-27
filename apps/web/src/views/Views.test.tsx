@@ -25,6 +25,15 @@ async function open(path: string) {
   return within(await screen.findByRole('group', { name: 'Views' }, { timeout: 10_000 }));
 }
 
+/** "Cut at" is a sakuga-slider (its fallback here): set its value and say so, as a drag does. */
+function setCut(views: ReturnType<typeof within>, value: string) {
+  act(() => {
+    const slider = views.getByRole('slider', { name: 'Cut at' }) as HTMLElement & { value: string };
+    slider.value = value;
+    fireEvent.input(slider);
+  });
+}
+
 describe('named views in the viewer', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -36,7 +45,7 @@ describe('named views in the viewer', () => {
 
   it('the free view is as it was: the sky, the free rig, letters and room names', async () => {
     const views = await open('/');
-    expect(views.getByRole('button', { name: 'Free' })).toHaveAttribute('aria-pressed', 'true');
+    expect(views.getByRole('radio', { name: 'Free' })).toHaveAttribute('aria-checked', 'true');
     expect(lastScene).toMatchObject({ rigView: undefined, backdrop: undefined, busy: false });
     expect(lastScene?.markers).toHaveLength(4);
     expect(lastScene?.lettersHidden).toBe(false);
@@ -82,16 +91,16 @@ describe('named views in the viewer', () => {
     // The backdrop and the light of the view are kept, and the camera is not moved.
     expect(lastScene).toMatchObject({ rigView: { kind: 'cutaway' }, backdrop: 'studio-light' });
     expect(lastScene?.frame?.key).toBe(before);
-    expect(views.getByRole('button', { name: 'Cutaway' })).toHaveAttribute('aria-pressed', 'true');
+    expect(views.getByRole('radio', { name: 'Cutaway' })).toHaveAttribute('aria-checked', 'true');
 
-    fireEvent.click(views.getByRole('button', { name: 'Free' }));
+    fireEvent.click(views.getByRole('radio', { name: 'Free' }));
     expect(lastScene).toMatchObject({ rigView: undefined, backdrop: undefined });
     expect(levelsShown()).toEqual(new Set(['souterrain']));
   });
 
   it('the control opens a view and writes its address; another view replaces it', async () => {
     const views = await open('/?hints=off');
-    fireEvent.click(views.getByRole('button', { name: 'Eye level' }));
+    fireEvent.click(views.getByRole('radio', { name: 'Eye level' }));
     expect(query()).toMatchObject({ hints: 'off', view: 'eye', room: 'souterrain-hallway' });
     expect(lastScene).toMatchObject({ rigView: { kind: 'eye' }, backdrop: 'studio-light' });
     expect(lastScene?.frame).toMatchObject({ fov: 70 });
@@ -101,12 +110,12 @@ describe('named views in the viewer', () => {
     fireEvent.change(views.getByLabelText('Room'), { target: { value: 'souterrain-kitchen' } });
     expect(query()).toMatchObject({ view: 'eye', room: 'souterrain-kitchen' });
 
-    fireEvent.click(views.getByRole('button', { name: 'Cutaway' }));
+    fireEvent.click(views.getByRole('radio', { name: 'Cutaway' }));
     expect(query()).toEqual({ hints: 'off', view: 'cutaway', level: 'souterrain' });
     expect(levelsShown()).toEqual(new Set(['souterrain']));
 
     // "Free" shows again what was shown before the first named view.
-    fireEvent.click(views.getByRole('button', { name: 'Free' }));
+    fireEvent.click(views.getByRole('radio', { name: 'Free' }));
     expect(query()).toEqual({ hints: 'off' });
     expect(levelsShown()).toEqual(new Set(['souterrain']));
   });
@@ -128,7 +137,7 @@ describe('named views in the viewer', () => {
     expect(lastScene?.backdrop).toBe('studio-light');
     // A chosen backdrop is the named views' too.
     fireEvent.change(views.getByLabelText('Backdrop'), { target: { value: 'sky' } });
-    fireEvent.click(views.getByRole('button', { name: 'Cutaway' }));
+    fireEvent.click(views.getByRole('radio', { name: 'Cutaway' }));
     expect(lastScene?.backdrop).toBe('sky');
   });
 
@@ -168,7 +177,7 @@ describe('named views in the viewer', () => {
     expect(lastScene?.frame).toMatchObject({ fov: 25, from: [-1, 0, expect.closeTo(0)] });
     expect(levelsShown()).toEqual(new Set(['souterrain', 'ground-floor', 'first-floor']));
     const before = lastScene?.frame?.key;
-    fireEvent.change(views.getByLabelText(/Cut at/), { target: { value: '3.5' } });
+    setCut(views, '3.5');
     expect(query()).toEqual({ view: 'section', look: 'east', at: '3.5', quality: 'fast' });
     // Moving the cut does not move the camera.
     expect(lastScene?.frame?.key).toBe(before);
@@ -184,7 +193,7 @@ describe('named views in the viewer', () => {
     act(() => lastScene?.onOrbit?.());
     expect(window.location.search).toBe('');
     const before = lastScene?.frame?.key;
-    fireEvent.change(views.getByLabelText(/Cut at/), { target: { value: '1' } });
+    setCut(views, '1');
     expect(lastScene?.frame?.key).toBe(before);
     expect(window.location.search).toBe('');
     expect(lastScene?.rigView).toEqual({ kind: 'section', look: 'north' });
@@ -193,7 +202,7 @@ describe('named views in the viewer', () => {
   it('on a phone the control is in the View tab and "Reset view" goes back to the free view', async () => {
     stubScreen('portrait');
     const views = await open('/?panel=view&hints=off');
-    fireEvent.click(views.getByRole('button', { name: 'Cutaway' }));
+    fireEvent.click(views.getByRole('radio', { name: 'Cutaway' }));
     expect(lastScene?.rigView).toEqual({ kind: 'cutaway' });
     expect(query()).toMatchObject({ view: 'cutaway' });
     fireEvent.click(screen.getByRole('button', { name: /Reset view/ }));

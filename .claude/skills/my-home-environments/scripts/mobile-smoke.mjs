@@ -708,8 +708,9 @@ async function viewChecks(browser, { device, base, host, homeId }) {
     await page.waitForSelector(SCENE, { timeout: 30_000 });
   };
   const views = page.getByRole('group', { name: 'Views', exact: true });
+  // The named views are a segmented row (sakuga-segmented, #168 PR 4): radios, not pressed buttons.
   const press = async (name) => {
-    const button = views.getByRole('button', { name, exact: true });
+    const button = views.getByRole('radio', { name, exact: true });
     await button.scrollIntoViewIfNeeded();
     await (phone ? button.tap() : button.click());
   };
@@ -729,7 +730,7 @@ async function viewChecks(browser, { device, base, host, homeId }) {
     return settled('fast');
   };
   const pressed = (name) =>
-    views.getByRole('button', { name, exact: true }).getAttribute('aria-pressed');
+    views.getByRole('radio', { name, exact: true }).getAttribute('aria-checked');
   const where = `on a ${device}`;
   try {
     await open('view=cutaway');
@@ -773,7 +774,7 @@ async function viewChecks(browser, { device, base, host, homeId }) {
       `${compiled.join(', ')} compiled (free, cutaway, free, cutaway)`,
     );
 
-    if ((await views.getByRole('button', { name: 'Section', exact: true }).count()) === 0) {
+    if ((await views.getByRole('radio', { name: 'Section', exact: true }).count()) === 0) {
       console.log(`skip  the section and "Save image" ${where}: a build before the section`);
       return;
     }
@@ -1202,7 +1203,12 @@ async function smoke(out, homeId) {
     } else {
       const names = await quality
         .getByRole('radio')
-        .evaluateAll((radios) => radios.map((r) => r.closest('label')?.textContent?.trim()));
+        // Their names: a segment's own (sakuga-segmented, #168 PR 4), or a native radio's label.
+        .evaluateAll((radios) =>
+          radios.map(
+            (r) => r.getAttribute('aria-label') ?? r.closest('label')?.textContent?.trim(),
+          ),
+        );
       check(
         'the View panel offers the quality setting in a phone\u2019s words',
         names.join(', ') === 'Fast, Automatic, Always beautiful',
@@ -1248,20 +1254,24 @@ async function smoke(out, homeId) {
       (await page.locator('.room-label').count()) > 0,
     );
 
-    // View mode is the default: nothing can be changed until "Edit" is pressed (and "Done" leaves it).
-    const editButton = page.getByRole('button', { name: 'Edit', exact: true });
-    const doneButton = page.getByRole('button', { name: 'Done', exact: true });
+    // View mode is the default: nothing can be changed until "Edit" is switched on (and off leaves it).
+    // "Edit" is the painted switch (sakuga-toggle, #168 PR 4), in the stage tools at the foot of the view.
+    const editButton = page.getByRole('switch', { name: 'Edit', exact: true });
+    const editing = async () => (await editButton.getAttribute('aria-checked')) === 'true';
     const editBadge = page.getByRole('status', { name: 'Edit mode' });
     check(
-      'a fresh visit is in view mode: the top bar offers "Edit"',
-      (await editButton.count()) === 1 && (await doneButton.count()) === 0,
+      'a fresh visit is in view mode: the stage tools offer "Edit", off',
+      (await editButton.count()) === 1 &&
+        !(await editing()) &&
+        // The switch's control is in its shadow root: ask from its host.
+        (await editButton.evaluate((e) => !!(e.getRootNode().host ?? e).closest('.stage-tools'))),
     );
     check('no edit-mode indicator shows in view mode', (await editBadge.count()) === 0);
-    const editBox = await editButton.boundingBox();
+    const smallEdit = await editButton.evaluateAll(missedTouches, TOUCH);
     check(
-      `the Edit button is at least ${TOUCH} px high`,
-      editBox.height >= TOUCH,
-      `${Math.round(editBox.height)} px`,
+      `the Edit switch takes a touch at least ${TOUCH} px across`,
+      smallEdit.length === 0,
+      smallEdit.join(', '),
     );
 
     // Furniture: the home's one placement set, with no layout manager.
@@ -1285,8 +1295,8 @@ async function smoke(out, homeId) {
     await editButton.tap();
     await settle();
     check(
-      '"Edit" turns edit mode on: it becomes "Done" and an indicator shows',
-      (await doneButton.count()) === 1 && (await editBadge.isVisible()),
+      '"Edit" turns edit mode on: the switch is on and an indicator shows',
+      (await editing()) && (await editBadge.isVisible()),
     );
     const created = page.waitForResponse(
       (response) =>
@@ -1447,13 +1457,11 @@ async function smoke(out, homeId) {
     // "Done": back in view mode the item can be looked at but a drag moves nothing. The finger goes
     // down on the item (where the drag above dropped it) and back up to where it began, so the view
     // ends as it was.
-    await doneButton.tap();
+    await editButton.tap();
     await settle();
     check(
       'leaving edit mode takes the tools and the indicator away',
-      (await toolbar.count()) === 0 &&
-        (await editBadge.count()) === 0 &&
-        (await editButton.count()) === 1,
+      (await toolbar.count()) === 0 && (await editBadge.count()) === 0 && !(await editing()),
     );
     const beforeView = (await items())[0];
     const writesBefore = answered;

@@ -79,9 +79,9 @@ describe('App', () => {
     const cutaway = within(screen.getByRole('group', { name: 'Show up to level' }));
     expect(cutaway.getByLabelText('Souterrain')).toBeChecked();
     const levels = within(screen.getByRole('group', { name: 'Levels' }));
-    expect(levels.getByLabelText('Souterrain')).toBeChecked();
-    expect(levels.getByLabelText('Ground floor')).not.toBeChecked();
-    expect(levels.getByLabelText('First floor (attic)')).not.toBeChecked();
+    expect(levels.getByRole('checkbox', { name: 'Souterrain' })).toBeChecked();
+    expect(levels.getByRole('checkbox', { name: 'Ground floor' })).not.toBeChecked();
+    expect(levels.getByRole('checkbox', { name: 'First floor (attic)' })).not.toBeChecked();
     expect(lastScene?.northBearing).toBe(0);
     expect(lastScene?.markers.map((m) => m.label)).toEqual(['N', 'E', 'S', 'W']);
     expect(shown()?.outdoorAreas.map((a) => a.name)).toEqual([
@@ -125,18 +125,18 @@ describe('App', () => {
     stubApi();
     render(<App />);
     const apartments = within(await screen.findByRole('group', { name: 'Apartments' }));
-    fireEvent.click(apartments.getByLabelText('Ground-floor apartment'));
+    fireEvent.click(apartments.getByRole('checkbox', { name: 'Ground-floor apartment' }));
     expect(levelsOf().has('ground-floor')).toBe(false);
 
     const levels = within(screen.getByRole('group', { name: 'Levels' }));
-    fireEvent.click(levels.getByLabelText('First floor (attic)'));
+    fireEvent.click(levels.getByRole('checkbox', { name: 'First floor (attic)' }));
     expect(levelsOf()).toEqual(new Set(['souterrain']));
     expect(shown()?.roofPlanes).toEqual([]);
 
     const outdoor = within(screen.getByRole('group', { name: 'Outdoor' }));
-    fireEvent.click(outdoor.getByLabelText('Driveway'));
+    fireEvent.click(outdoor.getByRole('checkbox', { name: 'Driveway' }));
     expect(shown()?.outdoorAreas.map((a) => a.id)).not.toContain('driveway');
-    fireEvent.click(outdoor.getByLabelText('Terrain'));
+    fireEvent.click(outdoor.getByRole('checkbox', { name: 'Terrain' }));
     expect(shown()?.terrain).toEqual([]);
   });
 

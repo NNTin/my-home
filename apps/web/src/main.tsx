@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { installFallback } from './hud/fallback';
+import { applyEffectsSetting } from './hud/effects';
 import { provideToggleFrames } from './hud/toggle';
 import './styles.css';
 
@@ -13,6 +14,8 @@ if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'm
 installFallback();
 // The painted toggle's frames come lazily, once the loading screen has gone (§9.3).
 provideToggleFrames();
+// Effects off on this device: calm from the start (§10.4).
+applyEffectsSetting();
 
 const root = document.getElementById('root');
 if (!root) throw new Error('#root element missing');

@@ -172,12 +172,16 @@ body {
   opacity: 1;
 }
 
-.panel select,
-.panel input:not([type='checkbox'], [type='radio'], [type='range'], [type='color']),
-.panel textarea,
-.walk-hud select,
-.walk-hud input:not([type='checkbox'], [type='radio'], [type='range'], [type='file']),
-.walk-hud textarea,
+.panel select:not(sakuga-field > *),
+.panel
+  input:not([type='checkbox'], [type='radio'], [type='range'], [type='color']):not(
+    sakuga-field > *
+  ),
+.panel textarea:not(sakuga-field > *),
+.walk-hud select:not(sakuga-field > *),
+.walk-hud
+  input:not([type='checkbox'], [type='radio'], [type='range'], [type='file']):not(sakuga-field > *),
+.walk-hud textarea:not(sakuga-field > *),
 .perf-manual textarea {
   border: var(--hud-line-compact);
   border-radius: var(--hud-r-compact);
@@ -1695,17 +1699,17 @@ body {
 /* Controls a thumb can hit, and 16px in fields so iOS does not zoom the page on focus. */
 .sheet .panel button:not(.link, .thumbnail),
 .sheet .panel .button,
-.sheet .panel select,
-.sheet .panel input:not([type='checkbox'], [type='radio'], [type='range']),
-.sheet .panel textarea {
+.sheet .panel select:not(sakuga-field > *),
+.sheet .panel input:not([type='checkbox'], [type='radio'], [type='range']):not(sakuga-field > *),
+.sheet .panel textarea:not(sakuga-field > *) {
   box-sizing: border-box;
   min-height: 2.75rem;
   font-size: 1rem;
 }
 
-.sheet .panel select,
-.sheet .panel input:not([type='checkbox'], [type='radio'], [type='range']),
-.sheet .panel textarea {
+.sheet .panel select:not(sakuga-field > *),
+.sheet .panel input:not([type='checkbox'], [type='radio'], [type='range']):not(sakuga-field > *),
+.sheet .panel textarea:not(sakuga-field > *) {
   padding: 0.25rem 0.5rem;
 }
 
@@ -2138,14 +2142,7 @@ body:has(.page) {
   margin: 0 auto;
 }
 
-/*
- * Edit mode (editMode/): the toggle is pressed (an ink fill) while it is on, a badge and a frame
- * say so. Edit stays a paper button until its family makes it the painted toggle (#168, PR 4).
- */
-.edit-toggle[aria-pressed='true'] {
-  background: var(--sk-ink);
-  color: var(--sk-card);
-}
+/* Edit mode (editMode/): the painted switch "Edit" (§5.13); a badge and a frame say that it is on. */
 
 .edit-badge {
   position: absolute;
@@ -2312,4 +2309,60 @@ body:has(.page) {
 /* A badge without Sakuga (hud/fallback.ts) shows its count as text. */
 sakuga-badge[data-count]::after {
   content: attr(data-count);
+}
+
+/*
+ * A painted switch with its words (hud/SkToggle.tsx): the words left, the switch right, a 44 px row
+ * (docs/design/hud.md §5.13). Its host keeps 9 px of room above for the "on" glint; the flip is drawn
+ * over the page.
+ */
+.sk-toggle-row,
+.panel .sk-toggle-row,
+.sheet .panel .sk-toggle-row {
+  display: flex;
+  flex-direction: row;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 2.75rem;
+  padding: 0;
+}
+
+.sk-toggle-words {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* A control inside a sakuga-field: the field draws its frame (docs/design/hud.md §5.3). */
+.panel sakuga-field,
+.walk-hud sakuga-field {
+  --sk-field-width: 100%;
+}
+
+/* The panels' lists of checkboxes: one per row. */
+.panel sakuga-checkbox.toggle {
+  display: flex;
+}
+
+/* Edit in the stage tools (the phone) and on the desktop panel's header line, at the right. */
+.stage-edit {
+  flex: none;
+  padding: 0 0.625rem;
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  background: var(--sk-card);
+  box-shadow: var(--hud-sh-compact);
+  font-style: italic;
+  font-weight: 800;
+}
+
+.panel-edit {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.panel-edit .edit-toggle {
+  font-style: italic;
+  font-weight: 800;
 }

@@ -1,4 +1,6 @@
 import type { PlacementMounting } from '@my-home/shared';
+import { SkCheckbox } from '../hud/SkCheckbox';
+import { SkField } from '../hud/SkField';
 import { useState } from 'react';
 import type { EditorSettings } from '../editor/operations';
 import type { FurnitureCategory } from '../catalog/furniture';
@@ -111,21 +113,23 @@ function HeightField({ value, onChange }: { value: number; onChange(metres: numb
   return (
     <label className="field">
       Height above the floor{' '}
-      <input
-        type="number"
-        inputMode="numeric"
-        min={0}
-        step={1}
-        value={draft ?? String(cm(value))}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') commit();
-          // The editor's shortcuts (Delete, R …) must not act while typing a height.
-          e.stopPropagation();
-        }}
-        aria-label="Height above the floor in cm"
-      />{' '}
+      <SkField size="compact">
+        <input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          step={1}
+          value={draft ?? String(cm(value))}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commit();
+            // The editor's shortcuts (Delete, R …) must not act while typing a height.
+            e.stopPropagation();
+          }}
+          aria-label="Height above the floor in cm"
+        />
+      </SkField>{' '}
       cm
     </label>
   );
@@ -138,16 +142,18 @@ function Mounting({ selected, props }: { selected: SelectedInfo; props: Props })
       {selected.mountings.length > 1 && (
         <label className="field">
           Mounting{' '}
-          <select
-            value={selected.mounting}
-            onChange={(e) => props.onMounting(e.target.value as PlacementMounting)}
-          >
-            {selected.mountings.map((m) => (
-              <option key={m} value={m}>
-                {mountingLabel[m]}
-              </option>
-            ))}
-          </select>
+          <SkField size="compact">
+            <select
+              value={selected.mounting}
+              onChange={(e) => props.onMounting(e.target.value as PlacementMounting)}
+            >
+              {selected.mountings.map((m) => (
+                <option key={m} value={m}>
+                  {mountingLabel[m]}
+                </option>
+              ))}
+            </select>
+          </SkField>
         </label>
       )}
       {selected.mounting === 'ceiling' ? (
@@ -200,16 +206,18 @@ export function FurniturePanel(props: Props) {
           {props.rooms.length > 0 && (
             <label className="field">
               Room{' '}
-              <select
-                value={props.roomId ?? ''}
-                onChange={(e) => props.onRoomChange(e.target.value)}
-              >
-                {props.rooms.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
+              <SkField size="compact">
+                <select
+                  value={props.roomId ?? ''}
+                  onChange={(e) => props.onRoomChange(e.target.value)}
+                >
+                  {props.rooms.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+              </SkField>
             </label>
           )}
           {props.categories.map((c) => (
@@ -298,34 +306,36 @@ export function FurniturePanel(props: Props) {
         )}
         {props.editing && (
           <>
-            <label className="toggle">
-              <input
-                type="checkbox"
-                checked={settings.grid}
-                onChange={() => set({ grid: !settings.grid })}
-              />{' '}
+            <SkCheckbox
+              className="toggle"
+              size="compact"
+              checked={settings.grid}
+              onChange={() => set({ grid: !settings.grid })}
+            >
               Snap to {Math.round(settings.gridStep * 100)} cm grid
-            </label>
-            <label className="toggle">
-              <input
-                type="checkbox"
-                checked={settings.wallSnap}
-                onChange={() => set({ wallSnap: !settings.wallSnap })}
-              />{' '}
+            </SkCheckbox>
+            <SkCheckbox
+              className="toggle"
+              size="compact"
+              checked={settings.wallSnap}
+              onChange={() => set({ wallSnap: !settings.wallSnap })}
+            >
               Snap to walls
-            </label>
+            </SkCheckbox>
             <label className="field">
               Rotation step{' '}
-              <select
-                value={degrees(settings.rotationStep)}
-                onChange={(e) => set({ rotationStep: (Number(e.target.value) * Math.PI) / 180 })}
-              >
-                {rotationSteps.map((d) => (
-                  <option key={d} value={d}>
-                    {d === 0 ? 'Free' : `${d}°`}
-                  </option>
-                ))}
-              </select>
+              <SkField size="compact">
+                <select
+                  value={degrees(settings.rotationStep)}
+                  onChange={(e) => set({ rotationStep: (Number(e.target.value) * Math.PI) / 180 })}
+                >
+                  {rotationSteps.map((d) => (
+                    <option key={d} value={d}>
+                      {d === 0 ? 'Free' : `${d}°`}
+                    </option>
+                  ))}
+                </select>
+              </SkField>
             </label>
           </>
         )}

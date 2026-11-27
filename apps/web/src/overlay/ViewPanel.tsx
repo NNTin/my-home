@@ -1,3 +1,6 @@
+import { SkButton } from '../hud/SkButton';
+import { SkCheckbox } from '../hud/SkCheckbox';
+import { SkToggle } from '../hud/SkToggle';
 import type { ReactNode } from 'react';
 import type { HomeScene } from '../builder/buildHome';
 import { toggleId, type Visibility } from '../builder/visibility';
@@ -94,18 +97,25 @@ export function ViewPanel({
   return (
     <section className="overlay panel view-panel" aria-label="View controls">
       <h1>View</h1>
-      <label className="toggle">
-        <input
-          type="checkbox"
-          checked={visibility.showRoomNames}
-          onChange={() => set({ showRoomNames: !visibility.showRoomNames })}
-        />{' '}
+      {/* The settings that stand alone: painted switches, their words left (§4.8, §5.13). */}
+      <SkToggle
+        className="toggle"
+        size="compact"
+        label="Room names"
+        checked={visibility.showRoomNames}
+        onChange={() => set({ showRoomNames: !visibility.showRoomNames })}
+      >
         Room names
-      </label>
-      <label className="toggle">
-        <input type="checkbox" checked={planColours} onChange={() => onPlanColours(!planColours)} />{' '}
+      </SkToggle>
+      <SkToggle
+        className="toggle"
+        size="compact"
+        label="Plan colours"
+        checked={planColours}
+        onChange={() => onPlanColours(!planColours)}
+      >
         Plan colours
-      </label>
+      </SkToggle>
       {views}
       <QualityControl quality={quality} onChange={onQuality} phone />
       <h2>Show / hide…</h2>
@@ -122,21 +132,33 @@ export function ViewPanel({
                 </span>
               </summary>
               <div className="buttons" role="group" aria-label={`All ${g.name.toLowerCase()}`}>
-                <button
-                  type="button"
+                <SkButton
+                  size="compact"
+                  variant="secondary"
                   onClick={() => g.setAll(true)}
                   disabled={count === g.items.length}
                 >
                   Show all
-                </button>
-                <button type="button" onClick={() => g.setAll(false)} disabled={count === 0}>
+                </SkButton>
+                <SkButton
+                  size="compact"
+                  variant="secondary"
+                  onClick={() => g.setAll(false)}
+                  disabled={count === 0}
+                >
                   Hide all
-                </button>
+                </SkButton>
               </div>
               {g.items.map((i) => (
-                <label key={i.id} className="toggle">
-                  <input type="checkbox" checked={i.shown} onChange={i.toggle} /> {i.name}
-                </label>
+                <SkCheckbox
+                  key={i.id}
+                  className="toggle"
+                  size="compact"
+                  checked={i.shown}
+                  onChange={i.toggle}
+                >
+                  {i.name}
+                </SkCheckbox>
               ))}
             </details>
           );

@@ -27,7 +27,8 @@ class SakugaSegmented extends fx.Base {
     :host([size=compact]) .seg { border-width: 2.5px; border-radius: 11px; box-shadow: 3px 4px 0 var(--sk-soft); }
     :host([size=compact]) .ind { border-width: 2.5px; border-radius: 9px; margin-left: -2.5px; }
     :host([size=compact]) button { padding: 4px 6px; font-size: 13px; }`;
-  readOptions() { return [...this.querySelectorAll('option')].map((o) => ({ v: o.value, t: o.textContent.trim(), s: o.selected && o.hasAttribute('selected'), d: o.disabled })); }
+  // the words shown, and the name read out (an option's label attribute, when the words are short: "Attic", "First floor (attic)")
+  readOptions() { return [...this.querySelectorAll('option')].map((o) => ({ v: o.value, t: o.textContent.trim(), n: o.getAttribute('label') || o.textContent.trim(), s: o.selected && o.hasAttribute('selected'), d: o.disabled })); }
   get value() { const b = this.btns?.[this.index]; return b ? b.dataset.value : (this.getAttribute('value') ?? ''); }
   set value(v) { this.setAttribute('value', v); }
   get index() { return this.btns ? this.btns.findIndex((b) => b.getAttribute('aria-checked') === 'true') : -1; }
@@ -42,7 +43,7 @@ class SakugaSegmented extends fx.Base {
   build() {
     const opts = this.readOptions(), seg = this.$('.seg'), was = this.getAttribute('value') ?? this.value;
     for (const b of this.btns || []) b.remove();
-    this.btns = opts.map((o) => { const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'radio'); b.setAttribute('part', 'segment'); b.setAttribute('aria-checked', 'false'); b.tabIndex = -1; b.dataset.value = o.v; b.dataset.off = o.d ? '1' : '0'; b.title = o.t; b.textContent = o.t; b.disabled = o.d || this.hasAttribute('disabled'); seg.append(b); return b; });
+    this.btns = opts.map((o) => { const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'radio'); b.setAttribute('part', 'segment'); b.setAttribute('aria-checked', 'false'); b.tabIndex = -1; b.dataset.value = o.v; b.dataset.off = o.d ? '1' : '0'; b.title = o.n; b.setAttribute('aria-label', o.n); b.textContent = o.t; b.disabled = o.d || this.hasAttribute('disabled'); seg.append(b); return b; });
     this.sq = this.btns.map((b) => squashy(b, { low: 0.86, wide: 0.25 }));
     this.btns.forEach((b, i) => {
       b.addEventListener('click', () => this.go(i));
