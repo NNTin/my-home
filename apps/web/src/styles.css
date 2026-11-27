@@ -71,6 +71,11 @@ body {
   top: 1rem;
   left: 1rem;
   min-width: 14rem;
+  /*
+   * A long row of paper buttons ("Photos (104) · 6 open") wraps instead of widening the panel
+   * over the middle of the 3D view, where a drag or the wheel turns the camera.
+   */
+  max-width: min(34rem, calc(100% - 2rem));
   padding: 0.75rem 1rem;
   border: var(--hud-line);
   border-radius: var(--sk-r);
