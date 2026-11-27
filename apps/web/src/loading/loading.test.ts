@@ -156,10 +156,27 @@ describe('the loading screen', () => {
     const later = vi.fn();
     vi.stubGlobal('SakugaFX', { later });
     const run = vi.fn();
-    afterEffects(HOLD_MS, run);
-    expect(later).toHaveBeenCalledWith(HOLD_MS, run);
+    const cancel = afterEffects(HOLD_MS, run);
+    expect(later).toHaveBeenCalledWith(HOLD_MS, expect.any(Function));
     vi.advanceTimersByTime(HOLD_MS);
     expect(run).not.toHaveBeenCalled();
+    // The core's clock runs it; cancelled before, it does nothing.
+    later.mock.calls[0]![1]();
+    expect(run).toHaveBeenCalledOnce();
+    cancel();
+    later.mock.calls[0]![1]();
+    expect(run).toHaveBeenCalledOnce();
+  });
+
+  it('leaves no wait behind once a load that ended is reset (the main CI failure after #211)', () => {
+    beginLoading('page');
+    loadingProgress('page');
+    // The bar has played its end: the card waits HOLD_MS for its ドン!, on a timer here.
+    bar().dispatchEvent(new Event('sakuga:done'));
+    expect(vi.getTimerCount()).toBeGreaterThan(0);
+    // The test setup's teardown: nothing may fire once jsdom is gone.
+    resetLoadingForTests();
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it('gets out of the way when a step never comes', () => {
