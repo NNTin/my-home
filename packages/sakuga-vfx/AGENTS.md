@@ -129,6 +129,8 @@ changes come in by hand). The design is `docs/design/hud.md` §6; the README's n
   by `at()`, the one whose `frame()` runs, or the one that scheduled a `later()`.
 - **C3. `SakugaFX.calm` is settable:** the page sets it (the app's "Effects" switch); either it or
   `prefers-reduced-motion` turns effects off.
+- **C5. `slash()` sweeps either way** (#168, PR 3): `turn: -1` sweeps the crescent counter-clockwise (the icon button's
+  `dir="ccw"`). The default `turn: 1` computes exactly what upstream did, so no existing reaction changes.
 - Checked frame by frame on every upstream element the app uses (button primary and secondary, tabs, checkbox,
   slider, input, toast, toggle, progress), with `Math.random` seeded: at scale 1 the sheets before and after are
   the same pixel for pixel, but for CSS transitions (the wall's clock, not Sakuga's) and sub-pixel noise.
@@ -139,6 +141,20 @@ changes come in by hand). The design is `docs/design/hud.md` §6; the README's n
 - `toast`: `busy()` while shown; its scale spring is left still when hidden.
 - `toggle`: `busy()` while the drawing plays.
 - `slider`: its シュッ throttle reads `fx.now`.
+- `button` (PR 3): `size="compact"` (13 px, the compact line, radius and shadow, `--sk-fx-scale: .7`, a 44 px hit area
+  as `.btn::before` inside the shadow root), `href` (renders an `<a>`, no `href` while disabled), `pressed`
+  (`aria-pressed`, `.on`: an ink fill). `sync()` applies the attributes without effects; a disabled link carries
+  `disabled` as a plain property so `squashy()` and the effects skip it.
+- `toast` (PR 3): `kind="warn"` (a pink !, a pink shadow, `role="alert"`), a width from 236 to 320 px, two lines.
+
+### Elements of our own
+
+Made here with the workflow above, in `NAMES`, each with a README and an `index.html`; not from upstream.
+
+- `icon-button` (PR 3, `docs/design/hud.md` §5.1): a square paper button with a named icon (`icons/icons.js`), `dir`
+  (wedges, or a crescent for `cw`/`ccw`), `hit="puff"`, `size="compact"`, `href`, `pressed`. No word.
+- `badge` (PR 3, §5.12): `shown` (pops in or shrinks away; as built, no effect), `kind="warn"`, `count`, `done`,
+  `duration` (leaves by itself; busy while it waits). No word.
 
 ## Upstream changes come in by hand
 

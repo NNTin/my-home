@@ -33,5 +33,13 @@ el.open;    // true while it is showing
 
 ## Limits
 
-- **No stack** of several toasts, and no kinds (error, warning). The icon is always the tick.
-- **One line.** A long message is cut off with an ellipsis.
+- **No stack** of several toasts. Two kinds: the tick, and `kind="warn"` (made here).
+- **Two lines** (made here; upstream had one). A longer message is cut off with an ellipsis.
+
+## Made here (my-home, #168)
+
+| attribute | what it sets |
+|---|---|
+| `kind="warn"` | a pink ! instead of the tick, a pink shadow, and the message in a `role="alert"` region |
+
+The toast's width follows its text from 236 up to 320 pixels, and the message wraps to two lines before the ellipsis.

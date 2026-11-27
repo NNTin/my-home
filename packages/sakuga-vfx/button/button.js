@@ -5,39 +5,58 @@
 //
 // One file, no dependencies. Load it with a script tag and use <sakuga-button>Confirm</sakuga-button>.
 // It fires an ordinary click. With type="submit" inside a form, it submits the form.
+// Made here (my-home, #168): size="compact" (smaller, its effects at 0.7, a 44 px hit area), href (a real link) and pressed
+// (a toggle button: aria-pressed and an ink fill).
 (() => {
 function component(fx) {
 const { rnd, later, at, esc, squashy, Spring, ticks, wob, lines, burst, shards, puff, sfx, donut, kira } = fx;
 
 class SakugaButton extends fx.Base {
   static delegates = true;
-  static observedAttributes = ['disabled'];
+  static observedAttributes = ['disabled', 'pressed', 'href'];
   static css = `
     .btn { position: relative; padding: 14px 30px; border: var(--sk-bw) solid var(--sk-btn-line); border-radius: var(--sk-r); background: var(--sk-card); color: var(--sk-ink); font: italic 800 19px/1.1 "Avenir Next", "Nunito", -apple-system, "Segoe UI", system-ui, sans-serif; letter-spacing: -.01em; box-shadow: var(--sk-btn-sh); cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: manipulation; will-change: transform; }
     .btn.alt { border-color: var(--sk-alt-line); box-shadow: var(--sk-alt-sh); }
     .btn.inv { background: var(--sk-ink); color: var(--sk-card); box-shadow: none; }   /* the impact frame */
-    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn:disabled, .btn[aria-disabled=true] { opacity: .45; cursor: not-allowed; }
+    a.btn { display: inline-block; text-decoration: none; }
+    .btn.on { background: var(--sk-ink); color: var(--sk-card); }   /* pressed: a toggle button that is on */
+    :host([size=compact]) { --sk-fx-scale: .7; }
+    :host([size=compact]) .btn { min-height: 34px; padding: 7px 14px; border-width: 2.5px; border-radius: 11px; font-size: 13px; box-shadow: 3px 4px 0 var(--sk-soft); }
+    :host([size=compact]) .btn.inv { box-shadow: none; }
+    :host([size=compact]) .btn::before { content: ''; position: absolute; inset: -5px -2px; }   /* the 44 px hit area, inside the shadow root */
     .ok { display: inline-block; width: calc(var(--ok, 0) * 24px); height: 18px; margin-left: calc(var(--ok, 0) * 6px); vertical-align: -2px; overflow: visible; fill: none; stroke: var(--sk-acc); stroke-width: 4.4; stroke-linecap: round; stroke-linejoin: round; transform: scale(var(--ok, 0)); }`;
 
   get primary() { return this.getAttribute('variant') !== 'secondary'; }
   get disabled() { return this.hasAttribute('disabled'); }
   set disabled(v) { this.toggleAttribute('disabled', !!v); }
-  attributeChangedCallback() { if (this.b) this.b.disabled = this.disabled; }
+  get pressed() { return this.hasAttribute('pressed'); }
+  set pressed(v) { this.toggleAttribute('pressed', !!v); }
+  attributeChangedCallback() { if (this.b) this.sync(); }
+  // the control's state from the attributes: set from code, it changes at once and plays nothing
+  sync() {
+    const b = this.b, link = b.tagName === 'A';
+    if (link) { const h = this.getAttribute('href'); if (this.disabled || h === null) b.removeAttribute('href'); else b.setAttribute('href', h); b.setAttribute('aria-disabled', String(this.disabled)); b.tabIndex = this.disabled ? -1 : 0; }
+    b.disabled = this.disabled;   // on a link, a plain property: squashy() and the effects read it
+    if (this.hasAttribute('pressed') || b.hasAttribute('aria-pressed')) b.setAttribute('aria-pressed', String(this.pressed));
+    b.classList.toggle('on', this.pressed);
+  }
 
   render() {
-    return `<button class="btn${this.primary ? '' : ' alt'}" type="button" part="button"${this.disabled ? ' disabled' : ''}><slot>${this.primary ? 'Confirm' : 'Cancel'}</slot>`
-      + (this.primary ? '<svg class="ok" viewBox="0 0 24 18" aria-hidden="true"><path d="M3 9.5l6 6L21 2.5"/></svg>' : '') + '</button>';
+    const link = this.hasAttribute('href'), tag = link ? 'a' : 'button';
+    return `<${tag} class="btn${this.primary ? '' : ' alt'}"${link ? '' : ' type="button"'} part="button"${!link && this.disabled ? ' disabled' : ''}><slot>${this.primary ? 'Confirm' : 'Cancel'}</slot>`
+      + (this.primary ? '<svg class="ok" viewBox="0 0 24 18" aria-hidden="true"><path d="M3 9.5l6 6L21 2.5"/></svg>' : '') + `</${tag}>`;
   }
   setup() {
-    const b = this.b = this.$('.btn');
+    const b = this.b = this.$('.btn'); this.sync();
     this.ok = new Spring(0, 420, 14); this.seq = 0;
     if (!this.primary) {
       this.sq = squashy(b, { low: 0.72, wide: 0.3 });
-      b.addEventListener('click', () => { this.sq.s.x = Math.min(this.sq.s.x, 0.8); this.sq.s.v += 4; const c = at(b, 1, 0); ticks(c.x - 8, c.y - 4, { dir: -1.05, n: 3, r: 5, len: 17, fan: 0.36, life: 0.5 }); });
+      b.addEventListener('click', () => { if (b.disabled) return; this.sq.s.x = Math.min(this.sq.s.x, 0.8); this.sq.s.v += 4; const c = at(b, 1, 0); ticks(c.x - 8, c.y - 4, { dir: -1.05, n: 3, r: 5, len: 17, fan: 0.36, life: 0.5 }); });
     } else {
       this.sq = squashy(b, { low: 0.5, wide: 0.24 }); this.back = this.backLayer();
       b.addEventListener('pointerdown', () => { if (b.disabled) return; const c = at(b); ticks(c.x, c.y - c.h / 2 - 6, { dir: -Math.PI / 2, n: 3, r: 4, len: 14, fan: 0.5 }); wob(c.x - c.w / 2 - 6, c.y, { dir: -1, r: 10, life: 0.3 }); wob(c.x + c.w / 2 + 6, c.y, { dir: 1, r: 10, life: 0.3 }); lines(c.x, c.y + c.h / 2 + 10, { n: 3, dir: 0, len: 16, spread: 0.1, life: 0.25 }); });
-      b.addEventListener('click', () => this.impact());
+      b.addEventListener('click', () => { if (!b.disabled) this.impact(); });
     }
     b.addEventListener('click', () => { if (this.getAttribute('type') === 'submit') this.closest('form')?.requestSubmit(); });
   }
@@ -238,8 +257,8 @@ function splash(x, y, { w = 34, h = 26, life = 0.7 } = {}) {
       g.translate(px, py); g.rotate(ang); d.moveTo(-r * 2.6, 0); d.quadraticCurveTo(-r * 0.6, -r * 1.05, r * 0.5, -r * 0.9); d.arc(r * 0.4, 0, r * 0.95, -1.4, 1.4); d.quadraticCurveTo(-r * 0.6, r * 1.05, -r * 2.6, 0); if (r > 0.5) shape(d, 1, r * 0.5); }); }
 }
 // a slash: a crescent whose head races ahead and whose tail catches up
-function slash(x, y, { len = 110, ang = -0.5, life = 0.42, thick = 15, col } = {}) {
-  const R = len * 0.9, cx = x - Math.cos(ang - Math.PI / 2) * R * 0.86, cy = y - Math.sin(ang - Math.PI / 2) * R * 0.86, a0 = ang - Math.PI / 2 - 0.62, sweep = 1.24, c = col || P.accent;
+function slash(x, y, { len = 110, ang = -0.5, life = 0.42, thick = 15, col, turn = 1 } = {}) {   // turn: -1 sweeps the other way (C5)
+  const R = len * 0.9, cx = x - Math.cos(ang - Math.PI / 2) * R * 0.86, cy = y - Math.sin(ang - Math.PI / 2) * R * 0.86, a0 = ang - Math.PI / 2 - 0.62 * turn, sweep = 1.24 * turn, c = col || P.accent;
   add(life, (k) => {
     const head = out(clamp(k / 0.42)), tail = inn(clamp((k - 0.22) / 0.78)); if (head - tail < 0.01) return;
     const cres = (T) => { const p = new Path2D(), N = 26; for (let i = 0; i <= N; i++) { const u = lerp(tail, head, i / N), a = a0 + sweep * u; p[i ? 'lineTo' : 'moveTo'](cx + Math.cos(a) * R, cy + Math.sin(a) * R); } for (let i = N; i >= 0; i--) { const q = i / N, u = lerp(tail, head, q), a = a0 + sweep * u, rr = R - T * Math.sin(q * Math.PI) ** 0.7; p.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } p.closePath(); return p; };
