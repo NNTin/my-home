@@ -11,7 +11,7 @@ import {
   type RefObject,
 } from 'react';
 import { PCFShadowMap, type PerspectiveCamera } from 'three';
-import type { HomeScene, Vec3 } from '../builder/buildHome';
+import type { HomeScene, Vec2, Vec3 } from '../builder/buildHome';
 import { roofIndex, type RoomLabel, type Visibility } from '../builder/visibility';
 import type { CompassMarker } from '../compass/compass';
 import { CompassMarkers, CompassRose, CompassTracker } from '../compass/Compass';
@@ -36,6 +36,7 @@ import {
   type RequestGhostView,
   type Viewpoint,
 } from './PhotoMarkers';
+import { RoomOutline } from './RoomOutline';
 import { RoomLabels, RoomLabelTracker } from './RoomLabels';
 import { WalkRig, type WalkRigProps } from './WalkRig';
 
@@ -77,6 +78,8 @@ export interface SceneProps {
   paused?: boolean;
   /** Windows, doors, roof windows and gates can be picked (not while walking). */
   pieces?: PieceHandlers | undefined;
+  /** The selected room's floor, outlined (HUD v2 #201). */
+  roomOutline?: { outline: Vec2[]; y: number } | undefined;
   /** Turns the orbit camera to frame a use (`?focus=`); a new `key` frames again. */
   frame?: (FrameRequest & { key: number }) | undefined;
   /** The quality setting (`quality/setting.ts`); the frame governor picks each frame's tier from it. */
@@ -301,6 +304,7 @@ export function Scene({
   resetViewRef,
   paused = false,
   pieces,
+  roomOutline,
   frame,
   quality = 'fast',
   onNotice,
@@ -410,6 +414,7 @@ export function Scene({
             toolbar={toolbar}
             editable={editable}
           />
+          {roomOutline && <RoomOutline outline={roomOutline.outline} y={roomOutline.y} />}
           <CompassMarkers markers={markers} hidden={lettersHidden} />
           <RoomLabelTracker labels={labels} layerRef={labelsRef} />
           <OrbitControls

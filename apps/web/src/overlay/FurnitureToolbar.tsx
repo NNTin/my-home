@@ -101,7 +101,8 @@ export function PieceToolbar({
 }: {
   name: string;
   typeName: string;
-  href: string;
+  /** Its piece page; a room has none. */
+  href?: string | undefined;
   /** Opens the inspector: the sheet's Furniture tab on the selection (HUD v2 #201). */
   onDetails(): void;
   onClose(): void;
@@ -118,14 +119,16 @@ export function PieceToolbar({
       >
         {name} <span className="piece-type">· {typeName}</span>
       </SkButton>
-      <SkButton
-        size="compact"
-        variant="secondary"
-        aria-label={`Open piece page: ${name}`}
-        href={href}
-      >
-        Open piece page
-      </SkButton>
+      {href && (
+        <SkButton
+          size="compact"
+          variant="secondary"
+          aria-label={`Open piece page: ${name}`}
+          href={href}
+        >
+          Open piece page
+        </SkButton>
+      )}
       <SkIconButton size="compact" icon="close" label="Close" onClick={onClose} />
     </div>
   );

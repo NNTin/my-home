@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import { enterEditMode } from './test/editMode';
 import { frameFor, piecePageHref, scenePieces } from './placements/focus';
 import { buildHome } from './builder/buildHome';
 import type { SceneProps } from './scene/Scene';
@@ -95,6 +96,44 @@ describe('picking a window, door or gate', () => {
     // With nothing selected and Edit off, the desktop rests: the furniture surface closes (HUD v2 #200).
     expect(screen.queryByLabelText('Selected piece')).toBeNull();
     expect(screen.queryByRole('region', { name: 'Furniture' })).toBeNull();
+  });
+});
+
+describe('picking a room (HUD v2 #201)', () => {
+  it('selects the room under a click on its floor: outline, label, inspector, Focus room', async () => {
+    await openAt('?hints=off');
+    const room = buildHome(mockHome).roomFloors.find((r) => r.name === 'Living room')!;
+    act(() => lastScene!.pieces!.onSelectRoom!([room.labelAt[0], room.y, room.labelAt[2]]));
+    expect(lastScene!.roomOutline?.outline).toEqual(room.outline);
+    // Its label at the edge opens the inspector.
+    fireEvent.click(screen.getByRole('button', { name: 'Living room: details' }));
+    const selected = within(panel().getByLabelText('Selected room'));
+    expect(selected.getByText('Living room')).toBeInTheDocument();
+    const before = lastScene!.frame?.key ?? 0;
+    fireEvent.click(selected.getByRole('button', { name: 'Focus room' }));
+    expect(lastScene!.frame?.key).toBeGreaterThan(before);
+    // A click on empty space clears the outline and the label together.
+    act(() => lastScene!.handlers.onSelect(undefined));
+    expect(lastScene!.roomOutline).toBeUndefined();
+    expect(screen.queryByRole('button', { name: 'Living room: details' })).toBeNull();
+    // A click on a wall picks no room.
+    act(() => lastScene!.pieces!.onSelectRoom!([500, room.y, 500]));
+    expect(lastScene!.roomOutline).toBeUndefined();
+  });
+
+  it('picks no room in Edit, where a click on the floor deselects as before', async () => {
+    enterEditMode();
+    await openAt('?hints=off');
+    expect(lastScene!.pieces?.onSelectRoom).toBeUndefined();
+  });
+
+  it('says which spaces a door links', async () => {
+    await openAt('?hints=off');
+    act(() => lastScene!.pieces!.onSelectPiece('souterrain-living-door'));
+    fireEvent.click(screen.getByRole('button', { name: /: details$/ }));
+    expect(
+      within(panel().getByLabelText('Selected piece')).getByText(/^Between /),
+    ).toHaveTextContent('Living room');
   });
 });
 
