@@ -899,17 +899,24 @@ graph TD
   p7["7. Photos and pages: the photos panel, the catalogue and piece pages;<br/>old HUD styles removed; the real-phone pass listed"]
 ```
 
-| PR  | Family        | New or changed elements                                                                                                                                                                                          | Size |
-| --- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
-| 1   | Foundation    | core C1–C3; `sakuga-hud` build, its test and budget; `hud/` wrappers and fallback; `icons/`; `/?hud=measure`                                                                                                     | M    |
-| 2   | Paper         | none (CSS: `--sk-*` and the paper look on today's native controls)                                                                                                                                               | S    |
-| 3   | Buttons       | `sakuga-button` (compact, href, pressed), `sakuga-icon-button`, `sakuga-badge`, `sakuga-toast` (kind)                                                                                                            | M    |
-| 4   | Choices       | `sakuga-segmented`, `sakuga-field`, compact checkbox, slider, input; `sakuga-toggle` (compact, lazy frames, the flip on the effects canvas), its two WebP assets and their budget; Edit moves to the stage tools | L    |
-| 5   | Containers    | `sakuga-panel`, `sakuga-fold`, `sakuga-sheet`, `sakuga-card`                                                                                                                                                     | L    |
-| 6   | Walking       | `sakuga-pad`, `sakuga-shutter`, `sakuga-map`, `sakuga-compass`                                                                                                                                                   | L    |
-| 7   | Photos, pages | none new; remove the old HUD CSS                                                                                                                                                                                 | M    |
+| PR  | Family                                       | New or changed elements                                                                                                                                                                                          | Size |
+| --- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| 1   | Foundation                                   | core C1–C3; `sakuga-hud` build, its test and budget; `hud/` wrappers and fallback; `icons/`; `/?hud=measure`                                                                                                     | M    |
+| 2   | Paper                                        | none (CSS: `--sk-*` and the paper look on today's native controls)                                                                                                                                               | S    |
+| 3   | Buttons                                      | `sakuga-button` (compact, href, pressed), `sakuga-icon-button`, `sakuga-badge`, `sakuga-toast` (kind)                                                                                                            | M    |
+| 4   | Choices                                      | `sakuga-segmented`, `sakuga-field`, compact checkbox, slider, input; `sakuga-toggle` (compact, lazy frames, the flip on the effects canvas), its two WebP assets and their budget; Edit moves to the stage tools | L    |
+| 5   | Containers (superseded by HUD v2 #200, #201) | `sakuga-panel`, `sakuga-fold`, `sakuga-sheet`, `sakuga-card`                                                                                                                                                     | L    |
+| 6   | Walking (superseded by HUD v2 #202)          | `sakuga-pad`, `sakuga-shutter`, `sakuga-map`, `sakuga-compass`                                                                                                                                                   | L    |
+| 7   | Photos, pages (after HUD v2 #206)            | none new; remove the old HUD CSS                                                                                                                                                                                 | M    |
 
 Edit stays the paper button of PR 2 until PR 4 turns it into the toggle and moves it on the phone (§5.13).
+
+**Status (2026-11-27, re-planned by the owner: HUD v2 is high priority).** PRs 1–4 are merged (#186, #188, #196, #197).
+PRs 5 (containers) and 6 (walking) are not done separately: HUD v2 ([`hud-v2/`](hud-v2/README.md), epic #198) builds
+their elements in its new layout: the shared HUD surface in #200, the inspectors in the sheet in #201, and the
+orientation area with the compass, the minimap and the walking controls in #202. PR 7 (the photos panel, the catalogue
+and piece pages, removing the old HUD CSS, the real-phone pass) stays in #168 and runs after #206, so the old styles
+are removed once.
 
 Why this order: the foundation makes every later element cheap (the core once) and sleeping at rest before there
 are many elements on the page; paper second, so production never shows a mix of dark panels and paper controls
