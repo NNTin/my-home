@@ -1924,7 +1924,8 @@ body {
 /* The tools of the selected furniture item, floating next to it in the 3D view. */
 .item-toolbar {
   display: flex;
-  gap: 0.375rem;
+  /* 12 px: each compact tool's 44 px hit area (about 6 px past its face) is its own, not shared with its neighbour's (B26). */
+  gap: 0.75rem;
   align-items: center;
   padding: 0.3125rem 0.5625rem 0.5625rem 0.3125rem;
   /* A paper strip, compact (§4.3). */
@@ -1940,8 +1941,9 @@ body {
 }
 
 .item-toolbar-name {
-  max-width: 4.5rem;
-  padding: 0 0.375rem 0 0.5rem;
+  /* With the 12 px gaps, six tools and the name fit a 360 px phone (B26). */
+  max-width: 3.5rem;
+  padding: 0 0 0 0.5rem;
   overflow: hidden;
   font-size: 0.8125rem;
   font-style: italic;

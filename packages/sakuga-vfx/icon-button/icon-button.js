@@ -54,10 +54,10 @@ class SakugaIconButton extends fx.Base {
   setup() {
     const b = this.b = this.$('.b'); this.paint(); this.sync();
     this.sq = squashy(b, { low: 0.74, wide: 0.32 });
-    b.addEventListener('click', () => { if (!b.disabled) this.hit(); });
+    b.addEventListener('click', () => { if (!b.disabled) this.strike(); });
   }
   // what a click does: the squash springs back with one overshoot, and the wedges, the crescent or the puff go off
-  hit() {
+  strike() {
     const b = this.b, c = at(b), dir = this.getAttribute('dir'), h = this.getAttribute('hit');
     this.sq.s.x = Math.min(this.sq.s.x, 0.8); this.sq.s.v += 4;
     if (h === 'puff') return puff(c.x, c.y, { size: 10, n: 5, vy: -10, life: 0.55 });
