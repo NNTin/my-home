@@ -250,7 +250,12 @@ class FallbackToast extends Plain {
     );
   }
   hide() {
+    clearTimeout(this.timer);
     this.status.textContent = '';
+  }
+  /** Off the page: no timer left to fire. */
+  disconnectedCallback() {
+    clearTimeout(this.timer);
   }
 }
 

@@ -271,7 +271,6 @@ function FrameView({ frame }: { frame: (FrameRequest & { key: number }) | undefi
   return null;
 }
 
-/** Full-size canvas; R3F resizes the renderer and camera with its container. */
 /** `/?hud=measure` (docs/design/hud.md §10.2): its rig in the canvas and its page over it, one lazy chunk. */
 const HudMeasureRig = lazy(() =>
   import('../hud/measure/hud-measure').then((m) => ({ default: m.MeasureRig })),
@@ -280,6 +279,7 @@ const HudMeasurePage = lazy(() =>
   import('../hud/measure/hud-measure').then((m) => ({ default: m.MeasurePage })),
 );
 
+/** Full-size canvas; R3F resizes the renderer and camera with its container. */
 export function Scene({
   scene,
   visibility,

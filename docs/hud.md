@@ -13,6 +13,18 @@ design `docs/design/hud.md` (#167, #168). This page says what exists and how the
 - If `sakuga-hud` did not load, `main.tsx` defines plain stand-ins for its tags (`apps/web/src/hud/fallback.ts`):
   the HUD works without reactions.
 
+## The look: paper
+
+- **The HUD is white paper on the scene** (design §3): every panel, bar, sheet, floating tool and page an opaque
+  white card with the ink line and the hard lavender shadow; no translucency, no blur. The values are the
+  `:root` block at the top of `apps/web/src/styles.css` (upstream's `--sk-*`, which win over the core's
+  `:where(:root)`, plus the compact size `--hud-*-compact`, `--hud-line`, `--hud-focus` and `--hud-page`).
+  Restyle through these variables, never with a colour of its own.
+- **Today's native controls are drawn in paper** by the shared rules after it (compact line, 800 italic labels,
+  pressed is an ink fill, the pink focus ring), until their family makes them Sakuga elements. Warnings are ink
+  text after a pink "!" and boxes with a pink shadow, never pink text. Room names are paper tags.
+- The catalogue and piece pages are white (`--hud-page`); the 3D previews keep their backdrop in a paper frame.
+
 ## In React (`apps/web/src/hud/`)
 
 - One wrapper per element (`SkButton`, `SkCheckbox`, `SkSlider`, `SkInput`, `SkTabs`, `SkToast`, …). Static
@@ -41,5 +53,7 @@ while orbiting and walking, and whether the Sakuga clock sleeps at rest on the p
   second), opens itself again walking (`&walk=first`) for two more, and checks the clock at rest in between.
 - It ends with **"Copy the table"** (the commit, the device, the numbers) and the six words at compact size, each
   with "Save". Paste the table and attach the images where the issue asks.
+- **Measured on the owner's phone (2026-11-27): a pass** (design §10.2): 60 fps with and without effects,
+  Sakuga about 1 ms a frame, asleep at rest.
 - A lazy chunk (`hud-measure`, `apps/web/src/hud/measure/`), loaded only on that address. Its numbers are never
   made on the agents' machine: there the view draws about one frame a second.
