@@ -191,7 +191,9 @@ Made here with the workflow above, in `NAMES`, each with a README and an `index.
   press springs the body's height and flips the chevron, `open` from code jumps; `toggle` event); `card` (a link with
   `href`, else a button; `selected`, `description` read after its name; three ticks at its corner); `sheet` (the
   frame of a phone sheet: `snap`, `side`, `dragging`; it springs from its size on screen to the page's CSS size,
-  measured on the next frame, and lands with two puffs). A spring that ends a layout change stops within half a
+  measured on the next frame, and lands with two puffs; it steps by the wall's time, not the clock's capped
+  `dt`, and is done within 0.55 s, so a page under a heavy 3D view never measures it half-way; a turn to `side`
+  clears both axes). A spring that ends a layout change stops within half a
   pixel (`Spring.still` would take a second longer on 60 px).
 
 ## Upstream changes come in by hand

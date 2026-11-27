@@ -28,20 +28,25 @@ class SakugaSheet extends fx.Base {
     if (!this.s) return;
     if (name === 'dragging' && now !== null) return this.stop();
     // a new snap, or the end of a drag (to the snap it started from, too)
-    if (name === 'side' || was === now || this.hasAttribute('dragging') || fx.calm) return;
+    // turned (a phone held across): the other axis; nothing held on the old one
+    if (name === 'side') return this.stop();
+    if (was === now || this.hasAttribute('dragging') || fx.calm) return;
     // it holds its size on screen; the next frame measures the page's size at the new snap (a page may set it after the attribute)
     this.style[this.axis] = this.cur + 'px'; this.anim = true; this.pending = true; this.wake();
   }
   // from its size on screen to the page's size at the new snap
   begin() {
-    this.pending = false; const ax = this.axis, from = this.cur; this.style[ax] = ''; const to = this.getBoundingClientRect()[ax];
+    this.pending = false; const ax = this.axis, from = this.cur; this.style.height = this.style.width = ''; const to = this.getBoundingClientRect()[ax];
     if (Math.abs(to - from) < 1) return this.stop();
+    this.t0 = this.t = performance.now();
     this.s.x = from; this.s.v = -(this.velocity || 0); this.s.to = to; this.velocity = 0; this.landed = false; this.closing = to < from; this.style[ax] = from + 'px';
   }
-  stop() { this.anim = false; this.pending = false; this.style[this.axis] = ''; this.cur = this.getBoundingClientRect()[this.axis]; }
+  stop() { this.anim = false; this.pending = false; this.style.height = this.style.width = ''; this.cur = this.getBoundingClientRect()[this.axis]; }
   frame(dt) {
     if (!this.anim) return; if (this.pending) this.begin(); if (!this.anim) return;
-    const ax = this.axis, v = this.s.step(dt);
+    // the page's layout waits for it: it steps by the wall's time (the clock's dt is capped for effects) and is done in 0.55 s, within what a page waits after a tap
+    const w = performance.now(), ax = this.axis, v = this.s.step(Math.min(0.25, (w - this.t) / 1000)); this.t = w;
+    if (w - this.t0 > 550) return this.stop();
     if (!this.landed && !this.closing && ((this.s.v <= 0 && v >= this.s.to - 1) || this.s.still)) {   // the landing
       this.landed = true; const c = at(this);
       if (ax === 'height') { puff(c.x - c.w / 2 + 10, c.y - c.h / 2, { size: 8, n: 4, vx: -14, vy: -10, life: 0.5 }); puff(c.x + c.w / 2 - 10, c.y - c.h / 2, { size: 8, n: 4, vx: 14, vy: -10, life: 0.5 }); lines(c.x, c.y - c.h / 2 + 58, { n: 3, dir: 0, len: 22, spread: 6, life: 0.3 }); }
