@@ -88,6 +88,31 @@ describe('SkIconButton', () => {
   });
 });
 
+describe('the clear appearance (HUD v2, #199)', () => {
+  it('reaches the elements as attributes; the control and its name stay', () => {
+    render(
+      <>
+        <SkIconButton
+          label="Views"
+          icon="view"
+          size="compact"
+          appearance="clear"
+          tone="light"
+          backing
+        />
+        <SkButton size="compact" appearance="clear">
+          Walk
+        </SkButton>
+      </>,
+    );
+    const views = screen.getByRole('button', { name: 'Views' });
+    expect(views).toHaveAttribute('appearance', 'clear');
+    expect(views).toHaveAttribute('tone', 'light');
+    expect(views).toHaveAttribute('backing');
+    expect(screen.getByRole('button', { name: 'Walk' })).toHaveAttribute('appearance', 'clear');
+  });
+});
+
 describe('SkBadge', () => {
   it('is a status while shown, gone while not, and an alert when it warns', () => {
     const { rerender } = render(<SkBadge shown={false}>Saving…</SkBadge>);

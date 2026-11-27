@@ -24,7 +24,18 @@ class SakugaButton extends fx.Base {
     :host([size=compact]) { --sk-fx-scale: .7; }
     :host([size=compact]) .btn { min-height: 34px; padding: 7px 14px; border-width: 2.5px; border-radius: 11px; font-size: 13px; box-shadow: 3px 4px 0 var(--sk-soft); }
     :host([size=compact]) .btn.inv { box-shadow: none; }
-    :host([size=compact]) .btn::before { content: ''; position: absolute; inset: -7.5px -4.5px; }   /* the 44 px hit area, inside the shadow root (from the padding box: 5 px past the 2.5 px line) */
+    :host([size=compact]) .btn::before { content: ''; position: absolute; inset: -7.5px -4.5px; }
+    /* made here (my-home, HUD v2 #199): appearance="clear", the resting HUD over the scene. No box at rest: the glyph and
+       its label only, with a crisp contrasting edge (no blur); tone="dark" (ink, for light scenes, the default) or "light"
+       (paper, for dark scenes); backing: a small flat translucent backing for a busy scene. Focus and pressed stay
+       unambiguous on any scene: the pink ring with an edge ring, and a solid ink fill with a paper edge. */
+    :host([appearance=clear]) { --sk-clear-fg: var(--sk-ink); --sk-clear-edge: var(--sk-card); --sk-clear-backing: color-mix(in srgb, var(--sk-card) 72%, transparent); }
+    :host([appearance=clear][tone=light]) { --sk-clear-fg: var(--sk-card); --sk-clear-edge: var(--sk-ink); --sk-clear-backing: color-mix(in srgb, var(--sk-ink) 58%, transparent); }
+    :host([appearance=clear]) .btn { border-color: transparent; background: transparent; box-shadow: none; color: var(--sk-clear-fg); -webkit-text-stroke: 3px var(--sk-clear-edge); paint-order: stroke fill; }
+    :host([appearance=clear][backing]) .btn, :host([appearance=clear]) .btn:hover:not(:disabled) { background: var(--sk-clear-backing); }
+    :host([appearance=clear]) .btn:focus-visible { box-shadow: 0 0 0 2px var(--sk-clear-edge); }
+    :host([appearance=clear]) .btn.on, :host([appearance=clear]) .btn.inv { border-color: var(--sk-card); background: var(--sk-ink); color: var(--sk-card); -webkit-text-stroke: 0; }
+    :host([appearance=clear]) .ok { stroke: var(--sk-acc); }   /* the 44 px hit area, inside the shadow root (from the padding box: 5 px past the 2.5 px line) */
     .ok { display: inline-block; width: calc(var(--ok, 0) * 24px); height: 18px; margin-left: calc(var(--ok, 0) * 6px); vertical-align: -2px; overflow: visible; fill: none; stroke: var(--sk-acc); stroke-width: 4.4; stroke-linecap: round; stroke-linejoin: round; transform: scale(var(--ok, 0)); }`;
 
   get primary() { return this.getAttribute('variant') !== 'secondary'; }

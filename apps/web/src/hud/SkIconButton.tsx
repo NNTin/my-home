@@ -40,6 +40,12 @@ export interface SkIconButtonProps {
   /** `puff`: a puff where the icon was (delete). */
   hit?: 'puff';
   size?: 'compact';
+  /** `clear`: the resting HUD over the scene (HUD v2, #199): no box at rest, a crisp edge; focus and pressed as ever. */
+  appearance?: 'clear';
+  /** With `clear`: `dark` (ink, for light scenes, the default) or `light` (paper, for dark scenes). */
+  tone?: 'dark' | 'light';
+  /** With `clear`: a small flat translucent backing, for a busy scene. */
+  backing?: boolean;
   disabled?: boolean;
   pressed?: boolean;
   /** A real link; a plain click goes through the app's router. */
@@ -56,6 +62,9 @@ export function SkIconButton({
   dir,
   hit,
   size,
+  appearance,
+  tone,
+  backing,
   disabled,
   pressed,
   href,
@@ -73,6 +82,9 @@ export function SkIconButton({
     dir,
     hit,
     size,
+    appearance,
+    tone,
+    backing: backing || undefined,
     href,
     // A property (React sets it on a custom element): a toggle, even when off; a change plays nothing.
     pressed,

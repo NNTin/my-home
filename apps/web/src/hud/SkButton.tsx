@@ -18,6 +18,12 @@ export interface SkButtonProps {
   variant?: 'primary' | 'secondary';
   /** `compact`: the phone's bars and the floating tools (docs/design/hud.md §3.3). */
   size?: 'compact';
+  /** `clear`: the resting HUD over the scene (HUD v2, #199): no box at rest, a crisp edge; focus and pressed as ever. */
+  appearance?: 'clear';
+  /** With `clear`: `dark` (ink, for light scenes, the default) or `light` (paper, for dark scenes). */
+  tone?: 'dark' | 'light';
+  /** With `clear`: a small flat translucent backing, for a busy scene. */
+  backing?: boolean;
   type?: 'button' | 'submit';
   disabled?: boolean;
   /** A toggle button: `aria-pressed` and an ink fill. Set from code, it plays nothing. */
@@ -37,6 +43,9 @@ export function SkButton({
   children,
   variant,
   size,
+  appearance,
+  tone,
+  backing,
   type,
   disabled,
   pressed,
@@ -57,6 +66,9 @@ export function SkButton({
       ref: setHost,
       variant,
       size,
+      appearance,
+      tone,
+      backing: backing || undefined,
       type,
       href,
       // A property (React sets it on a custom element): a toggle, even when off; a change plays nothing.
