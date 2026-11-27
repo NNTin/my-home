@@ -33,7 +33,9 @@ async function renderApp() {
 /** Cuts away the upper levels, so furniture is added to the souterrain. */
 const showSouterrain = () =>
   fireEvent.click(
-    within(screen.getByRole('group', { name: 'Show up to level' })).getByLabelText('Souterrain'),
+    within(screen.getByRole('radiogroup', { name: 'Show up to level' })).getByLabelText(
+      'Souterrain',
+    ),
   );
 
 /** Runs scene handlers one render at a time, as real pointer events would. */

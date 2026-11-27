@@ -147,7 +147,7 @@ describe('edit mode on a phone', () => {
     // Its splash rises over the view from the foot of the stage (§5.13).
     expect(toggle().closest('.stage-tools')).not.toBeNull();
     expect(
-      within(screen.getByRole('toolbar', { name: /Home, walking/ })).queryByRole('switch'),
+      within(screen.getByRole('toolbar', { name: 'Mode and level' })).queryByRole('switch'),
     ).toBeNull();
     expect(lastScene?.toolbar).toBeUndefined();
 

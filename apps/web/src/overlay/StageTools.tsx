@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { EditToggle } from '../editMode/EditToggle';
 import { HudIcon } from '../hud/HudIcon';
 import { SkBadge } from '../hud/SkBadge';
 import { SkButton } from '../hud/SkButton';
+import { SkIconButton } from '../hud/SkIconButton';
 import type { SyncStatus as SaveStatus } from '../placements/sync';
 
 /** What is going on, in a few words, for when no panel is open to say it. */
@@ -36,16 +37,23 @@ export function stageStatusText(status: StageStatus): { text: string; warn: bool
 }
 
 /**
- * What floats at the foot of the phone's 3D view: "Reset view", and a small status badge for
- * loading and saving, which the panels report only while they are open.
+ * What floats at the foot of the phone's 3D view, within thumb reach: Edit, Tools (its menu above them),
+ * "Reset view", and a small status badge for loading and saving, which the panels report only while they are open.
  */
 export function StageTools({
   status,
   onResetView,
+  toolsOpen,
+  onTools,
+  tools,
 }: {
   status: StageStatus;
   /** Undefined while the camera is not the orbit camera ("view from here"). */
   onResetView: (() => void) | undefined;
+  /** Tools (HUD v2 #200): the home, the photos and the catalogue, in a menu over the stage tools. */
+  toolsOpen: boolean;
+  onTools(): void;
+  tools: ReactNode;
 }) {
   const chip = stageStatusText(status);
   // The last words stay on the badge while it shrinks away (state adjusted while rendering, when they change).
@@ -56,6 +64,14 @@ export function StageTools({
     <div className="stage-tools">
       {/* Edit, here and not in the top bar: its splash rises over the view (§5.13). */}
       <EditToggle className="stage-edit" />
+      <SkIconButton
+        className="hud-tools"
+        size="compact"
+        icon="more"
+        label="Tools"
+        pressed={toolsOpen}
+        onClick={onTools}
+      />
       {onResetView && (
         <SkButton size="compact" variant="secondary" className="reset-view" onClick={onResetView}>
           <HudIcon name="reset" /> Reset view
@@ -73,6 +89,7 @@ export function StageTools({
       >
         {shown?.text}
       </SkBadge>
+      {toolsOpen && tools}
     </div>
   );
 }

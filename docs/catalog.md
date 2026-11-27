@@ -18,8 +18,8 @@ The document title follows the page: `my-home`, `Catalogue · my-home`, `<Type n
 
 ## Entry points
 
-- Desktop: **📚 Catalogue** in the control panel, next to Walk and Photos.
-- Phone: **📚 Catalogue** in the top bar ([mobile.md](mobile.md#top-bar)).
+- **Catalogue** in **Tools**: the desktop's lower right corner, or the stage tools on a phone
+  ([mobile.md](mobile.md#stage-tools-and-tools)).
 - On the catalogue, **← Home** goes back to the viewer; on a piece page, **← Catalogue** goes back to the list.
 
 All of these are real links (`<a href>`): a long press, open in a new tab and copy link work as everywhere.

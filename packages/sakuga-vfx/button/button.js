@@ -32,7 +32,7 @@ class SakugaButton extends fx.Base {
     :host([appearance=clear]) { --sk-clear-fg: var(--sk-ink); --sk-clear-edge: var(--sk-card); --sk-clear-backing: color-mix(in srgb, var(--sk-card) 72%, transparent); }
     :host([appearance=clear][tone=light]) { --sk-clear-fg: var(--sk-card); --sk-clear-edge: var(--sk-ink); --sk-clear-backing: color-mix(in srgb, var(--sk-ink) 58%, transparent); }
     :host([appearance=clear]) .btn { border-color: transparent; background: transparent; box-shadow: none; color: var(--sk-clear-fg); -webkit-text-stroke: 3px var(--sk-clear-edge); paint-order: stroke fill; }
-    :host([appearance=clear][backing]) .btn, :host([appearance=clear]) .btn:hover:not(:disabled) { background: var(--sk-clear-backing); }
+    :host([appearance=clear][backing]) .btn, :host([appearance=clear]) .btn:hover:not(:disabled, .on, .inv) { background: var(--sk-clear-backing); }
     :host([appearance=clear]) .btn:focus-visible { box-shadow: 0 0 0 2px var(--sk-clear-edge); }
     :host([appearance=clear]) .btn.on, :host([appearance=clear]) .btn.inv { border-color: var(--sk-card); background: var(--sk-ink); color: var(--sk-card); -webkit-text-stroke: 0; }
     :host([appearance=clear]) .ok { stroke: var(--sk-acc); }

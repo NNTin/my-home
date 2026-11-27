@@ -62,9 +62,16 @@ async function openGallery(options: Parameters<typeof fakeApi>[0] = {}) {
   render(<App />);
   // The first view looks into the souterrain: these tests need the whole building in view.
   fireEvent.click(await screen.findByRole('radio', { name: 'Roof' }));
+  // The photos are in Tools (HUD v2 #200).
+  fireEvent.click(await screen.findByRole('button', { name: 'Tools' }));
   fireEvent.click(await screen.findByRole('button', { name: /Photos \(4\)/ }));
   const panel = within(await screen.findByRole('region', { name: 'Photos' }));
   return { api, panel };
+}
+/** The photos' button, in Tools (HUD v2 #200). */
+async function tools(name: RegExp, timeout = 1000) {
+  fireEvent.click(await screen.findByRole('button', { name: 'Tools' }));
+  return screen.findByRole('button', { name }, { timeout });
 }
 const markerIds = () => lastScene?.photoMarkers?.map((m) => m.id);
 const thumbnails = (panel: Pick<typeof screen, 'getAllByRole'>) =>
@@ -82,9 +89,7 @@ describe('photo gallery', () => {
   it('announces photos and open requests on the gallery button', async () => {
     fakeApi({ photos: [hallway], requests: [open, done] });
     render(<App />);
-    expect(
-      await screen.findByRole('button', { name: /Photos \(1\) · 1 requested/ }),
-    ).toBeInTheDocument();
+    expect(await tools(/Photos \(1\), 1 requested/)).toBeInTheDocument();
     // Closed, the gallery draws nothing into the 3D view.
     expect(markerIds()).toEqual([]);
   });
@@ -105,9 +110,7 @@ describe('photo gallery', () => {
     });
     const api = fakeApi({ photos: [...many, oldest], requests: [done] });
     render(<App />);
-    fireEvent.click(
-      await screen.findByRole('button', { name: /Photos \(1201\)/ }, { timeout: 5000 }),
-    );
+    fireEvent.click(await tools(/Photos \(1201\)/, 5000));
     const panel = within(await screen.findByRole('region', { name: 'Photos' }));
     expect(
       api
@@ -140,9 +143,7 @@ describe('photo gallery', () => {
       });
     });
     render(<App />);
-    expect(
-      await screen.findByRole('button', { name: /Photos \(1\) · 1 requested/ }),
-    ).toBeInTheDocument();
+    expect(await tools(/Photos \(1\), 1 requested/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Photos \(1\)/ }));
     expect(await screen.findByRole('tab', { name: 'Requests (1)' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Walk and take photos/ }));
@@ -170,7 +171,7 @@ describe('photo gallery', () => {
 
   it('shows only markers of the levels in view, and outdoor ones always', async () => {
     await openGallery();
-    const cutaway = within(screen.getByRole('group', { name: 'Show up to level' }));
+    const cutaway = within(screen.getByRole('radiogroup', { name: 'Show up to level' }));
     fireEvent.click(cutaway.getByLabelText('Souterrain'));
     expect(markerIds()).toEqual(['garden', 'kitchen', 'hallway']);
   });

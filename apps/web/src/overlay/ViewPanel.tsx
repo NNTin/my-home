@@ -20,6 +20,8 @@ interface Props {
   onPlanColours(on: boolean): void;
   /** The "Views" control (`views/ViewsControl.tsx`), once its lazy chunk is here. */
   views?: ReactNode;
+  /** A phone's words for the quality (the desktop's Views surface is this panel too, HUD v2 #200). */
+  phone?: boolean;
 }
 
 interface Item {
@@ -37,8 +39,9 @@ interface Group {
 }
 
 /**
- * The phone's View tab. The cutaway level is in the top bar; here are the room names and the
- * rarely used switches for single levels, apartments and outdoor areas, folded away by default.
+ * The phone's View tab and the desktop's Views surface (HUD v2 #200). The cutaway level is in the top bar or the
+ * upper left corner; here are the named views, the room names and the rarely used switches for single levels,
+ * apartments and outdoor areas, folded away by default.
  */
 export function ViewPanel({
   scene,
@@ -49,6 +52,7 @@ export function ViewPanel({
   planColours,
   onPlanColours,
   views,
+  phone = true,
 }: Props) {
   const set = (patch: Partial<Visibility>) => onChange({ ...visibility, ...patch });
   /** The hidden ids of a group that is shown or hidden as a whole. */
@@ -119,7 +123,7 @@ export function ViewPanel({
         Plan colours
       </SkToggle>
       {views}
-      <QualityControl quality={quality} onChange={onQuality} phone />
+      <QualityControl quality={quality} onChange={onQuality} phone={phone} />
       <h2>Show / hide…</h2>
       {groups
         .filter((g) => g.items.length > 0)

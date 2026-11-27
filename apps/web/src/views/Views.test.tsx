@@ -22,6 +22,10 @@ async function open(path: string) {
   fakeApi({ homes: [homeSummary('mock-home', 'Mock home')], models: {} });
   window.history.replaceState(null, '', path);
   render(<App />);
+  // The named views are in the desktop's Views surface (HUD v2 #200); on a phone, the sheet's View tab.
+  await screen.findByTestId('scene');
+  const button = screen.queryByRole('button', { name: 'Views' });
+  if (button) fireEvent.click(button);
   return within(await screen.findByRole('group', { name: 'Views' }, { timeout: 10_000 }));
 }
 
@@ -77,6 +81,7 @@ describe('named views in the viewer', () => {
     await screen.findByTestId('scene');
     // Whatever is drawn first, a capture must wait while the view is still to come.
     if (lastScene?.rigView === undefined) expect(lastScene?.busy).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Views' }));
     await screen.findByRole('group', { name: 'Views' }, { timeout: 10_000 });
     expect(lastScene).toMatchObject({ rigView: { kind: 'eye' }, busy: false });
   });
@@ -122,7 +127,7 @@ describe('named views in the viewer', () => {
 
   it('changing what is shown by hand leaves the view too', async () => {
     await open('/?view=cutaway');
-    const cutaway = within(screen.getByRole('group', { name: 'Show up to level' }));
+    const cutaway = within(screen.getByRole('radiogroup', { name: 'Show up to level' }));
     fireEvent.click(cutaway.getByLabelText('Ground floor'));
     expect(window.location.search).toBe('');
     expect(lastScene?.rigView).toEqual({ kind: 'cutaway' });
@@ -161,6 +166,7 @@ describe('named views in the viewer', () => {
     expect(lastScene?.busy).toBe(false);
     expect(query()).toMatchObject({ view: 'cutaway' });
     fireEvent.click(screen.getByRole('button', { name: /Exit|Leave|Done/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Views' }));
     await screen.findByRole('group', { name: 'Views' });
     expect(lastScene).toMatchObject({ rigView: { kind: 'cutaway' }, walk: undefined });
     expect(lastScene?.frame).toMatchObject({ fov: 20 });

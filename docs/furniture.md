@@ -128,8 +128,8 @@ Furniture panel offers no "Add to …", Undo, Redo, rotate, duplicate, delete, h
 shortcuts below do nothing (except `Escape`), the phone has no floating tools, and the piece page (see
 [the catalogue](catalog.md)) has no editor, Place, Remove, Restore or Undo.
 
-**Edit** (the button in the control panel on a desktop, in the top bar on a phone, and in the header of a piece
-page) turns **edit mode** on; it becomes **Done**. While it is on, an amber frame and an "Edit mode" badge
+**Edit** (the painted switch in the desktop's lower right corner, in the stage tools on a phone, and in the header
+of a piece page) turns **edit mode** on; on the desktop the furniture panel opens with it. While it is on, an amber frame and an "Edit mode" badge
 say so, and everything below works as it always did. **Done** leaves it (a drag in progress is put back).
 
 The mode is not stored: a reload or a new visit starts in view mode again. Moving around inside the app

@@ -36,7 +36,7 @@ class SakugaIconButton extends fx.Base {
     :host([appearance=clear]) .b { border-color: transparent; background: transparent; box-shadow: none; color: var(--sk-ink); }
     :host([appearance=clear][tone=light]) .b:not(.on) { color: var(--sk-card); }
     :host([appearance=clear][tone=light]) .b:not(.on) svg { --sk-card: var(--sk-ink); --sk-soft: color-mix(in srgb, var(--sk-ink) 60%, #000); }
-    :host([appearance=clear][backing]) .b, :host([appearance=clear]) .b:hover:not(:disabled) { background: var(--sk-clear-backing); }
+    :host([appearance=clear][backing]) .b, :host([appearance=clear]) .b:hover:not(:disabled, .on) { background: var(--sk-clear-backing); }
     :host([appearance=clear]) .b:focus-visible { box-shadow: 0 0 0 2px var(--sk-clear-edge); }
     :host([appearance=clear]) .b.on { border-color: var(--sk-card); background: var(--sk-ink); color: var(--sk-card); }`;
 

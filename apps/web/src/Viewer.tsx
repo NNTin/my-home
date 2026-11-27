@@ -51,7 +51,7 @@ import { shortcutFor } from './editor/shortcuts';
 import { rotationFromDrag } from './editor/snapping';
 import { EditBadge } from './editMode/EditToggle';
 import { useEditMode } from './editMode/editMode';
-import { ControlPanel } from './overlay/ControlPanel';
+import { HudCorners, type Surface } from './overlay/HudCorners';
 import {
   FurniturePanel,
   type FlaggedItem,
@@ -62,6 +62,7 @@ import { PieceToolbar, type FurnitureToolbarProps } from './overlay/FurnitureToo
 import { Hints } from './overlay/Hints';
 import { Sheet, sheetSize, type SheetSnap, type SheetTab } from './overlay/Sheet';
 import { StageTools } from './overlay/StageTools';
+import { ToolsMenu } from './overlay/ToolsMenu';
 import { TopBar } from './overlay/TopBar';
 import { useKeyboardViewport } from './overlay/useKeyboardViewport';
 import { useLayoutMode } from './overlay/useLayoutMode';
@@ -256,6 +257,12 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     initial.panel === 'furniture' ? 'furniture' : 'view',
   );
   const [snap, setSnap] = useState<SheetSnap>(initial.snap);
+  // The desktop's one open surface (HUD v2 #200): none at rest; the photos are `photosOpen`.
+  const [surface, setSurface] = useState<Surface | undefined>(
+    initial.panel === 'view' ? 'views' : initial.panel === 'furniture' ? 'furniture' : undefined,
+  );
+  // The phone's Tools menu, over the stage tools.
+  const [phoneTools, setPhoneTools] = useState(false);
   const [photoFilters, setPhotoFilters] = useState(NO_FILTERS);
   const [photoId, setPhotoId] = useState<string>();
   const [viewingPhoto, setViewingPhoto] = useState(false);
@@ -474,6 +481,17 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   const pieces = useMemo(() => scenePieces(scene), [scene]);
   const [selectedPieceId, setSelectedPieceId] = useState<string>();
   const selectedPiece = selectedPieceId === undefined ? undefined : pieces.get(selectedPieceId);
+  // On the desktop the furniture panel is the surface of Edit and of a selection: it opens when either starts and
+  // closes when both have ended (state adjusted while rendering, when they change; V15).
+  const selectionKey = `${editing}:${editor.selectedId ?? ''}:${selectedPieceId ?? ''}`;
+  // From nothing: Edit or a selection at load (?focus=) opens it too.
+  const [seenSelection, setSeenSelection] = useState('false::');
+  if (selectionKey !== seenSelection) {
+    setSeenSelection(selectionKey);
+    if (editing || editor.selectedId !== undefined || selectedPieceId !== undefined)
+      setSurface('furniture');
+    else if (surface === 'furniture') setSurface(undefined);
+  }
   const [highlight, setHighlight] = useState<string>();
   useEffect(() => {
     if (highlight === undefined) return;
@@ -796,6 +814,60 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     photoCount: photos.photos.length,
     openRequests: openRequests(photos.requests).length,
   };
+  // The desktop's open surface: the photos, or Views, Tools or the furniture panel (HUD v2 #200).
+  const shown: Surface | 'photos' | undefined = photosOpen ? 'photos' : surface;
+  const toggleSurface = (next: 'views' | 'tools') => {
+    // Pressed again it closes; Tools pressed over the photos (opened from it) goes back to its menu.
+    closePhotos();
+    setSurface(shown === next ? undefined : next);
+  };
+  // Escape closes the open surface (the phone's Tools menu) and gives the focus back to what opened it. One
+  // listener for the viewer's life, calling the latest: Escape also deselects, and that re-render must not take
+  // this listener off the window in the middle of the same event.
+  const onEscape = useRef<(e: KeyboardEvent) => void>(undefined);
+  useEffect(() => {
+    onEscape.current = (e) => {
+      if (e.key !== 'Escape' || (mobile ? !phoneTools : !shown)) return;
+      const trigger = mobile
+        ? '.stage-tools .hud-tools'
+        : shown === 'views'
+          ? '.hud-views'
+          : shown === 'furniture'
+            ? '.hud-bottom-right .edit-toggle'
+            : '.hud-tools';
+      if (mobile) setPhoneTools(false);
+      else {
+        closePhotos();
+        setSurface(undefined);
+      }
+      document.querySelector<HTMLElement>(trigger)?.focus();
+    };
+  });
+  useEffect(() => {
+    const listener = (e: KeyboardEvent) => onEscape.current?.(e);
+    window.addEventListener('keydown', listener);
+    return () => window.removeEventListener('keydown', listener);
+  }, []);
+  const toolsMenu = (
+    <ToolsMenu
+      {...controls}
+      className={mobile ? 'tools-popover' : undefined}
+      // On a phone, the photos are open while the sheet shows them.
+      photosOpen={mobile ? panel === 'photos' && snap !== 'collapsed' : photosOpen}
+      onPhotos={() => {
+        if (mobile) {
+          setPhoneTools(false);
+          if (panel === 'photos' && snap !== 'collapsed') return setSnap('collapsed');
+          showPanel('photos');
+          if (snap === 'collapsed') setSnap('half');
+        } else if (photosOpen) closePhotos();
+        else {
+          setSurface(undefined);
+          setPhotosOpen(true);
+        }
+      }}
+    />
+  );
   const photosPanel = (
     <PhotosPanel
       photos={photos}
@@ -923,13 +995,10 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     >
       {sheetShown && (
         <TopBar
-          {...controls}
-          photosOpen={panel === 'photos' && snap !== 'collapsed'}
-          onPhotos={() => {
-            if (panel === 'photos' && snap !== 'collapsed') return setSnap('collapsed');
-            showPanel('photos');
-            if (snap === 'collapsed') setSnap('half');
-          }}
+          scene={scene}
+          visibility={chosenVisibility}
+          onChange={controls.onChange}
+          onWalk={controls.onWalk}
         />
       )}
       <div className="viewer-main">
@@ -1036,6 +1105,9 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
                   photosError: photos.error,
                 }}
                 onResetView={viewed ? undefined : closeView}
+                toolsOpen={phoneTools}
+                onTools={() => setPhoneTools((open) => !open)}
+                tools={toolsMenu}
               />
               <Hints side={side} />
             </>
@@ -1110,17 +1182,38 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
             </Sheet>
           ) : (
             <>
-              <ControlPanel
-                {...controls}
-                photosOpen={photosOpen}
-                onPhotos={() => (photosOpen ? closePhotos() : setPhotosOpen(true))}
-                views={viewsControl}
-                quality={quality}
-                onQuality={setQuality}
-                planColours={planColours}
-                onPlanColours={setPlanColours}
+              <HudCorners
+                scene={scene}
+                visibility={chosenVisibility}
+                onChange={controls.onChange}
+                onWalk={controls.onWalk}
+                surface={shown}
+                onSurface={toggleSurface}
               />
-              {photosOpen ? photosPanel : furniturePanel}
+              {/* The one open surface, at the right (§ Primary): each is a paper panel of its own. */}
+              {shown && (
+                <div className="hud-surface">
+                  {shown === 'photos' ? (
+                    photosPanel
+                  ) : shown === 'views' ? (
+                    <ViewPanel
+                      scene={scene}
+                      visibility={chosenVisibility}
+                      onChange={controls.onChange}
+                      views={viewsControl}
+                      quality={quality}
+                      onQuality={setQuality}
+                      planColours={planColours}
+                      onPlanColours={setPlanColours}
+                      phone={false}
+                    />
+                  ) : shown === 'tools' ? (
+                    toolsMenu
+                  ) : (
+                    furniturePanel
+                  )}
+                </div>
+              )}
             </>
           ))}
       </div>

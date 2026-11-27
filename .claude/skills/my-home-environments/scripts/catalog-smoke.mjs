@@ -207,6 +207,11 @@ async function smoke(out, homeId) {
           .waitForSelector('canvas[data-frame="settled"]', { timeout: 240_000 })
           .catch(() => {});
       }
+      // In Tools since HUD v2 #200 (a menu over the stage tools, or the desktop's surface); at rest before.
+      const toolsButton = page.getByRole('button', { name: 'Tools', exact: true });
+      if ((await toolsButton.count()) > 0) {
+        await (device.hasTouch ? toolsButton.tap() : toolsButton.click());
+      }
       const entry = page.getByRole('link', { name: /Catalogue$/ }).first();
       await entry.waitFor({ timeout: 30_000 });
       if (device.hasTouch) {

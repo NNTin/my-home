@@ -1364,16 +1364,6 @@ body {
   min-width: 0;
 }
 
-.topbar-home {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  font-style: italic;
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .topbar button,
 .topbar select {
   box-sizing: border-box;
@@ -1403,19 +1393,18 @@ body {
   white-space: nowrap;
 }
 
-/* Compact (§3.3): 13 px type, so the home, Edit, Walk, Photos and Catalogue fit at 390 px. */
+/* Compact (§3.3): 13 px type. */
 .topbar button {
   font-size: 0.8125rem;
 }
 
-/* Walk, Photos and Catalogue are compact Sakuga elements (docs/design/hud.md §4.1). */
-.topbar-row > sakuga-button,
-.topbar-row > sakuga-icon-button {
+/* Walk is a compact Sakuga element (docs/design/hud.md §4.1). */
+.topbar-row > sakuga-button {
   flex: none;
   white-space: nowrap;
 }
 
-/* The count of open requests, inside Photos. */
+/* The count of open requests, inside Photos (in Tools). */
 .topbar-count {
   margin-left: 0.25rem;
 }
@@ -1855,6 +1844,98 @@ body {
 .status-chip {
   min-width: 0;
   max-width: 100%;
+}
+
+/*
+ * HUD v2 (#200, docs/design/hud-v2/layers.md § Primary): the desktop's corners. The corners take no input; only
+ * their controls do, so drags, clicks and the wheel reach the 3D view through the gaps.
+ */
+.hud-corner {
+  position: absolute;
+  z-index: 10;
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  pointer-events: none;
+}
+
+.hud-corner > * {
+  flex: none;
+  white-space: nowrap;
+  pointer-events: auto;
+}
+
+/* Edit at rest as the clear controls beside it: its switch on a small flat backing, no box (V1, V5). */
+.hud-bottom-right .stage-edit {
+  border: 0;
+  background: color-mix(in srgb, var(--sk-card) 72%, transparent);
+  box-shadow: none;
+}
+
+.hud-top-left {
+  top: 1rem;
+  left: 1rem;
+}
+
+/* The level row at the size it has in the phone's top bar: every level's short name whole. */
+.hud-top-left .segmented {
+  width: 24rem;
+}
+
+.hud-bottom-right {
+  right: 1rem;
+  bottom: 1rem;
+}
+
+/* The mode, read: ink with a paper edge, as the clear controls' words (V2). */
+.hud-mode {
+  color: var(--sk-ink);
+  font-size: 0.875rem;
+  font-style: italic;
+  font-weight: 800;
+  -webkit-text-stroke: 3px var(--sk-card);
+  paint-order: stroke fill;
+  pointer-events: none;
+}
+
+/* The one open surface, at the right above the actions; the column itself takes no input. */
+.hud-surface {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  bottom: 4.5rem;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  width: 26rem;
+  max-width: calc(100% - 2rem);
+  pointer-events: none;
+}
+
+.hud-surface > .overlay {
+  position: static;
+  width: auto;
+  max-width: none;
+  max-height: 100%;
+  pointer-events: auto;
+}
+
+/* The phone's Tools menu: above the stage tools, inside the safe area. */
+.stage-tools > .tools-popover {
+  position: absolute;
+  top: auto;
+  bottom: calc(100% + 0.75rem);
+  left: 0;
+  width: min(
+    18rem,
+    calc(100vw - 1.5rem - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px))
+  );
+  min-width: 0;
+  max-height: 60vh;
+}
+
+.tools-menu .buttons {
+  margin-top: 0.5rem;
 }
 
 /* First-run hints, over the foot of the 3D view until dismissed. */
@@ -2322,16 +2403,6 @@ sakuga-badge[data-count]::after {
   border-radius: var(--hud-r-compact);
   background: var(--sk-card);
   box-shadow: var(--hud-sh-compact);
-  font-style: italic;
-  font-weight: 800;
-}
-
-.panel-edit {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.panel-edit .edit-toggle {
   font-style: italic;
   font-weight: 800;
 }

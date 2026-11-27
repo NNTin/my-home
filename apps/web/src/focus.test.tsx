@@ -90,7 +90,9 @@ describe('picking a window, door or gate', () => {
     expect(lastScene!.pieces?.highlightId).toBe('souterrain-living-door');
     // Clicking a wall in front of it, or empty space, puts it away.
     act(() => lastScene!.pieces!.onSelectPiece(undefined));
-    expect(panel().queryByLabelText('Selected piece')).toBeNull();
+    // With nothing selected and Edit off, the desktop rests: the furniture surface closes (HUD v2 #200).
+    expect(screen.queryByLabelText('Selected piece')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Furniture' })).toBeNull();
   });
 });
 

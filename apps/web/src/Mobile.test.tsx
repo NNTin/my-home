@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
-import { shortLevelName } from './overlay/TopBar';
+import { shortLevelName } from './overlay/LevelControl';
 import type { SceneProps } from './scene/Scene';
 import { fakeApi, homeSummary } from './test/fakeApi';
 import { testPhoto, testRequest } from './test/fixtures';
@@ -29,6 +29,8 @@ const topBar = () => within(screen.getByRole('toolbar'));
 const level = (name: string) =>
   within(screen.getByRole('radiogroup', { name: 'Show up to level' })).getByRole('radio', { name });
 const region = (name: string) => screen.queryByRole('region', { name });
+/** Tools, in the stage tools (HUD v2 #200). */
+const tools = () => fireEvent.click(screen.getByRole('button', { name: 'Tools' }));
 
 async function open(
   mode: Parameters<typeof stubScreen>[0],
@@ -59,12 +61,15 @@ describe('phone layout', () => {
     window.history.replaceState(null, '', '/');
   });
 
-  it('keeps the two panels on a desktop screen', async () => {
+  it('rests on a desktop screen: the corners, no panel (HUD v2 #200)', async () => {
     await open('desktop');
     expect(viewer()).not.toHaveClass('mobile');
-    expect(region('View controls')).toBeInTheDocument();
-    expect(region('Furniture')).toBeInTheDocument();
-    expect(screen.queryByRole('toolbar')).not.toBeInTheDocument();
+    expect(region('View controls')).not.toBeInTheDocument();
+    expect(region('Furniture')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('toolbar').map((t) => t.getAttribute('aria-label'))).toEqual([
+      'Mode and level',
+      'Views, Edit and Tools',
+    ]);
     expect(region('Panels')).not.toBeInTheDocument();
     expect(viewer().style.getPropertyValue('--stage-inset')).toBe('');
   });
@@ -83,9 +88,13 @@ describe('phone layout', () => {
       '📷Photos',
       '📌Requests',
     ]);
-    expect(topBar().getByText('Mock home')).toBeInTheDocument();
+    // The mode, Walk and the level; the home, the photos and the catalogue are in Tools (HUD v2 #200).
+    expect(topBar().getByText('Orbit')).toBeInTheDocument();
     expect(topBar().getByRole('button', { name: 'Walk and take photos' })).toBeInTheDocument();
-    expect(topBar().getByRole('button', { name: 'Photos (0)' })).toBeInTheDocument();
+    expect(topBar().queryByRole('button', { name: /Photos/ })).toBeNull();
+    tools();
+    expect(within(region('Tools')!).getByText('Mock home')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Photos (0)' })).toBeInTheDocument();
     // The 3D view ends where the tab bar begins.
     expect(viewer().style.getPropertyValue('--stage-inset')).toBe('var(--sheet-collapsed)');
     expect(levelsOf()).toEqual(new Set(['souterrain']));
@@ -195,12 +204,12 @@ describe('phone layout', () => {
     expect(levelsOf().has('ground-floor')).toBe(false);
   });
 
-  it('opens the catalogue from the top bar, keeping the home', async () => {
+  it('opens the catalogue from Tools, keeping the home', async () => {
     window.history.replaceState(null, '', '/?home=mock-home&sheet=half');
     await open('portrait');
-    const catalogue = topBar().getByRole('link', { name: 'Catalogue' });
+    tools();
+    const catalogue = screen.getByRole('link', { name: 'Catalogue' });
     expect(catalogue).toHaveAttribute('href', '/catalog?home=mock-home');
-    expect(catalogue).toHaveAttribute('title', 'Catalogue');
     fireEvent.click(catalogue);
     expect(await screen.findByRole('heading', { name: 'Catalogue' })).toBeInTheDocument();
     expect(screen.queryByRole('toolbar')).not.toBeInTheDocument();
@@ -210,31 +219,36 @@ describe('phone layout', () => {
     );
   });
 
-  it('opens the photos from the top bar and the requests from their tab', async () => {
+  it('opens the photos from Tools and the requests from their tab', async () => {
     const photo = testPhoto({ id: 'hallway' });
     await open('portrait', { photos: [photo], requests: [testRequest()] });
-    const photos = await topBar().findByRole('button', { name: 'Photos (1), 1 requested' });
-    expect(photos).toHaveAttribute('aria-pressed', 'false');
+    const photos = async () => {
+      tools();
+      return screen.findByRole('button', { name: 'Photos (1), 1 requested' });
+    };
+    let button = await photos();
+    expect(button).toHaveAttribute('aria-pressed', 'false');
     expect(tab(/Requests/)).toHaveAccessibleName('Requests 1 open');
     // No camera markers while the gallery is closed.
     expect(lastScene?.photoMarkers).toEqual([]);
 
-    fireEvent.click(photos);
+    // A choice closes the menu.
+    fireEvent.click(button);
+    expect(region('Tools')).not.toBeInTheDocument();
     expect(sheet()).toHaveClass('sheet-half');
-    expect(photos).toHaveAttribute('aria-pressed', 'true');
     expect(tab(/Photos/)).toHaveAttribute('aria-selected', 'true');
     expect(region('Photos')).toBeInTheDocument();
     expect(lastScene?.photoMarkers?.map((m) => m.id)).toEqual(['hallway']);
 
     fireEvent.click(tab(/Requests/));
     expect(tab(/Requests/)).toHaveAttribute('aria-selected', 'true');
-    // The button stands for the photos, not for the requests beside them.
-    expect(photos).toHaveAttribute('aria-pressed', 'false');
     expect(within(region('Photos')!).getByText(testRequest().reason)).toBeInTheDocument();
 
     // The same button closes the sheet again, and leaving the photos removes the markers.
     fireEvent.click(tab(/Photos/));
-    fireEvent.click(photos);
+    button = await photos();
+    expect(button).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(button);
     expect(sheet()).toHaveClass('sheet-collapsed');
     fireEvent.click(tab(/Furniture/));
     expect(lastScene?.photoMarkers).toEqual([]);
@@ -242,7 +256,8 @@ describe('phone layout', () => {
 
   it('reaches the trash from the photos, without a second row of tabs', async () => {
     await open('portrait', { photos: [testPhoto({ id: 'hallway' })] });
-    fireEvent.click(await topBar().findByRole('button', { name: 'Photos (1)' }));
+    tools();
+    fireEvent.click(await screen.findByRole('button', { name: 'Photos (1)' }));
     // The sheet's tabs are the only tabs.
     expect(screen.getAllByRole('tab')).toHaveLength(4);
     expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument();
@@ -256,7 +271,8 @@ describe('phone layout', () => {
 
   it('opens the sheet on the photo of a camera marker that is tapped', async () => {
     await open('portrait', { photos: [testPhoto({ id: 'hallway' })] });
-    fireEvent.click(await topBar().findByRole('button', { name: 'Photos (1)' }));
+    tools();
+    fireEvent.click(await screen.findByRole('button', { name: 'Photos (1)' }));
     fireEvent.click(tab(/Photos/));
     expect(sheet()).toHaveClass('sheet-collapsed');
 
@@ -286,7 +302,9 @@ describe('phone layout', () => {
   it('follows the screen: desktop, phone upright, phone across', async () => {
     const { turn } = await open('desktop');
     fireEvent.click(
-      within(screen.getByRole('group', { name: 'Show up to level' })).getByLabelText('Souterrain'),
+      within(screen.getByRole('radiogroup', { name: 'Show up to level' })).getByLabelText(
+        'Souterrain',
+      ),
     );
 
     turn('portrait');
@@ -305,8 +323,9 @@ describe('phone layout', () => {
     expect(region('Furniture')).toBeInTheDocument();
 
     turn('desktop');
-    expect(region('View controls')).toBeInTheDocument();
-    expect(region('Furniture')).toBeInTheDocument();
+    // The desktop rests: its corners, the surfaces closed (HUD v2 #200).
+    expect(screen.getByRole('toolbar', { name: 'Views, Edit and Tools' })).toBeInTheDocument();
+    expect(region('Furniture')).not.toBeInTheDocument();
     expect(region('Panels')).not.toBeInTheDocument();
     expect(levelsOf()).toEqual(new Set(['souterrain']));
   });
@@ -331,10 +350,20 @@ describe('phone layout', () => {
     expect(screen.getByText(testRequest().reason)).toBeInTheDocument();
   });
 
-  it('offers the home selector in the top bar when there are several homes', async () => {
+  it('closes the Tools menu with Escape and gives the focus back to Tools (HUD v2 #200)', async () => {
+    await open('portrait');
+    tools();
+    expect(region('Tools')).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(region('Tools')).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Tools' }));
+  });
+
+  it('offers the home selector in Tools when there are several homes', async () => {
     await open('portrait', {
       homes: [homeSummary('mock-home', 'Mock home'), homeSummary('other', 'Other home')],
     });
-    expect(topBar().getByLabelText('Home')).toHaveValue('mock-home');
+    tools();
+    expect(within(region('Tools')!).getByLabelText('Home')).toHaveValue('mock-home');
   });
 });

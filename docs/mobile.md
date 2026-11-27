@@ -1,7 +1,8 @@
 # The viewer on a phone
 
 On a phone the 3D view fills the screen and the controls stay out of its way: a **top bar** for what is used
-most, and one **sheet** with the panels. A desktop screen keeps the two floating panels.
+most, and one **sheet** with the panels. A desktop screen rests on its corners and opens one surface at a time
+(HUD v2 #200, [`docs/design/hud-v2/layers.md`](design/hud-v2/layers.md) § Primary; below, § The desktop).
 
 ## When the phone layout is used
 
@@ -10,7 +11,7 @@ two media queries:
 
 | Layout      | When                                                                  | Sheet                  |
 | ----------- | --------------------------------------------------------------------- | ---------------------- |
-| `desktop`   | none of the conditions below                                          | none: the two panels   |
+| `desktop`   | none of the conditions below                                          | none: the corners      |
 | `portrait`  | at most 768 px wide, at most 500 px high, or a coarse (touch) pointer | at the bottom          |
 | `landscape` | the same, and the screen is wider than it is high                     | at the right-hand side |
 
@@ -19,17 +20,30 @@ screen while the page is open (turning the phone, resizing a window), and what w
 
 ## Top bar
 
-- The home: its name, or a selector when there are several.
-- **✏️ Edit** turns [edit mode](furniture.md#view-mode-and-edit-mode) on (and becomes **✔ Done**); the viewer starts in
-  view mode. An "Edit mode" badge and an amber frame show while it is on.
-- **🚶 Walk** starts [walking](walking.md); **📷 Photos (n)** opens the gallery in the sheet, with a badge for
-  open photo requests.
-- **📚 Catalogue** opens the [catalogue](catalog.md) (a link, keeping `?home=`). Below 440 px of width, where
-  the home, Walk and Photos already take the row, it shows only its icon; its name stays "Catalogue".
+- The mode, read ("Orbit"), and **Walk**, which starts [walking](walking.md) (its name is "Walk and take photos").
 - The **level switcher**, a segmented control for the cutaway: Roof and then the levels from the top down. The
   buttons show short names ("First floor (attic)" becomes "Attic", "Ground floor" becomes "Ground";
   `shortLevelName()`), and keep the full name as their accessible name. The arrow keys move through it like a
-  radio group.
+  radio group. The desktop's upper left corner has the same control (`LevelControl.tsx`).
+
+## Stage tools and Tools
+
+At the foot of the 3D view, within thumb reach: **Edit**, the painted switch that turns
+[edit mode](furniture.md#view-mode-and-edit-mode) on (an "Edit mode" badge shows while it is on), **Tools**, **Reset
+view** and the status chip. **Tools** opens a menu above them with what left the top bar in HUD v2 (#200): the home
+(its name, or a selector when there are several), **Photos (n)** (opens the gallery in the sheet, says the open
+photo requests; pressed again while the photos show, it closes the sheet) and **Catalogue** (a link, keeping
+`?home=`). A choice closes the menu; Escape or Tools again closes it and gives the focus back to Tools.
+
+## The desktop
+
+Full-bleed at rest: the mode, **Walk** and the level switcher at the upper left; **Views**, **Edit** and **Tools**
+at the lower right, clear controls on the scene (`HudCorners.tsx`). The corners take no input themselves, so drags,
+clicks and the wheel reach the 3D view between the controls. One surface opens at a time, at the right: **Views**
+(the View panel: named views, backdrop, Save image, Render, room names, plan colours, quality and Effects, the
+show/hide groups), **Tools** (the menu above), the photos (from Tools; Tools over them goes back to its menu) and the
+furniture panel, which opens by itself when Edit or a selection starts and closes when both have ended. A trigger
+pressed again, or Escape, closes the surface and gives the focus back to the trigger.
 
 ## Sheet
 
@@ -92,7 +106,7 @@ is scrolled into view.
 For links, screenshots and tests:
 
 - `?panel=view`, `furniture`, `photos` or `requests` opens the viewer with that panel showing (on a desktop
-  screen, `photos` and `requests` open the gallery).
+  screen, `view` opens the Views surface, `furniture` the furniture panel, `photos` and `requests` the gallery).
 - `?sheet=collapsed`, `half` or `full` sets the size of the sheet; it is `half` when a panel is named.
 
 - `?hints=off` leaves the first-run hints out, without marking them as seen.
@@ -216,9 +230,11 @@ inside the middle 80 %).
 | -------------------------------------- | ------------------------------------------------------------------------------------ |
 | Which layout, media queries            | `apps/web/src/overlay/useLayoutMode.ts`                                              |
 | Sheet: tabs, sizes, dragging           | `apps/web/src/overlay/Sheet.tsx`                                                     |
-| Top bar and level switcher             | `apps/web/src/overlay/TopBar.tsx`                                                    |
+| Top bar and level switcher             | `apps/web/src/overlay/TopBar.tsx`, `apps/web/src/overlay/LevelControl.tsx`           |
+| Tools menu                             | `apps/web/src/overlay/ToolsMenu.tsx`                                                 |
+| The desktop's corners                  | `apps/web/src/overlay/HudCorners.tsx`                                                |
 | View tab                               | `apps/web/src/overlay/ViewPanel.tsx`                                                 |
-| Reset view, status chip                | `apps/web/src/overlay/StageTools.tsx`                                                |
+| Edit, Tools, Reset view, status chip   | `apps/web/src/overlay/StageTools.tsx`                                                |
 | First-run hints                        | `apps/web/src/overlay/Hints.tsx`                                                     |
 | Furniture toolbar, long press          | `apps/web/src/overlay/FurnitureToolbar.tsx`, `apps/web/src/scene/FurnitureLayer.tsx` |
 | Keyboard                               | `apps/web/src/overlay/useKeyboardViewport.ts`                                        |
