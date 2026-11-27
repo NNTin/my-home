@@ -105,6 +105,9 @@ describe('picking a room (HUD v2 #201)', () => {
     const room = buildHome(mockHome).roomFloors.find((r) => r.name === 'Living room')!;
     act(() => lastScene!.pieces!.onSelectRoom!([room.labelAt[0], room.y, room.labelAt[2]]));
     expect(lastScene!.roomOutline?.outline).toEqual(room.outline);
+    // A door behind the click is not frontmost and says "none": the room stays selected.
+    act(() => lastScene!.pieces!.onSelectPiece(undefined));
+    expect(lastScene!.roomOutline?.outline).toEqual(room.outline);
     // Its label at the edge opens the inspector.
     fireEvent.click(screen.getByRole('button', { name: 'Living room: details' }));
     const selected = within(panel().getByLabelText('Selected room'));
