@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type RefObject } from 'react';
+import { SkBadge } from '../hud/SkBadge';
 import type { HomeScene } from '../builder/buildHome';
 import type { PlacementDraw } from '../builder/drawList';
 import type { Visibility } from '../builder/visibility';
@@ -150,9 +151,9 @@ export function RenderMode({
     const message = phone ? NO_RENDER : refused;
     if (message)
       return (
-        <p className="toast" role="alert" data-render="unsupported">
+        <SkBadge className="render-unsupported" shown kind="warn" data-render="unsupported">
           {message}
-        </p>
+        </SkBadge>
       );
     if (!chunk || loading) return null;
     return (

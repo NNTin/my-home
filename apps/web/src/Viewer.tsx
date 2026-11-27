@@ -10,6 +10,7 @@ import {
   type PhotoPose,
   type PhotoRequest,
 } from '@my-home/shared';
+import { SkNotice } from './hud/SkToast';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { homeSettingsApi, photosApi } from './api';
 import {
@@ -987,11 +988,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
             onNotice={setToast}
             planColours={planColours}
           />
-          {toast && (
-            <p className="toast" role="alert">
-              {toast}
-            </p>
-          )}
+          <SkNotice className="viewer-toast" message={toast} duration={TOAST_MS / 1000} />
           {views && (
             <views.RenderMode
               scene={scene}

@@ -24,12 +24,13 @@ class SakugaIconButton extends fx.Base {
     :host([size=compact]) { width: 34px; height: 34px; --sk-fx-scale: .7; }
     :host([size=compact]) .b { border-width: 2.5px; border-radius: 11px; box-shadow: 3px 4px 0 var(--sk-soft); }
     :host([size=compact]) .b svg, :host([size=compact]) ::slotted(svg) { width: 20px; height: 20px; }
-    :host([size=compact]) .b::before { content: ''; position: absolute; inset: -7px; }   /* the 44 px hit area, inside the shadow root */`;
+    :host([size=compact]) .b::before { content: ''; position: absolute; inset: -7.5px; }   /* the 44 px hit area, inside the shadow root (from the padding box: 5 px past the 2.5 px line) */`;
 
   get disabled() { return this.hasAttribute('disabled'); }
   set disabled(v) { this.toggleAttribute('disabled', !!v); }
-  get pressed() { return this.hasAttribute('pressed'); }
-  set pressed(v) { this.toggleAttribute('pressed', !!v); }
+  // pressed="true" or a bare pressed: on; pressed="false": a toggle that is off (aria-pressed="false"); none: not a toggle
+  get pressed() { const p = this.getAttribute('pressed'); return p !== null && p !== 'false'; }
+  set pressed(v) { if (v == null) this.removeAttribute('pressed'); else this.setAttribute('pressed', v ? 'true' : 'false'); }
   attributeChangedCallback(name) { if (!this.b) return; if (name === 'icon') this.paint(); this.sync(); }
   // the control's state from the attributes: set from code, it changes at once and plays nothing
   sync() {
@@ -37,7 +38,7 @@ class SakugaIconButton extends fx.Base {
     b.setAttribute('aria-label', this.getAttribute('label') || this.getAttribute('icon') || 'Button');
     if (link) { const h = this.getAttribute('href'); if (this.disabled || h === null) b.removeAttribute('href'); else b.setAttribute('href', h); b.setAttribute('aria-disabled', String(this.disabled)); b.tabIndex = this.disabled ? -1 : 0; }
     b.disabled = this.disabled;   // on a link, a plain property: squashy() and the effects read it
-    if (this.hasAttribute('pressed') || b.hasAttribute('aria-pressed')) b.setAttribute('aria-pressed', String(this.pressed));
+    if (this.hasAttribute('pressed')) b.setAttribute('aria-pressed', String(this.pressed)); else b.removeAttribute('aria-pressed');
     b.classList.toggle('on', this.pressed);
   }
   // the named icon (icons/icons.js), or what is slotted

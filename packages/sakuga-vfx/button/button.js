@@ -6,14 +6,14 @@
 // One file, no dependencies. Load it with a script tag and use <sakuga-button>Confirm</sakuga-button>.
 // It fires an ordinary click. With type="submit" inside a form, it submits the form.
 // Made here (my-home, #168): size="compact" (smaller, its effects at 0.7, a 44 px hit area), href (a real link) and pressed
-// (a toggle button: aria-pressed and an ink fill).
+// (a toggle button: aria-pressed and an ink fill); label names it when the visible text is shorter than its name.
 (() => {
 function component(fx) {
 const { rnd, later, at, esc, squashy, Spring, ticks, wob, lines, burst, shards, puff, sfx, donut, kira } = fx;
 
 class SakugaButton extends fx.Base {
   static delegates = true;
-  static observedAttributes = ['disabled', 'pressed', 'href'];
+  static observedAttributes = ['disabled', 'pressed', 'href', 'label'];
   static css = `
     .btn { position: relative; padding: 14px 30px; border: var(--sk-bw) solid var(--sk-btn-line); border-radius: var(--sk-r); background: var(--sk-card); color: var(--sk-ink); font: italic 800 19px/1.1 "Avenir Next", "Nunito", -apple-system, "Segoe UI", system-ui, sans-serif; letter-spacing: -.01em; box-shadow: var(--sk-btn-sh); cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: manipulation; will-change: transform; }
     .btn.alt { border-color: var(--sk-alt-line); box-shadow: var(--sk-alt-sh); }
@@ -24,21 +24,23 @@ class SakugaButton extends fx.Base {
     :host([size=compact]) { --sk-fx-scale: .7; }
     :host([size=compact]) .btn { min-height: 34px; padding: 7px 14px; border-width: 2.5px; border-radius: 11px; font-size: 13px; box-shadow: 3px 4px 0 var(--sk-soft); }
     :host([size=compact]) .btn.inv { box-shadow: none; }
-    :host([size=compact]) .btn::before { content: ''; position: absolute; inset: -5px -2px; }   /* the 44 px hit area, inside the shadow root */
+    :host([size=compact]) .btn::before { content: ''; position: absolute; inset: -7.5px -4.5px; }   /* the 44 px hit area, inside the shadow root (from the padding box: 5 px past the 2.5 px line) */
     .ok { display: inline-block; width: calc(var(--ok, 0) * 24px); height: 18px; margin-left: calc(var(--ok, 0) * 6px); vertical-align: -2px; overflow: visible; fill: none; stroke: var(--sk-acc); stroke-width: 4.4; stroke-linecap: round; stroke-linejoin: round; transform: scale(var(--ok, 0)); }`;
 
   get primary() { return this.getAttribute('variant') !== 'secondary'; }
   get disabled() { return this.hasAttribute('disabled'); }
   set disabled(v) { this.toggleAttribute('disabled', !!v); }
-  get pressed() { return this.hasAttribute('pressed'); }
-  set pressed(v) { this.toggleAttribute('pressed', !!v); }
+  // pressed="true" or a bare pressed: on; pressed="false": a toggle that is off (aria-pressed="false"); none: not a toggle
+  get pressed() { const p = this.getAttribute('pressed'); return p !== null && p !== 'false'; }
+  set pressed(v) { if (v == null) this.removeAttribute('pressed'); else this.setAttribute('pressed', v ? 'true' : 'false'); }
   attributeChangedCallback() { if (this.b) this.sync(); }
   // the control's state from the attributes: set from code, it changes at once and plays nothing
   sync() {
-    const b = this.b, link = b.tagName === 'A';
+    const b = this.b, link = b.tagName === 'A', label = this.getAttribute('label');
+    if (label) b.setAttribute('aria-label', label); else b.removeAttribute('aria-label');   // a name other than the visible text
     if (link) { const h = this.getAttribute('href'); if (this.disabled || h === null) b.removeAttribute('href'); else b.setAttribute('href', h); b.setAttribute('aria-disabled', String(this.disabled)); b.tabIndex = this.disabled ? -1 : 0; }
     b.disabled = this.disabled;   // on a link, a plain property: squashy() and the effects read it
-    if (this.hasAttribute('pressed') || b.hasAttribute('aria-pressed')) b.setAttribute('aria-pressed', String(this.pressed));
+    if (this.hasAttribute('pressed')) b.setAttribute('aria-pressed', String(this.pressed)); else b.removeAttribute('aria-pressed');
     b.classList.toggle('on', this.pressed);
   }
 

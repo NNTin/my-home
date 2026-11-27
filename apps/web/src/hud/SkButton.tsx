@@ -1,5 +1,6 @@
 import { createElement, useImperativeHandle, type ReactNode, type Ref } from 'react';
 import { useHost, useListeners } from './useElement';
+import { useLink } from './useLink';
 
 interface ButtonElement extends HTMLElement {
   done(hold?: number): void;
@@ -11,13 +12,20 @@ export interface SkButtonHandle {
 }
 
 export interface SkButtonProps {
-  /** The label, and its accessible name. */
+  /** The label, and its accessible name unless `aria-label` is given (then the element's `label`). */
   children: ReactNode;
   /** `secondary`: the quiet one, no impact and no word. */
   variant?: 'primary' | 'secondary';
+  /** `compact`: the phone's bars and the floating tools (docs/design/hud.md §3.3). */
+  size?: 'compact';
   type?: 'button' | 'submit';
   disabled?: boolean;
+  /** A toggle button: `aria-pressed` and an ink fill. Set from code, it plays nothing. */
+  pressed?: boolean;
+  /** A real link; a plain click goes through the app's router. */
+  href?: string;
   title?: string;
+  'aria-label'?: string;
   /** Stays on the host: the stylesheet's layout and the smokes' selectors keep working. */
   className?: string;
   onClick?(): void;
@@ -28,19 +36,36 @@ export interface SkButtonProps {
 export function SkButton({
   children,
   variant,
+  size,
   type,
   disabled,
+  pressed,
+  href,
   title,
+  'aria-label': ariaLabel,
   className,
   onClick,
   ref,
 }: SkButtonProps) {
   const [host, setHost] = useHost<ButtonElement>();
   useListeners(host, { click: onClick && (() => onClick()) });
+  useLink(host, href);
   useImperativeHandle(ref, () => ({ done: (hold) => host?.done(hold) }), [host]);
   return createElement(
     'sakuga-button',
-    { ref: setHost, variant, type, title, className, disabled: disabled || undefined },
+    {
+      ref: setHost,
+      variant,
+      size,
+      type,
+      href,
+      // A property (React sets it on a custom element): a toggle, even when off; a change plays nothing.
+      pressed,
+      title,
+      label: ariaLabel,
+      className,
+      disabled: disabled || undefined,
+    },
     children,
   );
 }

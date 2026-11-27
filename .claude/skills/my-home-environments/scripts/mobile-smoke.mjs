@@ -1038,21 +1038,47 @@ async function smoke(out, homeId) {
     );
     const width = await page.evaluate(() => document.scrollingElement.scrollWidth);
     check('nothing is wider than the screen', width <= PORTRAIT.width, `${width} px`);
+    // A control's hit area, not its box: a compact Sakuga control draws a 34 px face and takes touches
+    // 44 px around it inside its shadow root (docs/design/hud.md §3.3), which no box shows. So each
+    // control is hit-tested: the middle of each edge of the TOUCH-px square around its centre (or of
+    // its box, if larger) must land on the control itself. The CSS reaches into shadow roots: an inner
+    // control stands for its host, which `elementFromPoint` returns for it.
     const small = await page
-      .locator('.topbar button, .topbar select, .sheet-bar button, .reset-view')
+      .locator(
+        '.topbar button, .topbar select, .topbar sakuga-icon-button, .sheet-bar button, .reset-view',
+      )
       .evaluateAll(
         (elements, min) =>
           elements
-            .map((e) => ({
-              name: e.getAttribute('aria-label') ?? e.textContent,
-              box: e.getBoundingClientRect(),
-            }))
-            .filter((e) => e.box.width < min || e.box.height < min)
-            .map((e) => `${e.name.trim()} ${Math.round(e.box.width)}x${Math.round(e.box.height)}`),
+            .filter((e) => e.getClientRects().length > 0)
+            .map((e) => {
+              const owner = e.getRootNode().host ?? e;
+              const r = e.getBoundingClientRect();
+              const [cx, cy] = [r.x + r.width / 2, r.y + r.height / 2];
+              const [w, h] = [Math.max(r.width, min) / 2 - 1, Math.max(r.height, min) / 2 - 1];
+              const missed = [
+                [cx - w, cy],
+                [cx + w, cy],
+                [cx, cy - h],
+                [cx, cy + h],
+              ].filter(([x, y]) => {
+                // A finger touches the screen only: a probe past its edge comes back to it.
+                const hit = document.elementFromPoint(
+                  Math.min(Math.max(x, 0), document.documentElement.clientWidth - 1),
+                  Math.min(Math.max(y, 0), document.documentElement.clientHeight - 1),
+                );
+                return !(hit && (hit === owner || owner.contains(hit)));
+              });
+              const name =
+                owner.getAttribute('label') ?? e.getAttribute('aria-label') ?? e.textContent;
+              return { name, missed, r };
+            })
+            .filter((e) => e.missed.length > 0)
+            .map((e) => `${e.name.trim()} ${Math.round(e.r.width)}x${Math.round(e.r.height)}`),
         TOUCH,
       );
     check(
-      `top bar and tab bar controls are at least ${TOUCH} px`,
+      `top bar and tab bar controls take a touch at least ${TOUCH} px across`,
       small.length === 0,
       small.join(', '),
     );

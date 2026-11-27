@@ -1,3 +1,4 @@
+import { SkBadge } from '../hud/SkBadge';
 import { useEditMode } from './editMode';
 
 /** "Edit" turns edit mode on, "Done" leaves it. */
@@ -19,10 +20,10 @@ export function EditToggle({ className }: { className?: string }) {
 /** Says that edit mode is on, wherever the toggle is out of sight. */
 export function EditBadge() {
   const [editing] = useEditMode();
-  if (!editing) return null;
+  // It pops in when edit mode starts and shrinks away when it ends (docs/design/hud.md §4.3).
   return (
-    <p className="edit-badge" role="status" aria-label="Edit mode">
-      ✏️ Edit mode
-    </p>
+    <SkBadge className="edit-badge" role="status" aria-label="Edit mode" shown={editing}>
+      Edit mode
+    </SkBadge>
   );
 }

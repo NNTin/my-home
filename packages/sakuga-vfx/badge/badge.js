@@ -30,24 +30,25 @@ class SakugaBadge extends fx.Base {
   setup() {
     this.c = this.$('.chip'); this.num = this.$('.n');
     this.sc = new Spring(this.shown ? 1 : 0, 420, 18); this.sq = new Spring(1, 520, 15); this.ok = new Spring(this.hasAttribute('done') ? 1 : 0, 420, 14);
-    this.out = !this.shown; this.n0 = this.count(); this.seq = 0; this.timed = false; this.ownRole = this.hasAttribute('role');
+    this.out = !this.shown; this.n0 = this.number(); this.seq = 0; this.timed = false; this.ownRole = this.hasAttribute('role');
     this.num.textContent = this.n0 ?? '';
     this.aria(); this.c.classList.toggle('gone', !this.shown);
     // the text changed: one squash (and the stay starts again); gone by itself after its stay, a new text brings it back
     new MutationObserver(() => { if (!this.shown) return; if (this.out) this.arrive(); else { this.kick(); this.stay(); } }).observe(this, { childList: true, characterData: true, subtree: true });
     if (this.shown) this.stay();
   }
-  count() { const n = this.getAttribute('count'); return n === null ? undefined : +n; }
+  number() { const n = this.getAttribute('count'); return n === null ? undefined : +n; }
   // a count is a picture with its label, or decoration; a status is role="status" ("alert" when it warns), unless the page set a role
   aria() {
-    if (this.count() !== undefined) { const l = this.getAttribute('label'); if (!this.ownRole) this.setAttribute('role', l ? 'img' : 'none'); if (l) this.setAttribute('aria-label', l); this.toggleAttribute('aria-hidden', !l || this.out); return; }
+    if (this.number() !== undefined) { const l = this.getAttribute('label'); if (!this.ownRole) this.setAttribute('role', l ? 'img' : 'none'); if (l) this.setAttribute('aria-label', l); this.hide_(!l || this.out); return; }
     if (!this.ownRole) this.setAttribute('role', this.warn ? 'alert' : 'status');
-    this.toggleAttribute('aria-hidden', this.out);
+    this.hide_(this.out);
   }
+  hide_(v) { if (v) this.setAttribute('aria-hidden', 'true'); else this.removeAttribute('aria-hidden'); }   // "true", not "": an empty one hides nothing
   attributeChangedCallback(name, was, now) {
     if (!this.c) return;
     if (name === 'shown') { if (this.shown) this.arrive(); else this.leave(); }
-    else if (name === 'count') { const n = this.count(); this.num.textContent = n ?? ''; if (!this.out && n !== undefined && this.n0 !== undefined && n > this.n0) this.pop(); else if (!this.out) this.kick(); this.n0 = n; }
+    else if (name === 'count') { const n = this.number(); this.num.textContent = n ?? ''; if (!this.out && n !== undefined && this.n0 !== undefined && n > this.n0) this.pop(); else if (!this.out) this.kick(); this.n0 = n; }
     else if (name === 'done') { this.ok.to = now !== null ? 1 : 0; if (now !== null && was === null && !this.out) { const q = at(this.c, 1, 0); kira(q.x - 4, q.y + 2, { r: 11, life: 0.9 }); ticks(q.x + 2, q.y - 6, { dir: -0.8, n: 2, r: 5, len: 10 }); } }
     else if (name === 'duration') this.stay();
     this.aria();

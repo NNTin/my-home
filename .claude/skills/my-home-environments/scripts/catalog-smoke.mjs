@@ -208,11 +208,35 @@ async function smoke(out, homeId) {
       const entry = page.getByRole('link', { name: /Catalogue$/ }).first();
       await entry.waitFor({ timeout: 30_000 });
       if (device.hasTouch) {
+        // Its hit area, not its box: the compact icon button draws a 34 px face and takes touches
+        // TOUCH px around it inside its shadow root (docs/design/hud.md §3.3). The middle of each
+        // edge of the TOUCH-px square around its centre must land on it (the link stands for its host).
         const box = await entry.boundingBox();
+        const missed = await entry.evaluate((e, min) => {
+          const owner = e.getRootNode().host ?? e;
+          const r = e.getBoundingClientRect();
+          const [cx, cy] = [r.x + r.width / 2, r.y + r.height / 2];
+          const [w, h] = [Math.max(r.width, min) / 2 - 1, Math.max(r.height, min) / 2 - 1];
+          return [
+            [cx - w, cy],
+            [cx + w, cy],
+            [cx, cy - h],
+            [cx, cy + h],
+          ].filter(([x, y]) => {
+            // A finger touches the screen only: a probe past its edge comes back to it.
+            const hit = document.elementFromPoint(
+              Math.min(Math.max(x, 0), document.documentElement.clientWidth - 1),
+              Math.min(Math.max(y, 0), document.documentElement.clientHeight - 1),
+            );
+            return !(hit && (hit === owner || owner.contains(hit)));
+          }).length;
+        }, TOUCH);
         check(
-          `${label}: the top bar's Catalogue is at least ${TOUCH} px`,
-          box && box.width >= TOUCH && box.height >= TOUCH,
-          box ? `${Math.round(box.width)}x${Math.round(box.height)}` : 'not shown',
+          `${label}: the top bar's Catalogue takes a touch at least ${TOUCH} px across`,
+          box && missed === 0,
+          box
+            ? `${Math.round(box.width)}x${Math.round(box.height)}, ${missed} of 4 edges missed`
+            : 'not shown',
         );
       }
       await press(entry);
