@@ -25,6 +25,7 @@ await check('the scene is a canvas, and neither of the HUD effect layers', () =>
   // The core's names (packages/sakuga-vfx/core.js): the layer over the page and the one inside a control.
   assert.match(SCENE, /:not\(\.sakuga-fx\)/);
   assert.match(SCENE, /:not\(\.back\)/);
+  assert.match(SCENE, /:not\(\.art\)/);
   // It still takes the attributes the scripts add to it.
   assert.equal(`${SCENE}[data-frame="settled"]`.startsWith('canvas:not('), true);
 });

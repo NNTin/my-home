@@ -10,7 +10,7 @@
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { answeredInfrastructure } from './infrastructure.mjs';
-import { loadingScreenGone, SCENE } from './scene.mjs';
+import { loadingScreenGone, missedTouches, SCENE } from './scene.mjs';
 
 const require = createRequire(path.join(process.env.MY_HOME_PLAYWRIGHT_DIR, 'package.json'));
 const { chromium } = require('playwright');
@@ -748,20 +748,11 @@ async function smoke(out, homeId) {
           .locator(
             '.piece-page button, .playground-field, .playground-color, .playground-slider, .piece-toggle, .page-back',
           )
-          .evaluateAll(
-            (elements, min) =>
-              elements
-                .filter((e) => e.getClientRects().length > 0)
-                .map((e) => ({
-                  name: e.getAttribute('aria-label') ?? e.textContent,
-                  box: e.getBoundingClientRect(),
-                }))
-                .filter((e) => e.box.height < min)
-                .map((e) => `${e.name.trim()} ${Math.round(e.box.height)} px`),
-            TOUCH,
-          );
+          // Hit-tested (scene.mjs missedTouches): a compact Sakuga control (the Edit switch) draws a face
+          // smaller than 44 px and takes touches 44 px across inside its shadow root (#168 PR 4).
+          .evaluateAll(missedTouches, TOUCH);
         check(
-          `${label}: piece page controls are at least ${TOUCH} px`,
+          `${label}: piece page controls take a touch at least ${TOUCH} px across`,
           small.length === 0,
           small.join(', '),
         );

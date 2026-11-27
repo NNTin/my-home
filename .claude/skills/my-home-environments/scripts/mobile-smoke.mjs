@@ -15,7 +15,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { answeredInfrastructure } from './infrastructure.mjs';
-import { loadingScreenGone, SCENE } from './scene.mjs';
+import { loadingScreenGone, missedTouches, SCENE } from './scene.mjs';
 
 const require = createRequire(path.join(process.env.MY_HOME_PLAYWRIGHT_DIR, 'package.json'));
 const { chromium } = require('playwright');
@@ -38,43 +38,6 @@ const LANDSCAPE = { width: 844, height: 390 };
 /** Smallest comfortable touch target, in CSS pixels. */
 const TOUCH = 44;
 
-/**
- * The controls among `elements` that do not take a touch `min` px across (run in the page, by
- * `evaluateAll`). A compact Sakuga control draws a 34 px face and takes touches 44 px across inside
- * its shadow root (docs/design/hud.md §3.3), which no box shows; so each control is hit-tested:
- * `elementFromPoint` at the middle of each edge of the `min`-px square around its centre (or of its
- * box, if larger), 1 px inside, and at the centre must land on the control (a probe past the screen's
- * edge is moved onto it). The CSS reaches into shadow roots: an inner control stands for its host,
- * which `elementFromPoint` returns for it. Corners are not probed: Chrome hit-tests rounded corners.
- */
-function missedTouches(elements, min) {
-  const [W, H] = [document.documentElement.clientWidth, document.documentElement.clientHeight];
-  return elements
-    .filter((e) => e.getClientRects().length > 0)
-    .map((e) => {
-      const owner = e.getRootNode().host ?? e;
-      const r = e.getBoundingClientRect();
-      const [cx, cy] = [r.x + r.width / 2, r.y + r.height / 2];
-      const [w, h] = [Math.max(r.width, min) / 2 - 1, Math.max(r.height, min) / 2 - 1];
-      const missed = [
-        [cx - w, cy],
-        [cx + w, cy],
-        [cx, cy - h],
-        [cx, cy + h],
-        [cx, cy],
-      ].filter(([x, y]) => {
-        const hit = document.elementFromPoint(
-          Math.min(Math.max(x, 0), W - 1),
-          Math.min(Math.max(y, 0), H - 1),
-        );
-        return !(hit && (hit === owner || owner.contains(hit)));
-      });
-      const name = owner.getAttribute('label') ?? e.getAttribute('aria-label') ?? e.textContent;
-      return { name, missed, r };
-    })
-    .filter((e) => e.missed.length > 0)
-    .map((e) => `${e.name.trim()} ${Math.round(e.r.width)}x${Math.round(e.r.height)}`);
-}
 /** The widest the collapsed side sheet may be (it is 72 px plus the safe area), in CSS pixels. */
 const RAIL_MAX = 96;
 

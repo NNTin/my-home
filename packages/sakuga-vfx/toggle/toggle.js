@@ -60,7 +60,7 @@ class SakugaToggle extends fx.Base {
   }
   form() { this.internals.setFormValue(this.checked ? this.value : null); }
   render() {
-    return `<button class="tog" type="button" role="switch" part="switch" aria-checked="${this.checked}" aria-label="${fx.esc(this.getAttribute('label') || 'Toggle')}"${this.disabled ? ' disabled' : ''}><canvas width="${FW}" height="${FH}" aria-hidden="true"></canvas></button>`;
+    return `<button class="tog" type="button" role="switch" part="switch" aria-checked="${this.checked}" aria-label="${fx.esc(this.getAttribute('label') || 'Toggle')}"${this.disabled ? ' disabled' : ''}><canvas class="art" width="${FW}" height="${FH}" aria-hidden="true"></canvas></button>`;
   }
   setup() {
     this.b = this.$('.tog'); this.cv = this.$('canvas'); this.c = this.cv.getContext('2d');
