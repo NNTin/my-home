@@ -370,6 +370,44 @@ describe('the denoised still on screen', () => {
     expect((host.firstElementChild as HTMLElement).style.visibility).toBe('');
   });
 
+  it('a denoiser that fails mid-still takes its stale image off screen, and out of Save image', async () => {
+    const host = document.createElement('div');
+    const { drawn } = fakeCanvases();
+    const { still, show, settle, textures, tracer, trace, checkpoint } = fakeStill(host);
+    textures.open();
+    tracer.open();
+    show('cutaway');
+    await settle();
+    const [traced, denoised] = [...host.children] as HTMLCanvasElement[];
+    checkpoint(16);
+    expect(still.progress().denoised).toBe(16);
+    // The network fails: the tracer drops it and starts over raw.
+    Object.assign(trace, { denoised: false, denoiseError: 'the network failed' });
+    expect(still.progress()).toMatchObject({ denoised: 0, undenoised: 'the network failed' });
+    expect(traced!.style.visibility).toBe('');
+    expect(denoised!.style.visibility).toBe('hidden');
+    // Saved: the tracer's raw image, not the dropped denoised one.
+    drawn.length = 0;
+    await still.image();
+    expect(drawn).not.toContain(denoised);
+    expect(trace.capture).toHaveBeenCalledTimes(2);
+  });
+
+  it('a raw checkpoint after a denoised one puts the raw image back on screen', async () => {
+    const host = document.createElement('div');
+    fakeCanvases();
+    const { still, show, settle, textures, tracer, checkpoint } = fakeStill(host);
+    textures.open();
+    tracer.open();
+    show('cutaway');
+    await settle();
+    checkpoint(16);
+    checkpoint(16, false);
+    expect(still.progress().denoised).toBe(0);
+    expect((host.children[0] as HTMLElement).style.visibility).toBe('');
+    expect((host.children[1] as HTMLElement).style.visibility).toBe('hidden');
+  });
+
   it('a new view hides the denoised image of the one before', async () => {
     const host = document.createElement('div');
     fakeCanvases();

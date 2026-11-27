@@ -200,7 +200,10 @@ export class Still {
 
   /** A checkpoint of the view shown: its denoised image goes on screen, over the raw samples. */
   private checkpoint(trace: Trace, shown: number, checkpoint: TraceCheckpoint) {
-    if (shown !== this.shown || trace !== this.trace || !checkpoint.denoised) return;
+    if (shown !== this.shown || trace !== this.trace) return;
+    // A raw checkpoint: the denoiser was dropped and the still started over raw. The tracer's
+    // canvas is the still again; the denoised image from before is not.
+    if (!checkpoint.denoised) return this.showDenoised(false);
     const context = this.shownImage.getContext('2d');
     if (!context) return;
     context.clearRect(0, 0, this.shownImage.width, this.shownImage.height);
@@ -229,6 +232,8 @@ export class Still {
     if (trace.lost !== undefined)
       return { ...NO_PROGRESS, ...trace.progress, seconds: 0, running: false, failed: trace.lost };
     const { progress, running, settling } = trace;
+    // The denoiser failed while this view was traced: its last image is of samples now dropped.
+    if (!trace.denoised && this.denoised > 0) this.showDenoised(false);
     const undenoised = trace.denoised
       ? undefined
       : (trace.denoiseError ?? this.undenoised ?? 'no denoiser');
