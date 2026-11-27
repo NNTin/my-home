@@ -34,10 +34,15 @@ const RESTART_MS = 200;
 
 export const statusText = (p: StillProgress): string => {
   const time = `${p.seconds.toFixed(0)} s`;
-  if (p.done) return `Done: ${p.samples} samples in ${time}`;
-  if (!p.running) return `Stopped at ${p.samples} of ${SAMPLE_TARGET} samples, ${time}`;
+  // A still without its denoiser (the network did not load) says so once it has samples.
+  const raw = p.undenoised !== undefined && p.samples > 0 ? ' (not denoised)' : '';
+  if (p.done) return `Done: ${p.samples} samples in ${time}${raw}`;
+  if (p.settling) return `Stopped at ${p.samples} of ${SAMPLE_TARGET} samples, ${time}: denoising`;
+  if (!p.running) return `Stopped at ${p.samples} of ${SAMPLE_TARGET} samples, ${time}${raw}`;
+  if (p.stage === 'denoising')
+    return `Denoising at ${p.samples} of ${SAMPLE_TARGET} samples, ${time}`;
   if (p.stage === 'rendering')
-    return `Rendering: ${p.samples} of ${SAMPLE_TARGET} samples, ${time}`;
+    return `Rendering: ${p.samples} of ${SAMPLE_TARGET} samples, ${time}${raw}`;
   return p.stage === 'compiling' ? `Preparing the tracer, ${time}` : 'Preparing the scene';
 };
 
@@ -136,7 +141,11 @@ export function RenderStill({
             Stop
           </button>
         )}
-        <button type="button" onClick={save} disabled={saving || progress.samples < 1}>
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving || progress.samples < 1 || progress.settling}
+        >
           {saving ? 'Saving…' : 'Save image'}
         </button>
         <button type="button" onClick={onClose}>

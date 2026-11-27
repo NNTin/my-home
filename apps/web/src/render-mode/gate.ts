@@ -15,14 +15,22 @@ import {
   type NamedView,
 } from '../views/named';
 import {
-  checkpoints,
   imageDifference,
   type Checkpoint,
   type ChunkSize,
   type GateContext,
   type ViewMeasurement,
 } from './measure';
-import { BOUNCES, SAMPLE_TARGET, Trace, type TraceSettings } from './tracer';
+import {
+  BOUNCES,
+  loadDenoiser,
+  SAMPLE_TARGET,
+  Trace,
+  type DenoiserSource,
+  type TraceCheckpoint,
+  type TraceSettings,
+  type Weights,
+} from './tracer';
 import {
   buildTraceScene,
   frameCamera,
@@ -35,7 +43,8 @@ import {
 
 /**
  * Runs the decision gate (`measure.ts`): traces the three fixed views one after the other, each
- * to the sample target or the time limit, and keeps the image at every checkpoint.
+ * to the sample target or the time limit, and keeps the image at every checkpoint: the denoised
+ * one, which the gate judges (D114), and the raw one beside it.
  */
 
 /** What the gate measures with, from the address: `?render=measure&size=1280x720&samples=128`. */
@@ -44,7 +53,11 @@ export interface GateSettings extends TraceSettings {
   limit: number;
   /** The fixed views measured, in their order: `&views=eye,section` measures two. All without it. */
   views: readonly string[];
+  /** The denoiser's weights: render mode's small ones, `&weights=default`, or `&weights=none`. */
+  weights: Weights | 'none';
 }
+
+const WEIGHT_CHOICES: readonly GateSettings['weights'][] = ['small', 'default', 'none'];
 
 const whole = (value: string | null, fallback: number, min: number, max: number) => {
   const n = value === null ? NaN : Number.parseInt(value, 10);
@@ -66,6 +79,7 @@ export function gateSettings(search: string): GateSettings {
       .split(',')
       .map((kind) => kind.trim())
       .filter((kind) => (VIEW_KINDS as readonly string[]).includes(kind)),
+    weights: WEIGHT_CHOICES.find((choice) => choice === params.get('weights')) ?? 'small',
   };
 }
 
@@ -107,10 +121,15 @@ export interface GateStatus {
   backdrop: string;
 }
 
-/** A finished view: its numbers and its still as a PNG. */
+/** A finished view: its numbers and its still as a PNG, denoised and raw. */
 export interface GateResult {
   measurement: ViewMeasurement;
+  /** The still at its last checkpoint: denoised when the run has a denoiser. */
   image?: Blob;
+  /** The raw image at the same checkpoint, when the still is denoised. */
+  raw?: Blob;
+  /** The samples of the two images. */
+  imageSamples?: number;
 }
 
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -148,72 +167,142 @@ async function measureView(
     samples: 0,
     seconds: 0,
     timedOut: false,
+    denoised: trace.denoised,
   };
-  // The image is kept in a canvas of its own, over the backdrop it is shown on.
-  const kept = document.createElement('canvas');
-  kept.width = settings.width;
-  kept.height = settings.height;
-  const context = kept.getContext('2d', { willReadFrequently: true });
-  if (!context) throw new Error('no 2D canvas');
-  const capture = () => {
+  // The images of the last checkpoint, as the tracer drew them (with their alpha), and a canvas
+  // where each is laid over the backdrop's colour to be compared with the one before.
+  const canvas = () => {
+    const kept = document.createElement('canvas');
+    kept.width = settings.width;
+    kept.height = settings.height;
+    const context = kept.getContext('2d', { willReadFrequently: true });
+    if (!context) throw new Error('no 2D canvas');
+    return { kept, context };
+  };
+  const denoisedImage = canvas();
+  const rawImage = canvas();
+  const compared = canvas();
+  const capture = (
+    image: ReturnType<typeof canvas>,
+    draw: (context: CanvasRenderingContext2D) => void,
+  ) => {
+    image.context.clearRect(0, 0, image.kept.width, image.kept.height);
+    draw(image.context);
+    const { kept, context } = compared;
     context.fillStyle = top;
     context.fillRect(0, 0, kept.width, kept.height);
-    trace.capture(context);
+    context.drawImage(image.kept, 0, 0);
     return context.getImageData(0, 0, kept.width, kept.height).data;
+  };
+  let traceStart = now();
+  let before: { raw: Uint8ClampedArray; denoised?: Uint8ClampedArray } | undefined;
+  let kept = 0;
+  // Told while the checkpoint's image is on the tracer's canvas: both images are copied now.
+  trace.onCheckpoint = ({ samples, denoised, reached, ready }: TraceCheckpoint) => {
+    const raw = capture(rawImage, (context) => trace.captureRaw(context));
+    const clean = denoised
+      ? capture(denoisedImage, (context) => trace.capture(context))
+      : undefined;
+    const point: Checkpoint = { samples, seconds: reached / 1000 - traceStart };
+    if (before) point.raw = imageDifference(before.raw, raw);
+    if (clean)
+      point.denoised = {
+        seconds: ready / 1000 - traceStart,
+        ...(before?.denoised && { change: imageDifference(before.denoised, clean) }),
+      };
+    measurement.checkpoints.push(point);
+    before = { raw, ...(clean && { denoised: clean }) };
+    kept = samples;
   };
   try {
     trace.start(built, camera);
-    const traceStart = now();
+    traceStart = now();
     measurement.buildSeconds = traceStart - started;
-    const wanted = checkpoints(settings.samples);
-    let before: Uint8ClampedArray | undefined;
     for (;;) {
       await pause(200);
       if (signal.aborted) throw new DOMException('stopped', 'AbortError');
       if (trace.lost !== undefined)
         throw new Error(`the browser took the graphics device away (${trace.lost})`);
       const elapsed = now() - traceStart;
-      const { stage } = trace.progress;
-      const samples = stage === 'rendering' ? (await trace.samples()).min : 0;
+      const { stage, done } = trace.progress;
+      const samples =
+        stage === 'rendering' || stage === 'denoising' ? (await trace.samples()).min : 0;
       if (samples >= 1 && measurement.firstSampleSeconds === undefined)
         measurement.firstSampleSeconds = elapsed;
       measurement.samples = samples;
       measurement.seconds = elapsed;
       say(
-        stage === 'rendering'
-          ? `${samples} of ${settings.samples} samples, ${elapsed.toFixed(0)} s`
-          : stage === 'compiling'
-            ? `Compiling the tracer, ${elapsed.toFixed(0)} s`
-            : `Building the scene, ${elapsed.toFixed(0)} s`,
+        stage === 'denoising'
+          ? `Denoising at ${samples} of ${settings.samples} samples, ${elapsed.toFixed(0)} s`
+          : stage === 'rendering'
+            ? `${samples} of ${settings.samples} samples, ${elapsed.toFixed(0)} s`
+            : stage === 'compiling'
+              ? `Compiling the tracer, ${elapsed.toFixed(0)} s`
+              : `Building the scene, ${elapsed.toFixed(0)} s`,
         built.backdrop,
       );
-      while (wanted.length > 0 && samples >= wanted[0]!) {
-        wanted.shift();
-        // Only the last checkpoint passed is an image of its own. On a fast card two fall into
-        // one look at the samples: the image is then compared with one of a quarter of its
-        // samples, which is the stricter test.
-        if (wanted.length > 0 && samples >= wanted[0]!) continue;
-        const image = capture();
-        const point: Checkpoint = { samples, seconds: now() - traceStart };
-        if (before) Object.assign(point, imageDifference(before, image));
-        measurement.checkpoints.push(point);
-        before = image;
+      if (done) {
+        measurement.samples = Math.max(samples, kept);
+        // The sample target's checkpoint is its end.
+        measurement.seconds = measurement.checkpoints.at(-1)?.denoised?.seconds ?? elapsed;
+        break;
       }
-      if (wanted.length === 0) break;
       if (elapsed > settings.limit) {
         measurement.timedOut = true;
         break;
       }
     }
     trace.stop();
-    // The still as it is saved: over the backdrop as the view shows it, a gradient at eye level.
-    paintBackdrop(context, built.backdropColors);
-    trace.capture(context);
-    const image = await new Promise<Blob | null>((resolve) => kept.toBlob(resolve, 'image/png'));
-    return { measurement, ...(image && { image }) };
+    if (trace.denoiseError !== undefined) {
+      measurement.denoiseError = trace.denoiseError;
+      measurement.denoised = trace.denoised;
+    }
+    if (kept === 0) return { measurement };
+    // The stills as they are saved: over the backdrop as the view shows it, a gradient at eye level.
+    const png = (image: ReturnType<typeof canvas>) => {
+      const { kept, context } = compared;
+      paintBackdrop(context, built.backdropColors);
+      context.drawImage(image.kept, 0, 0);
+      return new Promise<Blob | null>((resolve) => kept.toBlob(resolve, 'image/png'));
+    };
+    const image = await png(measurement.denoised ? denoisedImage : rawImage);
+    const raw = measurement.denoised ? await png(rawImage) : null;
+    return {
+      measurement,
+      imageSamples: kept,
+      ...(image && { image }),
+      ...(raw && { raw }),
+    };
   } finally {
+    trace.onCheckpoint = undefined;
     trace.stop();
     built.dispose();
+  }
+}
+
+/** The denoiser of a run, or why there is none: a line of the report. */
+export interface GateDenoiser {
+  source: DenoiserSource | undefined;
+  text: string;
+}
+
+/** Downloads the denoiser the address asks for (`&weights=`), once for every view. */
+export async function gateDenoiser(
+  weights: GateSettings['weights'],
+  load: (weights: Weights) => Promise<DenoiserSource> = loadDenoiser,
+): Promise<GateDenoiser> {
+  if (weights === 'none') return { source: undefined, text: 'none (`&weights=none`): raw stills' };
+  try {
+    const source = await load(weights);
+    return {
+      source,
+      text: `${weights} weights, ${(source.bytes / 1000).toFixed(1)} kB, downloaded with its code in ${source.seconds.toFixed(1)} s`,
+    };
+  } catch (error) {
+    return {
+      source: undefined,
+      text: `${weights} weights not loaded (${error instanceof Error ? error.message : String(error)}): raw stills`,
+    };
   }
 }
 
@@ -226,6 +315,7 @@ export async function runGate(
   host: HTMLElement,
   settings: GateSettings,
   inputs: GateInputs,
+  denoiser: DenoiserSource | undefined,
   on: { status(status: GateStatus): void; result(result: GateResult): void },
   signal: AbortSignal,
 ): Promise<void> {
@@ -237,7 +327,7 @@ export async function runGate(
     host.replaceChildren(canvas);
     let trace: Trace | undefined;
     try {
-      trace = await Trace.create(canvas, settings, () => undefined);
+      trace = await Trace.create(canvas, { ...settings, denoiser });
       on.result(await measureView(trace, settings, inputs, view, on.status, signal));
     } catch (error) {
       if (signal.aborted) return;
@@ -253,6 +343,7 @@ export async function runGate(
           samples: 0,
           seconds: 0,
           timedOut: false,
+          denoised: denoiser !== undefined,
           error: error instanceof Error ? error.message : String(error),
         },
       });
@@ -300,15 +391,17 @@ async function gzippedBytes(body: ReadableStream<Uint8Array>): Promise<number> {
 }
 
 /**
- * The lazy chunk's size (`ChunkSize`): what the browser downloaded and unpacked, from its resource
+ * A lazy chunk's size (`ChunkSize`): what the browser downloaded and unpacked, from its resource
  * timings, and its files gzipped here again, from the cache, to compare with the budget.
  * Undefined if the browser does not say.
  */
-export async function chunkSize(): Promise<ChunkSize | undefined> {
+export async function chunkSize(name: string): Promise<ChunkSize | undefined> {
+  const file = new RegExp(`/${name}-[\\w-]+\\.(js|css)$`);
   const entries = performance
     .getEntriesByType('resource')
-    .filter((entry): entry is PerformanceResourceTiming =>
-      /\/render-path-[\w-]+\.(js|css)$/.test(new URL(entry.name).pathname),
+    .filter(
+      (entry): entry is PerformanceResourceTiming =>
+        entry.entryType === 'resource' && file.test(new URL(entry.name).pathname),
     );
   const served = entries.reduce((sum, entry) => sum + (entry.encodedBodySize || 0), 0);
   if (served === 0) return undefined;

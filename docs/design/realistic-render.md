@@ -382,6 +382,8 @@ that the main chunk never imports statically.
   screen. Until it arrives the viewer draws fast frames; nothing waits for it.
 - `render-path` is requested when "Render" is pressed, after a WebGPU check. A browser whose only WebGPU
   adapter is drawn by the processor (a fallback adapter) counts as having none (D99).
+- `render-denoise` (the denoiser's code) and its weights, a file of their own, are requested by `render-path`
+  when a still starts (D114, D116): never before "Render", and never for a browser without WebGPU.
 - **The main chunk is one file** (D95): everything the entry reaches statically, whichever lazy chunks also
   import it.
 - `render-views` holds the named views (§7): their URLs and cameras, the Views control, the ground, the section's
@@ -976,6 +978,8 @@ light, and the only part of the app that uses WebGPU.
 
 - **Tracer:** `three-gpu-pathtracer`'s WebGPU tracer. Its WebGL tracer, tried in #107, is deprecated by the
   library.
+- **Denoiser:** the library's Open Image Denoise (`OIDNDenoiser`, with `oidn-webgpu`) and its small weights.
+  The still on screen and the saved one are denoised (D114).
 - **Own canvas, own renderer.** Render mode opens over the viewer with its own canvas and a WebGPU renderer.
   The WebGL viewer underneath is paused, not replaced.
 - **Same inputs.** It builds its scene from the same draw list, finishes, light rig, camera and cut as the
@@ -990,16 +994,25 @@ light, and the only part of the app that uses WebGPU.
 
 **Decision gate.** No real GPU was available in #107, so step 8 starts by measuring, on a desktop with a
 discrete GPU, the seconds to a clean still for the three fixed views and the chunk's size. The step continues
-when every view is clean within 60 s. If it is not, render mode ships with the deprecated WebGL tracer on the
-viewer's own renderer instead, and the PR says so. Either way the tier's interface above stays the same.
+when every view is clean within 60 s. Clean is D96, applied to the denoised still (D114).
+
+_Amended in #119 (2026-11-27)._ This paragraph first said that render mode would ship with the deprecated
+WebGL tracer if the gate failed. The owner's two runs on a GTX 1080 failed it: the section was clean at 512
+samples in 135 s, at the rate honest noise falls; the eye view, a stair hall without a lamp of its own, was not
+clean after 300 s. The WebGL tracer runs the same estimator, so it would fail the same way: it is dropped. The
+denoiser takes its place (D114). If a later run shows the denoised eye view still not clean within 60 s, the
+gate's eye view moves to a room with a lamp of its own, and the stair hall is documented as slower (D115).
 
 **The measuring page (#119).** `/?render=measure` on a desktop traces the three fixed views one after the
 other at 1920 x 1080 px, to 256 samples a pixel with 8 bounces, and ends with a table to paste into the issue:
-the graphics card, the browser, the chunk's size (gzipped as CI measures it, and as the server sent it) and, per view, the seconds to a clean still and
-to the sample target. "Clean" is a number (D96): the image is kept at 16, 32, 64, 128 and 256 samples, and it is
-clean at the first of these after which twice the samples change fewer than 1 % of its pixels by more than 4 of
-255 levels. `&size=1280x720`, `&samples=`, `&bounces=`, `&limit=<seconds a view>`, `&views=eye,section` and `&kernel=mega` (the
-library's other backend) change what is measured. How to read it: `docs/render-mode.md`.
+the graphics card, the browser, the denoiser, the chunks' sizes (gzipped as CI measures them, and as the server
+sent them) and, per view, the seconds to a clean still, denoised and raw, to the sample target and for a pass of
+the denoiser. "Clean" is a number (D96): the image is kept at 16, 32, 64, 128 and 256 samples, and it is clean at
+the first of these after which twice the samples change fewer than 1 % of its pixels by more than 4 of 255
+levels; the gate judges the denoised image (D114), the raw one is judged beside it and saved with it.
+`&size=1280x720`, `&samples=`, `&bounces=`, `&limit=<seconds a view>`, `&views=eye,section`, `&kernel=mega` (the
+library's other backend) and `&weights=default|none` (the larger weights, or no denoiser) change what is
+measured. How to read it: `docs/render-mode.md`.
 
 **What the tracer is given (#119).** The draw items of what the view shows, merged by the viewer's own batching;
 copies of the viewer's materials with the same textures; the rig's sun; a point light for every fixture that
@@ -1020,8 +1033,15 @@ were. While render mode is on, "Save image" in the panel saves the still, as `my
 over its backdrop.
 
 **Built before the gate's numbers (#119).** The owner's measurement had not come in when the still was built;
-it uses the WebGPU tracer, the design's first choice. If the numbers fail the gate, `render-mode/tracer.ts` is
-the one file that knows the tracer: the deprecated WebGL tracer goes in behind the same `Trace`.
+it uses the WebGPU tracer, the design's first choice. `render-mode/tracer.ts` is the one file that knows the
+tracer and its denoiser.
+
+**The denoiser (#119).** The tracer stops at each checkpoint (16, 32, 64, 128 and 256 samples): the library
+runs the network over the image, guided by the albedo and the normals the tracer gathers beside it, and the
+denoised image goes on screen; then the samples go on (D117). Until the first checkpoint the raw samples show;
+"Stop" denoises the samples there are. The network and its weights are fetched when a still starts, while its
+textures load (D116). If they do not load, or the network fails, the still is the raw image and the line says
+"not denoised".
 
 ## 10. Performance budgets
 
@@ -1045,6 +1065,7 @@ the one file that knows the tracer: the deprecated WebGL tracer goes in behind t
 | Main chunk growth over `d4df5df`                                 | ≤ 50 kB gzipped, whole epic | same                                           |
 | `render-beautiful` chunk                                         | ≤ 150 kB gzipped            | same                                           |
 | `render-path` chunk                                              | not offered                 | ≤ 340 kB gzipped; never loaded before "Render" |
+| `render-denoise` chunk and its small weights                     | not offered                 | ≤ 781 kB (D116); never loaded before "Render"  |
 | Moving frame, median                                             | ≤ 33 ms                     | ≤ 17 ms                                        |
 | Refined frame (`auto`)                                           | ≤ 300 ms                    | n/a                                            |
 
@@ -1313,9 +1334,11 @@ over that cap, came with the new one (#170: 100 bytes).
 **Acceptance:**
 
 - The gate's measurements are recorded in the sub-issue before the feature is built.
-- On the owner's desktop the three fixed views converge to a clean still within 60 s and can be saved.
+- On the owner's desktop the three fixed views converge to a clean still within 60 s, denoised (D114), and can
+  be saved.
 - A browser without WebGPU gets the message and keeps its tier.
-- The `render-path` chunk is never requested before "Render" is pressed; the other chunks are unchanged.
+- The `render-path` and `render-denoise` chunks are never requested before "Render" is pressed; the other
+  chunks are unchanged.
 
 ### Dropped from #107's proposal
 
@@ -1474,6 +1497,10 @@ All seven proposed defaults were accepted.
 | D111 | A chimney is part of the home model's gable roof (`roof.chimneys`): a box from inside the roof and a cylinder a pipe, shown with the roof; its sides take a facade finish                  | The street-side images (#147) show one; the roof planes are fixed, so it is added on them, not cut into them. A box sunk into the roof where the roof is lowest under it leaves no gap on either slope                                                                                                                                                                        |
 | D112 | A trellis fence stands on wooden posts in its lattice's stain; a brick pillar is the piece `garden.pillar`, placed where one stands                                                        | 8808ee82: one clinker pillar at the street end, wooden posts along the lattice. The old rule drew a pillar every 2.5 m                                                                                                                                                                                                                                                        |
 | D113 | A satellite dish is a wall piece of kind `furniture` on the ground floor's facade, outside the rooms; it shows and hides with that level                                                   | An outdoor piece stands on the ground at the terrain. A dish is fixed to the facade, like the radiator to a wall; outdoor pieces show in every cutaway, so it would hang in the air over the souterrain                                                                                                                                                                       |
+| D114 | The still is denoised: Open Image Denoise with the small weights at every checkpoint and at "Stop"; D96 and the 60 s gate are applied to the denoised still; no WebGL fallback             | The owner's runs failed the raw gate (section clean at 512 samples in 135 s, the lampless stair hall not after 300 s). The WebGL tracer is the same estimator and would fail the same way. A denoiser turns the noise left at a few dozen samples into a clean image: the owner's decision of 2026-11-27, option B of #119                                                    |
+| D115 | If the denoised eye view is not clean within 60 s on the owner's desktop, the gate's eye view moves to a room with a lamp of its own (corridor or kitchen)                                 | Decided with D114, before the next run: the stair hall has no lamp, and its light comes through a doorway after two bounces, a path tracer's worst case. The stair hall is then documented as slower; nothing is prepared for it (#119)                                                                                                                                       |
+| D116 | `oidn-webgpu` 0.6.1, pinned; the weights are files in git (`render-mode/weights/`, Apache-2.0); `render-denoise` may be 781 kB, its code gzipped and the small weights as sent             | Measured 678.8 kB: 37.3 kB of code and 641.5 kB of weights, plus 15 % room (the owner's approval). The server does not gzip the weights (they gain 7 %): they are counted as downloaded. The default weights (1.84 MB) are the measuring page's `&weights=default` only. Upstream `RenderKit/oidn-weights` at `28883d1` (#119)                                                |
+| D117 | Denoising at a checkpoint moves the library's sample target from one checkpoint to the next; the tracer waits while a pass runs                                                            | The library denoises only once every pixel has its target, and keeps the samples when the target is raised. Each checkpoint then has exactly its samples, and the gate's times include the passes, as the still's do. The raw image for the measuring page is the tracer's with its denoiser set aside for one presentation (#119)                                            |
 
 ## 14. Open questions
 

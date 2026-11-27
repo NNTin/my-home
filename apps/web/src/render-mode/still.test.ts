@@ -1,8 +1,14 @@
 import type { PerspectiveCamera } from 'three';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { statusText } from './RenderStill';
 import { NO_PROGRESS, Still, stillSize, type StillParts } from './still';
-import type { Trace, TraceProgress } from './tracer';
+import type {
+  DenoiserSource,
+  Trace,
+  TraceCheckpoint,
+  TraceProgress,
+  TraceSettings,
+} from './tracer';
 import type { TraceInputs, TraceScene } from './traceScene';
 
 describe('a still of render mode', () => {
@@ -23,6 +29,15 @@ describe('a still of render mode', () => {
     expect(statusText({ ...tracing, running: false })).toBe('Stopped at 96 of 256 samples, 23 s');
     expect(statusText({ ...tracing, samples: 256, done: true, running: false, seconds: 41 })).toBe(
       'Done: 256 samples in 41 s',
+    );
+    expect(statusText({ ...tracing, stage: 'denoising', samples: 64 })).toBe(
+      'Denoising at 64 of 256 samples, 23 s',
+    );
+    expect(statusText({ ...tracing, running: false, settling: true })).toBe(
+      'Stopped at 96 of 256 samples, 23 s: denoising',
+    );
+    expect(statusText({ ...tracing, undenoised: 'HTTP 404' })).toBe(
+      'Rendering: 96 of 256 samples, 23 s (not denoised)',
     );
   });
 });
@@ -46,7 +61,18 @@ function fakeStill(host = document.createElement('div')) {
     built: 0,
     disposedScenes: 0,
     droppedMeshes: 0,
+    finished: 0,
+    settings: [] as TraceSettings[],
+    denoiserLoads: 0,
   };
+  const denoiser = {
+    weights: 'small',
+    bytes: 641_480,
+    seconds: 0.2,
+    initUNetFromURL: () => undefined,
+  } as DenoiserSource;
+  let denoiserLoad: () => Promise<DenoiserSource> = async () => denoiser;
+  let settling = false;
   let progress: TraceProgress = { stage: 'building', samples: 0, average: 0, done: false };
   let stopped = true;
   const trace = {
@@ -57,6 +83,18 @@ function fakeStill(host = document.createElement('div')) {
     },
     get running() {
       return !stopped;
+    },
+    get settling() {
+      return settling;
+    },
+    denoised: true,
+    denoiseError: undefined,
+    onCheckpoint: undefined as ((checkpoint: TraceCheckpoint) => void) | undefined,
+    capture: vi.fn(),
+    finish() {
+      log.finished += 1;
+      stopped = true;
+      settling = true;
     },
     start(built: TraceScene) {
       stopped = false;
@@ -84,13 +122,19 @@ function fakeStill(host = document.createElement('div')) {
       return {
         // The view the scene was built for, to tell which one was started.
         backdrop: (inputs as unknown as { name: string }).name,
+        backdropColors: { top: '#ffffff', bottom: '#ffffff' },
         dispose: () => (log.disposedScenes += 1),
       } as unknown as TraceScene;
     },
-    createTrace: async () => {
+    createTrace: async (_canvas, settings) => {
       log.created += 1;
+      log.settings.push(settings);
       await tracer.waited;
       return trace;
+    },
+    loadDenoiser: () => {
+      log.denoiserLoads += 1;
+      return denoiserLoad();
     },
   };
   const still = new Still(host, () => 0, parts);
@@ -104,7 +148,16 @@ function fakeStill(host = document.createElement('div')) {
   const settle = async () => {
     for (let i = 0; i < 20; i++) await Promise.resolve();
   };
-  return { still, show, settle, textures, tracer, log };
+  /** The tracer at a checkpoint, as it tells of one. */
+  const checkpoint = (samples: number, denoised = true) => {
+    settling = false;
+    trace.onCheckpoint?.({ samples, denoised, reached: 0, ready: 0 });
+  };
+  const failDenoiser = (error: Error) => {
+    denoiserLoad = () => Promise.reject(error);
+    (trace as { denoised: boolean }).denoised = false;
+  };
+  return { still, show, settle, textures, tracer, log, trace, checkpoint, failDenoiser, denoiser };
 }
 
 describe('starting and stopping a still', () => {
@@ -231,5 +284,123 @@ describe('starting and stopping a still', () => {
     await settle();
     expect(log.started).toEqual([]);
     expect(log.built).toBe(0);
+  });
+});
+
+/** A 2D context that records what is drawn into it: jsdom has none. */
+function fakeCanvases() {
+  const drawn: unknown[] = [];
+  const context = {
+    clearRect: vi.fn(),
+    fillRect: vi.fn(),
+    drawImage: (image: unknown) => drawn.push(image),
+    createLinearGradient: () => ({ addColorStop: vi.fn() }),
+    fillStyle: '',
+    canvas: { width: 16, height: 16 },
+  };
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context as never);
+  vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((done) =>
+    done(new Blob(['png'])),
+  );
+  return { drawn, context };
+}
+
+describe('the denoised still on screen', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('is traced with the small weights, downloaded while the textures are', async () => {
+    const { show, settle, textures, tracer, log, denoiser } = fakeStill();
+    show('cutaway');
+    await settle();
+    // Asked for before the textures have arrived.
+    expect(log.denoiserLoads).toBe(1);
+    textures.open();
+    tracer.open();
+    await settle();
+    expect(log.settings[0]?.denoiser).toBe(denoiser);
+  });
+
+  it('a denoiser that does not load leaves the still raw, and says why', async () => {
+    const { still, show, settle, textures, tracer, log, failDenoiser } = fakeStill();
+    failDenoiser(new Error('HTTP 404'));
+    show('cutaway');
+    textures.open();
+    tracer.open();
+    await settle();
+    expect(log.started).toEqual(['cutaway']);
+    expect(log.settings[0]?.denoiser).toBeUndefined();
+    expect(still.progress().undenoised).toBe('HTTP 404');
+  });
+
+  it('shows the denoised image of each checkpoint over the raw samples, and saves it', async () => {
+    const host = document.createElement('div');
+    const { drawn } = fakeCanvases();
+    const { still, show, settle, textures, tracer, trace, checkpoint } = fakeStill(host);
+    textures.open();
+    tracer.open();
+    show('cutaway');
+    await settle();
+    const [traced, denoised] = [...host.children] as HTMLCanvasElement[];
+    // Before the first checkpoint the raw samples show.
+    expect(traced!.style.visibility).toBe('');
+    expect(denoised!.style.visibility).toBe('hidden');
+    expect(still.progress().denoised).toBe(0);
+    checkpoint(16);
+    expect(trace.capture).toHaveBeenCalledTimes(1);
+    expect(traced!.style.visibility).toBe('hidden');
+    expect(denoised!.style.visibility).toBe('');
+    expect(still.progress().denoised).toBe(16);
+    // "Save image" draws the denoised image over the backdrop, not the tracer's raw one.
+    drawn.length = 0;
+    await still.image();
+    expect(drawn).toEqual([denoised]);
+    expect(trace.capture).toHaveBeenCalledTimes(1);
+  });
+
+  it("a raw checkpoint (no denoiser) leaves the tracer's canvas on screen", async () => {
+    const host = document.createElement('div');
+    fakeCanvases();
+    const { still, show, settle, textures, tracer, checkpoint } = fakeStill(host);
+    textures.open();
+    tracer.open();
+    show('cutaway');
+    await settle();
+    checkpoint(16, false);
+    expect(still.progress().denoised).toBe(0);
+    expect((host.firstElementChild as HTMLElement).style.visibility).toBe('');
+  });
+
+  it('a new view hides the denoised image of the one before', async () => {
+    const host = document.createElement('div');
+    fakeCanvases();
+    const { still, show, settle, textures, tracer, trace, checkpoint } = fakeStill(host);
+    textures.open();
+    tracer.open();
+    show('cutaway');
+    await settle();
+    const before = trace.onCheckpoint;
+    checkpoint(32);
+    show('section');
+    expect(still.progress().denoised).toBe(0);
+    expect((host.children[1] as HTMLElement).style.visibility).toBe('hidden');
+    // The cutaway's tracer telling of a checkpoint late is not the section's image.
+    before?.({ samples: 64, denoised: true, reached: 0, ready: 0 });
+    expect(still.progress().denoised).toBe(0);
+    await settle();
+    expect(still.progress().denoised).toBe(0);
+  });
+
+  it('"Stop" denoises the samples there are; Save image waits for it', async () => {
+    fakeCanvases();
+    const { still, show, settle, textures, tracer, log, checkpoint } = fakeStill();
+    textures.open();
+    tracer.open();
+    show('cutaway');
+    await settle();
+    still.stop();
+    expect(log.finished).toBe(1);
+    expect(still.progress()).toMatchObject({ running: false, settling: true });
+    checkpoint(4);
+    expect(still.progress()).toMatchObject({ running: false, settling: false, denoised: 4 });
   });
 });
