@@ -37,13 +37,21 @@ export const GIVE_UP_MS = 90_000;
 /**
  * Runs `run` once `ms` of the effects' time has passed: on the clock Sakuga VFX draws by
  * (`SakugaFX.later`), so a card leaves after its ドン! on a device that draws few frames a second
- * too. Without the core (its script did not load, jsdom) on a timer. It cannot be cancelled: `run`
- * checks whether it is still wanted.
+ * too. Without the core (its script did not load, jsdom) on a timer. Returns its cancel: a wait that
+ * outlives what started it (a test's page, a session replaced) must not run (on the core's clock,
+ * which has no cancel, it is skipped when it comes).
  */
-export function afterEffects(ms: number, run: () => void): void {
+export function afterEffects(ms: number, run: () => void): () => void {
   const fx = (window as { SakugaFX?: { later?: (ms: number, run: () => void) => void } }).SakugaFX;
-  if (fx?.later) fx.later(ms, run);
-  else setTimeout(run, ms);
+  if (fx?.later) {
+    let live = true;
+    fx.later(ms, () => live && run());
+    return () => {
+      live = false;
+    };
+  }
+  const timer = setTimeout(run, ms);
+  return () => clearTimeout(timer);
 }
 
 /** The parts of `<sakuga-progress>` used here (packages/sakuga-vfx/progress/README.md). */
@@ -56,7 +64,8 @@ interface Session {
   plan: Plan;
   done: Map<string, number>;
   ending: boolean;
-  timers: ReturnType<typeof setTimeout>[];
+  /** Everything it is waiting for, cancelled when it ends or is replaced. */
+  timers: (() => void)[];
 }
 
 let session: Session | undefined;
@@ -94,8 +103,14 @@ function value(s: Session): number {
 }
 
 function clearTimers(s: Session) {
-  for (const timer of s.timers) clearTimeout(timer);
+  for (const cancel of s.timers) cancel();
   s.timers = [];
+}
+
+/** A plain timer of the session's. */
+function wait(s: Session, ms: number, run: () => void) {
+  const timer = setTimeout(run, ms);
+  s.timers.push(() => clearTimeout(timer));
 }
 
 function remove(s: Session) {
@@ -110,11 +125,13 @@ function end(s: Session, bar: HTMLElement) {
   const leave = () => {
     if (session !== s) return;
     if (calm()) return remove(s);
-    afterEffects(HOLD_MS, () => {
-      if (session !== s) return;
-      document.getElementById('boot')?.setAttribute('data-leaving', '');
-      s.timers.push(setTimeout(() => remove(s), LEAVE_MS));
-    });
+    s.timers.push(
+      afterEffects(HOLD_MS, () => {
+        if (session !== s) return;
+        document.getElementById('boot')?.setAttribute('data-leaving', '');
+        wait(s, LEAVE_MS, () => remove(s));
+      }),
+    );
   };
   if (!upgraded(bar)) return leave();
   // `sakuga:done` fires when the bar itself has reached the end, a moment after set(1).
@@ -143,7 +160,7 @@ export function beginLoading(plan: Plan): void {
   if (upgraded(bar)) bar.reset();
   const s: Session = { plan, done: new Map([['app', 1]]), ending: false, timers: [] };
   session = s;
-  s.timers.push(setTimeout(() => remove(s), GIVE_UP_MS));
+  wait(s, GIVE_UP_MS, () => remove(s));
   show(s);
 }
 
@@ -172,7 +189,10 @@ export function stopLoading(plan?: Plan): void {
   else document.getElementById('boot')?.remove();
 }
 
-/** For tests: forget the current load. */
+/**
+ * For tests: forget the current load and cancel all it waits for. The module outlives a test's page: the
+ * test setup calls this after each test, so no wait of a finished load fires once jsdom is gone.
+ */
 export function resetLoadingForTests(): void {
   if (session) clearTimers(session);
   session = undefined;

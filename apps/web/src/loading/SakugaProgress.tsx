@@ -42,21 +42,25 @@ export function SakugaProgress({ value, label, onEnd }: Props) {
   useEffect(() => {
     if (!sakuga || !bar) return;
     const timers: ReturnType<typeof setTimeout>[] = [];
+    const waits: (() => void)[] = [];
     let live = true;
     const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
     const done = () => {
       if (calm) return ended.current?.();
-      afterEffects(HOLD_MS, () => {
-        if (!live) return;
-        setLeaving(true);
-        timers.push(setTimeout(() => ended.current?.(), LEAVE_MS));
-      });
+      waits.push(
+        afterEffects(HOLD_MS, () => {
+          if (!live) return;
+          setLeaving(true);
+          timers.push(setTimeout(() => ended.current?.(), LEAVE_MS));
+        }),
+      );
     };
     bar.addEventListener('sakuga:done', done);
     return () => {
       live = false;
       bar.removeEventListener('sakuga:done', done);
       for (const timer of timers) clearTimeout(timer);
+      for (const cancel of waits) cancel();
     };
   }, [sakuga, bar]);
 
