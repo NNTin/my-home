@@ -1,5 +1,5 @@
 import { useThree, type ThreeEvent } from '@react-three/fiber';
-import { createContext, useContext, useEffect, useMemo } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef } from 'react';
 import { Raycaster, type Object3D } from 'three';
 import type { HomeScene } from '../builder/buildHome';
 import {
@@ -27,6 +27,11 @@ export interface PieceHandlers {
   onSelectPiece(id: string | undefined): void;
   /** Glows like selected furniture (after `?focus=` or a click, for a moment). */
   highlightId?: string | undefined;
+  /**
+   * A click on the shell (no piece in front): where it landed, for the room under it (HUD v2 #201). Without it the
+   * shell takes no clicks, and a click on it is "missed" (deselects).
+   */
+  onSelectRoom?(point: [number, number, number]): void;
 }
 
 const Pieces = createContext<PieceHandlers | undefined>(undefined);
@@ -42,7 +47,10 @@ function drawn(object: Object3D) {
 
 /** Whether `group` is what the ray meets first in the scene (a wall may stand in front of it). */
 function frontmost(scene: Object3D, e: ThreeEvent<MouseEvent>, group: Object3D) {
-  const hit = new Raycaster(e.ray.origin, e.ray.direction)
+  const raycaster = new Raycaster(e.ray.origin, e.ray.direction);
+  // The scene's sprites (the compass letters) are hit with the camera; without it three throws.
+  raycaster.camera = e.camera;
+  const hit = raycaster
     .intersectObject(scene, true)
     .find((h) => 'isMesh' in h.object && drawn(h.object));
   for (let o: Object3D | null = hit?.object ?? null; o; o = o.parent) if (o === group) return true;
@@ -102,6 +110,39 @@ export function ShellMeshes({
   useEffect(() => frame?.materialsChanged(), [frame, shell, pieceDraws]);
   useEffect(() => frame?.castersChanged(), [frame, shell, pieceDraws, visibility]);
   const shown = (group: PieceDraw['group']) => !visibility || groupShown(group, scene, visibility);
+  // A click on the shell, made of its press and release (R3F's onClick did not reach this group): the same
+  // pointer, moved less than a click's slop. R3F calls a handler once per surface hit: each event counts once.
+  const press = useRef<{ id: number; x: number; y: number } | undefined>(undefined);
+  const seen = useRef<Event | undefined>(undefined);
+  const once = (e: ThreeEvent<PointerEvent>) => {
+    if (seen.current === e.nativeEvent) return false;
+    seen.current = e.nativeEvent;
+    return true;
+  };
+  const onShell = pieces?.onSelectRoom
+    ? {
+        onPointerDown: (e: ThreeEvent<PointerEvent>) => {
+          if (!once(e)) return;
+          press.current =
+            e.button === 0 && onCanvas(e.nativeEvent)
+              ? { id: e.pointerId, x: e.nativeEvent.clientX, y: e.nativeEvent.clientY }
+              : undefined;
+        },
+        onPointerUp: (e: ThreeEvent<PointerEvent>) => {
+          if (!once(e)) return;
+          const p = press.current;
+          press.current = undefined;
+          const moved = p && Math.hypot(e.nativeEvent.clientX - p.x, e.nativeEvent.clientY - p.y);
+          if (!p || p.id !== e.pointerId || moved === undefined || moved > CLICK_SLOP) return;
+          // The first shell surface drawn under the pointer: a hidden upper level takes no click. The shell only:
+          // the scene's sprites (the compass letters) cannot be hit without a camera.
+          const hit = new Raycaster(e.ray.origin, e.ray.direction)
+            .intersectObject(e.eventObject, true)
+            .find((h) => 'isMesh' in h.object && drawn(h.object));
+          if (hit) pieces.onSelectRoom?.([hit.point.x, hit.point.y, hit.point.z]);
+        },
+      }
+    : undefined;
   // Outside the viewer's frame loop (tests) the materials are a phone's and no texture is asked for.
   const materials = frame?.finishes ?? finishMaterials('phone');
   // A texture is asked for when its finish is first drawn: not for what is hidden (§4.4).
@@ -113,7 +154,7 @@ export function ShellMeshes({
   }, [frame, shell, scene, visibility]);
   return (
     <Pieces.Provider value={pieces}>
-      <group>
+      <group {...onShell}>
         {shell.map((b) => (
           <mesh
             key={b.key}

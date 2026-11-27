@@ -18,12 +18,19 @@ import {
   groundAt,
   type HomeScene,
   type LevelInfo,
+  type RoomFloorDescriptor,
   type Vec2,
   type Vec3,
 } from './builder/buildHome';
 import { furniture as furnitureTypes, UNKNOWN_SIZE } from './catalog/furniture';
 import { compassMarkers } from './compass/compass';
-import { defaultVisibility, roofIndex, roomLabels, type Visibility } from './builder/visibility';
+import {
+  defaultVisibility,
+  roofIndex,
+  roomLabels,
+  visibleScene,
+  type Visibility,
+} from './builder/visibility';
 import { groupShown, scenePieceDraws } from './builder/drawList';
 import { canRedo, canUndo } from './editor/editorState';
 import { elevationOfItem, mountingOfItem, type EditorItem } from './editor/item';
@@ -54,10 +61,12 @@ import { EditBadge } from './editMode/EditToggle';
 import { useEditMode } from './editMode/editMode';
 import { HudCorners, type Surface } from './overlay/HudCorners';
 import { SelectionLabel } from './overlay/SelectionLabel';
+import { openingSides, roomFloorAt, roomFocus } from './placements/rooms';
 import {
   FurniturePanel,
   type FlaggedItem,
   type PieceInfo,
+  type RoomInfo,
   type SelectedInfo,
 } from './overlay/FurniturePanel';
 import { PieceToolbar, type FurnitureToolbarProps } from './overlay/FurnitureToolbar';
@@ -483,17 +492,21 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   const pieces = useMemo(() => scenePieces(scene), [scene]);
   const pieceDraws = useMemo(() => new Map(scenePieceDraws(scene).map((p) => [p.id, p])), [scene]);
   const [selectedPieceId, setSelectedPieceId] = useState<string>();
+  const [selectedRoomId, setSelectedRoomId] = useState<string>();
   const selectedPiece = selectedPieceId === undefined ? undefined : pieces.get(selectedPieceId);
   // On the desktop the furniture panel is Edit's surface and the selection's inspector (HUD v2 #201): it opens when
   // Edit starts; a selection shows its label, which opens it; outside Edit it closes when the selection ends (state
   // adjusted while rendering, when they change; V20).
-  const selectionKey = `${editing}:${editor.selectedId ?? ''}:${selectedPieceId ?? ''}`;
+  const selectionKey = `${editing}:${editor.selectedId ?? ''}:${selectedPieceId ?? ''}:${selectedRoomId ?? ''}`;
   // From nothing: Edit at load opens it too.
-  const [seenSelection, setSeenSelection] = useState('false::');
+  const [seenSelection, setSeenSelection] = useState('false:::');
   if (selectionKey !== seenSelection) {
     const wasEditing = seenSelection.startsWith('true:');
     setSeenSelection(selectionKey);
-    const any = editor.selectedId !== undefined || selectedPieceId !== undefined;
+    const any =
+      editor.selectedId !== undefined ||
+      selectedPieceId !== undefined ||
+      selectedRoomId !== undefined;
     if (editing && !wasEditing) setSurface('furniture');
     else if (!editing && !any && surface === 'furniture') setSurface(undefined);
   }
@@ -509,7 +522,17 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     const timer = window.setTimeout(() => setToast(undefined), TOAST_MS);
     return () => window.clearTimeout(timer);
   }, [toast]);
+  // A room, picked on its floor in view mode (HUD v2 #201); Edit has none.
+  const selectedRoom = editing ? undefined : scene.roomFloors.find((r) => r.id === selectedRoomId);
+  const selectRoomAt = (point: Vec3) => {
+    const room = roomFloorAt(scene, visibility, point);
+    setSelectedRoomId(room?.id);
+    setSelectedPieceId(undefined);
+    dispatch({ type: 'select' });
+  };
   const selectPiece = (id: string | undefined) => {
+    // A piece behind what was clicked says "none" (it is not frontmost): that leaves a room alone.
+    if (id !== undefined) setSelectedRoomId(undefined);
     setSelectedPieceId(id);
     if (id !== undefined) {
       setHighlight(id);
@@ -713,6 +736,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     else if (action === 'redo') dispatch({ type: 'redo' });
     else if (action === 'deselect') {
       setSelectedPieceId(undefined);
+      setSelectedRoomId(undefined);
       dispatch({ type: 'select' });
     } else if (action === 'rotate') commands.rotate(1);
     else if (action === 'rotate-back') commands.rotate(-1);
@@ -759,20 +783,52 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     ],
   };
 
+  const selectedOpening = scene.openings.find((o) => o.id === selectedPiece?.id);
   const pieceInfo: PieceInfo | undefined = selectedPiece && {
     name: selectedPiece.name,
     typeName: catalogTypeName(selectedPiece.typeId),
     href: piecePageHref(selectedPiece.typeId, model.id, selectedPiece.id),
+    // The spaces it links, where the model's rooms say so (#201).
+    between: selectedOpening ? openingSides(scene, selectedOpening) : [],
+  };
+  const roomShown =
+    selectedRoom !== undefined &&
+    visibleScene(scene, visibility).roomFloors.some((r) => r.id === selectedRoom.id);
+  const focusRoom = (room: RoomFloorDescriptor) => {
+    setVisibility((v) =>
+      focusVisibility(scene, v, {
+        levelId: room.levelId,
+        ...(room.apartmentId && { apartmentId: room.apartmentId }),
+      }),
+    );
+    setFrame({
+      ...frameFor(scene, { ...roomFocus(room), exterior: false }),
+      key: (frame?.key ?? 0) + 1,
+    });
+  };
+  const roomInfo: RoomInfo | undefined = selectedRoom && {
+    name: selectedRoom.name,
+    levelName: scene.levels.find((l) => l.id === selectedRoom.levelId)?.name ?? '',
+    apartmentName: scene.apartments.find((a) => a.id === selectedRoom.apartmentId)?.name,
+    onFocus: () => focusRoom(selectedRoom),
   };
 
   // What a phone shows of the selection in view mode: its name, type and piece page.
-  const inspected = pieceInfo ?? (!editing && selected ? selected : undefined);
+  const inspected =
+    pieceInfo ??
+    (roomShown && roomInfo
+      ? { name: roomInfo.name, typeName: 'Room', href: undefined }
+      : !editing && selected
+        ? selected
+        : undefined);
   // The desktop's edge label: the selection while it is drawn; hidden, label and outline go together (#201).
   const pieceDraw = selectedPieceId === undefined ? undefined : pieceDraws.get(selectedPieceId);
   const subjectShown = selectedPieceId
     ? !pieceDraw || groupShown(pieceDraw.group, scene, visibility)
-    : furniture.some((f) => f.id === editor.selectedId);
-  const labelled = subjectShown ? (pieceInfo ?? selected) : undefined;
+    : selectedRoom
+      ? roomShown
+      : furniture.some((f) => f.id === editor.selectedId);
+  const labelled = subjectShown ? (pieceInfo ?? roomInfo ?? selected) : undefined;
 
   // Needs attention, as where-used (`/uses`) says: an unknown type, a level or room gone, or
   // parameters that are ignored.
@@ -809,7 +865,13 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     onDragEnd: () => {},
   };
   // View mode: an item can be selected to inspect it, never dragged or rotated.
-  const inspect: FurnitureHandlers = { ...idle, onSelect: handlers.onSelect };
+  const inspect: FurnitureHandlers = {
+    ...idle,
+    onSelect: (id) => {
+      setSelectedRoomId(undefined);
+      handlers.onSelect(id);
+    },
+  };
 
   const controls = {
     homes,
@@ -910,6 +972,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
       error={placements.error}
       sync={placements.syncState}
       piece={pieceInfo}
+      room={roomShown ? roomInfo : undefined}
       levelName={level?.name ?? ''}
       rooms={plan?.rooms ?? []}
       roomId={roomId}
@@ -1067,7 +1130,16 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
             requestGhosts={requestGhosts}
             viewpoint={viewpoint}
             paused={walking && cameraOpen}
-            pieces={walking ? undefined : { onSelectPiece: selectPiece, highlightId: highlight }}
+            pieces={
+              walking
+                ? undefined
+                : {
+                    onSelectPiece: selectPiece,
+                    highlightId: highlight,
+                    ...(!editing && { onSelectRoom: selectRoomAt }),
+                  }
+            }
+            roomOutline={roomShown ? selectedRoom : undefined}
             frame={frame}
             quality={quality}
             onNotice={setToast}
@@ -1098,9 +1170,11 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
               typeName={inspected.typeName}
               href={inspected.href}
               onDetails={showFurniture}
-              onClose={() =>
-                selectedItem ? dispatch({ type: 'select' }) : setSelectedPieceId(undefined)
-              }
+              onClose={() => {
+                setSelectedRoomId(undefined);
+                if (selectedItem) dispatch({ type: 'select' });
+                else setSelectedPieceId(undefined);
+              }}
             />
           )}
           {!walking && <EditBadge />}

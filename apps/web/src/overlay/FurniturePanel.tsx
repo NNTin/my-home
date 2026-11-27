@@ -30,6 +30,17 @@ export interface PieceInfo {
   name: string;
   typeName: string;
   href: string;
+  /** The spaces an opening links ("Living room", "outside"), where the model's rooms say so (#201). */
+  between?: string[];
+}
+
+/** A selected room (HUD v2 #201): picked on its floor in view mode. */
+export interface RoomInfo {
+  name: string;
+  levelName: string;
+  apartmentName?: string | undefined;
+  /** Frames the room and cuts away to its level. */
+  onFocus(): void;
 }
 
 export interface FlaggedItem {
@@ -55,6 +66,7 @@ interface Props {
   onPlace(typeId: string): void;
   selected: SelectedInfo | undefined;
   piece: PieceInfo | undefined;
+  room?: RoomInfo | undefined;
   canUndo: boolean;
   canRedo: boolean;
   onUndo(): void;
@@ -294,15 +306,30 @@ export function FurniturePanel(props: Props) {
             <p>
               <strong>{piece.name}</strong> ({piece.typeName})
             </p>
+            {piece.between && piece.between.length > 0 && (
+              <p className="note">Between {piece.between.join(' and ')}</p>
+            )}
             <div className="buttons">
               <PieceLink href={piece.href} name={piece.name} />
+            </div>
+          </div>
+        ) : props.room ? (
+          <div className="selection room-chip" aria-label="Selected room">
+            <p>
+              <strong>{props.room.name}</strong> ({props.room.levelName}
+              {props.room.apartmentName ? ` · ${props.room.apartmentName}` : ''})
+            </p>
+            <div className="buttons">
+              <button type="button" onClick={props.room.onFocus}>
+                Focus room
+              </button>
             </div>
           </div>
         ) : (
           <p className="note">
             {props.editing
               ? 'Click an item to select it; drag to move (a wall cabinet along its wall), drag the ring to rotate. Click a window, door or gate to open its piece page.'
-              : 'Click an item, window, door or gate to see what it is and open its piece page.'}
+              : 'Click an item, window, door, gate or a room’s floor to see what it is.'}
           </p>
         )}
         {props.editing && (

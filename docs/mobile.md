@@ -45,7 +45,9 @@ show/hide groups), **Tools** (the menu above), the photos (from Tools; Tools ove
 furniture panel, which opens with Edit and is the selection's inspector: a selection shows a short label at the
 lower left ("Bed ›"), which opens it; a `?focus=` link opens it at once; outside Edit it closes when the selection
 ends (HUD v2 #201). On a phone the selected window, door, gate or item shows a chip at the top: its name opens the
-sheet's Furniture tab on it. A trigger
+sheet's Furniture tab on it. In view mode a click or tap on a room's floor selects the room: its floor is outlined,
+its label shows, and its inspector says its level and offers **Focus room**. A selected door or window says which
+spaces it links. A trigger
 pressed again, or Escape, closes the surface and gives the focus back to the trigger.
 
 ## Sheet
