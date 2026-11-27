@@ -450,6 +450,105 @@ class FallbackToast extends Plain {
   }
 }
 
+/** A HUD part on a paper card: a region (a note's complementary, a dialog), named by `label`, gone while not shown. */
+class FallbackPanel extends HTMLElement {
+  static observedAttributes = ['shown', 'label', 'kind'];
+  private own: boolean | undefined;
+  get shown() {
+    return this.hasAttribute('shown');
+  }
+  set shown(v: boolean) {
+    on(this, 'shown', v);
+  }
+  connectedCallback() {
+    this.own ??= this.hasAttribute('role');
+    this.dataset.fallback = '';
+    this.sync();
+  }
+  attributeChangedCallback() {
+    if (this.isConnected) this.sync();
+  }
+  private sync() {
+    const kind = this.getAttribute('kind');
+    if (!this.own)
+      this.setAttribute('role', kind === 'note' ? 'complementary' : (kind ?? 'region'));
+    const label = this.getAttribute('label');
+    if (label) this.setAttribute('aria-label', label);
+    this.hidden = !this.shown;
+  }
+}
+
+/**
+ * A group that opens and closes: its `slot="summary"` child is the button. Closed, the page's CSS hides the rest
+ * (styles.css, "Fallbacks"); in jsdom it stays in the DOM, as a closed `<details>`'s content does.
+ */
+class FallbackFold extends HTMLElement {
+  static observedAttributes = ['open'];
+  get open() {
+    return this.hasAttribute('open');
+  }
+  set open(v: boolean) {
+    on(this, 'open', v);
+  }
+  constructor() {
+    super();
+    const flip = (e: Event) => {
+      if (!(e.target as Element).closest?.('[slot=summary]')) return;
+      e.preventDefault();
+      this.open = !this.open;
+      fire(this, 'toggle');
+    };
+    this.addEventListener('click', flip);
+    this.addEventListener('keydown', (e) => isKey(e, ' ', 'Enter') && flip(e));
+  }
+  connectedCallback() {
+    this.dataset.fallback = '';
+    this.sync();
+  }
+  attributeChangedCallback() {
+    if (this.isConnected) this.sync();
+  }
+  private sync() {
+    const summary = this.querySelector(':scope > [slot=summary]');
+    if (!summary) return;
+    summary.setAttribute('role', 'button');
+    (summary as HTMLElement).tabIndex = 0;
+    summary.setAttribute('aria-expanded', String(this.open));
+  }
+}
+
+/** A paper card: a link with `href`, else a button; `selected` is its pressed (a link's current) state. */
+class FallbackCard extends FallbackButton {
+  static override observedAttributes = ['disabled', 'label', 'selected', 'href', 'description'];
+  get selected() {
+    const v = this.getAttribute('selected');
+    return v !== null && v !== 'false';
+  }
+  set selected(v: boolean | null | undefined) {
+    if (v == null) this.removeAttribute('selected');
+    else this.setAttribute('selected', v ? 'true' : 'false');
+  }
+  override sync() {
+    super.sync();
+    const selected = this.getAttribute('selected');
+    const link = this.hasAttribute('href');
+    if (!link && selected !== null) this.setAttribute('aria-pressed', String(selected !== 'false'));
+    if (link && selected !== null && selected !== 'false')
+      this.setAttribute('aria-current', 'true');
+    else this.removeAttribute('aria-current');
+    const description = this.getAttribute('description');
+    if (description) this.setAttribute('aria-description', description);
+    else this.removeAttribute('aria-description');
+  }
+}
+
+/** The phone's sheet: its size is the page's CSS, without the spring (styles.css, "Fallbacks"). */
+class FallbackSheet extends HTMLElement {
+  connectedCallback() {
+    this.dataset.fallback = '';
+  }
+}
+
 /** The tags of `sakuga-hud` (apps/web/sakuga-plugin.ts `HUD_ELEMENTS`) and their plain stand-ins. */
 export const FALLBACKS: Record<string, CustomElementConstructor> = {
   'sakuga-button': FallbackButton,
@@ -462,6 +561,10 @@ export const FALLBACKS: Record<string, CustomElementConstructor> = {
   'sakuga-icon-button': FallbackIconButton,
   'sakuga-badge': FallbackBadge,
   'sakuga-segmented': FallbackSegmented,
+  'sakuga-panel': FallbackPanel,
+  'sakuga-fold': FallbackFold,
+  'sakuga-card': FallbackCard,
+  'sakuga-sheet': FallbackSheet,
 };
 
 /** Defines a plain stand-in for every HUD tag still undefined; returns the tags it defined. */

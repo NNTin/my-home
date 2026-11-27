@@ -1503,11 +1503,6 @@ body {
   border-top: var(--hud-line-compact);
   border-radius: var(--sk-r) var(--sk-r) 0 0;
   background: var(--sk-card);
-  transition: height 0.2s ease;
-}
-
-.sheet.dragging {
-  transition: none;
 }
 
 .sheet-bar {
@@ -1624,7 +1619,6 @@ body {
   border-top: 0;
   border-left: var(--hud-line-compact);
   border-radius: var(--sk-r) 0 0 var(--sk-r);
-  transition: width 0.2s ease;
 }
 
 .sheet-side .sheet-bar {
@@ -1821,34 +1815,9 @@ body {
   box-shadow: var(--hud-sh-compact);
 }
 
-/* The summary in 800 italic, its note in the dim tone (§5.6). */
-.toggle-group summary {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 2.75rem;
-  font-style: italic;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.toggle-group summary .note {
-  margin-right: auto;
-  font-style: normal;
-  font-weight: 500;
-}
-
-.toggle-group summary::after {
-  content: '▸';
-}
-
-.toggle-group[open] summary::after {
-  content: '▾';
-}
-
-.toggle-group summary::-webkit-details-marker {
-  display: none;
+/* Its summary, chevron and spring are the element's (sakuga-fold, §5.6). */
+.toggle-group::part(body) {
+  padding-bottom: 0.5rem;
 }
 
 /* With the on-screen keyboard open, the open sheet takes all the room that is left. */
@@ -2408,4 +2377,40 @@ sakuga-icon-button[data-fallback][appearance='clear'][tone='light'] {
   box-shadow: 0 0 0 2px var(--sk-card);
   color: var(--sk-card);
   -webkit-text-stroke: 0;
+}
+
+/* The containers' stand-ins: a fold's summary is its button, its body gone while closed; the sheet slides. */
+sakuga-fold[data-fallback] > [slot='summary'] {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  font-style: italic;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+sakuga-fold[data-fallback] > [slot='note'] {
+  margin-left: 0.5rem;
+  color: var(--sk-dim);
+}
+
+sakuga-fold[data-fallback]:not([open]) > :not([slot]) {
+  display: none;
+}
+
+sakuga-card[data-fallback] {
+  display: block;
+  cursor: pointer;
+}
+
+.sheet[data-fallback] {
+  transition: height 0.2s ease;
+}
+
+.sheet-side[data-fallback] {
+  transition: width 0.2s ease;
+}
+
+.sheet.dragging {
+  transition: none;
 }

@@ -66,6 +66,10 @@
 <script src="../badge/badge.js"></script>
 <script src="../segmented/segmented.js"></script>
 <script src="../field/field.js"></script>
+<script src="../panel/panel.js"></script>
+<script src="../fold/fold.js"></script>
+<script src="../card/card.js"></script>
+<script src="../sheet/sheet.js"></script>
 <script src="../icons/icons.js"></script>
 <script>
 // The gallery: every control live on one page, with its install line and a prompt that hands a coding agent the real file.
@@ -89,6 +93,10 @@ const ITEMS = [
   { id: 'segmented', name: 'Segmented (made here)', tag: 'sakuga-segmented', how: 'Pick another, or use the arrow keys.', html: '<sakuga-segmented label="Quality"><option value="fast">Fast</option><option value="auto" selected>Auto</option><option value="beautiful">Beautiful</option></sakuga-segmented>' },
   { id: 'field', name: 'Field (made here)', tag: 'sakuga-field', how: 'Pick another backdrop.', html: '<sakuga-field label="Backdrop"><select aria-label="Backdrop"><option>Sky</option><option>Studio, light</option><option>Studio, dark</option></select></sakuga-field>' },
   { id: 'badge', name: 'Badge (made here)', tag: 'sakuga-badge', how: 'Press Save, then Warn.', html: '<sakuga-button variant="secondary" data-demo="badge-save">Save</sakuga-button> <sakuga-button variant="secondary" data-demo="badge-warn">Warn</sakuga-button> <sakuga-badge data-demo="status"></sakuga-badge>' },
+  { id: 'panel', name: 'Panel (made here)', tag: 'sakuga-panel', how: 'Press Hide, then Show.', html: '<sakuga-button variant="secondary" size="compact" data-demo="panel-hide">Hide</sakuga-button> <sakuga-button variant="secondary" size="compact" data-demo="panel-show">Show</sakuga-button><sakuga-panel label="View controls" size="compact" shown style="margin-top:12px;padding:8px 12px"><b>View</b><br>Room names, levels.</sakuga-panel>' },
+  { id: 'fold', name: 'Fold (made here)', tag: 'sakuga-fold', how: 'Open it, then close it.', html: '<sakuga-fold size="compact" style="width:220px"><span slot="summary">Levels</span><span slot="note">2 of 3 shown</span><div>Souterrain<br>Ground floor<br>First floor</div></sakuga-fold>' },
+  { id: 'card', name: 'Card (made here)', tag: 'sakuga-card', how: 'Press a card.', html: '<div style="display:flex;gap:10px"><sakuga-card label="Armchair" description="2 uses" selected="false" data-demo="card-a"><b>Armchair</b><br>2 uses</sakuga-card><sakuga-card label="Bed" href="#bed" data-demo="card-b"><b>Bed</b><br>a link</sakuga-card></div>' },
+  { id: 'sheet', name: 'Sheet (made here)', tag: 'sakuga-sheet', how: 'Press Half, Full, then Collapsed.', html: '<sakuga-button variant="secondary" size="compact" data-demo="sheet-half">Half</sakuga-button> <sakuga-button variant="secondary" size="compact" data-demo="sheet-full">Full</sakuga-button> <sakuga-button variant="secondary" size="compact" data-demo="sheet-collapsed">Collapsed</sakuga-button><div class="sheetwrap" style="position:relative;height:240px;margin-top:12px;overflow:hidden;border-radius:12px;background:linear-gradient(#dcebf7,#f6f3ea)"><sakuga-sheet snap="collapsed" style="position:absolute;left:0;right:0;bottom:0;flex-direction:column"><div style="padding:12px;font-weight:700">View · Furniture · Photos</div><div style="padding:0 12px">The open panel.</div></sakuga-sheet></div><style>sakuga-sheet[snap=collapsed]{height:44px}sakuga-sheet[snap=half]{height:50%}sakuga-sheet[snap=full]{height:100%}</style>', wide: true },
 ];
 
 // What each prompt says about wiring its component in. The rest of the prompt is the same for all of them.
@@ -128,6 +136,14 @@ const WIRE = {
     'Keep listening to the control itself. invalid shows a pink shadow; size="compact" is the phone\'s size.'],
   badge: ['Use <sakuga-badge shown>Saving…</sakuga-badge> for a status. Set shown to make it pop in or shrink away; change its text for a squash.',
     'done draws a check; duration="2.5" makes it leave by itself; kind="warn" is a warning (role="alert"); count="3" with label="3 open" is a count.'],
+  panel: ['Use <sakuga-panel label="..." shown>…</sakuga-panel> for a part of the HUD on a paper card; its content is yours, slotted. label names it (a region; kind="note" a complementary, kind="dialog" a dialog).',
+    'Set shown after a person\'s action: it lands with a squash and two puffs; remove it and it shrinks away. size="compact" is the phone\'s size.'],
+  fold: ['Use <sakuga-fold><span slot="summary">Title</span><span slot="note">2 of 3</span>…</sakuga-fold> for a group that opens and closes.',
+    'Listen for toggle and read el.open. A person\'s press springs the body to its height; open set from code jumps.'],
+  card: ['Use <sakuga-card label="..." href="...">…</sakuga-card> for a card that is a link, or without href for a button; its content is slotted.',
+    'selected="true|false" makes it a choice (aria-pressed, or aria-current on a link); description="..." is read after its name.'],
+  sheet: ['Use <sakuga-sheet snap="collapsed|half|full">…</sakuga-sheet> as the frame of a phone\'s bottom sheet; your CSS gives its size at each snap.',
+    'Change snap and it springs from its size on screen to the new one, and lands with two puffs. Set the dragging attribute while a finger drags it; side="" puts it at the right.'],
   tooltip: ['Use <sakuga-tooltip text="..." label="..."></sakuga-tooltip> next to the thing it explains. text is the hint; label is what a screen reader calls the button ("Help" by default).',
     'It opens on hover, focus and tap, and Escape closes it. Whatever is inside the element replaces the "?" on the button.'],
 };
@@ -165,6 +181,10 @@ for (const it of ITEMS) {
     card.querySelector('[data-demo=badge-save]').addEventListener('click', () => { el.removeAttribute('kind'); el.shown = true; el.textContent = 'Saved'; el.setAttribute('done', ''); el.setAttribute('duration', '2.5'); say('Saved'); });
     card.querySelector('[data-demo=badge-warn]').addEventListener('click', () => { el.removeAttribute('done'); el.removeAttribute('duration'); el.setAttribute('kind', 'warn'); el.textContent = 'Offline'; el.shown = true; say('Warn'); });
   }
+  else if (it.tag === 'sakuga-panel') { card.querySelector('[data-demo=panel-hide]').addEventListener('click', () => { el.shown = false; say('shown: false'); }); card.querySelector('[data-demo=panel-show]').addEventListener('click', () => { el.shown = true; say('shown: true'); }); }
+  else if (it.tag === 'sakuga-fold') el.addEventListener('toggle', () => say(`open: ${el.open}`));
+  else if (it.tag === 'sakuga-card') for (const c of card.querySelectorAll('sakuga-card')) c.addEventListener('click', (e) => { e.preventDefault(); if (c.hasAttribute('selected')) c.selected = !c.selected; say(`Clicked: ${c.getAttribute('label')}`); });
+  else if (it.tag === 'sakuga-sheet') for (const snap of ['half', 'full', 'collapsed']) card.querySelector(`[data-demo=sheet-${snap}]`).addEventListener('click', () => { el.setAttribute('snap', snap); say(`snap: ${snap}`); });
   else if (it.tag === 'sakuga-toast') card.querySelector('[data-demo=save]').addEventListener('click', () => el.show('Saved successfully!'));
   else if (it.tag === 'sakuga-progress') el.addEventListener('sakuga:done', () => say('sakuga:done'));
   else if (it.tag === 'sakuga-tabs') el.addEventListener('change', (e) => say(`Tab: ${e.detail.label}`));
