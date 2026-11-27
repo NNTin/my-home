@@ -5,6 +5,8 @@
 > **`c3dabb173928a3ad2372183103caf2e6f50953d0`** ("One look: remove the Slash and Manga themes"). It is not a
 > submodule and not an npm dependency: the files live here and are owned by this repository from that commit on.
 > It is the app's HUD, and its rules are in [AGENTS.md](AGENTS.md): read that before changing anything here.
+> Changed here since (details in [AGENTS.md](AGENTS.md) § Changes made here): the clock sleeps at rest, effects scale
+> with `--sk-fx-scale`, and `SakugaFX.calm` can be set by the page.
 > Everything below this note is upstream's README as it was at that commit.
 
 Ordinary UI controls that react like anime. At rest they are plain. Use one and it squashes and overshoots on springs, and throws drawn effects around itself: smoke puffs, impact bursts, crystal chips, slashes, splashes and smoke rings, with manga sound-effect lettering (ドン!, カチッ, ズザッ). No characters, just the way a key animator would sell a hit.

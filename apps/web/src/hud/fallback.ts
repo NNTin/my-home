@@ -1,0 +1,277 @@
+/**
+ * The HUD without Sakuga (docs/design/hud.md §7.5): each `sakuga-*` tag the app uses as a plain element without a
+ * shadow root, its role and state as attributes on the host, Space and Enter handled, and the same events as the
+ * real one. Its accessible name comes from its children or `label`, so Testing Library's
+ * `getByRole('button', { name: 'Walk' })` finds it.
+ *
+ * Used twice: jsdom has no Sakuga (`test-setup.ts`), and a browser where `sakuga-hud` did not load or failed
+ * (`main.tsx` runs after the deferred script either way): the HUD then works plain, without reactions. Only tags
+ * still undefined are defined. `<sakuga-progress>` is not here: its wrapper has its own fallback.
+ */
+
+const on = (el: Element, name: string, value: boolean) => el.toggleAttribute(name, value);
+const fire = (el: Element, type: string) => el.dispatchEvent(new Event(type, { bubbles: true }));
+const isKey = (event: KeyboardEvent, ...keys: string[]) => keys.includes(event.key);
+
+/** A host that is its own control: focusable, Space and Enter act on it. */
+class Plain extends HTMLElement {
+  static observedAttributes = ['disabled', 'label'];
+  role_ = '';
+  get disabled() {
+    return this.hasAttribute('disabled');
+  }
+  set disabled(v: boolean) {
+    on(this, 'disabled', v);
+  }
+  connectedCallback() {
+    if (this.role_) this.setAttribute('role', this.role_);
+    this.sync();
+  }
+  attributeChangedCallback() {
+    this.sync();
+  }
+  sync() {
+    if (!this.role_) return;
+    this.tabIndex = this.disabled ? -1 : 0;
+    this.setAttribute('aria-disabled', String(this.disabled));
+    const label = this.getAttribute('label');
+    if (label) this.setAttribute('aria-label', label);
+  }
+}
+
+class FallbackButton extends Plain {
+  static override observedAttributes = ['disabled', 'label', 'pressed'];
+  override role_ = 'button';
+  constructor() {
+    super();
+    this.addEventListener('keydown', (e) => {
+      if (!isKey(e, ' ', 'Enter')) return;
+      e.preventDefault();
+      this.click();
+    });
+    this.addEventListener('click', (e) => {
+      if (this.disabled) return e.stopImmediatePropagation();
+      if (this.getAttribute('type') === 'submit') this.closest('form')?.requestSubmit();
+    });
+  }
+  override sync() {
+    super.sync();
+    if (this.hasAttribute('pressed')) this.setAttribute('aria-pressed', 'true');
+    else this.removeAttribute('aria-pressed');
+  }
+  done() {}
+  impact() {}
+}
+
+class FallbackCheckbox extends Plain {
+  static override observedAttributes = ['disabled', 'label', 'checked'];
+  override role_ = 'checkbox';
+  get checked() {
+    return this.hasAttribute('checked');
+  }
+  set checked(v: boolean) {
+    on(this, 'checked', v);
+  }
+  constructor() {
+    super();
+    const flip = () => {
+      if (this.disabled) return;
+      this.checked = !this.checked;
+      fire(this, 'change');
+    };
+    this.addEventListener('click', flip);
+    this.addEventListener('keydown', (e) => {
+      if (!isKey(e, ' ')) return;
+      e.preventDefault();
+      flip();
+    });
+  }
+  override sync() {
+    super.sync();
+    this.setAttribute('aria-checked', String(this.checked));
+  }
+}
+
+class FallbackSlider extends Plain {
+  static override observedAttributes = ['disabled', 'label', 'value', 'min', 'max', 'step'];
+  override role_ = 'slider';
+  private num(name: string, fallback: number) {
+    const v = parseFloat(this.getAttribute(name) ?? '');
+    return Number.isFinite(v) ? v : fallback;
+  }
+  get value() {
+    return String(this.num('value', 50));
+  }
+  set value(v: string | number) {
+    this.setAttribute('value', String(v));
+  }
+  get valueAsNumber() {
+    return +this.value;
+  }
+  constructor() {
+    super();
+    this.addEventListener('keydown', (e) => {
+      const step = this.num('step', 1);
+      const delta = { ArrowRight: step, ArrowUp: step, ArrowLeft: -step, ArrowDown: -step }[e.key];
+      const edge = { Home: this.num('min', 0), End: this.num('max', 100) }[e.key];
+      if ((delta === undefined && edge === undefined) || this.disabled) return;
+      e.preventDefault();
+      const next = edge ?? this.valueAsNumber + delta!;
+      this.value = Math.min(this.num('max', 100), Math.max(this.num('min', 0), next));
+      fire(this, 'input');
+      fire(this, 'change');
+    });
+  }
+  override sync() {
+    super.sync();
+    this.setAttribute('aria-valuenow', String(this.value));
+    this.setAttribute('aria-valuemin', String(this.num('min', 0)));
+    this.setAttribute('aria-valuemax', String(this.num('max', 100)));
+  }
+}
+
+/** A native input in the light DOM: React's wrapper hears its `input` and `change` bubble up. */
+class FallbackInput extends Plain {
+  static override observedAttributes = ['disabled', 'label', 'placeholder', 'type'];
+  input = document.createElement('input');
+  get value() {
+    return this.input.value;
+  }
+  set value(v: string) {
+    this.input.value = v;
+  }
+  override connectedCallback() {
+    if (!this.input.isConnected) this.append(this.input);
+    this.sync();
+  }
+  override sync() {
+    const label = this.getAttribute('label');
+    if (label) this.input.setAttribute('aria-label', label);
+    this.input.type = this.getAttribute('type') ?? 'text';
+    this.input.placeholder = this.getAttribute('placeholder') ?? '';
+    this.input.disabled = this.disabled;
+  }
+}
+
+/** Tabs from the `<option>` children, re-read when they change. */
+class FallbackTabs extends Plain {
+  static override observedAttributes = ['label', 'selected'];
+  private bar = document.createElement('span');
+  private index = 0;
+  // The options changed (a home with other levels): read them again. Its own tab bar's changes are not theirs.
+  private watch = new MutationObserver((list) => {
+    if (list.some((m) => !this.bar.contains(m.target))) this.build();
+  });
+  get selected() {
+    return this.index;
+  }
+  set selected(i: number) {
+    this.index = i;
+    this.build();
+  }
+  get value() {
+    return this.options()[this.index]?.value ?? '';
+  }
+  private options() {
+    return [...this.querySelectorAll('option')];
+  }
+  override connectedCallback() {
+    this.setAttribute('role', 'tablist');
+    if (!this.bar.isConnected) this.append(this.bar);
+    this.index = +(this.getAttribute('selected') ?? this.index);
+    this.watch.observe(this, { childList: true, subtree: true, characterData: true });
+    this.build();
+  }
+  disconnectedCallback() {
+    this.watch.disconnect();
+  }
+  override sync() {
+    const label = this.getAttribute('label');
+    if (label) this.setAttribute('aria-label', label);
+  }
+  private go(i: number) {
+    const options = this.options();
+    const option = options[i];
+    if (!option) return;
+    this.index = i;
+    this.build();
+    (this.bar.children[i] as HTMLElement).focus();
+    this.dispatchEvent(
+      new CustomEvent('change', {
+        bubbles: true,
+        detail: { index: i, value: option.value, label: option.textContent },
+      }),
+    );
+  }
+  private build() {
+    this.sync();
+    const options = this.options();
+    for (const option of options) option.hidden = true;
+    this.bar.replaceChildren(
+      ...options.map((option, i) => {
+        const tab = document.createElement('button');
+        tab.type = 'button';
+        tab.setAttribute('role', 'tab');
+        tab.setAttribute('aria-selected', String(i === this.index));
+        tab.tabIndex = i === this.index ? 0 : -1;
+        tab.textContent = option.textContent;
+        tab.addEventListener('click', () => i !== this.index && this.go(i));
+        tab.addEventListener('keydown', (e) => {
+          const n = options.length;
+          const to = { ArrowRight: (i + 1) % n, ArrowLeft: (i - 1 + n) % n, Home: 0, End: n - 1 }[
+            e.key
+          ];
+          if (to === undefined) return;
+          e.preventDefault();
+          this.go(to);
+        });
+        return tab;
+      }),
+    );
+  }
+}
+
+class FallbackToast extends Plain {
+  private status = document.createElement('span');
+  private timer: ReturnType<typeof setTimeout> | undefined;
+  get open() {
+    return this.status.textContent !== '';
+  }
+  override connectedCallback() {
+    this.status.setAttribute('role', 'status');
+    if (!this.status.isConnected) this.append(this.status);
+  }
+  show(text?: string) {
+    this.status.textContent = text ?? this.getAttribute('message') ?? '';
+    clearTimeout(this.timer);
+    this.timer = setTimeout(
+      () => this.hide(),
+      (+(this.getAttribute('duration') ?? '') || 2.6) * 1000,
+    );
+  }
+  hide() {
+    this.status.textContent = '';
+  }
+}
+
+/** The tags of `sakuga-hud` (apps/web/sakuga-plugin.ts `HUD_ELEMENTS`) and their plain stand-ins. */
+export const FALLBACKS: Record<string, CustomElementConstructor> = {
+  'sakuga-button': FallbackButton,
+  'sakuga-slider': FallbackSlider,
+  'sakuga-checkbox': FallbackCheckbox,
+  'sakuga-input': FallbackInput,
+  'sakuga-tabs': FallbackTabs,
+  'sakuga-toast': FallbackToast,
+};
+
+/** Defines a plain stand-in for every HUD tag still undefined; returns the tags it defined. */
+export function installFallback(registry: CustomElementRegistry = customElements): string[] {
+  const defined: string[] = [];
+  for (const [tag, element] of Object.entries(FALLBACKS)) {
+    if (registry.get(tag)) continue;
+    // A class can be defined once per registry: each tag gets its own subclass.
+    registry.define(tag, class extends element {});
+    defined.push(tag);
+  }
+  return defined;
+}

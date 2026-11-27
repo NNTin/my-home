@@ -26,7 +26,9 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
   `/catalog/<kind>/<typeId>`, lazy chunks; thumbnails cached in the browser (`docs/catalog.md`)
 - `packages/sakuga-vfx`: the app's HUD, Sakuga VFX copied from upstream (MIT) and owned here; read its own
   `AGENTS.md` (art style, core build, new elements, upstream updates) before touching a HUD element. Its
-  progress bar is the loading screen, loaded ahead of the main chunk (`apps/web/src/loading/`, `docs/loading.md`)
+  progress bar is the loading screen, loaded ahead of the main chunk (`apps/web/src/loading/`, `docs/loading.md`);
+  the other elements come in one deferred `sakuga-hud` script without the core, driven by the wrappers in
+  `apps/web/src/hud/` (fallback in jsdom), with the measuring page `/?hud=measure` (`docs/hud.md`)
 - `docs/`: project docs (designs not built yet in `docs/design/`: the realistic render, `realistic-render.md`);
   `docker-compose.yml` runs postgres + api + web
 - `charts/my-home`: Helm chart deployed to Kubernetes by CI + Flux (`docs/deployment.md`); `tools/check-chart.sh`
@@ -138,6 +140,10 @@ What reading CI has taught us:
   (canvas shots of the model).
 - **Staging is shared:** a check counts only for the commit staging ran before and after it, and the owner may
   be editing there. A difference in a screenshot can be data, not rendering: look at `seed.sh staging diff`.
+
+- **The Sakuga clock sleeps at rest** (#168): a HUD element runs frames only while awake (a press, a key, an
+  attribute, a spring moved). A new element's state that moves outside its springs must call `wake()` or say
+  `busy()`, or it freezes (`packages/sakuga-vfx/AGENTS.md` § Changes made here).
 
 - **The catalogue smoke pins the "Fixtures" section to its two types** (Heating, Lighting:
   `catalog-smoke.mjs`). A new built-in piece is kind `furniture` (the bath room's are, #146), or the check

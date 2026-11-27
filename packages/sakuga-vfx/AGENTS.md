@@ -15,10 +15,12 @@ the commit recorded in `README.md`, and owned by this repository from then on. E
   folder of its own like the others, with its file stamped from the core.
 - **Restyle only through the `--sk-*` CSS variables** (`--sk-ink`, `--sk-card`, `--sk-pri`, `--sk-acc`, `--sk-sh`,
   …; a page's own `:root` values win). Never edit an element's effects to change its look.
-- **How the app loads an element:** a plain script, by a classic `<script>` tag, never as a module, never bundled,
-  split or rewritten. Each file carries its own copy of the core; the first one loaded sets `window.SakugaFX` and
-  the others reuse it (one effects canvas, one clock). The loading bar is put in `<head>` by the web build,
-  ahead of the main chunk (`sakugaProgress()` in `apps/web/vite.config.ts`, `docs/loading.md`). React drives an
+- **How the app loads an element:** a plain script, by a classic `<script>` tag, never as a module, never bundled
+  into the main chunk. Each file carries its own copy of the core; the first one loaded sets `window.SakugaFX` and
+  the others reuse it (one effects canvas, one clock). The one change the app's build makes: its copies in
+  `sakuga-hud` leave the core block out (the core loaded once, owner's answer 5 on #167); the files here stay whole. The loading bar is put in `<head>` by the web build,
+  ahead of the main chunk; every other element the app uses comes in one deferred `sakuga-hud` script, each
+  without its copy of the core (`apps/web/sakuga-plugin.ts`, `docs/loading.md`). React drives an
   element through its attributes and methods (`apps/web/src/loading/SakugaProgress.tsx`).
 - **Upstream's files are kept as upstream wrote them:** prettier and eslint skip this package (except `test/` and
   this file), so a diff of an element against upstream stays readable.
@@ -99,6 +101,44 @@ On the agents' machine:
   `exec ~/.cache/ms-playwright/chromium-<n>/chrome-linux64/chrome --no-sandbox "$@"`.
 - One browser run at a time, through `ao-heavy`. The static server is light: start it directly, with `9>&-`.
 - `look.mjs` pauses the Sakuga clock only: the app's own timers (the loading card's shrink) are not stepped.
+
+## Changes made here
+
+What this repository changed in upstream's files, so a later upstream update carries it over by hand (§ Upstream
+changes come in by hand). The design is `docs/design/hud.md` §6; the README's note at the top lists them in short.
+
+### The core (#168, PR 1)
+
+- **C1. The clock sleeps at rest.** Only awake components are in the frame loop. A component wakes on a press,
+  a key, a focus change or a click inside its shadow root, on a change of an observed attribute (`define()` wraps
+  `attributeChangedCallback`), and when one of its springs is moved from outside (`x`, `v` or `to` set to a new
+  value: a `Spring` made during `setup()` belongs to the component). It sleeps after two frames in which every
+  spring is still (`Spring.still`) and `busy()` is false. A `persist` effect keeps the loop going only while its
+  `owner` is awake; a scroll or resize draws it once more. With nothing awake and nothing to draw, no animation
+  frame runs at all. `SakugaFX.now` keeps the wall's time across a sleep.
+  - **For a component:** state that moves outside springs must call `this.wake()` when it changes (the progress
+    bar's `set()`), and a timed state must say so in `busy()` (the toast while shown, the toggle while its
+    drawing plays, the progress bar while it loads). A `frame()` that stops stepping a spring must leave it still
+    (the toast snaps its scale when hidden). Time "since" something: `fx.now`, not a counter of `frame(dt)` (the
+    slider's シュッ throttle).
+  - `SakugaFX.stats`: frames the clock ran, the time spent in them (ms), components awake, whether a frame is
+    asked for. The measuring page `/?hud=measure` reads it.
+- **C2. Effects scale with their element:** `--sk-fx-scale` on the element (or inherited; 1 by default, 0.7 for
+  compact) scales each effect it fires about the effect's origin, and pulls an origin outside the element's box
+  toward the box by the same factor (a word above a compact button sits lower). The element is the one last named
+  by `at()`, the one whose `frame()` runs, or the one that scheduled a `later()`.
+- **C3. `SakugaFX.calm` is settable:** the page sets it (the app's "Effects" switch); either it or
+  `prefers-reduced-motion` turns effects off.
+- Checked frame by frame on every upstream element the app uses (button primary and secondary, tabs, checkbox,
+  slider, input, toast, toggle, progress), with `Math.random` seeded: at scale 1 the sheets before and after are
+  the same pixel for pixel, but for CSS transitions (the wall's clock, not Sakuga's) and sub-pixel noise.
+
+### Components
+
+- `progress`: its persistent paint has the bar as `owner`; `busy()` while it loads; `set()` and `reset()` wake it.
+- `toast`: `busy()` while shown; its scale spring is left still when hidden.
+- `toggle`: `busy()` while the drawing plays.
+- `slider`: its シュッ throttle reads `fx.now`.
 
 ## Upstream changes come in by hand
 

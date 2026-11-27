@@ -952,6 +952,18 @@ Agreed with the orchestrator (2026-11-26): the measuring page `/?hud=measure` is
 | H21 | Edit moves to the stage tools on the phone, the panel's header on the desktop (§5.13)                 | The splash would be cut off by the top of the screen; the phone's top bar gains room             |
 | H22 | Two lazy WebP assets: the rest frames, then all frames only when effects are on (§9.3)                | A phone with effects off never fetches 346 kB; the CSS switch is seen only while loading         |
 
+### Decisions made while building (#168)
+
+The owner asked (2026-11-27) that open points be decided with the most reasonable default and recorded here.
+
+| #   | Decision (PR)                                                                                                                                           | Why                                                                                                |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| B1  | C1 wakes an element when a spring made in its `setup()` is moved from outside, or an observed attribute changes; time-driven states say `busy()` (PR 1) | Generic: no element had to re-list its springs; the four that do more than springs got a line each |
+| B2  | C2 scales an effect about its origin and pulls an origin outside the element's box toward it by the same factor (PR 1)                                  | Wedges at a corner stay at the corner; a word above the element sits closer, as §3.3 needs         |
+| B3  | `/?hud=measure` reloads itself with `&walk=first` for the walk runs; results carry over in `sessionStorage` (PR 1)                                      | Walking is the viewer's own state; a reload reaches it without a hook into the viewer              |
+| B4  | The measuring page's walk is W and Q held (forward while turning) for 5 s; its 3D frame times are taken in the canvas, not from the governor (PR 1)     | A fixed key sequence repeats on every device; the governor keeps no per-run window                 |
+| B5  | `<sakuga-progress>` gets no plain fallback in `hud/fallback.ts`: its wrapper keeps its own native one (PR 1)                                            | One fallback per element, and the existing one is tested                                           |
+
 ## 14. Open questions
 
 None. The owner's answers are in §13.
