@@ -22,15 +22,20 @@ class SakugaSlider extends fx.Base {
     .val::after { content: ""; position: absolute; left: 50%; top: 100%; margin-left: -5px; border: 5px solid transparent; border-top: 7px solid var(--sk-ink); }
     input { position: absolute; inset: -8px 0; width: 100%; height: calc(100% + 16px); margin: 0; opacity: 0; cursor: ew-resize; }
     input:disabled { cursor: not-allowed; } :host([disabled]) .sld { opacity: .5; }
-    .sld:has(input:focus-visible) { outline: 2.5px solid var(--sk-acc); outline-offset: 6px; border-radius: 8px; }`;
+    .sld:has(input:focus-visible) { outline: 2.5px solid var(--sk-acc); outline-offset: 6px; border-radius: 8px; }
+    :host([size=compact]) { margin-top: 24px; --sk-fx-scale: .7; }   /* made here (my-home): the phone's size */
+    :host([size=compact]) .sld { height: 40px; } :host([size=compact]) .trk { top: 14px; height: 11px; border-width: 2.5px; } :host([size=compact]) .th { top: 9px; width: 22px; height: 22px; border-width: 2.5px; }
+    :host([size=compact]) .val { top: -26px; font-size: 12px; border-width: 2.2px; }`;
   get value() { return this.r ? this.r.value : this.getAttribute('value') || '50'; }
-  set value(v) { if (this.r) { this.r.value = v; this.sync(); } else this.setAttribute('value', v); }
+  set value(v) { if (this.r) { this.r.value = v; this.sync(); this.jump(); } else this.setAttribute('value', v); }
+  // made here (my-home, #168): a value set from code moves the thumb at once and plays nothing
+  jump() { this.s.x = this.s.to; this.s.v = 0; }
   get valueAsNumber() { return +this.value; }
   get disabled() { return this.hasAttribute('disabled'); }
   set disabled(v) { this.toggleAttribute('disabled', !!v); }
   attributeChangedCallback(name, _, v) {
     if (!this.r) return;
-    if (name === 'value') { this.r.value = v; this.sync(); }
+    if (name === 'value') { this.r.value = v; this.sync(); this.jump(); }
     else if (name === 'label') this.r.setAttribute('aria-label', v || 'Slider');
     else if (name === 'disabled') this.r.disabled = this.disabled;
     else if (name === 'unit') this.sync();

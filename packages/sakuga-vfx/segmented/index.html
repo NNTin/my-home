@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sakuga Segmented</title>
+<style>
+  :root { --page: #ffffff; --text: #1d1a4a; --mute: #8580b0; }
+  html { overflow-x: clip; background: var(--page); }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--page); color: var(--text); font: 15px/1.45 -apple-system, "Helvetica Neue", "Segoe UI", sans-serif; overflow-x: clip; }
+  main { width: min(640px, 100vw - 32px); padding: 40px 0 60px; }
+  h1 { margin: 0; font: italic 800 26px/1.1 "Avenir Next", "Nunito", -apple-system, "Segoe UI", sans-serif; }
+  .sub { margin: 4px 0 0; color: var(--mute); }
+  .stage { display: flex; flex-direction: column; gap: 26px; padding: 40px 0 24px; }
+  .hint, .said { margin: 0 4px; color: var(--mute); } .said { min-height: 1.45em; margin-top: 8px; font-size: 13px; }
+  code { font-size: 13px; }
+  .embed body { place-items: start center; min-height: 0; } .embed h1, .embed .sub, .embed .hint { display: none; } .embed main { padding: 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Segmented</h1>
+  <p class="sub">One choice of a few short values, as a row. Made for my-home, not from upstream.</p>
+  <div class="stage">
+  <sakuga-segmented id="q" label="Quality"><option value="fast">Fast</option><option value="auto" selected>Auto</option><option value="beautiful">Always beautiful</option></sakuga-segmented>
+  <sakuga-segmented id="l" size="compact" label="Show up to level"><option value="roof">Roof</option><option value="attic">Attic</option><option value="ground">Ground</option><option value="sout" selected>Souterrain</option></sakuga-segmented>
+  <p><button id="code" type="button">Set "Fast" from code</button></p>
+  </div>
+  <p class="hint">Pick another; or the arrow keys, Home and End. From code it moves without effects.</p>
+  <p class="said" aria-live="polite"></p>
+</main>
+<script src="segmented.js"></script>
+<script>
+const Q = new URLSearchParams(location.search);
+if (Q.get('embed') === '1') document.documentElement.classList.add('embed');
+const say = (t) => { document.querySelector('.said').textContent = t; };
+for (const s of document.querySelectorAll('sakuga-segmented')) s.addEventListener('change', (e) => say(`change: ${e.detail.value}`));
+document.getElementById('code').addEventListener('click', () => { document.getElementById('q').value = 'fast'; });
+</script>
+</body>
+</html>
