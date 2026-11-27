@@ -5,7 +5,8 @@
   "description": "The app's HUD: Sakuga VFX controls, copied from finktheartist/sakuga-vfx (MIT) and owned here (AGENTS.md).",
   "license": "MIT",
   "exports": {
-    "./progress.js": "./progress/progress.js"
+    "./progress.js": "./progress/progress.js",
+    "./package.json": "./package.json"
   },
   "scripts": {
     "stamp": "node tools/build.mjs",

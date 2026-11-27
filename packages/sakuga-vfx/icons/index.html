@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sakuga Icons</title>
+<style>
+  :root { --page: #ffffff; --text: #1d1a4a; --mute: #8580b0; }
+  body { margin: 0; background: var(--page); color: var(--text); font: 15px/1.45 -apple-system, "Helvetica Neue", "Segoe UI", sans-serif; }
+  main { width: min(760px, 100vw - 32px); margin: 0 auto; padding: 40px 0 60px; }
+  h1 { margin: 0; font: italic 800 26px/1.1 "Avenir Next", "Nunito", -apple-system, "Segoe UI", sans-serif; }
+  .sub { margin: 4px 0 24px; color: var(--mute); }
+  ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; }
+  li { display: grid; justify-items: center; gap: 6px; padding: 12px 6px 10px; border: var(--sk-bw) solid var(--sk-ink); border-radius: var(--sk-r); background: var(--sk-card); box-shadow: var(--sk-sh); }
+  li span { display: flex; align-items: end; gap: 10px; } li small { color: var(--mute); font-size: 12px; }
+  .s24 .sk-icon { width: 24px; height: 24px; } .s34 .sk-icon { width: 34px; height: 34px; } .s20 .sk-icon { width: 20px; height: 20px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Icons</h1>
+  <p class="sub">The HUD's ink-line icons: paper, its hard shadow and the ink line. At 20, 24 and 34 px.</p>
+  <ul id="list"></ul>
+</main>
+<script src="../button/button.js"></script>
+<script src="icons.js"></script>
+<script>
+  for (const name of SakugaFX.icons) {
+    const li = document.createElement('li'), i = SakugaFX.icon(name);
+    li.innerHTML = `<span><i class="s20">${i}</i><i class="s24">${i}</i><i class="s34">${i}</i></span><small>${name}</small>`;
+    document.getElementById('list').append(li);
+  }
+</script>
+</body>
+</html>
