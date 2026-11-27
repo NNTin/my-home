@@ -34,6 +34,14 @@ design `docs/design/hud.md` (#167, #168). This page says what exists and how the
 - **Tests:** jsdom has no Sakuga. `test-setup.ts` installs the fallback, so tests find the HUD by role and name
   (`getByRole('button', { name: 'Walk' })`) and drive it with clicks and keys.
 - `sakuga()` (`hud/sakuga.ts`) is `window.SakugaFX` with types, or undefined where it did not run.
+- **What is Sakuga so far (PR 3, buttons):** the phone's top bar (Walk, Photos with its count, Catalogue), the stage
+  tools (Reset view, the status badge), the furniture and piece toolbars (`SkIconButton`), the hints' "Got it", the
+  edit badge and the viewer's warnings (`SkNotice`: `sakuga-toast kind="warn"`). `SkButton` and `SkIconButton` take
+  `href` (a real link; `useLink` sends a plain click through the router), `pressed` (a toggle, even when off) and
+  `size="compact"`; `SkBadge` takes `shown` (it pops in or shrinks away), `kind`, `count`, `done`, `duration`.
+  `HudIcon` puts an ink-line icon in a control's text.
+- **Touch size:** a compact control draws a 34 px face and takes touches 44 px across inside its shadow root. The
+  smokes hit-test it (`elementFromPoint` at the edges of the 44 px square), never its box.
 
 ## The clock at rest, effects off
 

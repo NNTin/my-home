@@ -34,6 +34,7 @@ const check = (name, ok, got) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' 
 
 check('all eleven elements are defined', (await ev(`['button','toggle','slider','checkbox','radio','input','tabs','progress','rating','toast','tooltip'].every((n) => customElements.get('sakuga-' + n))`)));
 check('one shared core', (await ev('window.SakugaFX.version')) === 1);
+check('the two made here are defined', await ev(`['icon-button','badge'].every((n) => customElements.get('sakuga-' + n))`));
 { await tap('sakuga-button[data-demo=primary] >>> .btn'); await sleep(1200); check('button: tap fires click and done() lands the check', +(await ev(`${find('sakuga-button[data-demo=primary] >>> .btn')}.style.getPropertyValue('--ok')`)) > 0.5); }
 { await tap('sakuga-toggle >>> .tog'); await sleep(500); check('toggle: tap turns it on', await ev(`document.querySelector('sakuga-toggle').checked`));
   check('toggle: aria-checked follows', (await ev(`${find('sakuga-toggle >>> .tog')}.getAttribute('aria-checked')`)) === 'true'); }
@@ -56,6 +57,19 @@ check('one shared core', (await ev('window.SakugaFX.version')) === 1);
 { await tap('sakuga-tooltip >>> .help'); await sleep(600); check('tooltip: tap opens it', await ev(`document.querySelector('sakuga-tooltip').open`)); await key('Escape', 27); await sleep(300); check('tooltip: Escape closes it', !(await ev(`document.querySelector('sakuga-tooltip').open`))); }
 { await ev(`(() => { const f = document.createElement('form'); f.id = 'tf'; f.innerHTML = '<sakuga-checkbox name="c" checked></sakuga-checkbox><sakuga-slider name="s" value="42"></sakuga-slider><sakuga-rating name="r" value="3"></sakuga-rating><sakuga-toggle name="t" checked></sakuga-toggle>'; document.body.append(f); })()`); await sleep(300);
   check('forms: values are sent with a form', (await ev(`new URLSearchParams(new FormData(document.getElementById('tf'))).toString()`)) === 'c=on&s=42&r=3&t=on', await ev(`new URLSearchParams(new FormData(document.getElementById('tf'))).toString()`)); }
+// Made here (my-home, #168): the compact button's toggle and hit area, the icon button, the badge.
+{ await tap('sakuga-button[data-demo=toggle] >>> .btn'); await sleep(400); check('compact button: tap presses the toggle', (await ev(`${find('sakuga-button[data-demo=toggle] >>> .btn')}.getAttribute('aria-pressed')`)) === 'true'); }
+{ const said = `document.querySelector('sakuga-icon-button').closest('section').querySelector('.said').textContent`;
+  await tap('sakuga-icon-button >>> .b'); await sleep(400); check('icon button: tap fires click', (await ev(said)) === 'Clicked: Rotate left');
+  const [x, y] = await at('sakuga-icon-button[label=Raise] >>> .b', 0.5, 0); await sleep(150); await touch('touchStart', x, y - 4); await touch('touchEnd', x, y - 4); await sleep(400);
+  check('icon button: compact, a touch 4 px above its face still hits it (44 px)', (await ev(said)) === 'Clicked: Raise');
+  await ev(`${find('sakuga-icon-button[label=Delete] >>> .b')}.focus()`); await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, text: '\r' }); await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }); await sleep(300); check('icon button: Enter fires click', (await ev(said)) === 'Clicked: Delete'); }
+{ const b = `document.querySelector('sakuga-badge')`;
+  check('badge: not there before it is shown', (await ev(`${b}.getAttribute('aria-hidden')`)) === 'true');
+  await tap('[data-demo=badge-save] >>> .btn'); await sleep(600);
+  check('badge: it arrives as a status with its text', (await ev(`${b}.getAttribute('role')`)) === 'status' && (await ev(`${b}.textContent`)) === 'Saved' && !(await ev(`${b}.hasAttribute('aria-hidden')`)));
+  await sleep(2700); check('badge: it leaves by itself after its duration', (await ev(`${b}.getAttribute('aria-hidden')`)) === 'true');
+  await tap('[data-demo=badge-warn] >>> .btn'); await sleep(600); check('badge: a warning is an alert', (await ev(`${b}.getAttribute('role')`)) === 'alert'); }
 check('no horizontal scroll at 390', (await ev('document.documentElement.scrollWidth')) <= 390, await ev('document.documentElement.scrollWidth'));
 if (logs.length) { console.log(logs.join('\n')); fails++; }
 ws.close(); chrome.kill(); await sleep(300); try { rmSync(PROFILE, { recursive: true, force: true }); } catch {} process.exit(fails ? 1 : 0);

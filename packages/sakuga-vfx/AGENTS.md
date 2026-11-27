@@ -147,6 +147,14 @@ changes come in by hand). The design is `docs/design/hud.md` §6; the README's n
   `disabled` as a plain property so `squashy()` and the effects skip it.
 - `toast` (PR 3): `kind="warn"` (a pink !, a pink shadow, `role="alert"`), a width from 236 to 320 px, two lines.
 
+### Traps met while making them (PR 3)
+
+- **React 19 sets a prop as a property when the element has a member of that name.** The badge's method `count()`
+  was overwritten by `count={3}`: never name a method or field like an attribute a wrapper passes.
+- **A `::before` hit area is placed from the padding box:** `inset: -5px` reaches only 2.5 px past a 2.5 px line. Add
+  the line to the inset.
+- **`aria-hidden=""` hides nothing;** write `"true"`.
+
 ### Elements of our own
 
 Made here with the workflow above, in `NAMES`, each with a README and an `index.html`; not from upstream.
