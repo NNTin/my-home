@@ -828,7 +828,11 @@ async function viewChecks(browser, { device, base, host, homeId }) {
 
     // "Save image": a PNG of twice the canvas, beautiful whatever the setting, named after the view.
     const canvas = page.locator(SCENE).first();
-    const css = await canvas.evaluate((c) => ({ width: c.clientWidth, height: c.clientHeight }));
+    // Its exact size (a layout can make it 367.5 px high; `clientHeight` would round it to 368).
+    const css = await canvas.evaluate((c) => {
+      const r = c.getBoundingClientRect();
+      return { width: r.width, height: r.height };
+    });
     const buffer = await canvas.evaluate((c) => ({ width: c.width, height: c.height }));
     const save = views.getByRole('button', { name: 'Save image' });
     await save.scrollIntoViewIfNeeded();
