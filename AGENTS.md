@@ -123,6 +123,10 @@ What reading CI has taught us:
 - **What the page gets on a CI runner is not what it gets here:** Cloudflare adds its analytics beacon
   (`POST /cdn-cgi/rum`) there. The browser scripts answer `/cdn-cgi/*` themselves
   (`scripts/infrastructure.mjs`); a new script must use the same filter.
+- **The mobile smoke turns the desktop view with the wheel at (720, 360) of 1440×900:** a HUD box that grows
+  over that point takes the input ("input draws fast frames: 0 frames"). Staging's texts are longer than a local
+  PGlite's ("Photos (104) · 6 open" widened the control panel in #188): probe staging's
+  `document.elementsFromPoint` before blaming the renderer.
 - **A bare `canvas` selector is not the 3D view any more** (#166): the HUD's Sakuga effects draw on a canvas over
   the page and on one in a control's shadow root (Playwright's CSS reaches into it). Use `SCENE` from
   `scripts/scene.mjs`, and wait for `loadingScreenGone` before a shot.
