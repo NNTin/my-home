@@ -60,3 +60,12 @@ el.disabled = true;
 - **The burst behind it can be clipped.** It is drawn on a canvas inside the element that reaches 160 pixels past each edge; a parent with `overflow: hidden` cuts it off. Everything else is on the page-wide canvas and is not clipped.
 - **One label size.** The padding and the type are fixed; it does not have small or large sizes.
 - **Checked in headless Chromium** with real touch and key events. Not tried in Safari or Firefox, or with a screen reader.
+
+## Made here (my-home, #168)
+
+| attribute | what it sets |
+|---|---|
+| `size="compact"` | 34 px tall, 13 px type, the compact line (2.5 px), radius (11 px) and shadow; its effects at 0.7 (`--sk-fx-scale`); a 44 px hit area inside the shadow root |
+| `href` | the control is a real `<a>` (open in a new tab, copy the link); while disabled it has no `href` and `aria-disabled` |
+| `label` | the accessible name, when the visible text is shorter ("Walk" named "Walk and take photos") |
+| `pressed` | a toggle button: `aria-pressed` and an ink fill with card text. Set from code it changes at once and plays nothing |

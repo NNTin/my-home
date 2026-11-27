@@ -1,4 +1,5 @@
-import { Link } from '../routing';
+import { SkButton } from '../hud/SkButton';
+import { SkIconButton } from '../hud/SkIconButton';
 
 /** How far ▲ and ▼ move the selected item up or down, in centimetres. */
 export const RAISE_STEP = 5;
@@ -34,59 +35,55 @@ export function FurnitureToolbar({
   return (
     <div className="item-toolbar" role="toolbar" aria-label={`${name}: edit`}>
       <span className="item-toolbar-name">{name}</span>
-      <button
-        type="button"
-        aria-label="Rotate left"
-        title="Rotate left"
+      {/* Compact icon buttons (docs/design/hud.md §4.3): wedges the way each one moves the item. */}
+      <SkIconButton
+        size="compact"
+        icon="rotate-left"
+        dir="ccw"
+        label="Rotate left"
         onClick={() => onRotate(1)}
-      >
-        ⟲
-      </button>
-      <button
-        type="button"
-        aria-label="Rotate right"
-        title="Rotate right"
+      />
+      <SkIconButton
+        size="compact"
+        icon="rotate-right"
+        dir="cw"
+        label="Rotate right"
         onClick={() => onRotate(-1)}
-      >
-        ⟳
-      </button>
+      />
       {onRaise && (
         <>
-          <button
-            type="button"
-            aria-label={`Raise ${RAISE_STEP} cm`}
-            title={`Raise ${RAISE_STEP} cm`}
+          <SkIconButton
+            size="compact"
+            icon="up"
+            dir="up"
+            label={`Raise ${RAISE_STEP} cm`}
             onClick={() => onRaise(RAISE_STEP)}
-          >
-            ▲
-          </button>
-          <button
-            type="button"
-            aria-label={`Lower ${RAISE_STEP} cm`}
-            title={`Lower ${RAISE_STEP} cm`}
+          />
+          <SkIconButton
+            size="compact"
+            icon="down"
+            dir="down"
+            label={`Lower ${RAISE_STEP} cm`}
             onClick={() => onRaise(-RAISE_STEP)}
-          >
-            ▼
-          </button>
+          />
         </>
       )}
-      <button type="button" aria-label="Duplicate" title="Duplicate" onClick={onDuplicate}>
-        ⧉
-      </button>
-      <button type="button" aria-label="Delete" title="Delete" onClick={onDelete}>
-        🗑
-      </button>
-      <Link className="button" to={href} aria-label="Open piece page" title="Piece page">
-        ⓘ
-      </Link>
-      <button
-        type="button"
-        aria-label="More: open the furniture panel"
+      <SkIconButton size="compact" icon="duplicate" label="Duplicate" onClick={onDuplicate} />
+      <SkIconButton size="compact" icon="delete" hit="puff" label="Delete" onClick={onDelete} />
+      <SkIconButton
+        size="compact"
+        icon="info"
+        label="Open piece page"
+        title="Piece page"
+        href={href}
+      />
+      <SkIconButton
+        size="compact"
+        icon="more"
+        label="More: open the furniture panel"
         title="More"
         onClick={onMore}
-      >
-        ⋯
-      </button>
+      />
     </div>
   );
 }
@@ -111,12 +108,15 @@ export function PieceToolbar({
       <span className="item-toolbar-name">
         {name} <span className="piece-type">· {typeName}</span>
       </span>
-      <Link className="button" to={href} aria-label={`Open piece page: ${name}`}>
+      <SkButton
+        size="compact"
+        variant="secondary"
+        aria-label={`Open piece page: ${name}`}
+        href={href}
+      >
         Open piece page
-      </Link>
-      <button type="button" aria-label="Close" title="Close" onClick={onClose}>
-        ✕
-      </button>
+      </SkButton>
+      <SkIconButton size="compact" icon="close" label="Close" onClick={onClose} />
     </div>
   );
 }

@@ -12,6 +12,8 @@ export interface SakugaApi {
   burst(x: number, y: number, options?: object): void;
   puff(x: number, y: number, options?: object): void;
   sfx(name: string, x: number, y: number, options?: object): void;
+  /** An ink-line icon's SVG markup (packages/sakuga-vfx/icons), once `sakuga-hud` has run. */
+  icon?(name: string): string;
 }
 
 /** The core, or undefined where its script did not run (jsdom, a failed load). */

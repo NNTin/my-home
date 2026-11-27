@@ -3,7 +3,11 @@ import type { KeyboardEvent } from 'react';
 import type { HomeScene } from '../builder/buildHome';
 import { roofIndex, showUpTo, type Visibility } from '../builder/visibility';
 import { EditToggle } from '../editMode/EditToggle';
-import { href, keptQuery, Link } from '../routing';
+import { HudIcon } from '../hud/HudIcon';
+import { SkBadge } from '../hud/SkBadge';
+import { SkButton } from '../hud/SkButton';
+import { SkIconButton } from '../hud/SkIconButton';
+import { href, keptQuery } from '../routing';
 
 interface Props {
   homes: HomeSummary[];
@@ -90,28 +94,28 @@ export function TopBar({
           <span className="topbar-home">{homes.find((h) => h.id === homeId)?.name}</span>
         )}
         <EditToggle />
-        <button type="button" aria-label="Walk and take photos" onClick={onWalk}>
-          <span aria-hidden="true">🚶</span> Walk
-        </button>
-        <button
-          type="button"
-          aria-pressed={photosOpen}
+        {/* Compact Sakuga buttons (docs/design/hud.md §4.1): Walk is the primary (ドン), Photos a toggle. */}
+        <SkButton size="compact" aria-label="Walk and take photos" onClick={onWalk}>
+          <HudIcon name="walk" /> Walk
+        </SkButton>
+        <SkButton
+          size="compact"
+          variant="secondary"
+          pressed={photosOpen}
           aria-label={`Photos (${photoCount})${openRequests > 0 ? `, ${openRequests} requested` : ''}`}
           onClick={onPhotos}
         >
-          <span aria-hidden="true">📷</span> Photos ({photoCount})
-          {openRequests > 0 && <span className="badge">{openRequests}</span>}
-        </button>
-        {/* A narrow screen shows only the icon; the name stays "Catalogue". */}
-        <Link
+          <HudIcon name="photos" /> Photos ({photoCount})
+          <SkBadge className="topbar-count" shown={openRequests > 0} count={openRequests} />
+        </SkButton>
+        {/* The icon only; its name is "Catalogue". */}
+        <SkIconButton
           className="topbar-link"
-          to={href({ page: 'catalog' }, keptQuery())}
-          aria-label="Catalogue"
-          title="Catalogue"
-        >
-          <span aria-hidden="true">📚</span>
-          <span className="topbar-label"> Catalogue</span>
-        </Link>
+          size="compact"
+          icon="catalogue"
+          label="Catalogue"
+          href={href({ page: 'catalog' }, keptQuery())}
+        />
       </div>
       <div
         className="segmented"

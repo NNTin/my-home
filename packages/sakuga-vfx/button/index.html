@@ -27,6 +27,12 @@
   <sakuga-button id="el">Confirm</sakuga-button>
   <sakuga-button variant="secondary" id="el2">Cancel</sakuga-button>
   </div>
+  <div class="stage compact">
+  <sakuga-button size="compact" id="c1">Walk</sakuga-button>
+  <sakuga-button size="compact" variant="secondary" id="c2">Photos</sakuga-button>
+  <sakuga-button size="compact" variant="secondary" href="#top" id="c3">Open piece page</sakuga-button>
+  </div>
+  <p class="hint">Made here: <code>size="compact"</code> (smaller, its effects at 0.7), <code>pressed</code> (Photos is a toggle: click it) and <code>href</code> (a real link).</p>
   <p class="hint">Click Confirm. On this page a check lands on it 0.76 seconds later, the way a real page would call <code>el.done()</code> when the action succeeds.</p>
   <label class="drive" id="drive" hidden>Progress <input type="range" min="0" max="100" value="0"></label>
   <p class="said" aria-live="polite"></p>
@@ -40,6 +46,8 @@ if (Q.get('embed') === '1') document.documentElement.classList.add('embed');
 const say = (t) => { document.querySelector('.said').textContent = t; };
 el.addEventListener('click', () => { say('click'); setTimeout(() => el.done(), 760); });
 el2.addEventListener('click', () => say('click (secondary)'));
+const c2 = document.getElementById('c2');
+c2.addEventListener('click', () => { c2.pressed = !c2.pressed; say(`pressed: ${c2.pressed}`); });
 </script>
 </body>
 </html>

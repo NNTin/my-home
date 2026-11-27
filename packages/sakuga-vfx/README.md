@@ -6,7 +6,9 @@
 > submodule and not an npm dependency: the files live here and are owned by this repository from that commit on.
 > It is the app's HUD, and its rules are in [AGENTS.md](AGENTS.md): read that before changing anything here.
 > Changed here since (details in [AGENTS.md](AGENTS.md) § Changes made here): the clock sleeps at rest, effects scale
-> with `--sk-fx-scale`, and `SakugaFX.calm` can be set by the page.
+> with `--sk-fx-scale`, `SakugaFX.calm` can be set by the page, `slash()` can sweep either way (`turn`); the button has
+> `size="compact"`, `href` and `pressed`, the toast `kind="warn"`; and two elements of our own, the icon button and
+> the badge (below the twelve).
 > Everything below this note is upstream's README as it was at that commit.
 
 Ordinary UI controls that react like anime. At rest they are plain. Use one and it squashes and overshoots on springs, and throws drawn effects around itself: smoke puffs, impact bursts, crystal chips, slashes, splashes and smoke rings, with manga sound-effect lettering (ドン!, カチッ, ズザッ). No characters, just the way a key animator would sell a hit.
@@ -28,6 +30,13 @@ Every effect is drawn in code on one canvas over the page. The lettering was pai
 | [Rating](rating/) | `<sakuga-rating>` | Stars pop in one after another; five gets a burst. |
 | [Toast](toast/) | `<sakuga-toast>` | Streaks in as a smear, lands in dust with ズザッ, leaves by shrinking. |
 | [Tooltip](tooltip/) | `<sakuga-tooltip>` | The hint springs out like a speech bubble with puffs and カチッ. |
+
+Made here for my-home (not from upstream):
+
+| | element | what happens |
+|---|---|---|
+| [Icon Button](icon-button/) | `<sakuga-icon-button>` | A square paper button with an ink-line icon. It squashes; three wedges fly off its corner or the way it points (`dir`), a turn draws a crescent around it, Delete leaves a puff. No word. |
+| [Badge](badge/) | `<sakuga-badge>` | A small chip for a status, a count or a notice. It pops in with a puff, squashes when its text changes, draws a check with a glint when done, and leaves by shrinking. |
 
 ## The look
 

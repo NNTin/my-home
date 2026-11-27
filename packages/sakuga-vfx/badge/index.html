@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sakuga Badge</title>
+<style>
+  :root { --page: #ffffff; --text: #1d1a4a; --mute: #8580b0; }
+  html { overflow-x: clip; background: var(--page); }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--page); color: var(--text); font: 15px/1.45 -apple-system, "Helvetica Neue", "Segoe UI", sans-serif; overflow-x: clip; }
+  main { width: min(640px, 100vw - 32px); padding: 40px 0 60px; }
+  h1 { margin: 0; font: italic 800 26px/1.1 "Avenir Next", "Nunito", -apple-system, "Segoe UI", sans-serif; }
+  .sub { margin: 4px 0 0; color: var(--mute); }
+  .stage { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 22px; min-height: 120px; padding: 30px 0; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .row button { font: inherit; padding: 4px 10px; }
+  .hint, .said { margin: 0 4px; color: var(--mute); } .said { min-height: 1.45em; margin-top: 8px; font-size: 13px; }
+  code { font-size: 13px; }
+  .embed body { place-items: start center; min-height: 0; } .embed h1, .embed .sub, .embed .hint, .embed .row { display: none; } .embed main { padding: 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Badge</h1>
+  <p class="sub">A small paper chip for a status, a count or a notice. Made for my-home, not from upstream.</p>
+  <div class="stage">
+  <sakuga-badge id="s" shown>Saving…</sakuga-badge>
+  <sakuga-badge id="w" kind="warn">Offline: changes kept on this phone</sakuga-badge>
+  <span>Photos <sakuga-badge id="n" count="2" label="2 requested" shown></sakuga-badge></span>
+  </div>
+  <div class="row">
+    <button id="saved">Saved</button><button id="saving">Saving…</button><button id="warn">Warn</button><button id="more">Count +1</button><button id="hide">Hide all</button>
+  </div>
+  <p class="hint">"Saved" draws the check and leaves by itself after 2.5 s (<code>done</code>, <code>duration</code>); a new text brings it back. "Warn" pops in the warning; "Hide all" shrinks them away.</p>
+  <p class="said" aria-live="polite"></p>
+</main>
+<script src="badge.js"></script>
+<script>
+// This page's own wiring. The component is all in badge.js.
+const Q = new URLSearchParams(location.search), $ = (id) => document.getElementById(id);
+if (Q.get('embed') === '1') document.documentElement.classList.add('embed');
+const s = $('s'), w = $('w'), n = $('n');
+$('saved').onclick = () => { s.shown = true; s.textContent = 'Saved'; s.setAttribute('done', ''); s.setAttribute('duration', '2.5'); };
+$('saving').onclick = () => { s.removeAttribute('done'); s.removeAttribute('duration'); s.textContent = 'Saving…'; s.shown = true; };
+$('warn').onclick = () => { w.shown = true; };
+$('more').onclick = () => { const k = +n.getAttribute('count') + 1; n.setAttribute('count', k); n.setAttribute('label', `${k} requested`); };
+$('hide').onclick = () => { for (const b of [s, w, n]) b.shown = false; };
+</script>
+</body>
+</html>

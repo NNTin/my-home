@@ -1,3 +1,7 @@
+import { useState } from 'react';
+import { HudIcon } from '../hud/HudIcon';
+import { SkBadge } from '../hud/SkBadge';
+import { SkButton } from '../hud/SkButton';
 import type { SyncStatus as SaveStatus } from '../placements/sync';
 
 /** What is going on, in a few words, for when no panel is open to say it. */
@@ -31,7 +35,7 @@ export function stageStatusText(status: StageStatus): { text: string; warn: bool
 }
 
 /**
- * What floats at the foot of the phone's 3D view: "Reset view", and a small status chip for
+ * What floats at the foot of the phone's 3D view: "Reset view", and a small status badge for
  * loading and saving, which the panels report only while they are open.
  */
 export function StageTools({
@@ -43,25 +47,29 @@ export function StageTools({
   onResetView: (() => void) | undefined;
 }) {
   const chip = stageStatusText(status);
+  // The last words stay on the badge while it shrinks away (state adjusted while rendering, when they change).
+  const [last, setLast] = useState(chip);
+  if (chip && (chip.text !== last?.text || chip.warn !== last?.warn)) setLast(chip);
+  const shown = chip ?? last;
   return (
     <div className="stage-tools">
       {onResetView && (
-        <button type="button" className="reset-view" onClick={onResetView}>
-          <span aria-hidden="true">⟲</span> Reset view
-        </button>
+        <SkButton size="compact" variant="secondary" className="reset-view" onClick={onResetView}>
+          <HudIcon name="reset" /> Reset view
+        </SkButton>
       )}
-      <span
-        // "Saved" fades out by itself; a new save shows it again.
-        key={chip?.text}
-        className={['status-chip', chip?.warn && 'warn', chip?.text === 'Saved' && 'fading']
-          .filter(Boolean)
-          .join(' ')}
+      {/* "Saved" draws its check and leaves by shrinking after a while; a new status brings it back (§4.3). */}
+      <SkBadge
+        className="status-chip"
         role="status"
         aria-label="Status"
-        hidden={!chip}
+        shown={!!chip}
+        kind={shown?.warn ? 'warn' : undefined}
+        done={chip?.text === 'Saved'}
+        duration={chip?.text === 'Saved' ? 2.5 : undefined}
       >
-        {chip?.text}
-      </span>
+        {shown?.text}
+      </SkBadge>
     </div>
   );
 }

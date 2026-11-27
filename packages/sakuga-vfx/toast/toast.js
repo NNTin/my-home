@@ -4,21 +4,30 @@
 // One file, no dependencies. Load it with a script tag, put <sakuga-toast></sakuga-toast> where the toast should appear, and call
 // el.show('Saved successfully!'). It is a role="status" region, so the message is read out. The host keeps its place on the page while
 // the toast is hidden; position it yourself (for example position: fixed; bottom: 24px; left: 24px).
+// Made here (my-home, #168): kind="warn" (a pink ! and a pink shadow, role="alert"), a width that follows the text up to 320 px,
+// and two lines before the ellipsis.
 (() => {
 function component(fx) {
 const { Spring, rnd, at, esc, lines, puff, shards, ticks, sfx, wob, dotted } = fx;
 
 class SakugaToast extends fx.Base {
+  static observedAttributes = ['kind'];
   static css = `
     :host { width: 236px; height: 56px; }
-    .toast { position: absolute; left: 0; bottom: 0; display: flex; align-items: center; gap: 10px; width: 236px; padding: 12px 14px; border: var(--sk-bw) solid var(--sk-ink); border-radius: var(--sk-r); background: var(--sk-card); box-shadow: var(--sk-sh); font-weight: 700; font-size: 15px; white-space: nowrap; visibility: hidden; will-change: transform; }
+    .toast { position: absolute; left: 0; bottom: 0; display: flex; align-items: center; gap: 10px; width: max-content; min-width: 236px; max-width: 320px; box-sizing: border-box; padding: 12px 14px; border: var(--sk-bw) solid var(--sk-ink); border-radius: var(--sk-r); background: var(--sk-card); box-shadow: var(--sk-sh); font-weight: 700; font-size: 15px; white-space: nowrap; visibility: hidden; will-change: transform; }
     .toast.on { visibility: visible; }
     .ic { display: grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--sk-pri); border: 2.4px solid var(--sk-ink); }
     .ic svg { width: 15px; height: 15px; fill: none; stroke: var(--sk-on-pri); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
-    .msg { overflow: hidden; text-overflow: ellipsis; }
+    .msg { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: normal; line-height: 1.3; }
+    :host([kind=warn]) .toast { box-shadow: 6px 7px 0 var(--sk-acc); }
+    :host([kind=warn]) .ic { background: var(--sk-card); }
+    :host([kind=warn]) .ic svg { stroke: var(--sk-acc); }
     .x { margin-left: auto; flex: none; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; background: none; font-weight: 900; font-size: 15px; cursor: pointer; }`;
   get open() { return this.state > 0 && this.state < 3; }
-  render() { return `<div class="toast" part="toast"><span class="ic" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M3.5 10.5l4.5 4.5 8.5-10"/></svg></span><span class="msg" role="status"></span><button class="x" type="button" part="close" aria-label="Dismiss">✕</button></div>`; }
+  get warn() { return this.getAttribute('kind') === 'warn'; }
+  // a warning: the ! instead of the tick, read out at once (role="alert")
+  attributeChangedCallback() { if (!this.msg) return; this.msg.setAttribute('role', this.warn ? 'alert' : 'status'); this.$('.ic path').setAttribute('d', this.warn ? WARN : TICK); }
+  render() { return `<div class="toast" part="toast"><span class="ic" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="${this.warn ? WARN : TICK}"/></svg></span><span class="msg" role="${this.warn ? 'alert' : 'status'}"></span><button class="x" type="button" part="close" aria-label="Dismiss">✕</button></div>`; }
   setup() {
     this.toast = this.$('.toast'); this.msg = this.$('.msg'); this.sx = new Spring(-280, 280, 18); this.ss = new Spring(1, 420, 26); this.state = 0; this.at0 = 0; this.t = 0;
     this.$('.x').addEventListener('click', () => this.hide());
@@ -43,6 +52,7 @@ class SakugaToast extends fx.Base {
     else if (this.state === 3 && (sc < 0.03 || fx.calm)) { this.state = 0; this.toast.classList.remove('on'); this.toast.style.transform = ''; this.ss.x = this.ss.to; this.ss.v = 0; }   // hidden: nothing left to spring
   }
 }
+const TICK = 'M3.5 10.5l4.5 4.5 8.5-10', WARN = 'M10 3.5v8M10 16.2v.3';
 fx.define('sakuga-toast', SakugaToast);
 }
 
@@ -221,8 +231,8 @@ function splash(x, y, { w = 34, h = 26, life = 0.7 } = {}) {
       g.translate(px, py); g.rotate(ang); d.moveTo(-r * 2.6, 0); d.quadraticCurveTo(-r * 0.6, -r * 1.05, r * 0.5, -r * 0.9); d.arc(r * 0.4, 0, r * 0.95, -1.4, 1.4); d.quadraticCurveTo(-r * 0.6, r * 1.05, -r * 2.6, 0); if (r > 0.5) shape(d, 1, r * 0.5); }); }
 }
 // a slash: a crescent whose head races ahead and whose tail catches up
-function slash(x, y, { len = 110, ang = -0.5, life = 0.42, thick = 15, col } = {}) {
-  const R = len * 0.9, cx = x - Math.cos(ang - Math.PI / 2) * R * 0.86, cy = y - Math.sin(ang - Math.PI / 2) * R * 0.86, a0 = ang - Math.PI / 2 - 0.62, sweep = 1.24, c = col || P.accent;
+function slash(x, y, { len = 110, ang = -0.5, life = 0.42, thick = 15, col, turn = 1 } = {}) {   // turn: -1 sweeps the other way (C5)
+  const R = len * 0.9, cx = x - Math.cos(ang - Math.PI / 2) * R * 0.86, cy = y - Math.sin(ang - Math.PI / 2) * R * 0.86, a0 = ang - Math.PI / 2 - 0.62 * turn, sweep = 1.24 * turn, c = col || P.accent;
   add(life, (k) => {
     const head = out(clamp(k / 0.42)), tail = inn(clamp((k - 0.22) / 0.78)); if (head - tail < 0.01) return;
     const cres = (T) => { const p = new Path2D(), N = 26; for (let i = 0; i <= N; i++) { const u = lerp(tail, head, i / N), a = a0 + sweep * u; p[i ? 'lineTo' : 'moveTo'](cx + Math.cos(a) * R, cy + Math.sin(a) * R); } for (let i = N; i >= 0; i--) { const q = i / N, u = lerp(tail, head, q), a = a0 + sweep * u, rr = R - T * Math.sin(q * Math.PI) ** 0.7; p.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } p.closePath(); return p; };

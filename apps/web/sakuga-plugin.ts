@@ -20,7 +20,16 @@ import type { Plugin } from 'vite';
  */
 
 /** The elements in `sakuga-hud`, in the package's `NAMES` order. A family's PR adds its own (§12). */
-export const HUD_ELEMENTS = ['button', 'slider', 'checkbox', 'input', 'tabs', 'toast'] as const;
+export const HUD_ELEMENTS = [
+  'button',
+  'slider',
+  'checkbox',
+  'input',
+  'tabs',
+  'toast',
+  'icon-button',
+  'badge',
+] as const;
 
 const CORE_START = '// >>> sakuga core';
 const CORE_END = '// <<< sakuga core';

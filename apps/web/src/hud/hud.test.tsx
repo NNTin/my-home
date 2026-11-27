@@ -2,19 +2,118 @@
 // sees them: found by role and name, driven by touch and keys, and a value from code dispatches nothing.
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { createRef } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FALLBACKS, installFallback } from './fallback';
+import { SkBadge } from './SkBadge';
 import { SkButton, type SkButtonHandle } from './SkButton';
 import { SkCheckbox } from './SkCheckbox';
+import { SkIconButton } from './SkIconButton';
 import { SkInput } from './SkInput';
 import { SkSlider } from './SkSlider';
 import { SkTabs } from './SkTabs';
-import { SkToast, type SkToastHandle } from './SkToast';
+import { SkNotice, SkToast, type SkToastHandle } from './SkToast';
 
 describe('the fallback', () => {
   it('stands in for every HUD tag, and leaves a defined one alone', () => {
     for (const tag of Object.keys(FALLBACKS)) expect(customElements.get(tag), tag).toBeDefined();
     expect(installFallback()).toEqual([]);
+  });
+});
+
+describe('SkButton, made here: label, pressed, href', () => {
+  afterEach(() => window.history.replaceState(null, '', '/'));
+
+  it('is named by its label when the text is shorter, and is a toggle when given pressed', () => {
+    const { rerender } = render(
+      <SkButton aria-label="Photos (3)" pressed={false}>
+        Photos
+      </SkButton>,
+    );
+    expect(screen.getByRole('button', { name: 'Photos (3)' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    rerender(
+      <SkButton aria-label="Photos (3)" pressed>
+        Photos
+      </SkButton>,
+    );
+    expect(screen.getByRole('button', { name: 'Photos (3)' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
+  it('is a plain button, not a toggle, without pressed', () => {
+    render(<SkButton>Walk</SkButton>);
+    expect(screen.getByRole('button', { name: 'Walk' })).not.toHaveAttribute('aria-pressed');
+  });
+
+  it('with href is a link, and a plain click goes through the router', () => {
+    render(
+      <SkButton variant="secondary" href="/catalog">
+        Catalogue
+      </SkButton>,
+    );
+    fireEvent.click(screen.getByRole('link', { name: 'Catalogue' }));
+    expect(window.location.pathname).toBe('/catalog');
+  });
+});
+
+describe('SkIconButton', () => {
+  afterEach(() => window.history.replaceState(null, '', '/'));
+
+  it('is a button named by its label, its icon decoration', () => {
+    const onClick = vi.fn();
+    render(<SkIconButton label="Rotate left" icon="rotate-left" dir="ccw" onClick={onClick} />);
+    const button = screen.getByRole('button', { name: 'Rotate left' });
+    fireEvent.click(button);
+    fireEvent.keyDown(button, { key: 'Enter' });
+    expect(onClick).toHaveBeenCalledTimes(2);
+  });
+
+  it('is a toggle with pressed, and a link with href', () => {
+    render(
+      <>
+        <SkIconButton label="Photos on the map" icon="photos" pressed />
+        <SkIconButton label="Catalogue" icon="catalogue" href="/catalog" />
+      </>,
+    );
+    expect(screen.getByRole('button', { name: 'Photos on the map' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    fireEvent.click(screen.getByRole('link', { name: 'Catalogue' }));
+    expect(window.location.pathname).toBe('/catalog');
+  });
+});
+
+describe('SkBadge', () => {
+  it('is a status while shown, gone while not, and an alert when it warns', () => {
+    const { rerender } = render(<SkBadge shown={false}>Saving…</SkBadge>);
+    expect(screen.queryByRole('status')).toBeNull();
+    rerender(<SkBadge shown>Saving…</SkBadge>);
+    expect(screen.getByRole('status')).toHaveTextContent('Saving…');
+    rerender(
+      <SkBadge shown kind="warn">
+        Offline: changes kept on this phone
+      </SkBadge>,
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('Offline');
+  });
+
+  it("keeps the page's role and name, and its data attributes", () => {
+    render(
+      <SkBadge shown role="status" aria-label="Status" data-render="x">
+        Saved
+      </SkBadge>,
+    );
+    expect(screen.getByRole('status', { name: 'Status' })).toHaveAttribute('data-render', 'x');
+  });
+
+  it('a count is decoration without a label', () => {
+    render(<SkBadge shown count={3} />);
+    expect(screen.queryByRole('img')).toBeNull();
   });
 });
 
@@ -152,6 +251,14 @@ describe('SkToast', () => {
     act(() => toast.current?.show('Not found in this home'));
     expect(screen.getByRole('status')).toHaveTextContent('Not found in this home');
     act(() => toast.current?.hide());
-    expect(screen.getByRole('status')).toHaveTextContent('');
+    // Hidden while it says nothing, as the element's toast is.
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('is an alert when it warns: SkNotice shows each new message', () => {
+    const { rerender } = render(<SkNotice message={undefined} />);
+    expect(screen.queryByRole('alert')).toBeNull();
+    rerender(<SkNotice message="The image could not be saved" />);
+    expect(screen.getByRole('alert')).toHaveTextContent('The image could not be saved');
   });
 });

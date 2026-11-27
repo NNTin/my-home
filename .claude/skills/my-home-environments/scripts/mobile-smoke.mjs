@@ -37,6 +37,44 @@ const PORTRAIT = { width: 390, height: 844 };
 const LANDSCAPE = { width: 844, height: 390 };
 /** Smallest comfortable touch target, in CSS pixels. */
 const TOUCH = 44;
+
+/**
+ * The controls among `elements` that do not take a touch `min` px across (run in the page, by
+ * `evaluateAll`). A compact Sakuga control draws a 34 px face and takes touches 44 px across inside
+ * its shadow root (docs/design/hud.md §3.3), which no box shows; so each control is hit-tested:
+ * `elementFromPoint` at the middle of each edge of the `min`-px square around its centre (or of its
+ * box, if larger), 1 px inside, and at the centre must land on the control (a probe past the screen's
+ * edge is moved onto it). The CSS reaches into shadow roots: an inner control stands for its host,
+ * which `elementFromPoint` returns for it. Corners are not probed: Chrome hit-tests rounded corners.
+ */
+function missedTouches(elements, min) {
+  const [W, H] = [document.documentElement.clientWidth, document.documentElement.clientHeight];
+  return elements
+    .filter((e) => e.getClientRects().length > 0)
+    .map((e) => {
+      const owner = e.getRootNode().host ?? e;
+      const r = e.getBoundingClientRect();
+      const [cx, cy] = [r.x + r.width / 2, r.y + r.height / 2];
+      const [w, h] = [Math.max(r.width, min) / 2 - 1, Math.max(r.height, min) / 2 - 1];
+      const missed = [
+        [cx - w, cy],
+        [cx + w, cy],
+        [cx, cy - h],
+        [cx, cy + h],
+        [cx, cy],
+      ].filter(([x, y]) => {
+        const hit = document.elementFromPoint(
+          Math.min(Math.max(x, 0), W - 1),
+          Math.min(Math.max(y, 0), H - 1),
+        );
+        return !(hit && (hit === owner || owner.contains(hit)));
+      });
+      const name = owner.getAttribute('label') ?? e.getAttribute('aria-label') ?? e.textContent;
+      return { name, missed, r };
+    })
+    .filter((e) => e.missed.length > 0)
+    .map((e) => `${e.name.trim()} ${Math.round(e.r.width)}x${Math.round(e.r.height)}`);
+}
 /** The widest the collapsed side sheet may be (it is 72 px plus the safe area), in CSS pixels. */
 const RAIL_MAX = 96;
 
@@ -1038,21 +1076,18 @@ async function smoke(out, homeId) {
     );
     const width = await page.evaluate(() => document.scrollingElement.scrollWidth);
     check('nothing is wider than the screen', width <= PORTRAIT.width, `${width} px`);
+    // A control's hit area, not its box: a compact Sakuga control draws a 34 px face and takes touches
+    // 44 px around it inside its shadow root (docs/design/hud.md §3.3), which no box shows. So each
+    // control is hit-tested: the middle of each edge of the TOUCH-px square around its centre (or of
+    // its box, if larger), 1 px inside, and the centre must land on the control itself. The CSS reaches into shadow roots: an inner
+    // control stands for its host, which `elementFromPoint` returns for it.
     const small = await page
-      .locator('.topbar button, .topbar select, .sheet-bar button, .reset-view')
-      .evaluateAll(
-        (elements, min) =>
-          elements
-            .map((e) => ({
-              name: e.getAttribute('aria-label') ?? e.textContent,
-              box: e.getBoundingClientRect(),
-            }))
-            .filter((e) => e.box.width < min || e.box.height < min)
-            .map((e) => `${e.name.trim()} ${Math.round(e.box.width)}x${Math.round(e.box.height)}`),
-        TOUCH,
-      );
+      .locator(
+        '.topbar button, .topbar select, .topbar sakuga-icon-button, .sheet-bar button, .reset-view',
+      )
+      .evaluateAll(missedTouches, TOUCH);
     check(
-      `top bar and tab bar controls are at least ${TOUCH} px`,
+      `top bar and tab bar controls take a touch at least ${TOUCH} px across`,
       small.length === 0,
       small.join(', '),
     );
@@ -1289,14 +1324,13 @@ async function smoke(out, homeId) {
         tools.y >= view.y &&
         tools.y + tools.height <= view.y + view.height + 1,
     );
-    const smallTools = await toolbar
-      .locator('button')
-      .evaluateAll(
-        (buttons, min) =>
-          buttons.filter((b) => b.offsetWidth < min || b.offsetHeight < min).map((b) => b.title),
-        TOUCH,
-      );
-    check(`its buttons are at least ${TOUCH} px`, smallTools.length === 0, smallTools.join(', '));
+    // Hit-tested like the top bar's (missedTouches): each tool takes a touch TOUCH px across, its own.
+    const smallTools = await toolbar.locator('button, a').evaluateAll(missedTouches, TOUCH);
+    check(
+      `its buttons take a touch at least ${TOUCH} px across`,
+      smallTools.length === 0,
+      smallTools.join(', '),
+    );
 
     const items = async () => active();
     /** The stored items once `done` holds for them (the app saves a moment after an edit). */

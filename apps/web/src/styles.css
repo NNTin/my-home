@@ -98,7 +98,6 @@ body {
 .walk-bar .walk-notice::before,
 .walk-compass.poor::before,
 .capture-sheet .error::before,
-.status-chip.warn::before,
 .playground-error::before,
 .piece-page .error::before {
   margin-right: 0.3em;
@@ -121,9 +120,6 @@ body {
 .walk-hud .camera-alt,
 .topbar button,
 .topbar select,
-.topbar-link,
-.reset-view,
-.hints button,
 .perf-readout button,
 .render-still-bar button,
 .piece-page button:not(.link-button, .thumbnail),
@@ -140,9 +136,6 @@ body {
 .walk-hud button,
 .walk-hud .camera-alt,
 .topbar button,
-.topbar-link,
-.reset-view,
-.hints button,
 .perf-readout button,
 .render-still-bar button,
 .piece-page button:not(.link-button, .thumbnail),
@@ -154,9 +147,6 @@ body {
 .panel button:not(.link, .thumbnail):hover:not(:disabled),
 .walk-hud button:hover:not(:disabled),
 .topbar button:hover,
-.topbar-link:hover,
-.reset-view:hover,
-.hints button:hover,
 .piece-page button:not(.link-button, .thumbnail):hover:not(:disabled),
 .piece-page .button:not(.link-button):hover {
   box-shadow: 4px 5px 0 var(--sk-soft);
@@ -205,8 +195,6 @@ body {
 .render-still-bar button:focus-visible,
 .topbar :is(button, select, a):focus-visible,
 .sheet-bar button:focus-visible,
-.reset-view:focus-visible,
-.hints button:focus-visible,
 .item-toolbar :is(button, a):focus-visible,
 .compass:focus-visible,
 .page :is(a, button, input, select, textarea, summary):focus-visible {
@@ -1383,8 +1371,7 @@ body {
 }
 
 .topbar button,
-.topbar select,
-.topbar-link {
+.topbar select {
   box-sizing: border-box;
   min-height: 2.75rem;
   font: inherit;
@@ -1406,30 +1393,27 @@ body {
   font-weight: 500;
 }
 
-.topbar-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 2.75rem;
-  text-decoration: none;
-}
-/* Three labelled actions and the home do not fit next to each other on a phone held upright. */
-@media (max-width: 440px) {
-  .topbar-label {
-    display: none;
-  }
-}
-.topbar-row button,
-.topbar-link {
+.topbar-row button {
   flex: none;
   padding: 0 0.625rem;
   white-space: nowrap;
 }
 
 /* Compact (§3.3): 13 px type, so the home, Edit, Walk, Photos and Catalogue fit at 390 px. */
-.topbar button,
-.topbar-link {
+.topbar button {
   font-size: 0.8125rem;
+}
+
+/* Walk, Photos and Catalogue are compact Sakuga elements (docs/design/hud.md §4.1). */
+.topbar-row > sakuga-button,
+.topbar-row > sakuga-icon-button {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* The count of open requests, inside Photos. */
+.topbar-count {
+  margin-left: 0.25rem;
 }
 
 /*
@@ -1890,56 +1874,14 @@ body {
   pointer-events: auto;
 }
 
-.reset-view,
-.status-chip {
-  box-sizing: border-box;
-  border: var(--hud-line-compact);
-  border-radius: var(--hud-r-compact);
-  background: var(--sk-card);
-  box-shadow: var(--hud-sh-compact);
-  color: var(--sk-ink);
-  font: inherit;
-  font-size: 0.875rem;
-  white-space: nowrap;
-}
-
-.reset-view {
-  min-height: 2.75rem;
-  padding: 0 0.875rem;
-  font-style: italic;
-  font-weight: 800;
-  cursor: pointer;
-  touch-action: manipulation;
+/* "Reset view" (a compact secondary button) and the status badge: Sakuga draws their paper. */
+.stage-tools > sakuga-button {
+  flex: none;
 }
 
 .status-chip {
-  padding: 0.375rem 0.75rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.status-chip[hidden] {
-  display: none;
-}
-
-/* A problem: ink text, a pink mark and a pink shadow. */
-.status-chip.warn {
-  box-shadow: 3px 4px 0 var(--sk-acc);
-}
-
-.status-chip.fading {
-  animation: status-fade 2.5s ease forwards;
-}
-
-@keyframes status-fade {
-  0%,
-  70% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 0;
-  }
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* First-run hints, over the foot of the 3D view until dismissed. */
@@ -1972,26 +1914,20 @@ body {
   margin-top: 0.5rem;
 }
 
-.hints button {
+/* "Got it", a compact primary, at the right. */
+.hints .hints-ok {
   display: block;
-  min-width: 6rem;
-  min-height: 2.75rem;
+  width: max-content;
   margin: 0.75rem 0 0 auto;
-  padding: 0 1rem;
-  font: inherit;
-  font-style: italic;
-  font-weight: 800;
-  cursor: pointer;
-
-  touch-action: manipulation;
 }
 
 /* The tools of the selected furniture item, floating next to it in the 3D view. */
 .item-toolbar {
   display: flex;
-  gap: 0.125rem;
+  /* 12 px: each compact tool's 44 px hit area (about 6 px past its face) is its own, not shared with its neighbour's (B26). */
+  gap: 0.75rem;
   align-items: center;
-  padding: 0.125rem;
+  padding: 0.3125rem 0.5625rem 0.5625rem 0.3125rem;
   /* A paper strip, compact (§4.3). */
   border: var(--hud-line-compact);
   border-radius: var(--hud-r-compact);
@@ -2005,8 +1941,9 @@ body {
 }
 
 .item-toolbar-name {
-  max-width: 4.5rem;
-  padding: 0 0.375rem 0 0.5rem;
+  /* With the 12 px gaps, six tools and the name fit a 360 px phone (B26). */
+  max-width: 3.5rem;
+  padding: 0 0 0 0.5rem;
   overflow: hidden;
   font-size: 0.8125rem;
   font-style: italic;
@@ -2014,39 +1951,18 @@ body {
   text-overflow: ellipsis;
 }
 
-.item-toolbar button {
-  width: 2.75rem;
-  height: 2.75rem;
-  padding: 0;
-  border: 0;
-  border-radius: 0.5rem;
-  background: none;
-  color: inherit;
-  font: inherit;
-  font-size: 1.25rem;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-.item-toolbar a.button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 2.75rem;
-  height: 2.75rem;
-  padding: 0 0.25rem;
-  box-sizing: border-box;
-  border-radius: 0.5rem;
-  color: inherit;
-  font-size: 1.25rem;
-  text-decoration: none;
-  touch-action: manipulation;
+/* Compact icon buttons (34 px, a 44 px hit area): room between them and for their hard shadow. */
+.item-toolbar > sakuga-icon-button,
+.item-toolbar > sakuga-button {
+  flex: none;
 }
 
 /* The selected window, door or gate on a phone: at the top left of the 3D view, clear of the
    compass rose in the top right corner. */
 .piece-toolbar {
   position: absolute;
+  /* Its line and padding inside its width: it stays clear of the compass. */
+  box-sizing: border-box;
   top: 0.75rem;
   left: calc(0.75rem + env(safe-area-inset-left, 0px));
   z-index: 7;
@@ -2063,27 +1979,6 @@ body {
   color: var(--sk-dim);
   font-style: normal;
   font-weight: 500;
-}
-
-/* "Open piece page": a paper button inside the strip. */
-.piece-toolbar a.button {
-  height: 2.25rem;
-  margin: 0 0.125rem;
-  padding: 0 0.75rem;
-  border: var(--hud-line-compact);
-  border-radius: calc(var(--hud-r-compact) - 3px);
-  font-size: 0.875rem;
-  font-style: italic;
-  font-weight: 800;
-}
-
-.item-toolbar button:active,
-.item-toolbar a.button:active {
-  background: var(--sk-soft);
-}
-
-.item-toolbar :is(button, a):focus-visible {
-  outline-offset: -3px;
 }
 
 /* Walking on a phone: controls a thumb can hit. */
@@ -2181,11 +2076,6 @@ body {
   .sheet .panel .toggle input::before {
     transition: none;
   }
-
-  .status-chip.fading {
-    animation-duration: 0.01s;
-    animation-delay: 2.5s;
-  }
 }
 
 /*
@@ -2263,17 +2153,12 @@ body:has(.page) {
   left: 50%;
   z-index: 6;
   transform: translateX(-50%);
-  margin: 0;
-  padding: 0.25rem 0.75rem;
-  border: var(--hud-line-compact);
-  border-radius: var(--hud-r-compact);
-  background: var(--sk-card);
-  box-shadow: 3px 4px 0 var(--sk-acc);
-  color: var(--sk-ink);
-  font-size: 0.875rem;
-  font-weight: 800;
-  white-space: nowrap;
   pointer-events: none;
+}
+
+/* Edit mode is the accent's case (B10): the badge's chip has a pink shadow. */
+.edit-badge::part(chip) {
+  box-shadow: 3px 4px 0 var(--sk-acc);
 }
 
 .page-header .edit-badge {
@@ -2380,4 +2265,51 @@ body:has(.page) {
   /* Below 16px, iOS zooms the page into a focused field. */
   font-size: 16px;
   white-space: pre;
+}
+
+/* An ink-line icon in a control's text (hud/HudIcon.tsx). */
+.hud-icon {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  margin-right: 0.15em;
+  vertical-align: -0.3em;
+}
+
+.hud-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * The viewer's warnings (sakuga-toast kind="warn"): over the foot of the view, clear of the stage
+ * tools. It never takes a touch (§8.2; B25): its host keeps its place while hidden, over the view, and
+ * it leaves by itself. Walking, it sits in the middle of the screen, clear of the pad and the map.
+ */
+.viewer-toast {
+  position: absolute;
+  bottom: 4.5rem;
+  left: calc(50% - 118px);
+  z-index: 12;
+  pointer-events: none;
+}
+
+.viewer-toast::part(toast),
+.viewer-toast::part(close) {
+  pointer-events: none;
+}
+
+.viewer.mobile .viewer-toast {
+  left: calc(0.75rem + env(safe-area-inset-left, 0px));
+}
+
+.viewer.walking .viewer-toast {
+  top: 40%;
+  bottom: auto;
+}
+
+/* A badge without Sakuga (hud/fallback.ts) shows its count as text. */
+sakuga-badge[data-count]::after {
+  content: attr(data-count);
 }

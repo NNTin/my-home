@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { HudIcon } from '../hud/HudIcon';
+import { SkButton } from '../hud/SkButton';
 
 /** Set once the hints were dismissed in this browser. */
 export const HINTS_SEEN_KEY = 'my-home.hints.seen';
@@ -23,6 +25,9 @@ export function Hints({ side }: { side: boolean }) {
   const [open, setOpen] = useState(() => !switchedOff() && !seen());
   if (!open) return null;
   const dismiss = () => {
+    // At once: "Got it" is a primary, and its front effects (ドン, the clouds) play on over the view. The panel's
+    // shrink-away comes with sakuga-panel (docs/design/hud.md §5.4); Sakuga's clock is too slow on a slow device
+    // to time the closing by (B19).
     setOpen(false);
     try {
       window.localStorage.setItem(HINTS_SEEN_KEY, new Date().toISOString());
@@ -34,21 +39,21 @@ export function Hints({ side }: { side: boolean }) {
     <aside className="hints" aria-label="How to use the viewer">
       <ul>
         <li>
-          <span aria-hidden="true">☝️</span> Drag to turn the view. Pinch to zoom, and drag with two
-          fingers to move it.
+          <HudIcon name="view" /> Drag to turn the view. Pinch to zoom, and drag with two fingers to
+          move it.
         </li>
         <li>
-          <span aria-hidden="true">🗂</span> Tap a tab {side ? 'at the side' : 'below'} to open a
-          panel, and tap it again to close it.
+          <HudIcon name="more" /> Tap a tab {side ? 'at the side' : 'below'} to open a panel, and
+          tap it again to close it.
         </li>
         <li>
-          <span aria-hidden="true">🚶</span> <strong>Walk</strong> lets you walk through the home
-          and take photos.
+          <HudIcon name="walk" /> <strong>Walk</strong> lets you walk through the home and take
+          photos.
         </li>
       </ul>
-      <button type="button" onClick={dismiss}>
+      <SkButton size="compact" className="hints-ok" onClick={dismiss}>
         Got it
-      </button>
+      </SkButton>
     </aside>
   );
 }

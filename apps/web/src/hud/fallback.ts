@@ -40,27 +40,81 @@ class Plain extends HTMLElement {
 }
 
 class FallbackButton extends Plain {
-  static override observedAttributes = ['disabled', 'label', 'pressed'];
+  static override observedAttributes = ['disabled', 'label', 'pressed', 'href'];
   override role_ = 'button';
+  get pressed() {
+    const p = this.getAttribute('pressed');
+    return p !== null && p !== 'false';
+  }
+  set pressed(v: boolean | null | undefined) {
+    if (v == null) this.removeAttribute('pressed');
+    else this.setAttribute('pressed', v ? 'true' : 'false');
+  }
   constructor() {
     super();
     this.addEventListener('keydown', (e) => {
-      if (!isKey(e, ' ', 'Enter')) return;
+      // A link acts on Enter only, as a real one does.
+      if (!isKey(e, ...(this.hasAttribute('href') ? ['Enter'] : [' ', 'Enter']))) return;
       e.preventDefault();
       this.click();
     });
     this.addEventListener('click', (e) => {
       if (this.disabled) return e.stopImmediatePropagation();
       if (this.getAttribute('type') === 'submit') this.closest('form')?.requestSubmit();
+      const href = this.getAttribute('href');
+      // A link goes where it points, unless a listener took the click (the app's router: hud/SkLink).
+      if (href !== null) queueMicrotask(() => e.defaultPrevented || location.assign(href));
     });
   }
   override sync() {
+    this.role_ = this.hasAttribute('href') ? 'link' : 'button';
+    this.setAttribute('role', this.role_);
     super.sync();
-    if (this.hasAttribute('pressed')) this.setAttribute('aria-pressed', 'true');
+    // As the element: pressed="false" is a toggle that is off; no attribute, not a toggle.
+    const pressed = this.getAttribute('pressed');
+    if (pressed !== null) this.setAttribute('aria-pressed', String(pressed !== 'false'));
     else this.removeAttribute('aria-pressed');
   }
   done() {}
   impact() {}
+}
+
+/** An icon button: a button named by its `label` (the icon is decoration). */
+class FallbackIconButton extends FallbackButton {
+  static override observedAttributes = ['disabled', 'label', 'pressed', 'href', 'icon'];
+}
+
+/** A badge: a status (an alert when it warns), shown or not; a count is named by its `label` or hidden. */
+class FallbackBadge extends HTMLElement {
+  static observedAttributes = ['shown', 'kind', 'count', 'label'];
+  private own = false;
+  get shown() {
+    return this.hasAttribute('shown');
+  }
+  set shown(v: boolean) {
+    on(this, 'shown', v);
+  }
+  connectedCallback() {
+    this.own = this.hasAttribute('role') && !this.hasAttribute('data-fallback-role');
+    this.sync();
+  }
+  attributeChangedCallback() {
+    if (this.isConnected) this.sync();
+  }
+  private sync() {
+    const count = this.getAttribute('count');
+    const label = this.getAttribute('label');
+    this.style.display = this.shown ? '' : 'none';
+    if (count !== null) {
+      if (!this.own) this.setAttribute('role', label ? 'img' : 'none');
+      if (label) this.setAttribute('aria-label', label);
+      if (label) this.removeAttribute('aria-hidden');
+      else this.setAttribute('aria-hidden', 'true');
+      this.dataset.count = count;
+    } else if (!this.own)
+      this.setAttribute('role', this.getAttribute('kind') === 'warn' ? 'alert' : 'status');
+    if (!this.own) this.setAttribute('data-fallback-role', '');
+  }
 }
 
 class FallbackCheckbox extends Plain {
@@ -232,17 +286,24 @@ class FallbackTabs extends Plain {
 }
 
 class FallbackToast extends Plain {
-  private status = document.createElement('span');
+  private status = Object.assign(document.createElement('span'), { hidden: true });
   private timer: ReturnType<typeof setTimeout> | undefined;
   get open() {
     return this.status.textContent !== '';
   }
+  static override observedAttributes = ['kind'];
   override connectedCallback() {
-    this.status.setAttribute('role', 'status');
+    this.sync();
     if (!this.status.isConnected) this.append(this.status);
+  }
+  /** A warning's message is an alert, as the element's. */
+  override sync() {
+    this.status.setAttribute('role', this.getAttribute('kind') === 'warn' ? 'alert' : 'status');
   }
   show(text?: string) {
     this.status.textContent = text ?? this.getAttribute('message') ?? '';
+    // Hidden while it says nothing, as the element's toast is.
+    this.status.hidden = !this.status.textContent;
     clearTimeout(this.timer);
     this.timer = setTimeout(
       () => this.hide(),
@@ -252,6 +313,7 @@ class FallbackToast extends Plain {
   hide() {
     clearTimeout(this.timer);
     this.status.textContent = '';
+    this.status.hidden = true;
   }
   /** Off the page: no timer left to fire. */
   disconnectedCallback() {
@@ -267,6 +329,8 @@ export const FALLBACKS: Record<string, CustomElementConstructor> = {
   'sakuga-input': FallbackInput,
   'sakuga-tabs': FallbackTabs,
   'sakuga-toast': FallbackToast,
+  'sakuga-icon-button': FallbackIconButton,
+  'sakuga-badge': FallbackBadge,
 };
 
 /** Defines a plain stand-in for every HUD tag still undefined; returns the tags it defined. */

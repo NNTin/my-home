@@ -62,6 +62,9 @@
 <script src="../rating/rating.js"></script>
 <script src="../toast/toast.js"></script>
 <script src="../tooltip/tooltip.js"></script>
+<script src="../icon-button/icon-button.js"></script>
+<script src="../badge/badge.js"></script>
+<script src="../icons/icons.js"></script>
 <script>
 // The gallery: every control live on one page, with its install line and a prompt that hands a coding agent the real file.
 const REPO = 'finktheartist/sakuga-vfx';
@@ -78,6 +81,9 @@ const ITEMS = [
   { id: 'rating', name: 'Rating', tag: 'sakuga-rating', how: 'Give it five.', html: '<sakuga-rating label="Rating"></sakuga-rating>' },
   { id: 'toast', name: 'Toast', tag: 'sakuga-toast', how: 'Press Save.', html: '<div class="toastwrap"><sakuga-button variant="secondary" data-demo="save">Save</sakuga-button><sakuga-toast></sakuga-toast></div>' },
   { id: 'tooltip', name: 'Tooltip', tag: 'sakuga-tooltip', how: 'Hover, focus or tap the button.', html: '<sakuga-tooltip text="Helpful hint!"></sakuga-tooltip>' },
+  { id: 'button', name: 'Compact button (made here)', tag: 'sakuga-button', how: 'Click it. Photos is a toggle.', html: '<sakuga-button size="compact" data-demo="compact">Walk</sakuga-button> <sakuga-button size="compact" variant="secondary" pressed="false" data-demo="toggle">Photos</sakuga-button>' },
+  { id: 'icon-button', name: 'Icon button (made here)', tag: 'sakuga-icon-button', how: 'Press each one.', html: '<sakuga-icon-button label="Rotate left" icon="rotate-left" dir="ccw"></sakuga-icon-button> <sakuga-icon-button label="Raise" icon="up" dir="up" size="compact"></sakuga-icon-button> <sakuga-icon-button label="Delete" icon="delete" hit="puff" size="compact"></sakuga-icon-button>' },
+  { id: 'badge', name: 'Badge (made here)', tag: 'sakuga-badge', how: 'Press Save, then Warn.', html: '<sakuga-button variant="secondary" data-demo="badge-save">Save</sakuga-button> <sakuga-button variant="secondary" data-demo="badge-warn">Warn</sakuga-button> <sakuga-badge data-demo="status"></sakuga-badge>' },
 ];
 
 // What each prompt says about wiring its component in. The rest of the prompt is the same for all of them.
@@ -108,6 +114,11 @@ const WIRE = {
   toast: ['Put <sakuga-toast></sakuga-toast> where my toasts should appear, and call el.show("Saved") when there is something to say. It is a status region, so the message is read out.',
     'It stays for the duration attribute (2.6 seconds by default), or until el.hide(). It has a close button.',
     'The element keeps its place on the page while the toast is hidden. Position it yourself, for example position: fixed; left: 24px; bottom: 24px.'],
+  'icon-button': ['Use <sakuga-icon-button label="..." icon="..."></sakuga-icon-button> for a tool that is an icon only, with icons/icons.js loaded after it. label is its name and is required.',
+    'dir="up|down|left|right|cw|ccw" throws its wedges the way it acts; hit="puff" is for delete. size="compact" is 34 px with a 44 px hit area.',
+    'Listen for click. pressed makes it a toggle, href a link.'],
+  badge: ['Use <sakuga-badge shown>Saving…</sakuga-badge> for a status. Set shown to make it pop in or shrink away; change its text for a squash.',
+    'done draws a check; duration="2.5" makes it leave by itself; kind="warn" is a warning (role="alert"); count="3" with label="3 open" is a count.'],
   tooltip: ['Use <sakuga-tooltip text="..." label="..."></sakuga-tooltip> next to the thing it explains. text is the hint; label is what a screen reader calls the button ("Help" by default).',
     'It opens on hover, focus and tap, and Escape closes it. Whatever is inside the element replaces the "?" on the button.'],
 };
@@ -137,7 +148,12 @@ for (const it of ITEMS) {
   grid.append(card);
   const el = card.querySelector(it.tag), say = (t) => { said.textContent = t; };   // the one line under each control that says what happened
   if (it.tag === 'sakuga-button' && el.dataset.demo === 'primary') el.addEventListener('click', () => { say('Clicked'); setTimeout(() => el.done(), 760); });
-  else if (it.tag === 'sakuga-button') el.addEventListener('click', () => say('Clicked'));
+  else if (it.tag === 'sakuga-button') { el.addEventListener('click', () => say('Clicked')); card.querySelector('[data-demo=toggle]')?.addEventListener('click', (e) => { const t = e.currentTarget; t.pressed = !t.pressed; say(`pressed: ${t.pressed}`); }); }
+  else if (it.tag === 'sakuga-icon-button') for (const b of card.querySelectorAll(it.tag)) b.addEventListener('click', () => say(`Clicked: ${b.getAttribute('label')}`));
+  else if (it.tag === 'sakuga-badge') {
+    card.querySelector('[data-demo=badge-save]').addEventListener('click', () => { el.removeAttribute('kind'); el.shown = true; el.textContent = 'Saved'; el.setAttribute('done', ''); el.setAttribute('duration', '2.5'); say('Saved'); });
+    card.querySelector('[data-demo=badge-warn]').addEventListener('click', () => { el.removeAttribute('done'); el.removeAttribute('duration'); el.setAttribute('kind', 'warn'); el.textContent = 'Offline'; el.shown = true; say('Warn'); });
+  }
   else if (it.tag === 'sakuga-toast') card.querySelector('[data-demo=save]').addEventListener('click', () => el.show('Saved successfully!'));
   else if (it.tag === 'sakuga-progress') el.addEventListener('sakuga:done', () => say('sakuga:done'));
   else if (it.tag === 'sakuga-tabs') el.addEventListener('change', (e) => say(`Tab: ${e.detail.label}`));
