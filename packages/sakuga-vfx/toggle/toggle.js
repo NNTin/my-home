@@ -44,7 +44,7 @@ class SakugaToggle extends fx.Base {
     :host([size=compact]) { width: 65px; height: 32px; margin: 9px 13px 12px; --sk-fx-scale: .6; }
     :host([size=compact]) .tog { width: 65px; height: 32px; border-radius: 16px; }
     :host([size=compact]) .tog.css { border-width: 2.5px; }
-    :host([size=compact]) .tog::before { content: ''; position: absolute; inset: -8.5px -2.5px; }   /* the 44 px hit area, inside the shadow root: from the padding box, so past the CSS switch's 2.5 px line too */
+    :host([size=compact]) .tog::before { content: ''; position: absolute; inset: -8.5px -2.5px; transform: var(--sk-unsquash, none); }   /* the 44 px hit area, inside the shadow root: from the padding box, so past the CSS switch's 2.5 px line too */
     :host([size=compact]) canvas { width: 90px; height: 97.5px; margin: -69.4px 0 0 -45px; }`;
   get checked() { return this.hasAttribute('checked'); }
   set checked(v) { this.toggleAttribute('checked', !!v); }
@@ -361,9 +361,12 @@ function squashy(el, { low = 0.82, k = 520, d = 15, wide = 0.55 } = {}) {
   el.addEventListener('pointerdown', () => { if (!el.disabled) s.to = low; });
   for (const e of ['pointerup', 'pointerleave', 'pointercancel', 'blur']) el.addEventListener(e, () => { s.to = 1; });
   return { s, pop, tilt, step(dt) { const y = s.step(dt), p = pop.step(dt), r = tilt.step(dt), still = Math.abs(y - 1) < 0.001 && Math.abs(s.v) < 0.01 && Math.abs(p - 1) < 0.001 && Math.abs(r) < 0.02;
-    el.style.transform = still ? '' : `rotate(${r}deg) scale(${(1 + (1 - y) * wide) * p}, ${y * p})`; } };
+    const sx = (1 + (1 - y) * wide) * p, sy = y * p;
+    el.style.transform = still ? '' : `rotate(${r}deg) scale(${sx}, ${sy})`;
+    // its inverse, for a hit area inside it (a ::before): a press never shrinks what a finger can hit (C6)
+    el.style.setProperty('--sk-unsquash', still ? 'none' : `scale(${1 / sx}, ${1 / sy}) rotate(${-r}deg)`); } };
 }
-const BASE_CSS = `:host{display:inline-block;position:relative;isolation:isolate;vertical-align:middle;color:var(--sk-ink);font:500 15px/1.4 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
+const BASE_CSS = `:host{--sk-unsquash:none;display:inline-block;position:relative;isolation:isolate;vertical-align:middle;color:var(--sk-ink);font:500 15px/1.4 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
 :host([hidden]){display:none}*{box-sizing:border-box}button,input{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
 :focus-visible{outline:2.5px solid var(--sk-acc);outline-offset:3px}.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 canvas.back{position:absolute;left:-160px;top:-160px;width:calc(100% + 320px);height:calc(100% + 320px);pointer-events:none;z-index:-1}`;

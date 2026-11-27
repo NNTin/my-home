@@ -6,9 +6,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FALLBACKS, installFallback } from './fallback';
 import { SkBadge } from './SkBadge';
 import { SkButton, type SkButtonHandle } from './SkButton';
+import { SkCard } from './SkCard';
 import { SkCheckbox } from './SkCheckbox';
+import { SkFold } from './SkFold';
 import { SkIconButton } from './SkIconButton';
 import { SkInput } from './SkInput';
+import { SkPanel } from './SkPanel';
 import { SkSlider } from './SkSlider';
 import { SkTabs } from './SkTabs';
 import { SkNotice, SkToast, type SkToastHandle } from './SkToast';
@@ -285,5 +288,67 @@ describe('SkToast', () => {
     expect(screen.queryByRole('alert')).toBeNull();
     rerender(<SkNotice message="The image could not be saved" />);
     expect(screen.getByRole('alert')).toHaveTextContent('The image could not be saved');
+  });
+});
+
+describe('the containers (HUD v2, #200)', () => {
+  afterEach(() => window.history.replaceState(null, '', '/'));
+
+  it('SkPanel is a region named by its label, a note complementary; arriving, it is shown after its first render', () => {
+    render(
+      <>
+        <SkPanel label="Photos" arrive>
+          <p>Six photos</p>
+        </SkPanel>
+        <SkPanel label="Perf readout" kind="note" />
+      </>,
+    );
+    expect(screen.getByRole('region', { name: 'Photos' })).toHaveTextContent('Six photos');
+    expect(screen.getByRole('complementary', { name: 'Perf readout' })).toBeInTheDocument();
+  });
+
+  it('SkFold is a group named by its title; its summary opens and closes it', () => {
+    const onClick = vi.fn();
+    render(
+      <SkFold title="Outdoor" note="4 of 4 shown">
+        <SkButton onClick={onClick}>Hide all</SkButton>
+      </SkFold>,
+    );
+    const fold = screen.getByRole('group', { name: 'Outdoor' });
+    expect(fold).not.toHaveAttribute('open');
+    expect(fold).toHaveTextContent('4 of 4 shown');
+    const summary = screen.getByRole('button', { name: 'Outdoor' });
+    expect(summary).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(summary);
+    expect(fold).toHaveAttribute('open');
+    expect(summary).toHaveAttribute('aria-expanded', 'true');
+    // A click in its body is the body's.
+    fireEvent.click(screen.getByRole('button', { name: 'Hide all' }));
+    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(fold).toHaveAttribute('open');
+    fireEvent.keyDown(summary, { key: 'Enter' });
+    expect(fold).not.toHaveAttribute('open');
+  });
+
+  it('SkCard is a link named by its label and described, its click through the router; else a toggle button', () => {
+    const onClick = vi.fn();
+    render(
+      <>
+        <SkCard href="/catalog/furniture/bed" label="Bed, 1 use" description="A double bed">
+          Bed
+        </SkCard>
+        <SkCard label="Armchair" selected={false} onClick={onClick}>
+          Armchair
+        </SkCard>
+      </>,
+    );
+    const bed = screen.getByRole('link', { name: 'Bed, 1 use' });
+    expect(bed).toHaveAccessibleDescription('A double bed');
+    fireEvent.click(bed);
+    expect(window.location.pathname).toBe('/catalog/furniture/bed');
+    const armchair = screen.getByRole('button', { name: 'Armchair' });
+    expect(armchair).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(armchair);
+    expect(onClick).toHaveBeenCalledTimes(1);
   });
 });

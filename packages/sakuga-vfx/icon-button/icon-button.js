@@ -24,7 +24,7 @@ class SakugaIconButton extends fx.Base {
     :host([size=compact]) { width: 34px; height: 34px; --sk-fx-scale: .7; }
     :host([size=compact]) .b { border-width: 2.5px; border-radius: 11px; box-shadow: 3px 4px 0 var(--sk-soft); }
     :host([size=compact]) .b svg, :host([size=compact]) ::slotted(svg) { width: 20px; height: 20px; }
-    :host([size=compact]) .b::before { content: ''; position: absolute; inset: -7.5px; }
+    :host([size=compact]) .b::before { content: ''; position: absolute; inset: -7.5px; transform: var(--sk-unsquash, none); }   /* the 44 px hit area, inside the shadow root (from the padding box: 5 px past the 2.5 px line) */
     /* made here (my-home, HUD v2 #199): appearance="clear", the resting HUD over the scene. No box at rest: the glyph and
        its label only, with a crisp contrasting edge (no blur); tone="dark" (ink, for light scenes, the default) or "light"
        (paper, for dark scenes); backing: a small flat translucent backing for a busy scene. Focus and pressed stay
@@ -38,7 +38,7 @@ class SakugaIconButton extends fx.Base {
     :host([appearance=clear][tone=light]) .b:not(.on) svg { --sk-card: var(--sk-ink); --sk-soft: color-mix(in srgb, var(--sk-ink) 60%, #000); }
     :host([appearance=clear][backing]) .b, :host([appearance=clear]) .b:hover:not(:disabled) { background: var(--sk-clear-backing); }
     :host([appearance=clear]) .b:focus-visible { box-shadow: 0 0 0 2px var(--sk-clear-edge); }
-    :host([appearance=clear]) .b.on { border-color: var(--sk-card); background: var(--sk-ink); color: var(--sk-card); }   /* the 44 px hit area, inside the shadow root (from the padding box: 5 px past the 2.5 px line) */`;
+    :host([appearance=clear]) .b.on { border-color: var(--sk-card); background: var(--sk-ink); color: var(--sk-card); }`;
 
   get disabled() { return this.hasAttribute('disabled'); }
   set disabled(v) { this.toggleAttribute('disabled', !!v); }
@@ -338,9 +338,12 @@ function squashy(el, { low = 0.82, k = 520, d = 15, wide = 0.55 } = {}) {
   el.addEventListener('pointerdown', () => { if (!el.disabled) s.to = low; });
   for (const e of ['pointerup', 'pointerleave', 'pointercancel', 'blur']) el.addEventListener(e, () => { s.to = 1; });
   return { s, pop, tilt, step(dt) { const y = s.step(dt), p = pop.step(dt), r = tilt.step(dt), still = Math.abs(y - 1) < 0.001 && Math.abs(s.v) < 0.01 && Math.abs(p - 1) < 0.001 && Math.abs(r) < 0.02;
-    el.style.transform = still ? '' : `rotate(${r}deg) scale(${(1 + (1 - y) * wide) * p}, ${y * p})`; } };
+    const sx = (1 + (1 - y) * wide) * p, sy = y * p;
+    el.style.transform = still ? '' : `rotate(${r}deg) scale(${sx}, ${sy})`;
+    // its inverse, for a hit area inside it (a ::before): a press never shrinks what a finger can hit (C6)
+    el.style.setProperty('--sk-unsquash', still ? 'none' : `scale(${1 / sx}, ${1 / sy}) rotate(${-r}deg)`); } };
 }
-const BASE_CSS = `:host{display:inline-block;position:relative;isolation:isolate;vertical-align:middle;color:var(--sk-ink);font:500 15px/1.4 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
+const BASE_CSS = `:host{--sk-unsquash:none;display:inline-block;position:relative;isolation:isolate;vertical-align:middle;color:var(--sk-ink);font:500 15px/1.4 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
 :host([hidden]){display:none}*{box-sizing:border-box}button,input{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
 :focus-visible{outline:2.5px solid var(--sk-acc);outline-offset:3px}.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 canvas.back{position:absolute;left:-160px;top:-160px;width:calc(100% + 320px);height:calc(100% + 320px);pointer-events:none;z-index:-1}`;

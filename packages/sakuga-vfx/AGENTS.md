@@ -131,6 +131,11 @@ changes come in by hand). The design is `docs/design/hud.md` §6; the README's n
   `prefers-reduced-motion` turns effects off.
 - **C5. `slash()` sweeps either way** (#168, PR 3): `turn: -1` sweeps the crescent counter-clockwise (the icon button's
   `dir="ccw"`). The default `turn: 1` computes exactly what upstream did, so no existing reaction changes.
+- **C6. A press never shrinks a hit area** (HUD v2 #200): `squashy()` writes the inverse of its transform into
+  `--sk-unsquash` on the squashed element; a hit area inside it (`::before`) applies `transform: var(--sk-unsquash,
+none)`, and `BASE_CSS`'s `:host` resets the variable so it never reaches another component. Chrome hit-tests a tap
+  again when it ends: without it, a 60 ms touch 4 px above a compact icon button clicked the page behind (its squash is
+  0.74; a primary button's 0.5).
 - Checked frame by frame on every upstream element the app uses (button primary and secondary, tabs, checkbox,
   slider, input, toast, toggle, progress), with `Math.random` seeded: at scale 1 the sheets before and after are
   the same pixel for pixel, but for CSS transitions (the wall's clock, not Sakuga's) and sub-pixel noise.
@@ -162,6 +167,8 @@ changes come in by hand). The design is `docs/design/hud.md` §6; the README's n
 - **A `::before` hit area is placed from the padding box:** `inset: -5px` reaches only 2.5 px past a 2.5 px line. Add
   the line to the inset.
 - **`aria-hidden=""` hides nothing;** write `"true"`.
+- **`tools/test.mjs` leaves its Chrome behind when it throws** (a profile `skv-*` in the temp folder): kill those
+  before the next run, they keep animating the gallery and slow every check.
 
 - `button` and `icon-button` (HUD v2 #199): `appearance="clear"`: no box at rest, a crisp edge (`-webkit-text-stroke`
   under the fill), `tone="dark|light"`, `backing`; focus with an edge ring, pressed as an ink fill with a paper edge;
@@ -179,6 +186,15 @@ Made here with the workflow above, in `NAMES`, each with a README and an `index.
   change of a select, colour or date, a pink shadow when `invalid`.
 - `badge` (PR 3, §5.12): `shown` (pops in or shrinks away; as built, no effect), `kind="warn"`, `count`, `done`,
   `duration` (leaves by itself; busy while it waits). No word.
+- `panel`, `fold`, `card`, `sheet` (HUD v2 #200 1/2, §5.4–§5.6, §5.9): `panel` is the card itself (`shown`: lands with
+  a squash and two puffs, hidden it shrinks to its top; `kind="note|dialog"`, `label`); `fold` (`open`; a person's
+  press springs the body's height and flips the chevron, `open` from code jumps; `toggle` event); `card` (a link with
+  `href`, else a button; `selected`, `description` read after its name; three ticks at its corner); `sheet` (the
+  frame of a phone sheet: `snap`, `side`, `dragging`; it springs from its size on screen to the page's CSS size,
+  measured on the next frame, and lands with two puffs; it steps by the wall's time, not the clock's capped
+  `dt`, and is done within 0.55 s, so a page under a heavy 3D view never measures it half-way; a turn to `side`
+  clears both axes). A spring that ends a layout change stops within half a
+  pixel (`Spring.still` would take a second longer on 60 px).
 
 ## Upstream changes come in by hand
 

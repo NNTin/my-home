@@ -6,6 +6,7 @@ import type { EditorSettings } from '../editor/operations';
 import type { FurnitureCategory } from '../catalog/furniture';
 import type { SyncState, SyncStatus } from '../placements/sync';
 import { Link } from '../routing';
+import { SkPanel } from '../hud/SkPanel';
 
 export interface SelectedInfo {
   name: string;
@@ -171,7 +172,7 @@ export function FurniturePanel(props: Props) {
   const set = (patch: Partial<EditorSettings>) => props.onSettings({ ...settings, ...patch });
 
   return (
-    <section className="overlay panel panel-right" aria-label="Furniture">
+    <SkPanel className="overlay panel panel-right" label="Furniture">
       <h1>Furniture</h1>
       <p className={`save-status ${sync.status}`} role="status">
         {props.loading ? 'Loading furniture…' : statusText[sync.status]}
@@ -364,6 +365,6 @@ export function FurniturePanel(props: Props) {
           </ul>
         </fieldset>
       )}
-    </section>
+    </SkPanel>
   );
 }

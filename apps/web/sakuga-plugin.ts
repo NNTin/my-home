@@ -32,6 +32,10 @@ export const HUD_ELEMENTS = [
   'badge',
   'segmented',
   'field',
+  'panel',
+  'fold',
+  'card',
+  'sheet',
 ] as const;
 
 const CORE_START = '// >>> sakuga core';

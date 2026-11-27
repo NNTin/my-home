@@ -6,6 +6,8 @@ import type { HomeScene } from '../builder/buildHome';
 import { toggleId, type Visibility } from '../builder/visibility';
 import type { Quality } from '../quality/setting';
 import { QualityControl } from './QualityControl';
+import { SkFold } from '../hud/SkFold';
+import { SkPanel } from '../hud/SkPanel';
 
 interface Props {
   scene: HomeScene;
@@ -95,7 +97,7 @@ export function ViewPanel({
   ];
 
   return (
-    <section className="overlay panel view-panel" aria-label="View controls">
+    <SkPanel className="overlay panel view-panel" label="View controls">
       <h1>View</h1>
       {/* The settings that stand alone: painted switches, their words left (§4.8, §5.13). */}
       <SkToggle
@@ -124,13 +126,13 @@ export function ViewPanel({
         .map((g) => {
           const count = g.items.filter((i) => i.shown).length;
           return (
-            <details key={g.name} className="toggle-group" aria-label={g.name}>
-              <summary>
-                {g.name}{' '}
-                <span className="note">
-                  {count} of {g.items.length} shown
-                </span>
-              </summary>
+            <SkFold
+              key={g.name}
+              className="toggle-group"
+              size="compact"
+              title={g.name}
+              note={`${count} of ${g.items.length} shown`}
+            >
               <div className="buttons" role="group" aria-label={`All ${g.name.toLowerCase()}`}>
                 <SkButton
                   size="compact"
@@ -160,9 +162,9 @@ export function ViewPanel({
                   {i.name}
                 </SkCheckbox>
               ))}
-            </details>
+            </SkFold>
           );
         })}
-    </section>
+    </SkPanel>
   );
 }

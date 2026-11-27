@@ -10,6 +10,7 @@ import { EditToggle } from '../editMode/EditToggle';
 import type { Quality } from '../quality/setting';
 import { href, keptQuery, Link } from '../routing';
 import { QualityControl } from './QualityControl';
+import { SkPanel } from '../hud/SkPanel';
 
 interface Props {
   homes: HomeSummary[];
@@ -74,7 +75,7 @@ export function ControlPanel({
   const outdoor = scene.outdoorAreas;
 
   return (
-    <section className="overlay panel" aria-label="View controls">
+    <SkPanel className="overlay panel" label="View controls">
       <h1>my-home</h1>
       {homes.length > 1 ? (
         <label className="field">
@@ -197,6 +198,6 @@ export function ControlPanel({
       </fieldset>
 
       <QualityControl quality={quality} onChange={onQuality} phone={false} />
-    </section>
+    </SkPanel>
   );
 }

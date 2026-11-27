@@ -1,5 +1,6 @@
 import { catalog, type CatalogType } from '@my-home/shared';
-import { useId, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { SkCard } from '../hud/SkCard';
 import { useLayoutMode } from '../overlay/useLayoutMode';
 import { href, keptQuery, Link, useDocumentTitle, useRestoredScroll } from '../routing';
 import './catalog.css';
@@ -24,14 +25,13 @@ function Card({
 }) {
   const [element, setElement] = useState<HTMLLIElement | null>(null);
   const thumbnail = useThumbnail(type, element);
-  const descriptionId = useId();
   const count = countOf(usage, type);
   return (
     <li ref={setElement} className="catalog-card">
-      <Link
-        to={href({ page: 'piece', kind: type.kind, typeId: type.id }, home)}
-        aria-label={count === undefined ? type.name : `${type.name}, ${usesText(count)}`}
-        aria-describedby={descriptionId}
+      <SkCard
+        href={href({ page: 'piece', kind: type.kind, typeId: type.id }, home)}
+        label={count === undefined ? type.name : `${type.name}, ${usesText(count)}`}
+        description={type.description}
         data-type-id={type.id}
       >
         <span className="catalog-thumb" aria-hidden="true">
@@ -39,14 +39,12 @@ function Card({
         </span>
         <span className="catalog-text">
           <span className="catalog-name">{type.name}</span>
-          <span className="catalog-description" id={descriptionId}>
-            {type.description}
-          </span>
+          <span className="catalog-description">{type.description}</span>
           {usage.status !== 'error' && (
             <span className="catalog-uses">{count === undefined ? '…' : usesText(count)}</span>
           )}
         </span>
-      </Link>
+      </SkCard>
     </li>
   );
 }

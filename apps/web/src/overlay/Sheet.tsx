@@ -1,4 +1,12 @@
-import { useEffect, useRef, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
+import {
+  createElement,
+  useEffect,
+  useRef,
+  type KeyboardEvent,
+  type PointerEvent,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 
 /** How much of the screen the sheet takes: only its tabs, about half, or all of it. */
 export type SheetSnap = 'collapsed' | 'half' | 'full';
@@ -123,6 +131,8 @@ export function Sheet<T extends string>({
       // Capture only now: a captured press would send the tap to the bar instead of its tab.
       e.currentTarget.setPointerCapture?.(e.pointerId);
       element.classList.add('dragging');
+      // The element stops its spring: the finger has the size.
+      element.toggleAttribute('dragging', true);
     }
     const available = element.parentElement?.getBoundingClientRect()[axis] ?? Infinity;
     element.style[axis] = `${Math.max(0, Math.min(available, d.size + delta))}px`;
@@ -140,6 +150,8 @@ export function Sheet<T extends string>({
     const collapsed = bar.current?.getBoundingClientRect()[axis] ?? 0;
     element.classList.remove('dragging');
     element.style[axis] = '';
+    // The element springs from the size the finger left to the snap's (the same snap, too).
+    element.toggleAttribute('dragging', false);
     onSnap(nearestSnap(size, available, collapsed, side));
   };
 
@@ -185,10 +197,11 @@ export function Sheet<T extends string>({
   };
 
   return (
-    <section
-      ref={sheet}
+    <SheetFrame
+      sheet={sheet}
       className={`sheet sheet-${snap}${side ? ' sheet-side' : ''}`}
-      aria-label="Panels"
+      snap={snap}
+      side={side}
     >
       <div
         ref={bar}
@@ -264,6 +277,38 @@ export function Sheet<T extends string>({
       >
         {children}
       </div>
-    </section>
+    </SheetFrame>
+  );
+}
+
+/**
+ * `<sakuga-sheet>` (packages/sakuga-vfx/sheet): the paper and the motion. A new snap springs from the size on
+ * screen (the one a drag left, too) to the page's CSS size, and lands with two puffs; the gestures and the tabs
+ * stay here (docs/design/hud-v2/visual-design.md V9).
+ */
+function SheetFrame({
+  sheet,
+  className,
+  snap,
+  side,
+  children,
+}: {
+  sheet: RefObject<HTMLElement | null>;
+  className: string;
+  snap: SheetSnap;
+  side: boolean;
+  children: ReactNode;
+}) {
+  return createElement(
+    'sakuga-sheet',
+    {
+      ref: sheet,
+      className,
+      snap,
+      side: side || undefined,
+      role: 'region',
+      'aria-label': 'Panels',
+    },
+    children,
   );
 }

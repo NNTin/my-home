@@ -6,9 +6,10 @@
 > submodule and not an npm dependency: the files live here and are owned by this repository from that commit on.
 > It is the app's HUD, and its rules are in [AGENTS.md](AGENTS.md): read that before changing anything here.
 > Changed here since (details in [AGENTS.md](AGENTS.md) § Changes made here): the clock sleeps at rest, effects scale
-> with `--sk-fx-scale`, `SakugaFX.calm` can be set by the page, `slash()` can sweep either way (`turn`); the button has
+> with `--sk-fx-scale`, `SakugaFX.calm` can be set by the page, `slash()` can sweep either way (`turn`), a press never
+> shrinks a hit area (`--sk-unsquash`); the button has
 > `size="compact"`, `href` and `pressed`, the toast `kind="warn"`; the toggle compact with lazy frames drawn over the page; compact checkbox, slider
-> and input; and elements of our own: the icon button, the badge, segmented and field (below the twelve).
+> and input; and elements of our own: the icon button, the badge, segmented, field, panel, fold, card and sheet (below the twelve).
 > Everything below this note is upstream's README as it was at that commit.
 
 Ordinary UI controls that react like anime. At rest they are plain. Use one and it squashes and overshoots on springs, and throws drawn effects around itself: smoke puffs, impact bursts, crystal chips, slashes, splashes and smoke rings, with manga sound-effect lettering (ドン!, カチッ, ズザッ). No characters, just the way a key animator would sell a hit.
@@ -39,6 +40,10 @@ Made here for my-home (not from upstream):
 | [Badge](badge/) | `<sakuga-badge>` | A small chip for a status, a count or a notice. It pops in with a puff, squashes when its text changes, draws a check with a glint when done, and leaves by shrinking. |
 | [Segmented](segmented/) | `<sakuga-segmented>` | One choice of a few: the raised piece slides, stretching, and lands with wedges, a puff and a small カチッ. |
 | [Field](field/) | `<sakuga-field>` | A paper frame around a native select, number, date, colour or textarea: wedges on focus, a give and カチッ on a change. |
+| [Panel](panel/) | `<sakuga-panel>` | A paper card that holds a part of the HUD. Shown by a person, it lands from above with a squash and two puffs; hidden, it shrinks away. |
+| [Fold](fold/) | `<sakuga-fold>` | A group that opens and closes: its chevron flips and its body springs to its height. |
+| [Card](card/) | `<sakuga-card>` | A paper card that is a link or a button: it squashes and throws three ticks from its corner. Cards come in grids, so no word. |
+| [Sheet](sheet/) | `<sakuga-sheet>` | The frame of a phone's bottom sheet: the page keeps its tabs and drag; a new snap springs and lands with two puffs. |
 
 ## The look
 

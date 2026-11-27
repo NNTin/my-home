@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sakuga Fold</title>
+<style>
+  :root { --text: #1d1a4a; --mute: #8580b0; }
+  html { overflow-x: clip; }
+  body { margin: 0; font: 15px/1.45 -apple-system, "Helvetica Neue", "Segoe UI", sans-serif; color: var(--text); background: #fff; overflow-x: clip; }
+  main { width: min(640px, 100vw - 32px); margin: 0 auto; padding: 32px 0 60px; }
+  h1 { margin: 0; font: italic 800 26px/1.1 "Avenir Next", "Nunito", -apple-system, sans-serif; }
+  .sub { margin: 4px 0 16px; color: var(--mute); }
+  .stage { position: relative; padding: 24px 0; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+  .row button { font: inherit; padding: 4px 10px; }
+  sakuga-fold { width: 320px; border-top: 2px dashed #b8b3ff; } .item { padding: 6px 2px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Fold</h1>
+  <p class="sub">A group that opens and closes, its body springing to its height. Made for my-home (#168 §5, HUD v2 #200), not from upstream.</p>
+  <div class="stage">
+  <sakuga-fold id="f"><span slot="summary">Levels</span><span slot="note">2 of 3 shown</span><div class="item">First floor (attic)</div><div class="item">Ground floor</div><div class="item">Souterrain</div></sakuga-fold>
+  <sakuga-fold id="g" open><span slot="summary">Apartments</span><span slot="note">3 of 3 shown</span><div class="item">Souterrain apartment</div><div class="item">Ground-floor apartment</div></sakuga-fold>
+  </div>
+  <div class="row"><button id="code">Open "Levels" from code</button></div>
+</main>
+<script src="fold.js"></script>
+<script>
+document.getElementById('code').onclick = () => { document.getElementById('f').open = true; };
+</script>
+</body>
+</html>

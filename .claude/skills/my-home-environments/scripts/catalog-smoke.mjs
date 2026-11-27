@@ -53,6 +53,8 @@ const MOUNTED_TYPES = {
 
 /** Smallest comfortable touch target, in CSS pixels. */
 const TOUCH = 44;
+// A type's card: a sakuga-card since HUD v2 #200 (its link is in its shadow root), a plain link before.
+const CARD = '[data-type-id]:is(a, sakuga-card)';
 const PIECE = '/catalog/furniture/furniture.bed';
 const SCREENS = [
   { label: 'desktop', viewport: { width: 1440, height: 900 } },
@@ -253,7 +255,7 @@ async function smoke(out, homeId) {
           await page.getByRole('heading', { level: 2, name: kind }).isVisible(),
         );
       }
-      const cards = page.locator('a[data-type-id]');
+      const cards = page.locator(CARD);
       const total = await cards.count();
       // #62: the fixtures are a section of their own (a build before #62 has none: skipped).
       const listed = new Set(
@@ -276,7 +278,7 @@ async function smoke(out, homeId) {
           .allTextContents()
           .catch(() => []);
         const fixtureCards = await fixtures
-          .locator('a[data-type-id]')
+          .locator(CARD)
           .evaluateAll((links) => links.map((a) => a.dataset.typeId))
           .catch(() => []);
         check(
@@ -295,7 +297,7 @@ async function smoke(out, homeId) {
       } else {
         const outdoor = page.getByRole('region', { name: 'Outdoor' });
         const outdoorCards = await outdoor
-          .locator('a[data-type-id]')
+          .locator(CARD)
           .evaluateAll((links) => links.map((a) => a.dataset.typeId))
           .catch(() => []);
         check(
@@ -348,8 +350,8 @@ async function smoke(out, homeId) {
         check(`${label}: every finish card holds its text`, spills === 0, `${spills} spill`);
       }
       const bedName = await page
-        .locator(`a[data-type-id="furniture.bed"]`)
-        .getAttribute('aria-label');
+        .locator(`${CARD}[data-type-id="furniture.bed"]`)
+        .evaluate((card) => card.getAttribute('aria-label') ?? card.getAttribute('label'));
       check(
         `${label}: a card is named with its uses`,
         /^Bed, \d+ uses?$/.test(bedName ?? ''),
@@ -418,19 +420,17 @@ async function smoke(out, homeId) {
       if (device.hasTouch) {
         const wide = await page.evaluate(() => document.scrollingElement.scrollWidth);
         check(`${label}: nothing scrolls sideways (upright)`, wide <= viewport.width, `${wide} px`);
-        const small = await page
-          .locator('a[data-type-id], .page-back, .catalog-search')
-          .evaluateAll(
-            (elements, min) =>
-              elements
-                .map((e) => ({
-                  name: e.getAttribute('aria-label') ?? e.textContent,
-                  box: e.getBoundingClientRect(),
-                }))
-                .filter((e) => e.box.height < min)
-                .map((e) => `${e.name.trim()} ${Math.round(e.box.height)} px`),
-            TOUCH,
-          );
+        const small = await page.locator(`${CARD}, .page-back, .catalog-search`).evaluateAll(
+          (elements, min) =>
+            elements
+              .map((e) => ({
+                name: e.getAttribute('aria-label') ?? e.getAttribute('label') ?? e.textContent,
+                box: e.getBoundingClientRect(),
+              }))
+              .filter((e) => e.box.height < min)
+              .map((e) => `${e.name.trim()} ${Math.round(e.box.height)} px`),
+          TOUCH,
+        );
         check(
           `${label}: cards and controls are at least ${TOUCH} px tall`,
           small.length === 0,
@@ -469,7 +469,7 @@ async function smoke(out, homeId) {
       }
 
       // 4. A card opens its page; the back button returns to the catalogue, then to the viewer.
-      await press(page.locator('a[data-type-id="furniture.bed"]'));
+      await press(page.locator(`${CARD}[data-type-id="furniture.bed"]`));
       const opened = await shows(page.getByRole('heading', { level: 1, name: /Bed/ }));
       check(`${label}: a card opens its piece page`, opened && path(page) === PIECE, page.url());
       await page.goBack();
@@ -562,12 +562,13 @@ async function smoke(out, homeId) {
       const p = pages.page;
       await p.goto(at('/catalog'), { waitUntil: 'networkidle', timeout: 60_000 });
       onHost(p);
-      await p.locator('a[data-type-id]').first().waitFor({ timeout: 30_000 });
-      const types = await p
-        .locator('a[data-type-id]')
-        .evaluateAll((links) =>
-          links.map((a) => ({ id: a.dataset.typeId, href: new URL(a.href).pathname })),
-        );
+      await p.locator(CARD).first().waitFor({ timeout: 30_000 });
+      const types = await p.locator(CARD).evaluateAll((links) =>
+        links.map((a) => ({
+          id: a.dataset.typeId,
+          href: new URL(a.getAttribute('href'), a.baseURI).pathname,
+        })),
+      );
       const cm = /^\d+\.\d cm$/;
       const shot = (name) =>
         out.replace(/\.png$/, `-${name}${device.hasTouch ? '-phone' : ''}.png`);

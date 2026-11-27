@@ -14,6 +14,7 @@ import { fovHOf, headingDegrees } from './frustum';
 import { PoseEditor } from './PoseEditor';
 import { openRequests } from './requests';
 import type { Photos } from './usePhotos';
+import { SkPanel } from '../hud/SkPanel';
 
 export interface OverlaySettings {
   /** Whether the photo is laid over the 3D view while viewing from its pose. */
@@ -327,7 +328,7 @@ export function PhotosPanel({
   );
 
   return (
-    <section className="overlay panel panel-right photos-panel" aria-label="Photos">
+    <SkPanel className="overlay panel panel-right photos-panel" label="Photos" arrive={!compact}>
       {compact ? (
         tab === 'trash' && trashSwitch
       ) : (
@@ -595,6 +596,6 @@ export function PhotosPanel({
         </>
       )}
       {compact && tab !== 'trash' && trashSwitch}
-    </section>
+    </SkPanel>
   );
 }

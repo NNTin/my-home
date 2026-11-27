@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sakuga Panel</title>
+<style>
+  :root { --text: #1d1a4a; --mute: #8580b0; }
+  html { overflow-x: clip; }
+  body { margin: 0; font: 15px/1.45 -apple-system, "Helvetica Neue", "Segoe UI", sans-serif; color: var(--text); background: #fff; overflow-x: clip; }
+  main { width: min(640px, 100vw - 32px); margin: 0 auto; padding: 32px 0 60px; }
+  h1 { margin: 0; font: italic 800 26px/1.1 "Avenir Next", "Nunito", -apple-system, sans-serif; }
+  .sub { margin: 4px 0 16px; color: var(--mute); }
+  .stage { position: relative; padding: 24px 0; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+  .row button { font: inherit; padding: 4px 10px; }
+  #p { width: 300px; min-height: 120px; padding: 14px 16px; } #p p { margin: 0 0 8px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Panel</h1>
+  <p class="sub">A paper card that holds a part of the HUD. Shown by a person, it lands; hidden, it shrinks away. Made for my-home (#168 §5, HUD v2 #200), not from upstream.</p>
+  <div class="row"><button id="show">Show</button><button id="hide">Hide</button></div>
+  <div class="stage"><sakuga-panel id="p" label="View controls" shown><p><b>View</b></p><p>Room names, plan colours, levels.</p><p>Its content is the page's, slotted.</p></sakuga-panel></div>
+</main>
+<script src="panel.js"></script>
+<script>
+const p = document.getElementById('p');
+document.getElementById('show').onclick = () => { p.shown = true; };
+document.getElementById('hide').onclick = () => { p.shown = false; };
+</script>
+</body>
+</html>

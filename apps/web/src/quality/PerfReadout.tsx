@@ -2,6 +2,7 @@ import { LiveResponse } from '@my-home/shared';
 import { useEffect, useRef, useState } from 'react';
 import type { FrameGovernor, PerfData } from './governor';
 import { perfReport, perfRows } from './perfReport';
+import { SkPanel } from '../hud/SkPanel';
 
 /**
  * The `?perf=1` readout (docs/design/realistic-render.md §10.3): a small panel over the viewer
@@ -83,7 +84,7 @@ export function PerfReadout({ governor, phone, view }: PerfReadoutProps) {
 
   // Nothing here touches the canvas or the scene: copying draws no frame.
   const copy = async () => {
-    const canvas = panel.current?.parentElement?.querySelector('canvas');
+    const canvas = panel.current?.closest('.perf-readout')?.parentElement?.querySelector('canvas');
     const report = perfReport(governor.perf(), {
       commit,
       view: view(),
@@ -107,8 +108,9 @@ export function PerfReadout({ governor, phone, view }: PerfReadoutProps) {
   };
 
   return (
-    <div className="perf-readout" ref={panel}>
-      <div className="perf-head">
+    // A note on a paper card (sakuga-panel); its fold stays a button: folded, the readings are not on the page.
+    <SkPanel className="perf-readout" kind="note" size="compact" label="Perf readout">
+      <div className="perf-head" ref={panel}>
         <button type="button" aria-expanded={open} onClick={() => setOpen(!open)}>
           Perf {open ? '▾' : '▸'}
         </button>
@@ -137,6 +139,6 @@ export function PerfReadout({ governor, phone, view }: PerfReadoutProps) {
           ))}
         </dl>
       )}
-    </div>
+    </SkPanel>
   );
 }

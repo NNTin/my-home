@@ -34,7 +34,7 @@ const check = (name, ok, got) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' 
 
 check('all eleven elements are defined', (await ev(`['button','toggle','slider','checkbox','radio','input','tabs','progress','rating','toast','tooltip'].every((n) => customElements.get('sakuga-' + n))`)));
 check('one shared core', (await ev('window.SakugaFX.version')) === 1);
-check('the four made here are defined', await ev(`['icon-button','badge','segmented','field'].every((n) => customElements.get('sakuga-' + n))`));
+check('the eight made here are defined', await ev(`['icon-button','badge','segmented','field','panel','fold','card','sheet'].every((n) => customElements.get('sakuga-' + n))`));
 { await tap('sakuga-button[data-demo=primary] >>> .btn'); await sleep(1200); check('button: tap fires click and done() lands the check', +(await ev(`${find('sakuga-button[data-demo=primary] >>> .btn')}.style.getPropertyValue('--ok')`)) > 0.5); }
 { await tap('sakuga-toggle >>> .tog'); await sleep(500); check('toggle: tap turns it on', await ev(`document.querySelector('sakuga-toggle').checked`));
   check('toggle: aria-checked follows', (await ev(`${find('sakuga-toggle >>> .tog')}.getAttribute('aria-checked')`)) === 'true'); }
@@ -61,8 +61,9 @@ check('the four made here are defined', await ev(`['icon-button','badge','segmen
 { await tap('sakuga-button[data-demo=toggle] >>> .btn'); await sleep(400); check('compact button: tap presses the toggle', (await ev(`${find('sakuga-button[data-demo=toggle] >>> .btn')}.getAttribute('aria-pressed')`)) === 'true'); }
 { const said = `document.querySelector('sakuga-icon-button').closest('section').querySelector('.said').textContent`;
   await tap('sakuga-icon-button >>> .b'); await sleep(400); check('icon button: tap fires click', (await ev(said)) === 'Clicked: Rotate left');
-  const [x, y] = await at('sakuga-icon-button[label=Raise] >>> .b', 0.5, 0); await sleep(150); await touch('touchStart', x, y - 4); await touch('touchEnd', x, y - 4); await sleep(400);
-  check('icon button: compact, a touch 4 px above its face still hits it (44 px)', (await ev(said)) === 'Clicked: Raise');
+  // A finger rests about 60 ms: the press squash has begun, and the hit area must not shrink with it (C6).
+  const [x, y] = await at('sakuga-icon-button[label=Raise] >>> .b', 0.5, 0); await sleep(150); await touch('touchStart', x, y - 4); await sleep(60); await touch('touchEnd', x, y - 4); await sleep(400);
+  check('icon button: compact, a touch 4 px above its face still hits it (44 px)', (await ev(said)) === 'Clicked: Raise', await ev(said));
   await ev(`${find('sakuga-icon-button[label=Delete] >>> .b')}.focus()`); await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, text: '\r' }); await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }); await sleep(300); check('icon button: Enter fires click', (await ev(said)) === 'Clicked: Delete'); }
 { const b = `document.querySelector('sakuga-badge')`;
   check('badge: not there before it is shown', (await ev(`${b}.getAttribute('aria-hidden')`)) === 'true');
@@ -76,6 +77,24 @@ check('the four made here are defined', await ev(`['icon-button','badge','segmen
   await ev(`${find('sakuga-segmented >>> button:nth-of-type(3)')}.focus()`); await key('ArrowRight', 39); await sleep(400); check('segmented: the arrow key wraps to the first', (await ev(`${s}.value`)) === 'fast');
   await key('End', 35); await sleep(400); check('segmented: End goes to the last', (await ev(`${s}.value`)) === 'beautiful');
   await ev(`${s}.value = 'auto'`); await sleep(200); check('segmented: a value from code moves it', (await ev(`${find('sakuga-segmented >>> button:nth-of-type(2)')}.getAttribute('aria-checked')`)) === 'true'); }
+// Made here (my-home, HUD v2 #200): the containers.
+{ const p = `document.querySelector('sakuga-panel')`;
+  check('panel: a region named by its label', (await ev(`${p}.getAttribute('role')`)) === 'region' && (await ev(`${p}.getAttribute('aria-label')`)) === 'View controls');
+  await tap('[data-demo=panel-hide] >>> .btn'); await sleep(800); check('panel: hidden, it shrinks away and takes no room', await ev(`${p}.classList.contains('gone') && ${p}.getBoundingClientRect().height === 0`));
+  await tap('[data-demo=panel-show] >>> .btn'); await sleep(800); check('panel: shown, it lands and rests untransformed', await ev(`!${p}.classList.contains('gone') && ${p}.style.transform === ''`)); }
+{ const f = `document.querySelector('sakuga-fold')`, body = find('sakuga-fold >>> .body');
+  check('fold: closed, its body is hidden', await ev(`${body}.hidden && ${find('sakuga-fold >>> .sum')}.getAttribute('aria-expanded') === 'false'`));
+  await tap('sakuga-fold >>> .sum'); await sleep(900); check('fold: tap opens it, the body at its full height', await ev(`${f}.open && !${body}.hidden && ${body}.style.height === '' && ${body}.getBoundingClientRect().height > 30`));
+  await tap('sakuga-fold >>> .sum'); await sleep(900); check('fold: tap again closes it', await ev(`!${f}.open && ${body}.hidden`));
+  await ev(`${f}.open = true`); await sleep(100); check('fold: open from code jumps', await ev(`!${body}.hidden && ${body}.style.height === ''`)); await ev(`${f}.open = false`); }
+{ const a = find('sakuga-card[data-demo=card-a] >>> .c');
+  check('card: a button named by its label, described', (await ev(`${a}.tagName`)) === 'BUTTON' && (await ev(`${a}.getAttribute('aria-label')`)) === 'Armchair' && (await ev(`${a}.getAttribute('aria-describedby')`)) === 'd');
+  await tap('sakuga-card[data-demo=card-a] >>> .c'); await sleep(500); check('card: tap selects it', (await ev(`${a}.getAttribute('aria-pressed')`)) === 'true');
+  check('card: with href, a link', (await ev(`${find('sakuga-card[data-demo=card-b] >>> .c')}.getAttribute('href')`)) === '#bed'); }
+{ const sh = `document.querySelector('sakuga-sheet')`;
+  await tap('[data-demo=sheet-full] >>> .btn'); await sleep(250); const mid = await ev(`${sh}.style.height`);
+  await sleep(1200); check('sheet: a new snap springs, then rests at the page\'s size', mid !== '' && (await ev(`${sh}.style.height`)) === '' && (await ev(`Math.round(${sh}.getBoundingClientRect().height)`)) === 240, mid);
+  await tap('[data-demo=sheet-collapsed] >>> .btn'); await sleep(1400); check('sheet: back to collapsed', (await ev(`Math.round(${sh}.getBoundingClientRect().height)`)) === 44); }
 { const sel = `document.querySelector('sakuga-field select')`;
   check('field: the native select is in the page, slotted', await ev(`!!${sel} && ${sel}.assignedSlot !== null`));
   await ev(`(() => { const s = ${sel}; s.selectedIndex = 2; s.dispatchEvent(new Event('change', { bubbles: true })); })()`); await sleep(300);
@@ -83,8 +102,8 @@ check('the four made here are defined', await ev(`['icon-button','badge','segmen
 // The clear appearance (my-home HUD v2, #199): the same control, hit area, keys and focus as the boxed one.
 { const said = `document.querySelector('[data-demo=clear]').closest('section').querySelector('.said').textContent`;
   await tap('[data-demo=clear] >>> .b'); await sleep(400); check('clear icon button: tap fires click', (await ev(said)) === 'Clicked: Views');
-  const [x, y] = await at('[data-demo=clear-btn] >>> .btn', 0.5, 0); await sleep(150); await touch('touchStart', x, y - 4); await touch('touchEnd', x, y - 4); await sleep(500);
-  check('clear compact button: a touch 4 px above its face still hits it (44 px)', (await ev(said)) === 'Clicked: Walk');
+  const [x, y] = await at('[data-demo=clear-btn] >>> .btn', 0.5, 0); await sleep(150); await touch('touchStart', x, y - 4); await sleep(60); await touch('touchEnd', x, y - 4); await sleep(500);
+  check('clear compact button: a touch 4 px above its face still hits it (44 px)', (await ev(said)) === 'Clicked: Walk', await ev(said));
   await tap('[data-demo=clear-toggle] >>> .b'); await sleep(400); check('clear icon button: pressed toggles aria-pressed', (await ev(`${find('[data-demo=clear-toggle] >>> .b')}.getAttribute('aria-pressed')`)) === 'true');
   await ev(`${find('[data-demo=clear] >>> .b')}.focus()`); await key('Tab', 9); await sleep(200); await key('Tab', 9); await key('Tab', 9); await sleep(100);
   await ev(`${find('[data-demo=clear] >>> .b')}.focus()`);

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sakuga Card</title>
+<style>
+  :root { --text: #1d1a4a; --mute: #8580b0; }
+  html { overflow-x: clip; }
+  body { margin: 0; font: 15px/1.45 -apple-system, "Helvetica Neue", "Segoe UI", sans-serif; color: var(--text); background: #fff; overflow-x: clip; }
+  main { width: min(640px, 100vw - 32px); margin: 0 auto; padding: 32px 0 60px; }
+  h1 { margin: 0; font: italic 800 26px/1.1 "Avenir Next", "Nunito", -apple-system, sans-serif; }
+  .sub { margin: 4px 0 16px; color: var(--mute); }
+  .stage { position: relative; padding: 24px 0; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+  .row button { font: inherit; padding: 4px 10px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; } .t { display: block; height: 60px; border-radius: 7px; background: #ecebff; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Card</h1>
+  <p class="sub">A paper card that is a link or a button. Cards come in grids, so no word. Made for my-home (#168 §5, HUD v2 #200), not from upstream.</p>
+  <div class="stage grid">
+  <sakuga-card id="a" label="Armchair" selected="false"><span class="t"></span><b>Armchair</b><br>2 uses</sakuga-card>
+  <sakuga-card id="b" label="Bed" selected="true"><span class="t"></span><b>Bed</b><br>1 use</sakuga-card>
+  <sakuga-card id="c" href="#bench"><span class="t"></span><b>Bench</b><br>a link</sakuga-card>
+  </div>
+</main>
+<script src="card.js"></script>
+<script>
+for (const c of document.querySelectorAll('sakuga-card:not([href])')) c.addEventListener('click', () => { c.selected = !c.selected; });
+</script>
+</body>
+</html>
