@@ -1887,6 +1887,12 @@ body {
   bottom: 1rem;
 }
 
+/* The selection's label (#201): the lower left, away from the selection and the actions. */
+.hud-bottom-left {
+  bottom: 1rem;
+  left: 1rem;
+}
+
 /* The mode, read: ink with a paper edge, as the clear controls' words (V2). */
 .hud-mode {
   color: var(--sk-ink);

@@ -96,18 +96,28 @@ export function PieceToolbar({
   name,
   typeName,
   href,
+  onDetails,
   onClose,
 }: {
   name: string;
   typeName: string;
   href: string;
+  /** Opens the inspector: the sheet's Furniture tab on the selection (HUD v2 #201). */
+  onDetails(): void;
   onClose(): void;
 }) {
   return (
     <div className="item-toolbar piece-toolbar" role="toolbar" aria-label={`${name}: piece`}>
-      <span className="item-toolbar-name">
+      {/* Its name is the label: a tap opens the inspector, as the desktop's edge label (HUD v2 #201). */}
+      <SkButton
+        className="item-toolbar-name"
+        size="compact"
+        appearance="clear"
+        aria-label={`${name}: details`}
+        onClick={onDetails}
+      >
         {name} <span className="piece-type">· {typeName}</span>
-      </span>
+      </SkButton>
       <SkButton
         size="compact"
         variant="secondary"

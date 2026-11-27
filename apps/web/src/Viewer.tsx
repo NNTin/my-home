@@ -24,6 +24,7 @@ import {
 import { furniture as furnitureTypes, UNKNOWN_SIZE } from './catalog/furniture';
 import { compassMarkers } from './compass/compass';
 import { defaultVisibility, roofIndex, roomLabels, type Visibility } from './builder/visibility';
+import { groupShown, scenePieceDraws } from './builder/drawList';
 import { canRedo, canUndo } from './editor/editorState';
 import { elevationOfItem, mountingOfItem, type EditorItem } from './editor/item';
 import {
@@ -52,6 +53,7 @@ import { rotationFromDrag } from './editor/snapping';
 import { EditBadge } from './editMode/EditToggle';
 import { useEditMode } from './editMode/editMode';
 import { HudCorners, type Surface } from './overlay/HudCorners';
+import { SelectionLabel } from './overlay/SelectionLabel';
 import {
   FurniturePanel,
   type FlaggedItem,
@@ -479,18 +481,21 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
 
   // Windows, doors, roof windows and gates: picked with a tap or click, framed by `?focus=`.
   const pieces = useMemo(() => scenePieces(scene), [scene]);
+  const pieceDraws = useMemo(() => new Map(scenePieceDraws(scene).map((p) => [p.id, p])), [scene]);
   const [selectedPieceId, setSelectedPieceId] = useState<string>();
   const selectedPiece = selectedPieceId === undefined ? undefined : pieces.get(selectedPieceId);
-  // On the desktop the furniture panel is the surface of Edit and of a selection: it opens when either starts and
-  // closes when both have ended (state adjusted while rendering, when they change; V15).
+  // On the desktop the furniture panel is Edit's surface and the selection's inspector (HUD v2 #201): it opens when
+  // Edit starts; a selection shows its label, which opens it; outside Edit it closes when the selection ends (state
+  // adjusted while rendering, when they change; V20).
   const selectionKey = `${editing}:${editor.selectedId ?? ''}:${selectedPieceId ?? ''}`;
-  // From nothing: Edit or a selection at load (?focus=) opens it too.
+  // From nothing: Edit at load opens it too.
   const [seenSelection, setSeenSelection] = useState('false::');
   if (selectionKey !== seenSelection) {
+    const wasEditing = seenSelection.startsWith('true:');
     setSeenSelection(selectionKey);
-    if (editing || editor.selectedId !== undefined || selectedPieceId !== undefined)
-      setSurface('furniture');
-    else if (surface === 'furniture') setSurface(undefined);
+    const any = editor.selectedId !== undefined || selectedPieceId !== undefined;
+    if (editing && !wasEditing) setSurface('furniture');
+    else if (!editing && !any && surface === 'furniture') setSurface(undefined);
   }
   const [highlight, setHighlight] = useState<string>();
   useEffect(() => {
@@ -526,6 +531,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
       if (piece) {
         setVisibility((v) => focusVisibility(scene, v, piece));
         selectPiece(piece.id);
+        // A link to a piece shows its details at once (V21).
+        setSurface('furniture');
         setFrame({ ...frameFor(scene, piece), key });
       } else if (item && level) {
         const size = typeOf(ctx, item)?.size ?? UNKNOWN_SIZE;
@@ -537,6 +544,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
         );
         setSelectedPieceId(undefined);
         dispatch({ type: 'select', id: item.id });
+        setSurface('furniture');
         const center: Vec3 = [item.position.x, level.elevation + size.height / 2, item.position.z];
         const radius = Math.hypot(size.width, size.depth, size.height) / 2;
         setFrame({ ...frameFor(scene, { center, radius, exterior: false }), key });
@@ -759,6 +767,12 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
 
   // What a phone shows of the selection in view mode: its name, type and piece page.
   const inspected = pieceInfo ?? (!editing && selected ? selected : undefined);
+  // The desktop's edge label: the selection while it is drawn; hidden, label and outline go together (#201).
+  const pieceDraw = selectedPieceId === undefined ? undefined : pieceDraws.get(selectedPieceId);
+  const subjectShown = selectedPieceId
+    ? !pieceDraw || groupShown(pieceDraw.group, scene, visibility)
+    : furniture.some((f) => f.id === editor.selectedId);
+  const labelled = subjectShown ? (pieceInfo ?? selected) : undefined;
 
   // Needs attention, as where-used (`/uses`) says: an unknown type, a level or room gone, or
   // parameters that are ignored.
@@ -816,7 +830,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   };
   // The desktop's open surface: the photos, or Views, Tools or the furniture panel (HUD v2 #200).
   const shown: Surface | 'photos' | undefined = photosOpen ? 'photos' : surface;
-  const toggleSurface = (next: 'views' | 'tools') => {
+  const toggleSurface = (next: Surface) => {
     // Pressed again it closes; Tools pressed over the photos (opened from it) goes back to its menu.
     closePhotos();
     setSurface(shown === next ? undefined : next);
@@ -833,7 +847,9 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
         : shown === 'views'
           ? '.hud-views'
           : shown === 'furniture'
-            ? '.hud-bottom-right .edit-toggle'
+            ? document.querySelector('.selection-label')
+              ? '.selection-label'
+              : '.hud-bottom-right .edit-toggle'
             : '.hud-tools';
       if (mobile) setPhoneTools(false);
       else {
@@ -1081,6 +1097,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
               name={inspected.name}
               typeName={inspected.typeName}
               href={inspected.href}
+              onDetails={showFurniture}
               onClose={() =>
                 selectedItem ? dispatch({ type: 'select' }) : setSelectedPieceId(undefined)
               }
@@ -1182,6 +1199,13 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
             </Sheet>
           ) : (
             <>
+              {labelled && (
+                <SelectionLabel
+                  name={labelled.name}
+                  open={shown === 'furniture'}
+                  onToggle={() => toggleSurface('furniture')}
+                />
+              )}
               <HudCorners
                 scene={scene}
                 visibility={chosenVisibility}
