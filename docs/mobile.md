@@ -42,7 +42,10 @@ at the lower right, clear controls on the scene (`HudCorners.tsx`). The corners 
 clicks and the wheel reach the 3D view between the controls. One surface opens at a time, at the right: **Views**
 (the View panel: named views, backdrop, Save image, Render, room names, plan colours, quality and Effects, the
 show/hide groups), **Tools** (the menu above), the photos (from Tools; Tools over them goes back to its menu) and the
-furniture panel, which opens by itself when Edit or a selection starts and closes when both have ended. A trigger
+furniture panel, which opens with Edit and is the selection's inspector: a selection shows a short label at the
+lower left ("Bed ›"), which opens it; a `?focus=` link opens it at once; outside Edit it closes when the selection
+ends (HUD v2 #201). On a phone the selected window, door, gate or item shows a chip at the top: its name opens the
+sheet's Furniture tab on it. A trigger
 pressed again, or Escape, closes the surface and gives the focus back to the trigger.
 
 ## Sheet

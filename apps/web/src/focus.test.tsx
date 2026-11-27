@@ -1,4 +1,4 @@
-import { act, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { frameFor, piecePageHref, scenePieces } from './placements/focus';
@@ -84,6 +84,8 @@ describe('picking a window, door or gate', () => {
     act(() => lastScene!.handlers.onSelect('souterrain-bed-1'));
     act(() => lastScene!.pieces!.onSelectPiece('souterrain-living-door'));
     expect(lastScene!.furniture.some((f) => f.selected)).toBe(false);
+    // Its label at the edge opens the inspector (HUD v2 #201).
+    fireEvent.click(screen.getByRole('button', { name: 'Living room door: details' }));
     expect(panel().getByLabelText('Selected piece')).toHaveTextContent(
       'Living room door (Interior door)',
     );

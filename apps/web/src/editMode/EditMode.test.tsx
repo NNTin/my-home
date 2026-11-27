@@ -79,7 +79,8 @@ describe('edit mode on a desktop', () => {
     expect(furniture()).toHaveLength(1);
     expect(furniture()[0]!.rotationY).toBe(bed.rotationY);
 
-    // The panel offers no way to place or change: only to inspect.
+    // The inspector, from the selection's label (HUD v2 #201), offers no way to place or change.
+    fireEvent.click(screen.getByRole('button', { name: /: details$/ }));
     expect(panel().queryByRole('group', { name: 'Bed room' })).not.toBeInTheDocument();
     for (const name of [/^Undo$/, /^Redo$/, /Rotate/, /^Duplicate$/, /^Delete$/])
       expect(panel().queryByRole('button', { name })).not.toBeInTheDocument();
@@ -91,11 +92,21 @@ describe('edit mode on a desktop', () => {
     await open();
     act(() => lastScene!.handlers.onSelect('bed-1'));
     expect(furniture()[0]!.selected).toBe(true);
+    // A short label at the edge; the inspector opens from it (HUD v2 #201).
+    expect(screen.queryByRole('region', { name: 'Furniture' })).toBeNull();
+    const label = screen.getByRole('button', { name: /: details$/ });
+    fireEvent.click(label);
+    expect(label).toHaveAttribute('aria-pressed', 'true');
     const selection = within(panel().getByLabelText('Selected item'));
     expect(selection.getByText('Bed')).toBeInTheDocument();
     expect(selection.getByRole('link', { name: /Open piece page: Bed/ })).toBeInTheDocument();
+    // Escape closes it and gives the focus back to the label.
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('region', { name: 'Furniture' })).toBeNull();
     act(() => lastScene!.handlers.onSelect(undefined));
     expect(furniture()[0]!.selected).toBe(false);
+    // Deselected: the label goes with the outline.
+    expect(screen.queryByRole('button', { name: /: details$/ })).toBeNull();
   });
 
   it('works after "Edit", says so, and stops again after "Done"', async () => {
@@ -159,6 +170,10 @@ describe('edit mode on a phone', () => {
     const before = furniture()[0]!.position;
     drag([2, 2]);
     expect(furniture()[0]!.position).toEqual(before);
+    // Details opens the inspector in the sheet: the Furniture tab on the selection (HUD v2 #201).
+    fireEvent.click(within(view).getByRole('button', { name: 'Bed: details' }));
+    expect(screen.getByRole('tab', { name: /Furniture/ })).toHaveAttribute('aria-selected', 'true');
+    expect(within(panel().getByLabelText('Selected item')).getByText('Bed')).toBeInTheDocument();
   });
 
   it('floats the tools after "Edit" and takes them away after "Done"', async () => {
