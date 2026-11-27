@@ -6,6 +6,8 @@ import { sakuga } from './sakuga';
 export const EFFECTS_KEY = 'my-home.effects';
 /** The flip of the "Effects" switch, then the effects stop (the toggle's drawing is about 1.4 s). */
 const FLIP_MS = 1500;
+/** Each choice's number: a delayed "off" does nothing once a later choice came (switched back on meanwhile). */
+let choice = 0;
 
 function stored(): boolean {
   try {
@@ -35,9 +37,13 @@ export function useEffectsSetting(): [boolean, (on: boolean) => void] {
       // Not remembered, then.
     }
     const fx = sakuga();
+    const mine = ++choice;
     if (!fx) return;
     if (next) fx.calm = false;
-    else afterEffects(FLIP_MS, () => (fx.calm = true));
+    else
+      afterEffects(FLIP_MS, () => {
+        if (mine === choice) fx.calm = true;
+      });
   };
   return [on, set];
 }
