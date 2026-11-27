@@ -240,9 +240,12 @@ function Piece({ type, layout }: { type: CatalogType; layout: ReturnType<typeof 
         <h1>
           <span aria-hidden="true">{type.icon}</span> {type.name}
         </h1>
-        <p className="piece-kind">{kindLine(type)}</p>
-        <EditToggle className="page-edit" />
-        <EditBadge />
+        {/* The kind, then Edit and its badge at the right: the switch's splash rises over the page (§5.13). */}
+        <div className="page-edit-line">
+          <p className="piece-kind">{kindLine(type)}</p>
+          <EditToggle className="page-edit" />
+          <EditBadge />
+        </div>
       </header>
       <main className="page-main">
         <p className="piece-description">{type.description}</p>

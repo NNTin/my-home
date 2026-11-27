@@ -1,3 +1,6 @@
+import { useEffectsSetting } from '../hud/effects';
+import { SkSegmented } from '../hud/SkSegmented';
+import { SkToggle } from '../hud/SkToggle';
 import { QUALITIES, qualityLabel, type Quality } from '../quality/setting';
 
 /**
@@ -13,15 +16,28 @@ export function QualityControl({
   onChange(quality: Quality): void;
   phone: boolean;
 }) {
+  const [effects, setEffects] = useEffectsSetting();
   return (
     <fieldset className="quality-control">
       <legend>Quality</legend>
-      {QUALITIES.map((q) => (
-        <label key={q} className="toggle">
-          <input type="radio" name="quality" checked={quality === q} onChange={() => onChange(q)} />{' '}
-          {qualityLabel(q, phone)}
-        </label>
-      ))}
+      {/* One choice of three: a segmented row (docs/design/hud.md §4.4), compact on a phone. */}
+      <SkSegmented
+        label="Quality"
+        size={phone ? 'compact' : undefined}
+        value={quality}
+        options={QUALITIES.map((q) => ({ value: q, label: qualityLabel(q, phone) }))}
+        onChange={onChange}
+      />
+      {/* Effects: off is calm, as reduced motion (C3, §10.4): for a slow phone or a quiet evening. */}
+      <SkToggle
+        className="toggle"
+        size="compact"
+        label="Effects"
+        checked={effects}
+        onChange={setEffects}
+      >
+        Effects
+      </SkToggle>
     </fieldset>
   );
 }

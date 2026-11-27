@@ -1,4 +1,8 @@
 import type { HomeSummary } from '@my-home/shared';
+import { SkCheckbox } from '../hud/SkCheckbox';
+import { SkSegmented } from '../hud/SkSegmented';
+import { SkToggle } from '../hud/SkToggle';
+import { shortLevelName } from './TopBar';
 import type { ReactNode } from 'react';
 import type { HomeScene } from '../builder/buildHome';
 import { roofIndex, showUpTo, toggleId, type Visibility } from '../builder/visibility';
@@ -30,6 +34,7 @@ interface Props {
   views?: ReactNode;
 }
 
+/** One of a list of show/hide settings: a compact Sakuga checkbox (docs/design/hud.md §4.2, B27). */
 function Toggle({
   label,
   checked,
@@ -40,9 +45,9 @@ function Toggle({
   onChange(): void;
 }) {
   return (
-    <label className="toggle">
-      <input type="checkbox" checked={checked} onChange={onChange} /> {label}
-    </label>
+    <SkCheckbox className="toggle" size="compact" checked={checked} onChange={onChange}>
+      {label}
+    </SkCheckbox>
   );
 }
 
@@ -85,8 +90,11 @@ export function ControlPanel({
       ) : (
         <p className="home-name">{homes.find((h) => h.id === homeId)?.name}</p>
       )}
-      <div className="buttons">
+      {/* Edit on the header's own line, below the window's top: its splash has room (§5.13). */}
+      <div className="panel-edit">
         <EditToggle />
+      </div>
+      <div className="buttons">
         <button type="button" onClick={onWalk}>
           🚶 Walk and take photos
         </button>
@@ -102,36 +110,47 @@ export function ControlPanel({
 
       <fieldset>
         <legend>Show up to level</legend>
-        <label className="toggle">
-          <input
-            type="radio"
-            name="cutaway"
-            checked={visibility.maxLevelIndex >= roofIndex(scene)}
-            onChange={() => onChange(showUpTo(scene, visibility, roofIndex(scene)))}
-          />{' '}
-          Roof
-        </label>
-        {levelsTopDown.map((l) => (
-          <label key={l.id} className="toggle">
-            <input
-              type="radio"
-              name="cutaway"
-              checked={visibility.maxLevelIndex === l.index}
-              onChange={() => onChange(showUpTo(scene, visibility, l.index))}
-            />{' '}
-            {l.name}
-          </label>
-        ))}
-        <Toggle
+        {/* One choice: a segmented row, the short names shown, the full ones read out (§4.4). */}
+        <SkSegmented
+          label="Show up to level"
+          size="compact"
+          value={
+            visibility.maxLevelIndex >= roofIndex(scene)
+              ? 'roof'
+              : (levelsTopDown.find((l) => l.index === visibility.maxLevelIndex)?.id ?? 'roof')
+          }
+          options={[
+            { value: 'roof', label: 'Roof' },
+            ...levelsTopDown.map((l) => ({
+              value: l.id,
+              label: shortLevelName(l.name),
+              name: l.name,
+            })),
+          ]}
+          onChange={(id) => {
+            const level = levelsTopDown.find((l) => l.id === id);
+            onChange(showUpTo(scene, visibility, level ? level.index : roofIndex(scene)));
+          }}
+        />
+        {/* The settings that stand alone: painted switches (§4.8). */}
+        <SkToggle
+          className="toggle"
+          size="compact"
           label="Room names"
           checked={visibility.showRoomNames}
           onChange={() => set({ showRoomNames: !visibility.showRoomNames })}
-        />
-        <Toggle
+        >
+          Room names
+        </SkToggle>
+        <SkToggle
+          className="toggle"
+          size="compact"
           label="Plan colours"
           checked={planColours}
           onChange={() => onPlanColours(!planColours)}
-        />
+        >
+          Plan colours
+        </SkToggle>
       </fieldset>
 
       <fieldset>

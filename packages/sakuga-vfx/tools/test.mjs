@@ -34,7 +34,7 @@ const check = (name, ok, got) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' 
 
 check('all eleven elements are defined', (await ev(`['button','toggle','slider','checkbox','radio','input','tabs','progress','rating','toast','tooltip'].every((n) => customElements.get('sakuga-' + n))`)));
 check('one shared core', (await ev('window.SakugaFX.version')) === 1);
-check('the two made here are defined', await ev(`['icon-button','badge'].every((n) => customElements.get('sakuga-' + n))`));
+check('the four made here are defined', await ev(`['icon-button','badge','segmented','field'].every((n) => customElements.get('sakuga-' + n))`));
 { await tap('sakuga-button[data-demo=primary] >>> .btn'); await sleep(1200); check('button: tap fires click and done() lands the check', +(await ev(`${find('sakuga-button[data-demo=primary] >>> .btn')}.style.getPropertyValue('--ok')`)) > 0.5); }
 { await tap('sakuga-toggle >>> .tog'); await sleep(500); check('toggle: tap turns it on', await ev(`document.querySelector('sakuga-toggle').checked`));
   check('toggle: aria-checked follows', (await ev(`${find('sakuga-toggle >>> .tog')}.getAttribute('aria-checked')`)) === 'true'); }
@@ -70,6 +70,16 @@ check('the two made here are defined', await ev(`['icon-button','badge'].every((
   check('badge: it arrives as a status with its text', (await ev(`${b}.getAttribute('role')`)) === 'status' && (await ev(`${b}.textContent`)) === 'Saved' && !(await ev(`${b}.hasAttribute('aria-hidden')`)));
   await sleep(2700); check('badge: it leaves by itself after its duration', (await ev(`${b}.getAttribute('aria-hidden')`)) === 'true');
   await tap('[data-demo=badge-warn] >>> .btn'); await sleep(600); check('badge: a warning is an alert', (await ev(`${b}.getAttribute('role')`)) === 'alert'); }
+{ const s = `document.querySelector('sakuga-segmented')`;
+  await tap('sakuga-segmented >>> button:nth-of-type(3)'); await sleep(600); check('segmented: tap picks the third', (await ev(`${s}.value`)) === 'beautiful');
+  check('segmented: aria-checked follows', (await ev(`${find('sakuga-segmented >>> button:nth-of-type(3)')}.getAttribute('aria-checked')`)) === 'true');
+  await ev(`${find('sakuga-segmented >>> button:nth-of-type(3)')}.focus()`); await key('ArrowRight', 39); await sleep(400); check('segmented: the arrow key wraps to the first', (await ev(`${s}.value`)) === 'fast');
+  await key('End', 35); await sleep(400); check('segmented: End goes to the last', (await ev(`${s}.value`)) === 'beautiful');
+  await ev(`${s}.value = 'auto'`); await sleep(200); check('segmented: a value from code moves it', (await ev(`${find('sakuga-segmented >>> button:nth-of-type(2)')}.getAttribute('aria-checked')`)) === 'true'); }
+{ const sel = `document.querySelector('sakuga-field select')`;
+  check('field: the native select is in the page, slotted', await ev(`!!${sel} && ${sel}.assignedSlot !== null`));
+  await ev(`(() => { const s = ${sel}; s.selectedIndex = 2; s.dispatchEvent(new Event('change', { bubbles: true })); })()`); await sleep(300);
+  check('field: a change reaches the page', (await ev(`document.querySelector('sakuga-field').closest('section').querySelector('.said').textContent`)) === 'change: Studio, dark'); }
 check('no horizontal scroll at 390', (await ev('document.documentElement.scrollWidth')) <= 390, await ev('document.documentElement.scrollWidth'));
 if (logs.length) { console.log(logs.join('\n')); fails++; }
 ws.close(); chrome.kill(); await sleep(300); try { rmSync(PROFILE, { recursive: true, force: true }); } catch {} process.exit(fails ? 1 : 0);

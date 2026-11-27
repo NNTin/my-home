@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { EditToggle } from '../editMode/EditToggle';
 import { HudIcon } from '../hud/HudIcon';
 import { SkBadge } from '../hud/SkBadge';
 import { SkButton } from '../hud/SkButton';
@@ -53,6 +54,8 @@ export function StageTools({
   const shown = chip ?? last;
   return (
     <div className="stage-tools">
+      {/* Edit, here and not in the top bar: its splash rises over the view (§5.13). */}
+      <EditToggle className="stage-edit" />
       {onResetView && (
         <SkButton size="compact" variant="secondary" className="reset-view" onClick={onResetView}>
           <HudIcon name="reset" /> Reset view

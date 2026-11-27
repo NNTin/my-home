@@ -3,6 +3,9 @@
 // - the main chunk (the entry and everything it imports statically) has not grown beyond its budget;
 // - each lazy chunk is within its budget and is not imported statically by the main chunk; a lazy entry's
 //   `files` are assets it fetches (the denoiser's weights), counted as they are: the server does not gzip them;
+// - a lazy entry with an `ext` other than `.js` is a file fetched lazily (the painted toggle's WebP frames,
+//   docs/design/hud.md §9.4), counted as sent; it must not be named in index.html (it is no part of the first load)
+//   and its bytes must not be in the main chunk (only its URL: not inlined as a data URL);
 // - each script that loads first (a classic <script src> in index.html, ahead of the main chunk: the loading
 //   bar, docs/loading.md) is within its budget. It also prints what the first load fetches in all: index.html,
 //   those scripts, the main chunk and its CSS.
@@ -81,9 +84,12 @@ function main() {
     failures.push(`the main chunk grew by ${kB(growth)}, more than ${kB(maxGrowthGzipBytes)}`);
 
   const assets = readdirSync(path.join(dist, 'assets')).map((name) => `assets/${name}`);
+  const html = readFileSync(path.join(dist, 'index.html'), 'utf8');
+  const mainCode = chunks.map((file) => readFileSync(path.join(dist, file), 'utf8'));
   for (const [name, lazy] of Object.entries(budget.lazy ?? {})) {
+    const ext = lazy.ext ?? '.js';
     const files = assets.filter(
-      (file) => path.basename(file).startsWith(`${name}-`) && file.endsWith('.js'),
+      (file) => path.basename(file).startsWith(`${name}-`) && file.endsWith(ext),
     );
     if (files.length === 0) {
       if (lazy.required)
@@ -91,7 +97,22 @@ function main() {
       else console.log(`${name.padEnd(13)} not built yet`);
       continue;
     }
-    const codeSize = files.reduce((sum, file) => sum + gzipped(file), 0);
+    // A file that is not code is sent as it is (WebP compresses itself; the server does not gzip it).
+    const codeSize = files.reduce(
+      (sum, file) => sum + (ext === '.js' ? gzipped(file) : raw(file)),
+      0,
+    );
+    if (ext !== '.js')
+      for (const file of files) {
+        if (html.includes(file))
+          failures.push(`the lazy file ${file} is named in index.html: it would load first`);
+        // Inlined, the main chunk would hold the file as base64 (a data URL) instead of its URL.
+        const head = readFileSync(path.join(dist, file)).subarray(0, 48).toString('base64');
+        if (mainCode.some((code) => code.includes(head)))
+          failures.push(
+            `the main chunk holds the bytes of the lazy file ${file}, not only its URL`,
+          );
+      }
     const fetched = [];
     for (const prefix of lazy.files ?? []) {
       const found = assets.filter((file) => path.basename(file).startsWith(`${prefix}-`));

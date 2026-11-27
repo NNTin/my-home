@@ -8,6 +8,8 @@
     "render-beautiful": { "maxGzipBytes": 150000, "required": true },
     "render-views": { "maxGzipBytes": 20000, "required": true },
     "render-path": { "maxGzipBytes": 340000, "required": true },
-    "render-denoise": { "maxGzipBytes": 781000, "required": true, "files": ["oidn-small"] }
+    "render-denoise": { "maxGzipBytes": 781000, "required": true, "files": ["oidn-small"] },
+    "sakuga-toggle-rest": { "maxGzipBytes": 12000, "required": true, "ext": ".webp" },
+    "sakuga-toggle-frames": { "maxGzipBytes": 360000, "required": true, "ext": ".webp" }
   }
 }

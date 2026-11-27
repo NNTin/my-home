@@ -24,8 +24,9 @@ const override: OpeningOverride = {
 };
 
 const header = () => within(document.querySelector('.page-header') as HTMLElement);
-const edit = () => header().getByRole('button', { name: 'Edit' });
-const done = () => header().getByRole('button', { name: 'Done' });
+const edit = () => header().getByRole('switch', { name: 'Edit' });
+/** "Done" is the same switch, turned off. */
+const done = edit;
 
 afterEach(() => {
   cleanup();
@@ -42,7 +43,7 @@ describe('the piece page in view mode', () => {
     );
     await screen.findByText(/uses? in this environment/);
     expect(isEditMode()).toBe(false);
-    expect(edit()).toHaveAttribute('aria-pressed', 'false');
+    expect(edit()).not.toBeChecked();
     expect(screen.queryByRole('status', { name: 'Edit mode' })).not.toBeInTheDocument();
 
     const row = rowOf('mock-home', kitchen);

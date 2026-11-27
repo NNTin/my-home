@@ -2,6 +2,8 @@
 // Turn it on and the knob smears across with a torn tail, slams into the end and throws up a splash crown, and the track floods,
 // sloshes and settles with a glint. Turn it off and the dash plays back. 43 frames, painted with GPT Image from a sheet of keyframes,
 // played at 30 a second. The frames are inside this file as one sprite sheet (about 350 KB), so there is nothing else to fetch.
+// Made here (my-home, #168): size=compact (the drawing at 0.6, a 44 px hit area), frames from URLs (SakugaToggle.frames), the flip
+// drawn on the page's effects canvas, a CSS switch until the frames are there, and a 15 px margin above instead of 89.
 //
 // One file, no dependencies. Load it with a script tag and use <sakuga-toggle label="Notifications"></sakuga-toggle>.
 // Read el.checked. It fires change when someone flips it. With a name, it is sent with its form like a checkbox.
@@ -9,18 +11,41 @@
 function component(fx) {
 const N = 43, FPS = 30, FW = 300, FH = 325, COLS = 8;
 const ON = Array.from({ length: N }, (_, i) => i), OFF = [11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0];
-let sheet = null;   // one decoded image for every toggle on the page
-const getSheet = () => sheet || (sheet = Object.assign(new Image(), { src: SHEET }));
+// Made here (my-home, #168, docs/design/hud.md §5.13): the frames can come from two URLs the page gives
+// (SakugaToggle.frames = { rest, all }): the two rest frames first, small, and all 43 only when a flip may play
+// (warm(), or the first press), never while effects are calm. Without them, the sheet inside this file, as upstream.
+const toggles = new Set();
+let sheet = null, rest = null;   // one decoded image each, for every toggle on the page
+const ready = (img) => !!img && img.complete && img.naturalWidth > 0;
+const repaint = () => { for (const t of toggles) t.rest_(); };
+const load = (url) => { const img = new Image(); img.addEventListener('load', repaint, { once: true }); img.src = url; return img; };
+function getSheet() { if (sheet) return sheet; const f = SakugaToggle.frames, url = f ? f.all : SHEET; if (!url || (f && fx.calm)) return null; return (sheet = load(url)); }
+function getRest() { const f = SakugaToggle.frames; if (!rest && f?.rest) rest = load(f.rest); return rest; }
 
 class SakugaToggle extends fx.Base {
   static delegates = true;
   static formAssociated = true;
   static observedAttributes = ['checked', 'disabled', 'label'];
+  static frames_ = null;
+  static get frames() { return this.frames_; }
+  static set frames(f) { this.frames_ = f; repaint(); }
+  // fetch all the frames now (the page calls it on idle), so the first flip plays the drawing
+  static warm() { getSheet(); }
   static css = `
-    :host { width: 108px; height: 54px; margin: 89px 21px 20px; }   /* the drawing is bigger than the button: this keeps room for all of it */
+    :host { width: 108px; height: 54px; margin: 15px 21px 20px; }   /* at rest only the "on" glint rises 14 px above: the flip is drawn over the page */
     .tog { position: relative; display: block; width: 108px; height: 54px; padding: 0; border: 0; border-radius: 27px; background: none; cursor: pointer; }
     .tog:disabled { cursor: not-allowed; opacity: .5; }
-    canvas { position: absolute; left: 50%; top: 50%; width: 150px; height: 162.5px; margin: -115.6px 0 0 -75px; pointer-events: none; }`;
+    canvas { position: absolute; left: 50%; top: 50%; width: 150px; height: 162.5px; margin: -115.6px 0 0 -75px; pointer-events: none; }
+    /* until the frames are there: a switch in CSS, paper and the ink line, a white knob, the track primary when on */
+    .tog.css { box-sizing: border-box; border: 3.2px solid var(--sk-ink); background: var(--sk-card); }
+    .tog.css::after { content: ''; position: absolute; top: 50%; left: 4px; width: 38%; aspect-ratio: 1; box-sizing: border-box; border: 2.5px solid var(--sk-ink); border-radius: 50%; background: var(--sk-card); transform: translateY(-50%); }
+    .tog.css[aria-checked=true] { background: var(--sk-pri); }
+    .tog.css[aria-checked=true]::after { left: auto; right: 4px; }
+    :host([size=compact]) { width: 65px; height: 32px; margin: 9px 13px 12px; --sk-fx-scale: .6; }
+    :host([size=compact]) .tog { width: 65px; height: 32px; border-radius: 16px; }
+    :host([size=compact]) .tog.css { border-width: 2.5px; }
+    :host([size=compact]) .tog::before { content: ''; position: absolute; inset: -8.5px -2.5px; }   /* the 44 px hit area, inside the shadow root: from the padding box, so past the CSS switch's 2.5 px line too */
+    :host([size=compact]) canvas { width: 90px; height: 97.5px; margin: -69.4px 0 0 -45px; }`;
   get checked() { return this.hasAttribute('checked'); }
   set checked(v) { this.toggleAttribute('checked', !!v); }
   get disabled() { return this.hasAttribute('disabled'); }
@@ -28,37 +53,56 @@ class SakugaToggle extends fx.Base {
   get value() { return this.getAttribute('value') || 'on'; }
   attributeChangedCallback(name) {
     if (!this.b) return;
-    if (name === 'checked') { const on = this.checked; this.b.setAttribute('aria-checked', String(on)); if (!this.flipping) { this.seq = [on ? N - 1 : 0]; this.pos = 0; } this.form(); }
+    // set from code: straight to the end frame, without the drawing
+    if (name === 'checked') { const on = this.checked; this.b.setAttribute('aria-checked', String(on)); if (!this.flipping) { this.stop(); this.seq = [on ? N - 1 : 0]; this.pos = 0; this.rest_(); } this.form(); }
     if (name === 'disabled') this.b.disabled = this.disabled;
     if (name === 'label') this.b.setAttribute('aria-label', this.getAttribute('label') || 'Toggle');
   }
   form() { this.internals.setFormValue(this.checked ? this.value : null); }
   render() {
-    return `<button class="tog" type="button" role="switch" part="switch" aria-checked="${this.checked}" aria-label="${fx.esc(this.getAttribute('label') || 'Toggle')}"${this.disabled ? ' disabled' : ''}><canvas width="${FW}" height="${FH}" aria-hidden="true"></canvas></button>`;
+    return `<button class="tog" type="button" role="switch" part="switch" aria-checked="${this.checked}" aria-label="${fx.esc(this.getAttribute('label') || 'Toggle')}"${this.disabled ? ' disabled' : ''}><canvas class="art" width="${FW}" height="${FH}" aria-hidden="true"></canvas></button>`;
   }
   setup() {
-    this.b = this.$('.tog'); this.c = this.$('canvas').getContext('2d');
+    this.b = this.$('.tog'); this.cv = this.$('canvas'); this.c = this.cv.getContext('2d');
     this.seq = [this.checked ? N - 1 : 0]; this.pos = 0; this.acc = 0; this.shown = -1;
-    const img = getSheet(); if (!img.complete) img.addEventListener('load', () => this.draw(this.cur()), { once: true });
     this.b.addEventListener('click', () => this.flip());
-    this.form();
+    this.form(); this.rest_();
   }
-  // what a click does: flip it and play the drawing
+  connectedCallback() { super.connectedCallback(); toggles.add(this); if (this.b) this.rest_(); }
+  disconnectedCallback() { super.disconnectedCallback(); toggles.delete(this); this.stop(); }
+  // what a click does: flip it and play the drawing (once all the frames are there; before, it jumps to the end)
   flip() {
-    if (this.disabled) return; const on = !this.checked;
+    if (this.disabled) return; const on = !this.checked, img = getSheet();
     this.flipping = true; this.checked = on; this.flipping = false;
-    this.seq = on ? ON : OFF; this.pos = fx.calm ? this.seq.length - 1 : 0; this.acc = 0; this.draw(this.cur());
+    this.seq = on ? ON : OFF; this.pos = fx.calm || !ready(img) ? this.seq.length - 1 : 0; this.acc = 0;
+    if (this.pos < this.seq.length - 1) this.play(img); else this.rest_();
     this.dispatchEvent(new Event('change', { bubbles: true }));
   }
   busy() { return this.pos < this.seq.length - 1; }   // the drawing plays
   cur() { return this.seq[Math.min(this.seq.length - 1, this.pos)]; }
-  draw(i) {
-    const img = getSheet(); if (!img.complete || !img.naturalWidth) return;
-    this.c.clearRect(0, 0, FW, FH); this.c.drawImage(img, (i % COLS) * FW, Math.floor(i / COLS) * FH, FW, FH, 0, 0, FW, FH); this.shown = i;
+  // the drawing plays on the page's effects canvas at this switch's place: no scrolling panel clips the splash
+  play(img) {
+    this.stop(); let handed = false;
+    const p = this.p = fx.persist(() => { const r = this.cv.getBoundingClientRect(), i = this.cur();
+      // handed over on the first frame drawn over the page, never a frame with the switch on neither canvas
+      if (!handed) { handed = true; this.c.clearRect(0, 0, FW, FH); this.shown = -1; }
+      fx.g.drawImage(img, (i % COLS) * FW, Math.floor(i / COLS) * FH, FW, FH, r.left + scrollX, r.top + scrollY, r.width, r.height); }, undefined, this);
+    p.o = null;   // drawn at its own size: the frames are the drawing, not an effect to scale
   }
+  stop() { if (this.p) { this.p.dead = true; this.p = null; } }
+  // a frame at rest on its own canvas: from all the frames, or the two rest frames, or the CSS switch until either is there
+  rest_() {
+    if (!this.c || this.p) return;
+    const i = this.cur(), all = ready(sheet) ? sheet : (SakugaToggle.frames ? null : getSheet()), r = getRest();
+    if (ready(all)) this.paint(all, (i % COLS) * FW, Math.floor(i / COLS) * FH, i);
+    else if (ready(r) && (i === 0 || i === N - 1)) this.paint(r, i === 0 ? 0 : FW, 0, i);
+    else { this.b.classList.add('css'); this.c.clearRect(0, 0, FW, FH); this.shown = -1; }
+  }
+  paint(img, sx, sy, i) { this.b.classList.remove('css'); this.c.clearRect(0, 0, FW, FH); this.c.drawImage(img, sx, sy, FW, FH, 0, 0, FW, FH); this.shown = i; }
   frame(dt) {
     if (this.pos < this.seq.length - 1) { this.acc += dt * FPS; while (this.acc >= 1 && this.pos < this.seq.length - 1) { this.acc -= 1; this.pos++; } }
-    if (this.cur() !== this.shown) this.draw(this.cur());
+    if (this.p && this.pos >= this.seq.length - 1) { this.stop(); this.rest_(); }   // the end: handed back to its own canvas
+    else if (!this.p && this.cur() !== this.shown) this.rest_();
   }
 }
 fx.define('sakuga-toggle', SakugaToggle);

@@ -1,12 +1,11 @@
 import type { HomeSummary } from '@my-home/shared';
-import type { KeyboardEvent } from 'react';
 import type { HomeScene } from '../builder/buildHome';
 import { roofIndex, showUpTo, type Visibility } from '../builder/visibility';
-import { EditToggle } from '../editMode/EditToggle';
 import { HudIcon } from '../hud/HudIcon';
 import { SkBadge } from '../hud/SkBadge';
 import { SkButton } from '../hud/SkButton';
 import { SkIconButton } from '../hud/SkIconButton';
+import { SkSegmented } from '../hud/SkSegmented';
 import { href, keptQuery } from '../routing';
 
 interface Props {
@@ -62,18 +61,6 @@ export function TopBar({
   const chosen = Math.min(visibility.maxLevelIndex, roof);
   const choose = (index: number) => onChange(showUpTo(scene, visibility, index));
 
-  // A radio group moves with the arrow keys and has one tab stop.
-  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
-    if (step === undefined) return;
-    e.preventDefault();
-    const at = options.findIndex((o) => o.index === chosen);
-    const next = options[(at + step + options.length) % options.length];
-    if (!next) return;
-    choose(next.index);
-    e.currentTarget.querySelector<HTMLElement>(`[data-level="${next.id}"]`)?.focus();
-  };
-
   return (
     <div className="topbar" role="toolbar" aria-label="Home, walking, photos, catalogue and level">
       <div className="topbar-row">
@@ -93,7 +80,6 @@ export function TopBar({
         ) : (
           <span className="topbar-home">{homes.find((h) => h.id === homeId)?.name}</span>
         )}
-        <EditToggle />
         {/* Compact Sakuga buttons (docs/design/hud.md §4.1): Walk is the primary (ドン), Photos a toggle. */}
         <SkButton size="compact" aria-label="Walk and take photos" onClick={onWalk}>
           <HudIcon name="walk" /> Walk
@@ -117,28 +103,18 @@ export function TopBar({
           href={href({ page: 'catalog' }, keptQuery())}
         />
       </div>
-      <div
+      {/* The cutaway level: a compact segmented row (docs/design/hud.md §4.1), one tab stop, arrow keys. */}
+      <SkSegmented
         className="segmented"
-        role="radiogroup"
-        aria-label="Show up to level"
-        onKeyDown={onKeyDown}
-      >
-        {options.map((o) => (
-          <button
-            key={o.id}
-            type="button"
-            role="radio"
-            data-level={o.id}
-            aria-checked={o.index === chosen}
-            aria-label={o.name}
-            title={o.name}
-            tabIndex={o.index === chosen ? 0 : -1}
-            onClick={() => choose(o.index)}
-          >
-            {o.label}
-          </button>
-        ))}
-      </div>
+        size="compact"
+        label="Show up to level"
+        value={options.find((o) => o.index === chosen)?.id ?? 'roof'}
+        options={options.map((o) => ({ value: o.id, label: o.label, name: o.name }))}
+        onChange={(id) => {
+          const o = options.find((x) => x.id === id);
+          if (o) choose(o.index);
+        }}
+      />
     </div>
   );
 }

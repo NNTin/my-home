@@ -123,7 +123,7 @@ describe('"Render" in the Views control', () => {
     expect(screen.queryByTestId('still')).toBeNull();
     // Render mode is off again, and the view is the one it was.
     await waitFor(() => expect(renderButton()).toHaveAttribute('aria-pressed', 'false'));
-    expect(screen.getByRole('button', { name: 'Cutaway' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('radio', { name: 'Cutaway' })).toHaveAttribute('aria-checked', 'true');
     expect(new URLSearchParams(window.location.search).get('view')).toBe('cutaway');
   });
 
@@ -148,7 +148,7 @@ describe('"Render" in the Views control', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     await waitFor(() => expect(screen.queryByTestId('still')).toBeNull());
     expect(renderButton()).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.getByRole('button', { name: 'Section' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('radio', { name: 'Section' })).toHaveAttribute('aria-checked', 'true');
   });
 
   it('names the still of the free view "free"', async () => {

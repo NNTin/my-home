@@ -18,7 +18,10 @@ class SakugaCheckbox extends fx.Base {
     svg { width: 26px; height: 26px; fill: none; stroke: var(--sk-tick); stroke-width: 4.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 30; stroke-dashoffset: 30; transition: stroke-dashoffset .24s cubic-bezier(.2, .9, .3, 1) .08s; }
     input:checked + .box svg { stroke-dashoffset: 0; }
     input:focus-visible + .box { outline: 2.5px solid var(--sk-acc); outline-offset: 3px; }
-    :host([disabled]) label { opacity: .5; cursor: not-allowed; }`;
+    :host([disabled]) label { opacity: .5; cursor: not-allowed; }
+    :host([size=compact]) { --sk-fx-scale: .7; }   /* made here (my-home): the phone's size, a 44 px row */
+    :host([size=compact]) label { gap: 9px; min-height: 44px; } :host([size=compact]) .box { width: 26px; height: 26px; border-width: 2.5px; border-radius: 7px; box-shadow: 3px 4px 0 var(--sk-soft); }
+    :host([size=compact]) svg { width: 18px; height: 18px; stroke-width: 4; }`;
   get checked() { return this.inp ? this.inp.checked : this.hasAttribute('checked'); }
   set checked(v) { if (this.inp) { this.inp.checked = !!v; this.form(); } else this.toggleAttribute('checked', !!v); }
   get disabled() { return this.hasAttribute('disabled'); }

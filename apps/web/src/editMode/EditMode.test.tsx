@@ -18,7 +18,8 @@ vi.mock('../scene/Scene', () => ({
 
 const furniture = () => lastScene?.furniture ?? [];
 const panel = () => within(screen.getByRole('region', { name: 'Furniture' }));
-const toggle = () => screen.getByRole('button', { name: /^(✏️|✔)?\s*(Edit|Done)$/ });
+/** "Edit": the painted switch (sakuga-toggle, its fallback here): on is edit mode. */
+const toggle = () => screen.getByRole('switch', { name: 'Edit' });
 const badge = () => screen.queryByRole('status', { name: 'Edit mode' });
 const key = (k: string, mods: Partial<KeyboardEventInit> = {}) =>
   fireEvent.keyDown(window, { key: k, ...mods });
@@ -57,8 +58,7 @@ describe('edit mode on a desktop', () => {
   it('starts in view mode: nothing moves, nothing is offered to change', async () => {
     const api = await open();
     expect(isEditMode()).toBe(false);
-    expect(toggle()).toHaveTextContent('Edit');
-    expect(toggle()).toHaveAttribute('aria-pressed', 'false');
+    expect(toggle()).not.toBeChecked();
     expect(badge()).not.toBeInTheDocument();
     expect(lastScene?.editable).toBe(false);
 
@@ -102,8 +102,7 @@ describe('edit mode on a desktop', () => {
     const api = await open();
     fireEvent.click(toggle());
     expect(isEditMode()).toBe(true);
-    expect(toggle()).toHaveTextContent('Done');
-    expect(toggle()).toHaveAttribute('aria-pressed', 'true');
+    expect(toggle()).toBeChecked();
     expect(badge()).toHaveTextContent('Edit mode');
     expect(lastScene?.editable).toBe(true);
     expect(panel().getByRole('group', { name: 'Bed room' })).toBeInTheDocument();
@@ -141,11 +140,15 @@ describe('edit mode on a desktop', () => {
 });
 
 describe('edit mode on a phone', () => {
-  it('has "Edit" in the top bar; a tap shows the piece, not the tools', async () => {
+  it('has "Edit" in the stage tools, not the top bar; a tap shows the piece, not the tools', async () => {
     await open('portrait');
     expect(lastScene?.touch).toBe(true);
     expect(lastScene?.editable).toBe(false);
-    expect(within(screen.getByRole('toolbar', { name: /Home, walking/ })).getByText('Edit'));
+    // Its splash rises over the view from the foot of the stage (§5.13).
+    expect(toggle().closest('.stage-tools')).not.toBeNull();
+    expect(
+      within(screen.getByRole('toolbar', { name: /Home, walking/ })).queryByRole('switch'),
+    ).toBeNull();
     expect(lastScene?.toolbar).toBeUndefined();
 
     act(() => lastScene!.handlers.onSelect('bed-1'));

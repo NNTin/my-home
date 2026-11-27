@@ -142,7 +142,7 @@ describe('phone layout', () => {
 
     // Furniture is added to the level that is looked into (in edit mode).
     fireEvent.click(level('Souterrain'));
-    fireEvent.click(screen.getByRole('button', { name: /Edit/ }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Edit' }));
     fireEvent.click(tab(/Furniture/));
     expect(screen.getByText('Add to Souterrain')).toBeInTheDocument();
   });
@@ -155,7 +155,8 @@ describe('phone layout', () => {
     const quality = within(
       within(region('View controls')!).getByRole('group', { name: 'Quality' }),
     );
-    expect(quality.getAllByRole('radio').map((r) => r.parentElement?.textContent?.trim())).toEqual([
+    // A segmented row (sakuga-segmented): each choice is named by its words.
+    expect(quality.getAllByRole('radio').map((r) => r.getAttribute('aria-label'))).toEqual([
       'Fast',
       'Automatic',
       'Always beautiful',
@@ -170,7 +171,7 @@ describe('phone layout', () => {
     await open('portrait');
     fireEvent.click(tab(/View/));
     const panel = within(region('View controls')!);
-    expect(panel.getByLabelText('Room names')).toBeChecked();
+    expect(panel.getByRole('switch', { name: 'Room names' })).toBeChecked();
     const outdoor = panel.getByRole('group', { name: 'Outdoor' });
     expect(outdoor).not.toHaveAttribute('open');
     expect(outdoor).toHaveTextContent('4 of 4 shown');
@@ -183,14 +184,14 @@ describe('phone layout', () => {
     expect(outdoor).toHaveTextContent('0 of 4 shown');
     expect(within(outdoor).getByRole('button', { name: 'Hide all' })).toBeDisabled();
 
-    fireEvent.click(within(outdoor).getByLabelText('Driveway'));
+    fireEvent.click(within(outdoor).getByRole('checkbox', { name: 'Driveway' }));
     expect(shown()?.outdoorAreas.map((a) => a.id)).toEqual(['driveway']);
     fireEvent.click(within(outdoor).getByRole('button', { name: 'Show all' }));
     expect(shown()?.outdoorAreas).toHaveLength(3);
     expect(shown()?.terrain).not.toEqual([]);
 
     const apartments = panel.getByRole('group', { name: 'Apartments' });
-    fireEvent.click(within(apartments).getByLabelText('Ground-floor apartment'));
+    fireEvent.click(within(apartments).getByRole('checkbox', { name: 'Ground-floor apartment' }));
     expect(levelsOf().has('ground-floor')).toBe(false);
   });
 

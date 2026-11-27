@@ -5,8 +5,23 @@
   font-size: 1.0625rem;
 }
 
-.piece-kind {
+/* The second line of the header: the kind, then Edit and its badge at the right (§5.13). */
+.page-edit-line {
+  display: flex;
   flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  align-items: center;
+}
+
+.page-edit-line .page-edit {
+  margin-left: auto;
+  font-style: italic;
+  font-weight: 800;
+}
+
+.piece-kind {
+  flex: 1 1 auto;
   margin: -0.25rem 0 0;
   color: var(--sk-dim);
   font-size: 0.875rem;

@@ -145,6 +145,14 @@ changes come in by hand). The design is `docs/design/hud.md` §6; the README's n
   as `.btn::before` inside the shadow root), `href` (renders an `<a>`, no `href` while disabled), `pressed`
   (`aria-pressed`, `.on`: an ink fill). `sync()` applies the attributes without effects; a disabled link carries
   `disabled` as a plain property so `squashy()` and the effects skip it.
+- `toggle` (PR 4): `size="compact"` (the drawing at 0.6, a 44 px hit area), frames from URLs
+  (`SakugaToggle.frames = { rest, all }`, `warm()`; never all of them while calm), the flip drawn on the page's
+  effects canvas (`fx.persist`, handed back to its own canvas at the end and over on the first frame), a CSS switch
+  until frames are there, 15 px of room above instead of 89. `toggle/rest.webp` holds frames 0 and 42 (made with
+  ImageMagick: `convert frames.webp \( -clone 0 -crop 300x325+0+0 +repage \) \( -clone 0 -crop 300x325+600+1625
++repage \) -delete 0 +append -quality 82 rest.webp`). The app's build strips the inline sheet.
+- `checkbox`, `slider`, `input` (PR 4): `size="compact"`. The slider: a value set from code jumps (`jump()`), and
+  `aria-valuetext` carries the unit.
 - `toast` (PR 3): `kind="warn"` (a pink !, a pink shadow, `role="alert"`), a width from 236 to 320 px, two lines.
 
 ### Traps met while making them (PR 3)
@@ -161,6 +169,10 @@ Made here with the workflow above, in `NAMES`, each with a README and an `index.
 
 - `icon-button` (PR 3, `docs/design/hud.md` §5.1): a square paper button with a named icon (`icons/icons.js`), `dir`
   (wedges, or a crescent for `cw`/`ccw`), `hit="puff"`, `size="compact"`, `href`, `pressed`. No word.
+- `segmented` (PR 4, §5.2): a radiogroup from `<option>`s (re-read when they change; an option's `label` names it),
+  the raised piece in the primary tone slides and lands with a small カチッ; set from code it moves without effects.
+- `field` (PR 4, §5.3): a paper frame around a slotted native control; wedges on focus, a give and カチッ on a
+  change of a select, colour or date, a pink shadow when `invalid`.
 - `badge` (PR 3, §5.12): `shown` (pops in or shrinks away; as built, no effect), `kind="warn"`, `count`, `done`,
   `duration` (leaves by itself; busy while it waits). No word.
 

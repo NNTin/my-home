@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sakuga Field</title>
+<style>
+  :root { --page: #ffffff; --text: #1d1a4a; --mute: #8580b0; }
+  html { overflow-x: clip; background: var(--page); }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--page); color: var(--text); font: 15px/1.45 -apple-system, "Helvetica Neue", "Segoe UI", sans-serif; overflow-x: clip; }
+  main { width: min(640px, 100vw - 32px); padding: 40px 0 60px; }
+  h1 { margin: 0; font: italic 800 26px/1.1 "Avenir Next", "Nunito", -apple-system, "Segoe UI", sans-serif; }
+  .sub { margin: 4px 0 0; color: var(--mute); }
+  .stage { display: flex; flex-direction: column; gap: 26px; padding: 40px 0 24px; }
+  .hint, .said { margin: 0 4px; color: var(--mute); } .said { min-height: 1.45em; margin-top: 8px; font-size: 13px; }
+  code { font-size: 13px; }
+  .embed body { place-items: start center; min-height: 0; } .embed h1, .embed .sub, .embed .hint { display: none; } .embed main { padding: 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Field</h1>
+  <p class="sub">A paper frame around a native control: a select, a number, a date, a colour, a textarea. Made for my-home, not from upstream.</p>
+  <div class="stage">
+  <sakuga-field id="s" label="Backdrop"><select aria-label="Backdrop"><option>Sky</option><option>Studio, light</option><option>Studio, dark</option></select></sakuga-field>
+  <sakuga-field id="n" label="Width" size="compact"><input type="number" aria-label="Width" value="160"></sakuga-field>
+  <sakuga-field id="d" label="From"><input type="date" aria-label="From"></sakuga-field>
+  <sakuga-field id="c" label="Colour" size="compact"><input type="color" aria-label="Colour" value="#8a6a4a"></sakuga-field>
+  <sakuga-field id="t" label="Note"><textarea aria-label="Note"></textarea></sakuga-field>
+  </div>
+  <p class="hint">Focus one, change it. The control is the real one: its picker, its value, its form.</p>
+  <p class="said" aria-live="polite"></p>
+</main>
+<script src="field.js"></script>
+<script>
+const Q = new URLSearchParams(location.search);
+if (Q.get('embed') === '1') document.documentElement.classList.add('embed');
+const say = (t) => { document.querySelector('.said').textContent = t; };
+document.addEventListener('change', (e) => say(`change: ${e.target.value}`));
+</script>
+</body>
+</html>

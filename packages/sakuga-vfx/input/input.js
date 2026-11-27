@@ -14,7 +14,9 @@ class SakugaInput extends fx.Base {
   static observedAttributes = ['value', 'placeholder', 'disabled', 'label'];
   static css = `
     input { width: var(--sk-input-width, 230px); max-width: 100%; padding: 13px 16px; border: var(--sk-bw) solid var(--sk-ink); border-radius: var(--sk-r); background: var(--sk-card); box-shadow: var(--sk-sh); font-weight: 600; font-size: 16px; outline: none; caret-color: var(--sk-ink); will-change: transform; }
-    input::placeholder { color: var(--sk-dim); } input:disabled { opacity: .5; }`;
+    input::placeholder { color: var(--sk-dim); } input:disabled { opacity: .5; }
+    :host([size=compact]) { --sk-fx-scale: .7; }   /* made here (my-home): the phone's size (16 px type: iOS does not zoom) */
+    :host([size=compact]) input { padding: 8px 12px; border-width: 2.5px; border-radius: 11px; box-shadow: 3px 4px 0 var(--sk-soft); }`;
   get value() { return this.inp ? this.inp.value : this.getAttribute('value') || ''; }
   set value(v) { if (this.inp) { this.inp.value = v; this.internals.setFormValue(this.inp.value); } else this.setAttribute('value', v); }
   get disabled() { return this.hasAttribute('disabled'); }

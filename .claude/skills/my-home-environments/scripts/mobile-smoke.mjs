@@ -15,7 +15,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { answeredInfrastructure } from './infrastructure.mjs';
-import { loadingScreenGone, SCENE } from './scene.mjs';
+import { loadingScreenGone, missedTouches, SCENE } from './scene.mjs';
 
 const require = createRequire(path.join(process.env.MY_HOME_PLAYWRIGHT_DIR, 'package.json'));
 const { chromium } = require('playwright');
@@ -38,43 +38,6 @@ const LANDSCAPE = { width: 844, height: 390 };
 /** Smallest comfortable touch target, in CSS pixels. */
 const TOUCH = 44;
 
-/**
- * The controls among `elements` that do not take a touch `min` px across (run in the page, by
- * `evaluateAll`). A compact Sakuga control draws a 34 px face and takes touches 44 px across inside
- * its shadow root (docs/design/hud.md §3.3), which no box shows; so each control is hit-tested:
- * `elementFromPoint` at the middle of each edge of the `min`-px square around its centre (or of its
- * box, if larger), 1 px inside, and at the centre must land on the control (a probe past the screen's
- * edge is moved onto it). The CSS reaches into shadow roots: an inner control stands for its host,
- * which `elementFromPoint` returns for it. Corners are not probed: Chrome hit-tests rounded corners.
- */
-function missedTouches(elements, min) {
-  const [W, H] = [document.documentElement.clientWidth, document.documentElement.clientHeight];
-  return elements
-    .filter((e) => e.getClientRects().length > 0)
-    .map((e) => {
-      const owner = e.getRootNode().host ?? e;
-      const r = e.getBoundingClientRect();
-      const [cx, cy] = [r.x + r.width / 2, r.y + r.height / 2];
-      const [w, h] = [Math.max(r.width, min) / 2 - 1, Math.max(r.height, min) / 2 - 1];
-      const missed = [
-        [cx - w, cy],
-        [cx + w, cy],
-        [cx, cy - h],
-        [cx, cy + h],
-        [cx, cy],
-      ].filter(([x, y]) => {
-        const hit = document.elementFromPoint(
-          Math.min(Math.max(x, 0), W - 1),
-          Math.min(Math.max(y, 0), H - 1),
-        );
-        return !(hit && (hit === owner || owner.contains(hit)));
-      });
-      const name = owner.getAttribute('label') ?? e.getAttribute('aria-label') ?? e.textContent;
-      return { name, missed, r };
-    })
-    .filter((e) => e.missed.length > 0)
-    .map((e) => `${e.name.trim()} ${Math.round(e.r.width)}x${Math.round(e.r.height)}`);
-}
 /** The widest the collapsed side sheet may be (it is 72 px plus the safe area), in CSS pixels. */
 const RAIL_MAX = 96;
 
@@ -708,8 +671,9 @@ async function viewChecks(browser, { device, base, host, homeId }) {
     await page.waitForSelector(SCENE, { timeout: 30_000 });
   };
   const views = page.getByRole('group', { name: 'Views', exact: true });
+  // The named views are a segmented row (sakuga-segmented, #168 PR 4): radios, not pressed buttons.
   const press = async (name) => {
-    const button = views.getByRole('button', { name, exact: true });
+    const button = views.getByRole('radio', { name, exact: true });
     await button.scrollIntoViewIfNeeded();
     await (phone ? button.tap() : button.click());
   };
@@ -729,7 +693,7 @@ async function viewChecks(browser, { device, base, host, homeId }) {
     return settled('fast');
   };
   const pressed = (name) =>
-    views.getByRole('button', { name, exact: true }).getAttribute('aria-pressed');
+    views.getByRole('radio', { name, exact: true }).getAttribute('aria-checked');
   const where = `on a ${device}`;
   try {
     await open('view=cutaway');
@@ -773,7 +737,7 @@ async function viewChecks(browser, { device, base, host, homeId }) {
       `${compiled.join(', ')} compiled (free, cutaway, free, cutaway)`,
     );
 
-    if ((await views.getByRole('button', { name: 'Section', exact: true }).count()) === 0) {
+    if ((await views.getByRole('radio', { name: 'Section', exact: true }).count()) === 0) {
       console.log(`skip  the section and "Save image" ${where}: a build before the section`);
       return;
     }
@@ -1105,7 +1069,10 @@ async function smoke(out, homeId) {
                   c.getAttribute('aria-label') ||
                   c.labels?.[0]?.textContent.trim() ||
                   c.textContent.trim() ||
-                  c.title
+                  c.title ||
+                  // A Sakuga control whose label is its element's slotted text (sakuga-checkbox):
+                  // the name a screen reader gets comes from the host's content.
+                  c.getRootNode().host?.textContent.trim()
                 ),
             )
             .map((c) => c.outerHTML.slice(0, 80)),
@@ -1202,7 +1169,12 @@ async function smoke(out, homeId) {
     } else {
       const names = await quality
         .getByRole('radio')
-        .evaluateAll((radios) => radios.map((r) => r.closest('label')?.textContent?.trim()));
+        // Their names: a segment's own (sakuga-segmented, #168 PR 4), or a native radio's label.
+        .evaluateAll((radios) =>
+          radios.map(
+            (r) => r.getAttribute('aria-label') ?? r.closest('label')?.textContent?.trim(),
+          ),
+        );
       check(
         'the View panel offers the quality setting in a phone\u2019s words',
         names.join(', ') === 'Fast, Automatic, Always beautiful',
@@ -1248,20 +1220,24 @@ async function smoke(out, homeId) {
       (await page.locator('.room-label').count()) > 0,
     );
 
-    // View mode is the default: nothing can be changed until "Edit" is pressed (and "Done" leaves it).
-    const editButton = page.getByRole('button', { name: 'Edit', exact: true });
-    const doneButton = page.getByRole('button', { name: 'Done', exact: true });
+    // View mode is the default: nothing can be changed until "Edit" is switched on (and off leaves it).
+    // "Edit" is the painted switch (sakuga-toggle, #168 PR 4), in the stage tools at the foot of the view.
+    const editButton = page.getByRole('switch', { name: 'Edit', exact: true });
+    const editing = async () => (await editButton.getAttribute('aria-checked')) === 'true';
     const editBadge = page.getByRole('status', { name: 'Edit mode' });
     check(
-      'a fresh visit is in view mode: the top bar offers "Edit"',
-      (await editButton.count()) === 1 && (await doneButton.count()) === 0,
+      'a fresh visit is in view mode: the stage tools offer "Edit", off',
+      (await editButton.count()) === 1 &&
+        !(await editing()) &&
+        // The switch's control is in its shadow root: ask from its host.
+        (await editButton.evaluate((e) => !!(e.getRootNode().host ?? e).closest('.stage-tools'))),
     );
     check('no edit-mode indicator shows in view mode', (await editBadge.count()) === 0);
-    const editBox = await editButton.boundingBox();
+    const smallEdit = await editButton.evaluateAll(missedTouches, TOUCH);
     check(
-      `the Edit button is at least ${TOUCH} px high`,
-      editBox.height >= TOUCH,
-      `${Math.round(editBox.height)} px`,
+      `the Edit switch takes a touch at least ${TOUCH} px across`,
+      smallEdit.length === 0,
+      smallEdit.join(', '),
     );
 
     // Furniture: the home's one placement set, with no layout manager.
@@ -1285,8 +1261,8 @@ async function smoke(out, homeId) {
     await editButton.tap();
     await settle();
     check(
-      '"Edit" turns edit mode on: it becomes "Done" and an indicator shows',
-      (await doneButton.count()) === 1 && (await editBadge.isVisible()),
+      '"Edit" turns edit mode on: the switch is on and an indicator shows',
+      (await editing()) && (await editBadge.isVisible()),
     );
     const created = page.waitForResponse(
       (response) =>
@@ -1447,13 +1423,11 @@ async function smoke(out, homeId) {
     // "Done": back in view mode the item can be looked at but a drag moves nothing. The finger goes
     // down on the item (where the drag above dropped it) and back up to where it began, so the view
     // ends as it was.
-    await doneButton.tap();
+    await editButton.tap();
     await settle();
     check(
       'leaving edit mode takes the tools and the indicator away',
-      (await toolbar.count()) === 0 &&
-        (await editBadge.count()) === 0 &&
-        (await editButton.count()) === 1,
+      (await toolbar.count()) === 0 && (await editBadge.count()) === 0 && !(await editing()),
     );
     const beforeView = (await items())[0];
     const writesBefore = answered;

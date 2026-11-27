@@ -22,15 +22,20 @@ class SakugaSlider extends fx.Base {
     .val::after { content: ""; position: absolute; left: 50%; top: 100%; margin-left: -5px; border: 5px solid transparent; border-top: 7px solid var(--sk-ink); }
     input { position: absolute; inset: -8px 0; width: 100%; height: calc(100% + 16px); margin: 0; opacity: 0; cursor: ew-resize; }
     input:disabled { cursor: not-allowed; } :host([disabled]) .sld { opacity: .5; }
-    .sld:has(input:focus-visible) { outline: 2.5px solid var(--sk-acc); outline-offset: 6px; border-radius: 8px; }`;
+    .sld:has(input:focus-visible) { outline: 2.5px solid var(--sk-acc); outline-offset: 6px; border-radius: 8px; }
+    :host([size=compact]) { margin-top: 24px; --sk-fx-scale: .7; }   /* made here (my-home): the phone's size */
+    :host([size=compact]) .sld { height: 40px; } :host([size=compact]) .trk { top: 14px; height: 11px; border-width: 2.5px; } :host([size=compact]) .th { top: 9px; width: 22px; height: 22px; border-width: 2.5px; }
+    :host([size=compact]) .val { top: -26px; font-size: 12px; border-width: 2.2px; }`;
   get value() { return this.r ? this.r.value : this.getAttribute('value') || '50'; }
-  set value(v) { if (this.r) { this.r.value = v; this.sync(); } else this.setAttribute('value', v); }
+  set value(v) { if (this.r) { this.r.value = v; this.sync(); this.jump(); } else this.setAttribute('value', v); }
+  // made here (my-home, #168): a value set from code moves the thumb at once and plays nothing
+  jump() { this.s.x = this.s.to; this.s.v = 0; }
   get valueAsNumber() { return +this.value; }
   get disabled() { return this.hasAttribute('disabled'); }
   set disabled(v) { this.toggleAttribute('disabled', !!v); }
   attributeChangedCallback(name, _, v) {
     if (!this.r) return;
-    if (name === 'value') { this.r.value = v; this.sync(); }
+    if (name === 'value') { this.r.value = v; this.sync(); this.jump(); }
     else if (name === 'label') this.r.setAttribute('aria-label', v || 'Slider');
     else if (name === 'disabled') this.r.disabled = this.disabled;
     else if (name === 'unit') this.sync();
@@ -42,7 +47,7 @@ class SakugaSlider extends fx.Base {
       <input type="range" min="${a('min', 0)}" max="${a('max', 100)}" step="${a('step', 1)}" value="${a('value', 50)}" aria-label="${a('label', 'Slider')}"${this.disabled ? ' disabled' : ''}></div>`;
   }
   frac() { const r = this.r, lo = +r.min || 0, hi = r.max === '' ? 100 : +r.max; return hi > lo ? (+r.value - lo) / (hi - lo) : 0; }
-  sync() { this.s.to = this.frac(); this.val.textContent = this.r.value + (this.getAttribute('unit') ?? '%'); this.internals.setFormValue(this.r.value); }
+  sync() { const t = this.r.value + (this.getAttribute('unit') ?? '%'); this.s.to = this.frac(); this.val.textContent = t; this.r.setAttribute('aria-valuetext', t); this.internals.setFormValue(this.r.value); }   // made here: the unit is read out too
   setup() {
     const box = this.box = this.$('.sld'), r = this.r = this.$('input'); this.th = this.$('.th'); this.val = this.$('.val');
     this.s = new Spring(0, 420, 30); this.sync(); this.s.x = this.s.to; this.acc = 0; this.peak = 0; this.said = -9; this.t = 0;
