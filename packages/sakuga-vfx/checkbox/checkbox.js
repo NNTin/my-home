@@ -59,9 +59,15 @@ const rnd = (a = 1, b) => (b === undefined ? Math.random() * a : a + Math.random
 const out = (t) => 1 - (1 - t) ** 3, inn = (t) => t * t * t, back = (t) => 1 + 2.70158 * (t - 1) ** 3 + 1.70158 * (t - 1) ** 2;
 
 // A spring: the thing that makes a control overshoot and settle instead of stopping dead.
+// a spring made in setup() belongs to its component: moved from outside, it wakes it (C1, AGENTS.md § Changes made here)
+let building = null;
 class Spring {
-  constructor(x = 0, k = 300, d = 20) { this.x = x; this.v = 0; this.to = x; this.k = k; this.d = d; }
-  step(dt) { if (!(dt > 0)) return this.x; for (let n = Math.ceil(dt / 0.008), h = dt / n; n--;) { this.v += (-this.k * (this.x - this.to) - this.d * this.v) * h; this.x += this.v * h; } return this.x; }
+  constructor(x = 0, k = 300, d = 20) { this._x = x; this._v = 0; this._to = x; this.k = k; this.d = d; this.o = building; if (building) building.springs.push(this); }
+  get x() { return this._x; } set x(v) { if (v !== this._x) { this._x = v; this.o?.wake(); } }
+  get v() { return this._v; } set v(v) { if (v !== this._v) { this._v = v; this.o?.wake(); } }
+  get to() { return this._to; } set to(v) { if (v !== this._to) { this._to = v; this.o?.wake(); } }
+  get still() { return Math.abs(this._x - this._to) < 5e-4 && Math.abs(this._v) < 5e-3; }
+  step(dt) { if (!(dt > 0)) return this._x; let x = this._x, v = this._v; const to = this._to, k = this.k, d = this.d; for (let n = Math.ceil(dt / 0.008), h = dt / n; n--;) { v += (-k * (x - to) - d * v) * h; x += v * h; } this._x = x; this._v = v; return x; }
 }
 
 // ───────── the palette ─────────
@@ -74,7 +80,8 @@ canvas.sakuga-fx{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:
 document.head.append(Object.assign(document.createElement('style'), { textContent: pageCss }));
 
 const reduce = matchMedia('(prefers-reduced-motion: reduce)');
-let calm = reduce.matches; reduce.addEventListener?.('change', (e) => { calm = e.matches; });
+// calm: reduced motion, or set by the page (C3)
+let quiet = false, calm = reduce.matches; reduce.addEventListener?.('change', (e) => { calm = e.matches || quiet; });
 
 // ───────── layers ─────────
 // The front layer is one fixed canvas over the whole page. A component can also have a back layer: a canvas inside it, behind the control.
@@ -86,12 +93,28 @@ function ensureFront() {
   front.c = Object.assign(document.createElement('canvas'), { className: 'sakuga-fx' }); front.c.setAttribute('aria-hidden', 'true');
   document.body.append(front.c); front.g = front.c.getContext('2d'); size();
 }
-function size() { dpr = Math.min(2.5, devicePixelRatio || 1); if (front.c) { front.c.width = innerWidth * dpr; front.c.height = innerHeight * dpr; } }
+function size() { dpr = Math.min(2.5, devicePixelRatio || 1); if (front.c) { front.c.width = innerWidth * dpr; front.c.height = innerHeight * dpr; } redraw(); }
 addEventListener('resize', size);
+// a resize or scroll: draw what is left once more, even asleep
+function redraw() { if (front.live.length) { front.dirty = true; start(); } }
+addEventListener('scroll', redraw, { capture: true, passive: true });
 function backLayer(canvas) { const L = { c: canvas, g: canvas.getContext('2d'), live: [], dirty: false }; layers.push(L); return L; }
-const add = (life, draw, L) => { const p = { t: 0, life, draw }; if (!calm) { L = L || front; if (L === front) ensureFront(); L.live.push(p); start(); } return p; };
+const add = (life, draw, L) => { const p = { t: 0, life, draw, o: origin }; if (!calm) { L = L || front; if (L === front) ensureFront(); L.live.push(p); start(); } return p; };
+// effects scale with the element that fires them: --sk-fx-scale (C2)
+let cur = null, curBox = null, origin = null, resetting = false;
+const hostOf = (el) => (el instanceof Base ? el : el?.getRootNode?.().host instanceof Base ? el.getRootNode().host : null);
+function within(el) { if (el === cur) return; cur = el; curBox = null; if (!resetting) { resetting = true; queueMicrotask(() => { resetting = false; cur = curBox = null; }); } }
+function fxScale(el) { if (el.fxk === undefined) { const v = parseFloat(getComputedStyle(el).getPropertyValue('--sk-fx-scale')); el.fxk = v > 0 ? v : 1; } return el.fxk; }
+const scaled = (f) => (x, y, ...o) => {
+  const k = cur ? fxScale(cur) : 1; if (k === 1) return f(x, y, ...o);
+  if (!curBox) { const r = cur.getBoundingClientRect(); curBox = { l: r.left + scrollX, t: r.top + scrollY, r: r.right + scrollX, b: r.bottom + scrollY }; }
+  const B = curBox, pull = (v, a, b) => (v < a ? a - (a - v) * k : v > b ? b + (v - b) * k : v), mx = pull(x, B.l, B.r), my = pull(y, B.t, B.b);
+  origin = { x: mx, y: my, k }; try { return f(mx, my, ...o); } finally { origin = null; }
+};
+const scaledWord = (f) => { const s = scaled((x, y, name, o) => f(name, x, y, o)); return (name, x, y, o) => s(x, y, name, o); };   // sfx(name, x, y, options)
 // an effect with no end: it draws every frame until its handle is marked dead. layer puts it on a component's back layer.
-const persist = (draw, layer) => add(Infinity, draw, layer);
+// owner: the loop may sleep while it does (C1)
+const persist = (draw, layer, owner) => { const p = add(Infinity, draw, layer); p.owner = owner; return p; };
 function tick(dt) {
   for (const L of layers) {
     if (!L.c || (!L.live.length && !L.dirty)) continue;
@@ -104,16 +127,18 @@ function tick(dt) {
     g = L.g; g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, L.c.width / dpr, L.c.height / dpr);
     g.translate(-ox, -oy); g.lineJoin = g.lineCap = 'round';
     L.live = L.live.filter((p) => !p.dead && (p.t += dt) < p.life);
-    for (const p of L.live) { g.save(); p.draw(p.t / p.life, p.t, dt); g.restore(); }
+    for (const p of L.live) { g.save(); if (p.o) { g.translate(p.o.x, p.o.y); g.scale(p.o.k, p.o.k); g.translate(-p.o.x, -p.o.y); } p.draw(p.t / p.life, p.t, dt); g.restore(); }
     L.dirty = L.live.length > 0;
   }
 }
 
 // ───────── the clock ─────────
 // One loop for every component. later() runs on this clock, not on setTimeout, so a film can step it a frame at a time.
-let now = 0, last = 0, running = false;
-const frames = new Set(), timers = [];
-const later = (ms, f) => { timers.push({ at: now + ms / 1000, f }); start(); };
+// It sleeps at rest: only awake components are in frames (C1).
+let now = 0, last = 0, running = false, slept = 0;
+const frames = new Set(), timers = [], stats = { frames: 0, ms: 0 };
+const later = (ms, f) => { const c = cur; timers.push({ at: now + ms / 1000, f: () => { const was = cur; cur = c; curBox = null; try { f(); } finally { cur = was; curBox = null; } } }); start(); };
+const idle = (L) => L.live.every((p) => p.owner && !p.owner.awake);
 function advance(dt) {
   now += dt;
   const due = timers.filter((q) => q.at <= now).sort((a, b) => a.at - b.at); if (due.length) for (const q of due) timers.splice(timers.indexOf(q), 1);
@@ -124,11 +149,13 @@ function advance(dt) {
 function loop(ms) {
   if (!running) return;
   const dt = clamp((ms - last) / 1000, 0, 0.034); last = ms;   // a frame's timestamp can be earlier than the moment the loop started
-  if (!api.paused) advance(dt);
-  if (!frames.size && !timers.length && layers.every((L) => !L.live.length && !L.dirty)) { running = false; return; }
+  if (!api.paused) { const t0 = performance.now(); advance(dt); stats.frames++; stats.ms += performance.now() - t0; }
+  cur = curBox = null;
+  if (!frames.size && !timers.length && layers.every(idle)) { running = false; slept = performance.now(); return; }
   requestAnimationFrame(loop);
 }
-function start() { if (running) return; running = true; last = performance.now(); requestAnimationFrame(loop); }
+// now keeps the wall's time across a sleep
+function start() { if (running) return; running = true; last = performance.now(); if (slept) now += (last - slept) / 1000; slept = 0; requestAnimationFrame(loop); }
 
 // ───────── the effects ─────────
 // circles drawn as one shape: outline, shadow tone, then the light side slid up and to the left
@@ -277,31 +304,39 @@ const BASE_CSS = `:host{display:inline-block;position:relative;isolation:isolate
 :host([hidden]){display:none}*{box-sizing:border-box}button,input{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
 :focus-visible{outline:2.5px solid var(--sk-acc);outline-offset:3px}.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 canvas.back{position:absolute;left:-160px;top:-160px;width:calc(100% + 320px);height:calc(100% + 320px);pointer-events:none;z-index:-1}`;
-// The base for every component: a shadow root built on first connect, one frame callback on the shared clock while it is on the page.
+// The base for every component: a shadow root built on first connect, a frame callback while awake (C1: a timed state says busy()).
+const WAKE = ['pointerdown', 'pointerup', 'pointercancel', 'keydown', 'keyup', 'focusin', 'focusout', 'input', 'change', 'click'];
 class Base extends HTMLElement {
-  constructor() { super(); this.root = this.attachShadow({ mode: 'open', delegatesFocus: !!this.constructor.delegates }); if (this.constructor.formAssociated) this.internals = this.attachInternals(); }
+  constructor() { super(); this.root = this.attachShadow({ mode: 'open', delegatesFocus: !!this.constructor.delegates }); if (this.constructor.formAssociated) this.internals = this.attachInternals(); this.springs = []; this.awake = false; }
   connectedCallback() {
     // a component built from its <option>s waits until the parser has read them
     if (!this.ready && this.constructor.fromChildren && document.readyState === 'loading') { if (!this.waiting) { this.waiting = true; document.addEventListener('DOMContentLoaded', () => { this.waiting = false; if (this.isConnected) this.connectedCallback(); }, { once: true }); } return; }
-    if (!this.ready) { this.ready = true; this.root.innerHTML = `<style>${BASE_CSS}${this.constructor.css || ''}</style>${this.render()}`; this.setup(); }
-    this.tickFn ||= (dt) => this.frame(dt); frames.add(this.tickFn); start();
+    if (!this.ready) { this.ready = true; this.root.innerHTML = `<style>${BASE_CSS}${this.constructor.css || ''}</style>${this.render()}`; building = this; try { this.setup(); } finally { building = null; }
+      for (const e of WAKE) this.root.addEventListener(e, () => this.wake(), { capture: true, passive: true }); }
+    this.tickFn ||= (dt) => { within(this); this.frame(dt); if (!this.busy() && this.springs.every((s) => s.still)) { if (++this.rested >= 2) this.sleep(); } else this.rested = 0; };
+    this.awake = false; this.wake();
   }
-  disconnectedCallback() { frames.delete(this.tickFn); }
+  disconnectedCallback() { this.sleep(); }
+  wake() { if (this.awake || !this.tickFn || !this.isConnected) return; this.awake = true; this.rested = 0; this.fxk = undefined; frames.add(this.tickFn); start(); }
+  sleep() { this.awake = false; frames.delete(this.tickFn); }
+  busy() { return false; }
   $(s) { return this.root.querySelector(s); }
   $$(s) { return [...this.root.querySelectorAll(s)]; }
   render() { return ''; } setup() {} frame() {}
   backLayer() { const c = document.createElement('canvas'); c.className = 'back'; c.setAttribute('aria-hidden', 'true'); this.root.prepend(c); return backLayer(c); }
   emit(type, detail) { this.dispatchEvent(new CustomEvent(type, { bubbles: true, composed: true, detail })); }
 }
-const define = (tag, cls) => { if (!customElements.get(tag)) customElements.define(tag, cls); };
+const define = (tag, cls) => { if (customElements.get(tag)) return; const a = cls.prototype.attributeChangedCallback;
+  if (a) cls.prototype.attributeChangedCallback = function (...args) { a.apply(this, args); this.wake(); }; customElements.define(tag, cls); };
 
 const api = window.SakugaFX = {
   version: 1, paused: false,
-  get P() { return P; }, get calm() { return calm; }, get now() { return now; },
+  get P() { return P; }, get calm() { return calm; }, set calm(v) { quiet = !!v; calm = reduce.matches || quiet; }, get now() { return now; },
+  get stats() { return { ...stats, awake: frames.size, running }; },
   TAU, clamp, lerp, rnd, Spring,
   advance, later, persist, blob, shape, get g() { return g; },
-  puff, burst, shards, ring, splash, slash, lines, ticks, donut, wob, kira, sfx, hollow, dotted,
-  at, esc, squashy, Base, define,
+  ...Object.fromEntries(Object.entries({ puff, burst, shards, ring, splash, slash, lines, ticks, donut, wob, kira }).map(([n, f]) => [n, scaled(f)])), sfx: scaledWord(sfx), hollow, dotted,
+  at: (el, fx, fy) => { const h = hostOf(el); if (h) within(h); return at(el, fx, fy); }, esc, squashy, Base, define,
 };
 })();
 // <<< sakuga core
