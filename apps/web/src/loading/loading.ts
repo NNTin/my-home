@@ -1,6 +1,6 @@
 /**
  * The loading screen: Sakuga VFX's `<sakuga-progress>` in `#boot` (index.html), on screen from the
- * first paint, ahead of the main chunk (`sakuga-progress-plugin.ts`). This module drives it once the
+ * first paint, ahead of the main chunk (`sakuga-plugin.ts`). This module drives it once the
  * main chunk runs (docs/loading.md).
  *
  * It shows real progress only: each step moves when the thing it names has arrived, never on a

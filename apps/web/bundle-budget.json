@@ -1,6 +1,7 @@
 {
   "first": {
-    "sakuga-progress": { "maxGzipBytes": 25000, "required": true }
+    "sakuga-progress": { "maxGzipBytes": 25000, "required": true },
+    "sakuga-hud": { "maxGzipBytes": 50000, "required": true }
   },
   "main": { "baseline": "d4df5df", "baselineGzipBytes": 420582, "maxGrowthGzipBytes": 50000 },
   "lazy": {

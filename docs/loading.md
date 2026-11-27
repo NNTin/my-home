@@ -8,12 +8,17 @@ stands in the middle of the page. It replaced the plain "Loading home…" and "L
 - `apps/web/index.html` holds the screen: `#boot`, the card and the element, with a small style of its own (the
   app's CSS comes with the main chunk).
 - The build puts `progress.js` in `<head>` as a classic, blocking `<script>`, before the module entry
-  (`sakugaProgress()` in `apps/web/vite.config.ts`). The file is copied as it is into
+  (`sakuga()` in `apps/web/sakuga-plugin.ts`). The file is copied as it is into
   `assets/sakuga-progress-<hash>.js` (cached for good, like every hashed asset); the dev server serves it from the
   package. So the element is defined before the parser reaches it, and the bar is on screen from the first
   paint, while the main chunk is still on its way. The browser fetches both at once.
 - Upstream's rule holds: the file is loaded with a script tag, never bundled, split or rewritten
   (`packages/sakuga-vfx/AGENTS.md`).
+- Right after it comes `sakuga-hud-<hash>.js`, **deferred**: the HUD's other elements without their copy of the
+  core (the bar's core serves them all), and the icons (`docs/design/hud.md` §7.1, §9). Deferred scripts run in
+  document order before the module entry, so every element is defined before React mounts; if it fails to load,
+  the main chunk defines plain fallbacks (`apps/web/src/hud/fallback.ts`). Its budget: `first.sakuga-hud`, 50 kB
+  gzipped.
 - Its size has a budget of its own: `first` in `apps/web/bundle-budget.json` (25 kB gzipped; 21.0 kB in #166).
   `pnpm check:bundle` measures each classic script of `index.html` and prints the first load in all (index.html,
   those scripts, the main chunk and its CSS: 487.3 kB in #166, 464.6 kB before).
