@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   chunkSize,
+  gateDenoiser,
   gateSettings,
   graphicsNames,
   releaseCommit,
@@ -9,7 +10,7 @@ import {
   type GateResult,
   type GateStatus,
 } from './gate';
-import { cleanAt, gateReport, passes, type GateContext } from './measure';
+import { cleanAt, gateReport, judgedImage, passes, type GateContext } from './measure';
 import './render-mode.css';
 
 /**
@@ -20,7 +21,11 @@ import './render-mode.css';
 
 interface Shown extends GateResult {
   url?: string;
+  rawUrl?: string;
 }
+
+/** The chunks the page reports: the tracer's and the denoiser's (its weights are in the denoiser's line). */
+const CHUNKS = ['render-path', 'render-denoise'];
 
 export function Gate({ inputs }: { inputs: GateInputs }) {
   const host = useRef<HTMLDivElement>(null);
@@ -41,24 +46,37 @@ export function Gate({ inputs }: { inputs: GateInputs }) {
     const urls: string[] = [];
     const finished: GateResult[] = [];
     void (async () => {
-      const [names, commit] = await Promise.all([graphicsNames(), releaseCommit(signal)]);
+      setStatus({ view: 'denoiser', text: 'Loading', backdrop: '#ffffff' });
+      const [names, commit, denoiser] = await Promise.all([
+        graphicsNames(),
+        releaseCommit(signal),
+        gateDenoiser(settings.weights),
+      ]);
+      if (signal.aborted) return;
       await runGate(
         target,
         settings,
         measured,
+        denoiser.source,
         {
           status: setStatus,
           result(result) {
             finished.push(result);
             const url = result.image && URL.createObjectURL(result.image);
-            if (url) urls.push(url);
-            setResults((list) => [...list, { ...result, ...(url && { url }) }]);
+            const rawUrl = result.raw && URL.createObjectURL(result.raw);
+            for (const made of [url, rawUrl]) if (made) urls.push(made);
+            setResults((list) => [
+              ...list,
+              { ...result, ...(url && { url }), ...(rawUrl && { rawUrl }) },
+            ]);
           },
         },
         signal,
       );
       if (signal.aborted) return;
-      const chunk = await chunkSize();
+      const chunks = await Promise.all(
+        CHUNKS.map(async (name) => ({ name, size: await chunkSize(name) })),
+      );
       if (signal.aborted) return;
       const context: GateContext = {
         commit,
@@ -71,7 +89,8 @@ export function Gate({ inputs }: { inputs: GateInputs }) {
         bounces: settings.bounces,
         limit: settings.limit,
         kernel: settings.megakernel ? 'megakernel' : 'wavefront',
-        chunk,
+        denoiser: denoiser.text,
+        chunks,
       };
       setReport(
         gateReport(
@@ -111,8 +130,11 @@ export function Gate({ inputs }: { inputs: GateInputs }) {
           : 'the three fixed views'}{' '}
         of the home, one after the other, at {settings.width} x {settings.height} px to{' '}
         {settings.samples} samples a pixel
-        {settings.megakernel ? ' (megakernel)' : ''}. Leave the tab in front until the table
-        appears.
+        {settings.megakernel ? ' (megakernel)' : ''},{' '}
+        {settings.weights === 'none'
+          ? 'without the denoiser'
+          : `denoised with the ${settings.weights} weights`}
+        . Leave the tab in front until the table appears.
       </p>
       {failure && (
         <p className="error" role="alert">
@@ -135,18 +157,23 @@ export function Gate({ inputs }: { inputs: GateInputs }) {
       />
       {results.length > 0 && (
         <ul className="render-gate-stills">
-          {results.map(({ measurement: m, url }) => {
-            const clean = cleanAt(m.checkpoints);
+          {results.map(({ measurement: m, url, rawUrl, imageSamples }) => {
+            const clean = cleanAt(m.checkpoints, judgedImage(m));
             return (
               <li key={m.view}>
-                {url && <img src={url} alt={`The traced still of the ${m.view} view`} />}
+                {url && (
+                  <img
+                    src={url}
+                    alt={`The traced still of the ${m.view} view${m.denoised ? ', denoised' : ''}`}
+                  />
+                )}
                 <p>
                   <strong>{m.view}</strong>:{' '}
                   {m.error
                     ? `failed (${m.error})`
                     : `${m.samples} samples in ${m.seconds.toFixed(1)} s; ${
                         clean
-                          ? `clean after ${clean.seconds.toFixed(1)} s (${clean.samples} samples)`
+                          ? `${m.denoised ? 'denoised, ' : ''}clean after ${clean.seconds.toFixed(1)} s (${clean.samples} samples)`
                           : 'not clean by the measure'
                       }; gate ${passes(m) ? 'passed' : 'not passed'}`}
                   {url && (
@@ -154,6 +181,15 @@ export function Gate({ inputs }: { inputs: GateInputs }) {
                       {' '}
                       <a href={url} download={`my-home-render-${m.view}.png`}>
                         Save image
+                      </a>{' '}
+                      ({imageSamples} samples{m.denoised ? ', denoised' : ''})
+                    </>
+                  )}
+                  {rawUrl && (
+                    <>
+                      {' '}
+                      <a href={rawUrl} download={`my-home-render-${m.view}-raw.png`}>
+                        Save the raw image
                       </a>
                     </>
                   )}

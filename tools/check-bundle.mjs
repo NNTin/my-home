@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Checks the web build against apps/web/bundle-budget.json (docs/design/realistic-render.md §10.2):
 // - the main chunk (the entry and everything it imports statically) has not grown beyond its budget;
-// - each lazy chunk is within its budget and is not imported statically by the main chunk;
+// - each lazy chunk is within its budget and is not imported statically by the main chunk; a lazy entry's
+//   `files` are assets it fetches (the denoiser's weights), counted as they are: the server does not gzip them;
 // - each script that loads first (a classic <script src> in index.html, ahead of the main chunk: the loading
 //   bar, docs/loading.md) is within its budget. It also prints what the first load fetches in all: index.html,
 //   those scripts, the main chunk and its CSS.
@@ -23,6 +24,7 @@ const budgetFile = option('--budget', 'apps/web/bundle-budget.json');
 
 const kB = (bytes) => `${(bytes / 1000).toFixed(1)} kB`;
 const gzipped = (file) => gzipSync(readFileSync(path.join(dist, file)), { level: 9 }).length;
+const raw = (file) => readFileSync(path.join(dist, file)).length;
 
 /** The chunks a chunk imports statically: `import"./x.js"` and `from"./x.js"`, not `import("./x.js")`. */
 function staticImports(file) {
@@ -89,10 +91,23 @@ function main() {
       else console.log(`${name.padEnd(13)} not built yet`);
       continue;
     }
-    const lazySize = files.reduce((sum, file) => sum + gzipped(file), 0);
+    const codeSize = files.reduce((sum, file) => sum + gzipped(file), 0);
+    const fetched = [];
+    for (const prefix of lazy.files ?? []) {
+      const found = assets.filter((file) => path.basename(file).startsWith(`${prefix}-`));
+      if (found.length === 0)
+        failures.push(`the file ${prefix} of the lazy chunk ${name} is missing`);
+      fetched.push(...found);
+    }
+    const fetchedSize = fetched.reduce((sum, file) => sum + raw(file), 0);
+    const lazySize = codeSize + fetchedSize;
     const limit = lazy.maxGzipBytes;
     console.log(
-      `${name.padEnd(13)} ${kB(lazySize)} gzipped${limit === undefined ? '' : `, budget ${kB(limit)}`}`,
+      `${name.padEnd(13)} ${kB(lazySize)} gzipped${
+        fetched.length
+          ? ` (code ${kB(codeSize)}, ${fetched.join(', ')} ${kB(fetchedSize)} as sent)`
+          : ''
+      }${limit === undefined ? '' : `, budget ${kB(limit)}`}`,
     );
     if (limit !== undefined && lazySize > limit)
       failures.push(`the lazy chunk ${name} is ${kB(lazySize)}, more than ${kB(limit)}`);

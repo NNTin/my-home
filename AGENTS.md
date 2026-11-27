@@ -21,7 +21,8 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
 - `apps/web/src/views/`: the named views (`?view=cutaway|section|eye`, the Views control, backdrops, the
   section's cut and caps, "Save image"), a lazy chunk (`docs/views.md`)
 - `apps/web/src/render-mode/`: render mode, path-traced stills with WebGPU ("Render" in the Views control, on
-  desktops), the lazy chunk `render-path`, and its measuring page `/?render=measure` (`docs/render-mode.md`)
+  desktops), denoised (Open Image Denoise, its weights in `weights/`), the lazy chunks `render-path` and
+  `render-denoise`, and its measuring page `/?render=measure` (`docs/render-mode.md`)
 - `apps/web/src/routing/` (no router library) and `apps/web/src/catalog-page/`: the pages `/catalog` and
   `/catalog/<kind>/<typeId>`, lazy chunks; thumbnails cached in the browser (`docs/catalog.md`)
 - `packages/sakuga-vfx`: the app's HUD, Sakuga VFX copied from upstream (MIT) and owned here; read its own
@@ -129,6 +130,9 @@ What reading CI has taught us:
   needs them for the first frame): a rebuilt type costs about 0.1 kB (#117). Read `pnpm check:bundle` in the
   `check` job. A classic script in `index.html` (the loading bar, #166) is not in the main chunk: it has a
   `first` budget, and the check prints the first load in all.
+- **A file a lazy chunk fetches counts in its budget** (`"files"` in `bundle-budget.json`, as sent: the server
+  does not gzip `.tza`): the denoiser's weights, 641 kB of `render-denoise`'s 781 kB (#119). The smoke's
+  "nothing before Render" filter (`mobile-smoke.mjs`) lists them too.
 - **What only a lazy page reads must not be exported by `@my-home/shared`'s index:** the index is in the main
   chunk, and a bundler keeps a module where its first importer is. Texts and tables for the catalogue page go
   in a module of their own behind an entry of the package (`@my-home/shared/finish-listing`: 1.2 kB, #118).

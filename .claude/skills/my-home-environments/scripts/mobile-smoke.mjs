@@ -632,10 +632,15 @@ async function viewChecks(browser, { device, base, host, homeId }) {
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (error) => errors.push(String(error)));
-  // Render mode's lazy chunk: asked for by "Render" alone, after the WebGPU check.
+  // Render mode's lazy chunks and the denoiser's weights: asked for by "Render" alone, after the
+  // WebGPU check.
   const renderChunk = [];
   page.on('request', (request) => {
-    if (/\/assets\/render-path-[\w-]+\.js$/.test(new URL(request.url()).pathname))
+    if (
+      /\/assets\/(render-(path|denoise)-[\w-]+\.js|oidn-[\w-]+\.tza)$/.test(
+        new URL(request.url()).pathname,
+      )
+    )
       renderChunk.push(request.url());
   });
   const perf = () => page.evaluate(() => window.__myHomePerf?.());
