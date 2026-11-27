@@ -1,6 +1,6 @@
 # HUD v2
 
-First discussion draft for the 3D viewer. The [Sakuga HUD rollout](../hud.md) supplies the paper controls and motion. This design asks what belongs on screen, when it appears and how people reach it by mouse, touch or keyboard.
+A minimal game HUD for the full-bleed 3D viewer. Use clear space between compact controls and minimal translucent backing. Keep the paper colours and motion from the [Sakuga HUD rollout](../hud.md). See the [visual design](visual-design.md) and the [current mockups](mocks/README.md).
 
 ## Today's HUD
 
@@ -12,9 +12,9 @@ On the baseline for this draft, the loading bar, shared Sakuga core, paper theme
 
 | Layer | Starting layout | Where today's controls go |
 | --- | --- | --- |
-| **Primary** | A stable edge bar during normal viewing. Keep the active mode and level readable, and keep an exit visible during Walk, Edit and immersive submodes. | Home and Reset view, Orbit/Walk, level, Views, Edit and a Tools entry. Views opens the existing named views, view-specific settings, Save image and desktop Render. Photos and Catalogue sit under More on compact widths. |
-| **Contextual** | One inspector per selection or focused workflow. Use a short card beside the view on desktop and one sheet slot on touch. Leave the selection visible when details open. | Existing selected-piece link, furniture edit actions and details, and task controls for placement or capture. Add room and door inspectors. Offer Room name, level and a way to focus the room, and show a door's linked spaces or available actions when the model supplies them. A catalogue selection exposes its piece page and, in Edit, Place. |
-| **Utility** | A Tools drawer and a small orientation area. Surface actionable status next to the active task and keep routine feedback brief. | Keyboard and gesture help, existing hints, status badges, warnings, quality and Effects settings, and entries for coordinates and measurement. Room names, plan colours and visibility stay in the View options reached from Primary. |
+| **Primary** | Small groups anchored to the edges. Keep the active mode, level and essential actions visible, with the way out of Walk, Edit and temporary modes. | Home and Reset view, Orbit/Walk, level, Views, Edit and a Tools entry. Views opens the existing named views, view-specific settings, Save image and desktop Render. Photos and Catalogue sit under More on compact widths. |
+| **Contextual** | Show the selection outline and a short edge label. Open one compact inspector or task surface at a time. On touch it uses the sheet slot. | Existing selected-piece link, furniture edit actions and details, and task controls for placement or capture. Add room and door inspectors. Offer Room name, level and a way to focus the room, and show a door's linked spaces or available actions when the model supplies them. A catalogue selection exposes its piece page and, in Edit, Place. |
+| **Utility** | A compact orientation area and a Tools drawer on demand. Surface actionable status near the active task and keep routine feedback brief. | Keyboard and gesture help, existing hints, status badges, warnings, quality and Effects settings, and entries for coordinates and measurement. Room names, plan colours and visibility stay in the View options reached from Primary. |
 
 ### Compass, minimap and clock
 
@@ -26,8 +26,8 @@ On the baseline for this draft, the loading bar, shared Sakuga core, paper theme
 ## Decisions to make together
 
 - **Hotkeys and configuration.** Start from the current Walk movement and Edit shortcuts. Decide which actions earn defaults, where the cheat sheet lives, how to record, clear and reset a binding, how overlapping modes handle conflicts, and which hints appear on touch.
-- **Visual design and palette.** Keep Sakuga's white paper, ink outlines, lavender shadow and pink accents. Compare how strongly the controls frame the scene and how much action the effects should signal. Check every direction against the bright and dark backgrounds in the [realistic render design](../realistic-render.md).
+- **Visual design and palette.** The [visual draft](visual-design.md) specifies clear resting controls, contrast treatments and Sakuga reactions. Choose the action placement and test the compact layout against the bright and dark backgrounds in the [realistic render design](../realistic-render.md).
 - **What's missing.** Decide whether to make the minimap available by default in Orbit, where Photos and Catalogue belong on desktop, whether the clock chip should be digital or analog, and whether the first measuring tool needs distance, height or both. Make coordinates local to the model and give units to every reading.
 - **Model follow-ups.** [#189](https://github.com/NNTin/my-home/issues/189) and [#190](https://github.com/NNTin/my-home/issues/190) expand what a user may inspect. The room and placement follow-ups ([#191](https://github.com/NNTin/my-home/issues/191), [#192](https://github.com/NNTin/my-home/issues/192), [#193](https://github.com/NNTin/my-home/issues/193), [#194](https://github.com/NNTin/my-home/issues/194), [#195](https://github.com/NNTin/my-home/issues/195)) inform dense selection examples and the need for clear context around openings, fittings and adjacent rooms. The HUD can use the model data already available.
 
-The next drafts will cover layer behavior, hotkey defaults and configuration, and the visual design. Compare the [three first mockups](mocks/README.md). The navigation placement and the kind of selection inspector can be chosen independently.
+The next drafts will cover layer behavior and hotkey defaults and configuration. Compare the [corner layout and floating action row](mocks/README.md).
