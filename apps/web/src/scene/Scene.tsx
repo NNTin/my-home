@@ -1,6 +1,15 @@
 import { OrbitControls } from '@react-three/drei';
 import { Canvas, useThree, type RootState } from '@react-three/fiber';
-import { useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react';
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 import { PCFShadowMap, type PerspectiveCamera } from 'three';
 import type { HomeScene, Vec3 } from '../builder/buildHome';
 import { roofIndex, type RoomLabel, type Visibility } from '../builder/visibility';
@@ -10,6 +19,7 @@ import type { FurnitureToolbarProps } from '../overlay/FurnitureToolbar';
 import { lampRooms, sceneEmitters } from '../lighting/lamps';
 import { rigFor, type Backdrop, type RigView } from '../lighting/rig';
 import { FrameGovernor } from '../quality/governor';
+import { hudMeasureRequested } from '../hud/measure/request';
 import { PerfReadout, perfRequested } from '../quality/PerfReadout';
 import { perfView } from '../quality/perfReport';
 import type { Quality } from '../quality/setting';
@@ -262,6 +272,14 @@ function FrameView({ frame }: { frame: (FrameRequest & { key: number }) | undefi
 }
 
 /** Full-size canvas; R3F resizes the renderer and camera with its container. */
+/** `/?hud=measure` (docs/design/hud.md §10.2): its rig in the canvas and its page over it, one lazy chunk. */
+const HudMeasureRig = lazy(() =>
+  import('../hud/measure/hud-measure').then((m) => ({ default: m.MeasureRig })),
+);
+const HudMeasurePage = lazy(() =>
+  import('../hud/measure/hud-measure').then((m) => ({ default: m.MeasurePage })),
+);
+
 export function Scene({
   scene,
   visibility,
@@ -320,6 +338,7 @@ export function Scene({
     [],
   );
   useEffect(() => () => governor.dispose(), [governor]);
+  const [hudMeasure] = useState(() => hudMeasureRequested(window.location.search));
   useEffect(() => governor.setSetting(quality), [governor, quality]);
   // A capture waits for the settled frame: not before the view that was asked for is here.
   useEffect(() => {
@@ -427,10 +446,20 @@ export function Scene({
           <FrameView frame={frame} />
           {stage}
           <CompassTracker northBearing={northBearing} roseRef={roseRef} northUpRef={northUpRef} />
+          {hudMeasure && (
+            <Suspense fallback={null}>
+              <HudMeasureRig governor={governor} />
+            </Suspense>
+          )}
         </FrameLoop>
       </Canvas>
       <RoomLabels labels={labels} layerRef={labelsRef} />
       <CompassRose roseRef={roseRef} onNorthUp={() => northUpRef.current?.()} />
+      {hudMeasure && (
+        <Suspense fallback={null}>
+          <HudMeasurePage walking={walk?.view === 'first'} />
+        </Suspense>
+      )}
       {perfRequested() && (
         <PerfReadout
           governor={governor}
