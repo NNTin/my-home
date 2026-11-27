@@ -200,7 +200,6 @@ body {
 .topbar :is(button, select, a):focus-visible,
 .sheet-bar button:focus-visible,
 .item-toolbar :is(button, a):focus-visible,
-.compass:focus-visible,
 .page :is(a, button, input, select, textarea, summary):focus-visible {
   outline: var(--hud-focus);
   outline-offset: 3px;
@@ -343,84 +342,31 @@ body {
 }
 
 /* HUD compass: bottom centre between the panels; top right of the 3D view on a phone. */
+/*
+ * The orientation area (HUD v2 #202, layers.md § Utility): the upper right corner, in Orbit and in Walk (the walk
+ * bar leaves it free). The scene clock's entry goes below the compass when #18 supplies scene time.
+ */
 .compass {
-  --rose: 0deg;
   position: absolute;
-  bottom: 1rem;
-  left: 50%;
+  top: calc(1rem + env(safe-area-inset-top, 0px));
+  right: calc(1rem + env(safe-area-inset-right, 0px));
+  z-index: 10;
   width: 4.5rem;
   height: 4.5rem;
-  padding: 0;
-  transform: translateX(-50%);
-  border: var(--hud-line);
-  border-radius: 50%;
-  background: var(--sk-card);
-  box-shadow: var(--sk-sh);
-  color: var(--sk-ink);
-  font: inherit;
-  cursor: pointer;
   touch-action: manipulation;
-}
-
-.compass-rose {
-  position: absolute;
-  inset: 0;
-  transform: rotate(var(--rose));
-}
-
-.compass-needle {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0.55rem;
-  height: 2.3rem;
-  transform: translate(-50%, -50%);
-  /* Two flat tones, no blend: the north half pink, the south half lavender (§5.7). */
-  background: linear-gradient(var(--sk-acc) 50%, var(--sk-soft) 50%);
-  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
-}
-
-.compass-label {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  font-size: 0.8rem;
-  font-weight: 700;
-  line-height: 1;
-  /* Around the rose at angle --a, but kept upright on screen. */
-  transform: translate(-50%, -50%) rotate(var(--a)) translateY(-1.65rem)
-    rotate(calc(-1 * (var(--a) + var(--rose))));
-}
-
-.compass-N {
-  color: var(--sk-acc);
 }
 
 .viewer.mobile .compass {
   top: 0.75rem;
   right: 0.75rem;
-  bottom: auto;
-  left: auto;
   width: 3.75rem;
   height: 3.75rem;
-  transform: none;
-  border-width: var(--hud-bw-compact);
-  box-shadow: var(--hud-sh-compact);
 }
 
 /* While walking there is no top bar: keep clear of the notch. */
 .viewer.mobile.walking .compass {
   top: calc(1rem + env(safe-area-inset-top, 0px));
   right: calc(1rem + env(safe-area-inset-right, 0px));
-}
-
-.viewer.mobile .compass-label {
-  transform: translate(-50%, -50%) rotate(var(--a)) translateY(-1.35rem)
-    rotate(calc(-1 * (var(--a) + var(--rose))));
-}
-
-.viewer.mobile .compass-needle {
-  height: 1.9rem;
 }
 
 /* Room names drawn over the 3D scene, moved by RoomLabelTracker; they never take pointer events.
@@ -1907,7 +1853,8 @@ body {
 /* The one open surface, at the right above the actions; the column itself takes no input. */
 .hud-surface {
   position: absolute;
-  top: 1rem;
+  /* Below the orientation area at the upper right (#202). */
+  top: 6.5rem;
   right: 1rem;
   bottom: 4.5rem;
   z-index: 10;
@@ -2457,6 +2404,12 @@ sakuga-icon-button[data-fallback][appearance='clear'][tone='light'] {
 }
 
 /* The containers' stand-ins: a fold's summary is its button, its body gone while closed; the sheet slides. */
+sakuga-compass[data-fallback]::before {
+  content: 'N';
+  color: var(--sk-acc);
+  font-weight: 800;
+}
+
 sakuga-fold[data-fallback] > [slot='summary'] {
   display: inline-flex;
   min-height: 2.75rem;

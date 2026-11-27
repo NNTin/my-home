@@ -9,7 +9,7 @@
 > with `--sk-fx-scale`, `SakugaFX.calm` can be set by the page, `slash()` can sweep either way (`turn`), a press never
 > shrinks a hit area (`--sk-unsquash`); the button has
 > `size="compact"`, `href` and `pressed`, the toast `kind="warn"`; the toggle compact with lazy frames drawn over the page; compact checkbox, slider
-> and input; and elements of our own: the icon button, the badge, segmented, field, panel, fold, card and sheet (below the twelve).
+> and input; and elements of our own: the icon button, the badge, segmented, field, panel, fold, card, sheet and compass (below the twelve).
 > Everything below this note is upstream's README as it was at that commit.
 
 Ordinary UI controls that react like anime. At rest they are plain. Use one and it squashes and overshoots on springs, and throws drawn effects around itself: smoke puffs, impact bursts, crystal chips, slashes, splashes and smoke rings, with manga sound-effect lettering (ドン!, カチッ, ズザッ). No characters, just the way a key animator would sell a hit.
@@ -44,6 +44,7 @@ Made here for my-home (not from upstream):
 | [Fold](fold/) | `<sakuga-fold>` | A group that opens and closes: its chevron flips and its body springs to its height. |
 | [Card](card/) | `<sakuga-card>` | A paper card that is a link or a button: it squashes and throws three ticks from its corner. Cards come in grids, so no word. |
 | [Sheet](sheet/) | `<sakuga-sheet>` | The frame of a phone's bottom sheet: the page keeps its tabs and drag; a new snap springs and lands with two puffs. |
+| [Compass](compass/) | `<sakuga-compass>` | A paper disc with N in pink, turned by the page through `--rose`; pressed, the needle swings in to north and lands with a ring and カチッ. |
 
 ## The look
 

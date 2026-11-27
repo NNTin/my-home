@@ -1,45 +1,50 @@
 import { useThree } from '@react-three/fiber';
-import { useEffect, useMemo, type CSSProperties, type RefObject } from 'react';
+import { createElement, useEffect, useMemo, useRef, type RefObject } from 'react';
+import { useHost } from '../hud/useElement';
 import { CanvasTexture, SRGBColorSpace, type Vector3 } from 'three';
 import type { Vec3 } from '../builder/buildHome';
-import { CARDINALS, compassRotation, northUpPosition, type CompassMarker } from './compass';
+import { compassRotation, northUpPosition, type CompassMarker } from './compass';
 
-/** HUD compass rose; the scene turns it through the `--rose` CSS variable on every camera move. */
+/**
+ * The HUD compass (`<sakuga-compass>`, packages/sakuga-vfx/compass, HUD v2 #202): the scene turns it through the
+ * `--rose` CSS variable on its host on every camera move, without React; a press turns the view north-up, and the
+ * element swings its needle in.
+ */
 export function CompassRose({
   roseRef,
   onNorthUp,
+  compact = false,
 }: {
-  roseRef: RefObject<HTMLButtonElement | null>;
+  roseRef: RefObject<HTMLElement | null>;
   onNorthUp(): void;
+  /** A phone's: 60 px, the compact line. */
+  compact?: boolean;
 }) {
-  return (
-    <button
-      ref={roseRef}
-      type="button"
-      className="compass"
-      aria-label="Compass: turn the view north-up"
-      title="Turn the view north-up"
-      onClick={onNorthUp}
-    >
-      <span className="compass-rose" aria-hidden="true">
-        <span className="compass-needle" />
-        {CARDINALS.map((c, i) => (
-          <span
-            key={c}
-            className={`compass-label compass-${c}`}
-            style={{ '--a': `${i * 90}deg` } as CSSProperties}
-          >
-            {c}
-          </span>
-        ))}
-      </span>
-    </button>
-  );
+  const latest = useRef(onNorthUp);
+  useEffect(() => {
+    latest.current = onNorthUp;
+  });
+  // The element, handed to the scene's ref (it turns it), with its click listened to.
+  const [host, setHost] = useHost<HTMLElement>();
+  useEffect(() => {
+    roseRef.current = host;
+    if (!host) return;
+    const click = () => latest.current();
+    host.addEventListener('click', click);
+    return () => host.removeEventListener('click', click);
+  }, [host, roseRef]);
+  return createElement('sakuga-compass', {
+    ref: setHost,
+    className: 'compass',
+    size: compact ? 'compact' : undefined,
+    label: 'Compass: turn the view north-up',
+    title: 'Turn the view north-up',
+  });
 }
 
 /** The HUD compass rose and the home's north, for views the orbit controls do not drive. */
 export interface RoseTarget {
-  ref: RefObject<HTMLButtonElement | null>;
+  ref: RefObject<HTMLElement | null>;
   /** `building.northBearing`. */
   northBearing: number;
 }
@@ -73,7 +78,7 @@ export function CompassTracker({
   northUpRef,
 }: {
   northBearing: number;
-  roseRef: RefObject<HTMLButtonElement | null>;
+  roseRef: RefObject<HTMLElement | null>;
   northUpRef: RefObject<(() => void) | undefined>;
 }) {
   const controls = useThree((s) => s.controls) as unknown as Controls | null;

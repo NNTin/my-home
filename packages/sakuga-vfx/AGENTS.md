@@ -196,6 +196,10 @@ Made here with the workflow above, in `NAMES`, each with a README and an `index.
   `dt`, and is done within 0.55 s, so a page under a heavy 3D view never measures it half-way; a turn to `side`
   clears both axes). A spring that ends a layout change stops within half a
   pixel (`Spring.still` would take a second longer on 60 px).
+- `compass` (HUD v2 #202 1/3, §5.7): the page turns it with `--rose` on the host (read in CSS only); a press: the disc
+  squashes, the needle swings in from the old turn (`--wob`, set at the press so no frame shows north early) and lands
+  with a ring, two wedges at N and カチッ the first time it crosses north; `poor`: a dashed ring; `size="compact"`
+  (60 px). Its method is `named()`, not `label()`: React 19 sets `label={…}` as a property and would overwrite it.
 
 ## Upstream changes come in by hand
 
