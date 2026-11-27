@@ -1069,7 +1069,10 @@ async function smoke(out, homeId) {
                   c.getAttribute('aria-label') ||
                   c.labels?.[0]?.textContent.trim() ||
                   c.textContent.trim() ||
-                  c.title
+                  c.title ||
+                  // A Sakuga control whose label is its element's slotted text (sakuga-checkbox):
+                  // the name a screen reader gets comes from the host's content.
+                  c.getRootNode().host?.textContent.trim()
                 ),
             )
             .map((c) => c.outerHTML.slice(0, 80)),

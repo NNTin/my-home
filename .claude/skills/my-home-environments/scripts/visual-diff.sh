@@ -56,8 +56,9 @@ view_args() {
     default) ARGS=("${base[@]}") ;;
     # The level "Souterrain": a native radio in its label before #168 PR 4, a segment after; a radio either way.
     souterrain) ARGS=("${base[@]}" --click 'role=radio[name="Souterrain"s]') ;;
-    ground-floor) ARGS=("${base[@]}" --click 'label:has-text("Ground floor")') ;;
-    first-floor) ARGS=("${base[@]}" --click 'label:has-text("First floor")') ;;
+    ground-floor) ARGS=("${base[@]}" --click 'role=radio[name="Ground floor"s]') ;;
+    # The level's whole name, on production's native radio and on this segment alike.
+    first-floor) ARGS=("${base[@]}" --click 'role=radio[name="First floor (attic)"s]') ;;
     orbit-180) ARGS=("${base[@]}" --drag '600,0') ;;
     steep) ARGS=("${base[@]}" --drag '0,250') ;;
     phone) ARGS=(--viewport 390x844 --touch --path '/?hints=off&quality=fast') ;;

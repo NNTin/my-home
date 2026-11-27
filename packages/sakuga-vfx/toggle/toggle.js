@@ -44,7 +44,7 @@ class SakugaToggle extends fx.Base {
     :host([size=compact]) { width: 65px; height: 32px; margin: 9px 13px 12px; --sk-fx-scale: .6; }
     :host([size=compact]) .tog { width: 65px; height: 32px; border-radius: 16px; }
     :host([size=compact]) .tog.css { border-width: 2.5px; }
-    :host([size=compact]) .tog::before { content: ''; position: absolute; inset: -6px 0; }   /* the 44 px hit area, inside the shadow root */
+    :host([size=compact]) .tog::before { content: ''; position: absolute; inset: -8.5px -2.5px; }   /* the 44 px hit area, inside the shadow root: from the padding box, so past the CSS switch's 2.5 px line too */
     :host([size=compact]) canvas { width: 90px; height: 97.5px; margin: -69.4px 0 0 -45px; }`;
   get checked() { return this.hasAttribute('checked'); }
   set checked(v) { this.toggleAttribute('checked', !!v); }
