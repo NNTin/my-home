@@ -14,6 +14,7 @@ export type ActionId =
   | 'map'
   | 'north'
   | 'walk'
+  | 'measure'
   | 'forward'
   | 'back'
   | 'strafe-left'
@@ -91,6 +92,15 @@ export const ACTIONS: readonly Action[] = [
     contexts: ['orbit'],
     kind: 'press',
     keys: ['Shift+W'],
+  },
+  {
+    // Unassigned until the user gives it a key (hotkeys.md: Measure starts unassigned).
+    id: 'measure',
+    name: 'Measure a distance',
+    group: 'Orbit',
+    contexts: ['orbit'],
+    kind: 'press',
+    keys: [],
   },
   {
     id: 'forward',

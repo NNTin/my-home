@@ -392,6 +392,72 @@ describe('App', () => {
     expect(window.location.search).not.toContain('perf');
   });
 
+  it('measures between two points from Tools, by click and by the keyboard’s cross; Escape ends it (HUD v2 #206)', async () => {
+    stubApi();
+    render(<App />);
+    await tools();
+    fireEvent.click(
+      within(screen.getByRole('region', { name: 'Tools' })).getByRole('button', {
+        name: 'Measure a distance',
+      }),
+    );
+    // Tools closes; the task bar takes the focus on the cross's button.
+    expect(screen.queryByRole('region', { name: 'Tools' })).toBeNull();
+    const bar = within(screen.getByRole('region', { name: 'Measure' }));
+    expect(bar.getByRole('status')).toHaveTextContent('Pick the first point.');
+    const aim = bar.getByRole('button', { name: /Pick the point under the cross/ });
+    expect(document.activeElement).toBe(aim);
+    // Selection is off while measuring: the scene gets no piece or room picks.
+    expect(lastScene?.pieces).toBeUndefined();
+    // A miss changes nothing and says so.
+    act(() => lastScene!.measure!.onPick(undefined));
+    expect(bar.getByRole('status')).toHaveTextContent('Nothing of the model there');
+    act(() => lastScene!.measure!.onPick([1, -2.6, 2]));
+    expect(bar.getByRole('status')).toHaveTextContent('Pick the second point.');
+    expect(screen.getByRole('region', { name: 'Measure' })).toHaveTextContent(
+      /x\s*\(east\)\s*1\.00 m/,
+    );
+    expect(screen.getByRole('region', { name: 'Measure' })).toHaveTextContent(
+      /y\s*\(up\)\s*−2\.60 m/,
+    );
+    // The second point by the keyboard: the arrows aim the cross, the button picks under it.
+    const picked: [number, number][] = [];
+    lastScene!.measure!.pickRef.current = (x, y) => {
+      picked.push([x, y]);
+      lastScene!.measure!.onPick([4, -2.6, 6]);
+    };
+    fireEvent.keyDown(aim, { key: 'ArrowRight' });
+    fireEvent.keyDown(aim, { key: 'ArrowUp', shiftKey: true });
+    act(() => fireEvent.click(aim));
+    expect(picked[0]![0]).toBeCloseTo(0.52);
+    expect(picked[0]![1]).toBeCloseTo(0.4);
+    expect(bar.getByRole('status')).toHaveTextContent('Distance 5.00 m.');
+    expect(lastScene?.measure?.points).toEqual([
+      [1, -2.6, 2],
+      [4, -2.6, 6],
+    ]);
+    // Clear starts again; Escape ends the task and gives the focus back to Tools.
+    fireEvent.click(bar.getByRole('button', { name: 'Clear' }));
+    expect(lastScene?.measure?.points).toEqual([]);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('region', { name: 'Measure' })).toBeNull();
+    expect(lastScene?.measure).toBeUndefined();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Tools' }));
+  });
+
+  it('ends the measurement on entering Edit, and has no Measure in Tools there (HUD v2 #206)', async () => {
+    stubApi();
+    render(<App />);
+    await tools();
+    fireEvent.click(screen.getByRole('button', { name: 'Measure a distance' }));
+    act(() => lastScene!.measure!.onPick([0, 0, 0]));
+    await enterEditMode();
+    expect(screen.queryByRole('region', { name: 'Measure' })).toBeNull();
+    expect(lastScene?.measure).toBeUndefined();
+    await tools();
+    expect(screen.queryByRole('button', { name: 'Measure a distance' })).toBeNull();
+  });
+
   it('routes the viewer’s keys: one Escape layer per press, ? and V open Tools and Views (HUD v2 #204)', async () => {
     stubApi();
     render(<App />);

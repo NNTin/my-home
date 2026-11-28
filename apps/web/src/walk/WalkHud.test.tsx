@@ -12,6 +12,7 @@ import { useWalk, type Walk } from './useWalk';
 import { WalkHud, type WalkView } from './WalkHud';
 import { minimapLevels } from './minimap';
 import { WALK_SESSION_KEY } from './walkSession';
+import { restoreAll, setSlot } from '../keys/bindings';
 import { buildWalkWorld, EYE_HEIGHT } from './world';
 
 // Mock home, souterrain (floor at -1.2): the hallway is x -0.5…1.5, z -4…4.
@@ -244,6 +245,24 @@ describe('WalkHud', () => {
     fireEvent.keyDown(note, { key: 'w' });
     await frames();
     expect(live()).toBe(before);
+  });
+
+  it('keeps walking with Shift held, unless Shift with the key is bound on purpose (#219 review)', async () => {
+    render(<Harness />);
+    fireEvent.keyDown(window, { key: 'W', shiftKey: true });
+    await waitFor(() => expect(at().z).toBeLessThan(-0.1));
+    fireEvent.keyUp(window, { key: 'W', shiftKey: true });
+    await frames();
+    const z = at().z;
+    // Shift+W bound to walking back: it walks back, not forward.
+    setSlot('back', 1, 'Shift+w');
+    try {
+      fireEvent.keyDown(window, { key: 'W', shiftKey: true });
+      await waitFor(() => expect(at().z).toBeGreaterThan(z + 0.1));
+      fireEvent.keyUp(window, { key: 'W', shiftKey: true });
+    } finally {
+      restoreAll();
+    }
   });
 
   it('lets go of a held key when the page is hidden or a field takes the keys (HUD v2 #204)', async () => {

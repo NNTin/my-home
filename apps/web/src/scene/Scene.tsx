@@ -11,6 +11,8 @@ import {
   type RefObject,
 } from 'react';
 import { PCFShadowMap, type PerspectiveCamera } from 'three';
+import { distance, metres } from '../measure/measure';
+import { MeasureRig, type MeasureRigProps } from '../measure/MeasureRig';
 import type { HomeScene, Vec2, Vec3 } from '../builder/buildHome';
 import { roofIndex, type RoomLabel, type Visibility } from '../builder/visibility';
 import type { CompassMarker } from '../compass/compass';
@@ -99,6 +101,8 @@ export interface SceneProps {
   onOrbit?: (() => void) | undefined;
   /** Something the view waits for (a lazy chunk): it has not settled meanwhile. */
   busy?: boolean;
+  /** The measure tool's points and picks (HUD v2 #206), while it is on. */
+  measure?: Omit<MeasureRigProps, 'labelRef'> | undefined;
 }
 
 /** Stops the frame loop while `paused`, and puts back whichever loop ran before. */
@@ -315,11 +319,13 @@ export function Scene({
   stage,
   onOrbit,
   busy = false,
+  measure,
 }: SceneProps) {
   const roseRef = useRef<HTMLElement>(null);
   // The performance readout: `?perf=1`, or Tools' Diagnostics (#203).
   const perfShown = usePerfShown();
   const labelsRef = useRef<HTMLDivElement>(null);
+  const measureLabel = useRef<HTMLDivElement>(null);
   const northUpRef = useRef<() => void>(undefined);
   /** Whether the orbit controls are in hand: between their `start` and `end`. */
   const held = useRef(false);
@@ -453,6 +459,7 @@ export function Scene({
           )}
           <FrameView frame={frame} />
           {stage}
+          {measure && <MeasureRig {...measure} labelRef={measureLabel} />}
           <CompassTracker northBearing={northBearing} roseRef={roseRef} northUpRef={northUpRef} />
           {hudMeasure && (
             <Suspense fallback={null}>
@@ -462,6 +469,17 @@ export function Scene({
         </FrameLoop>
       </Canvas>
       <RoomLabels labels={labels} layerRef={labelsRef} />
+      {measure?.points.length === 2 && (
+        <div className="room-labels">
+          <div
+            ref={measureLabel}
+            className="room-label measure-label"
+            style={{ visibility: 'hidden' }}
+          >
+            {metres(distance(measure.points[0]!, measure.points[1]!))}
+          </div>
+        </div>
+      )}
       <CompassRose roseRef={roseRef} onNorthUp={() => northUpRef.current?.()} compact={touch} />
       {hudMeasure && (
         <Suspense fallback={null}>

@@ -113,6 +113,8 @@ import { loadWalkSession } from './walk/walkSession';
 import { groundLevelId, minimapLevels } from './walk/minimap';
 import { buildWalkWorld, placeAt, standAt, startPose, type FurnitureBlocker } from './walk/world';
 import { loadingProgress } from './loading/loading';
+import { MeasureBar } from './measure/MeasureBar';
+import { NO_MEASUREMENT, withPoint, type Measurement } from './measure/measure';
 
 const shownLevels = (scene: HomeScene, v: Visibility) =>
   scene.levels.filter((l) => l.index <= v.maxLevelIndex && !v.hiddenLevels.includes(l.id));
@@ -549,6 +551,48 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     }
   };
   const [frame, setFrame] = useState<FrameRequest & { key: number }>();
+  // The measure tool (HUD v2 #206): a task of Orbit; nothing of it is saved. Walk, Edit or render mode end it.
+  const [measuring, setMeasuring] = useState(false);
+  const [measured, setMeasured] = useState<{ points: Measurement; missed: boolean }>({
+    points: NO_MEASUREMENT,
+    missed: false,
+  });
+  const [cross, setCross] = useState<[number, number]>([0.5, 0.5]);
+  const pickAt = useRef<((x: number, y: number) => void) | undefined>(undefined);
+  const measureApplies = !walking && !editing && !rendering;
+  if (measuring && !measureApplies) {
+    setMeasuring(false);
+    setMeasured({ points: NO_MEASUREMENT, missed: false });
+  }
+  const startMeasure = () => {
+    if (mobile) setPhoneTools(false);
+    else {
+      closePhotos();
+      setSurface(undefined);
+    }
+    setSelectedPieceId(undefined);
+    setSelectedRoomId(undefined);
+    dispatch({ type: 'select' });
+    setMeasured({ points: NO_MEASUREMENT, missed: false });
+    setCross([0.5, 0.5]);
+    setMeasuring(true);
+  };
+  const stopMeasure = () => {
+    setMeasuring(false);
+    setMeasured({ points: NO_MEASUREMENT, missed: false });
+    // The focus goes back to where the tool was started from.
+    document.querySelector<HTMLElement>(mobile ? '.stage-tools .hud-tools' : '.hud-tools')?.focus();
+  };
+  const measure = measuring
+    ? {
+        points: measured.points,
+        pickRef: pickAt,
+        onPick: (point: Vec3 | undefined) =>
+          setMeasured((m) =>
+            point ? { points: withPoint(m.points, point), missed: false } : { ...m, missed: true },
+          ),
+      }
+    : undefined;
 
   // `?focus=<useId>` once the home (and for furniture, the placements) are there. Walking wins.
   // Applied while rendering, as soon as what it waits for has arrived.
@@ -917,6 +961,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
         if (bigMap) return (bigMap.click(), true);
         if (mobile ? phoneTools || phoneMap : shown) return (closeSurface(), true);
         if (rendering) return false;
+        if (measuring) return (stopMeasure(), true);
         if (
           editor.selectedId !== undefined ||
           selectedPieceId !== undefined ||
@@ -959,6 +1004,11 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
         const compass = document.querySelector<HTMLElement>('.compass');
         return compass ? (compass.click(), true) : false;
       }
+      case 'measure':
+        if (!measureApplies) return false;
+        if (measuring) stopMeasure();
+        else startMeasure();
+        return true;
       case 'walk':
         controls.onWalk();
         return true;
@@ -1026,6 +1076,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
       status={stageStatus}
       touch={mobile}
       helpAsked={helpAsked}
+      onMeasure={measureApplies ? startMeasure : undefined}
       className={mobile ? 'tools-popover' : undefined}
       // On a phone, the photos are open while the sheet shows them.
       photosOpen={mobile ? panel === 'photos' && snap !== 'collapsed' : photosOpen}
@@ -1184,7 +1235,9 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
             visibility={visibility}
             target={orbitTarget(scene, visibility)}
             furniture={furniture}
-            handlers={walking ? idle : !editing ? inspect : mobile ? touchHandlers : handlers}
+            handlers={
+              walking || measuring ? idle : !editing ? inspect : mobile ? touchHandlers : handlers
+            }
             editable={editing}
             touch={mobile}
             toolbar={toolbar}
@@ -1228,7 +1281,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
             viewpoint={viewpoint}
             paused={walking && cameraOpen}
             pieces={
-              walking
+              walking || measuring
                 ? undefined
                 : {
                     onSelectPiece: selectPiece,
@@ -1241,7 +1294,19 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
             quality={quality}
             onNotice={setToast}
             planColours={planColours}
+            measure={measure}
           />
+          {measuring && (
+            <MeasureBar
+              points={measured.points}
+              missed={measured.missed}
+              cross={cross}
+              onCross={setCross}
+              onPickCross={() => pickAt.current?.(...cross)}
+              onClear={() => setMeasured({ points: NO_MEASUREMENT, missed: false })}
+              onDone={stopMeasure}
+            />
+          )}
           <SkNotice className="viewer-toast" message={toast} duration={TOAST_MS / 1000} />
           {views && (
             <views.RenderMode

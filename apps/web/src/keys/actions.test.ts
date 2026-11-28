@@ -59,10 +59,11 @@ describe('the viewer’s actions (HUD v2 #204)', () => {
     expect(keptByTarget(event(document.body))).toBe(false);
   });
 
-  it('gives every action a name and keys for the help and the settings', () => {
+  it('gives every action a name and keys for the help and the settings; Measure starts with none (#206)', () => {
     for (const a of ACTIONS) {
       expect(a.name.length, a.id).toBeGreaterThan(0);
-      expect(a.keys.length, a.id).toBeGreaterThan(0);
+      if (a.id === 'measure') expect(a.keys, a.id).toEqual([]);
+      else expect(a.keys.length, a.id).toBeGreaterThan(0);
     }
     expect(keyLabel('Mod+Shift+Z')).toBe('Ctrl+Shift+Z');
     expect(keyLabel('ArrowUp')).toBe('↑');

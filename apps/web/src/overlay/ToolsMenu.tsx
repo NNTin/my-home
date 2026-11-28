@@ -8,6 +8,7 @@ import { href, keptQuery } from '../routing';
 import { SkToggle } from '../hud/SkToggle';
 import { EffectsSwitch } from './QualityControl';
 import { stageStatusText, type StageStatus } from './StageTools';
+import { hint, useBindings } from '../keys/bindings';
 import { KeyboardShortcuts } from './KeyboardShortcuts';
 import { ToolsHelp } from './ToolsHelp';
 
@@ -26,6 +27,8 @@ export interface ToolsMenuProps {
   touch: boolean;
   /** How many times `?` asked for the keys: the shortcuts open unfolded (#204, #205). */
   helpAsked?: number;
+  /** Starts the measure tool (#206); absent where it does not apply (Walk, Edit, render mode). */
+  onMeasure?: (() => void) | undefined;
   className?: string;
 }
 
@@ -44,9 +47,11 @@ export function ToolsMenu({
   status,
   touch,
   helpAsked = 0,
+  onMeasure,
   className,
 }: ToolsMenuProps) {
   const perf = usePerfShown();
+  useBindings();
   const said = stageStatusText(status);
   return (
     <SkPanel className={`overlay panel tools-menu ${className ?? ''}`} label="Tools" arrive>
@@ -88,7 +93,12 @@ export function ToolsMenu({
       <ToolsHelp touch={touch} />
       {/* The keys that apply, and their settings (#205); `?` opens it here. */}
       <KeyboardShortcuts key={helpAsked} open={helpAsked > 0} />
-      {/* Measure (#206) comes here, beside the diagnostics. */}
+      {/* A distance between two points of the model, and their coordinates (#206). */}
+      {onMeasure && (
+        <SkButton className="tools-measure" size="compact" variant="secondary" onClick={onMeasure}>
+          Measure a distance{hint('measure')}
+        </SkButton>
+      )}
       <fieldset className="tools-diagnostics">
         <legend>Diagnostics</legend>
         <SkToggle
