@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { openLevelPicker } from './test/screen';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import type { SceneProps } from './scene/Scene';
@@ -61,7 +62,8 @@ async function openGallery(options: Parameters<typeof fakeApi>[0] = {}) {
   });
   render(<App />);
   // The first view looks into the souterrain: these tests need the whole building in view.
-  fireEvent.click(await screen.findByRole('radio', { name: 'Roof' }));
+  await screen.findByRole('button', { name: /^Level: / });
+  fireEvent.click(openLevelPicker().getByRole('radio', { name: 'Roof' }));
   // The photos are in Tools (HUD v2 #200).
   fireEvent.click(await screen.findByRole('button', { name: 'Tools' }));
   fireEvent.click(await screen.findByRole('button', { name: /Photos \(4\)/ }));
@@ -171,7 +173,7 @@ describe('photo gallery', () => {
 
   it('shows only markers of the levels in view, and outdoor ones always', async () => {
     await openGallery();
-    const cutaway = within(screen.getByRole('radiogroup', { name: 'Show up to level' }));
+    const cutaway = openLevelPicker();
     fireEvent.click(cutaway.getByLabelText('Souterrain'));
     expect(markerIds()).toEqual(['garden', 'kitchen', 'hallway']);
   });

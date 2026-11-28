@@ -20,6 +20,7 @@ export interface SheetTab<T extends string> {
 }
 
 /** Share of the space below the top bar an open sheet takes, at the bottom and at the side. */
+const COMPACT_PERCENT = 28;
 const OPEN_SHARE = {
   bottom: { half: 0.5, full: 1 },
   side: { half: 0.45, full: 0.8 },
@@ -29,8 +30,9 @@ const OPEN_SHARE = {
  * The CSS size of the sheet at a snap point: its height at the bottom, its width at the side.
  * Collapsed, only the tab bar shows (`--sheet-collapsed` in the stylesheet).
  */
-export function sheetSize(snap: SheetSnap, side: boolean): string {
+export function sheetSize(snap: SheetSnap, side: boolean, compact = false): string {
   if (snap === 'collapsed') return 'var(--sheet-collapsed)';
+  if (compact && !side && snap === 'half') return `${COMPACT_PERCENT}%`;
   return `${OPEN_SHARE[side ? 'side' : 'bottom'][snap] * 100}%`;
 }
 
@@ -40,11 +42,12 @@ export function nearestSnap(
   available: number,
   collapsed: number,
   side: boolean,
+  compact = false,
 ): SheetSnap {
   const share = OPEN_SHARE[side ? 'side' : 'bottom'];
   const sizes: [SheetSnap, number][] = [
     ['collapsed', collapsed],
-    ['half', available * share.half],
+    ['half', available * (compact && !side ? COMPACT_PERCENT / 100 : share.half)],
     ['full', available * share.full],
   ];
   return sizes.reduce((best, next) =>
@@ -63,6 +66,8 @@ interface Props<T extends string> {
   onSnap(snap: SheetSnap): void;
   /** At the right-hand side (a phone held across) instead of at the bottom. */
   side: boolean;
+  /** A short, read-only inspector uses a shallower middle snap in portrait. */
+  compact?: boolean;
   children: ReactNode;
 }
 
@@ -87,6 +92,7 @@ export function Sheet<T extends string>({
   snap,
   onSnap,
   side,
+  compact,
   children,
 }: Props<T>) {
   const sheet = useRef<HTMLElement>(null);
@@ -152,7 +158,7 @@ export function Sheet<T extends string>({
     element.style[axis] = '';
     // The element springs from the size the finger left to the snap's (the same snap, too).
     element.toggleAttribute('dragging', false);
-    onSnap(nearestSnap(size, available, collapsed, side));
+    onSnap(nearestSnap(size, available, collapsed, side, compact));
   };
 
   // The press ends wherever the pointer is released. Until it has become a drag the pointer is

@@ -226,18 +226,18 @@ async function frameChecks(browser, { device, base, host, homeId }) {
         moving.frames > data.frames && moving.drawCalls > 0 && moving.drawCalls <= first,
         `${moving.drawCalls} draw calls, ${moving.triangles} triangles`,
       );
+      const levelChip = page.getByRole('button', { name: /^Level: / });
+      const roof = page
+        .getByRole('radiogroup', { name: 'Show up to level' })
+        .getByRole('radio', { name: 'Roof' });
       if (phone) {
-        await page
-          .getByRole('radiogroup', { name: 'Show up to level' })
-          .getByRole('radio')
-          .first()
-          .tap();
+        await levelChip.tap();
+        await roof.tap();
+        await levelChip.tap();
       } else {
-        // The level row in the upper left corner (HUD v2 #200), the same radios as before in the panel.
-        await page
-          .getByRole('radiogroup', { name: 'Show up to level' })
-          .getByRole('radio', { name: 'Roof' })
-          .click();
+        await levelChip.click();
+        await roof.click();
+        await levelChip.click();
       }
       await page.waitForTimeout(1500);
       await nudge();
@@ -1024,7 +1024,7 @@ async function smoke(out, homeId) {
     await settle();
     check('"Got it" dismisses the hints', (await hints.count()) === 0);
 
-    // The default view: everything but the top bar and the tab bar belongs to the 3D view.
+    // In the default view the controls float over the canvas, which ends at the sheet.
     check(
       'the phone layout is used',
       (await page.locator('.viewer.mobile.portrait').count()) === 1,
@@ -1042,8 +1042,8 @@ async function smoke(out, homeId) {
       `${Math.round(canvas.height)} of ${PORTRAIT.height} px`,
     );
     check(
-      'the 3D view is not under the top bar or the sheet',
-      !overlap(canvas, bar) && !overlap(canvas, tabs),
+      'the top controls float over the 3D view, which stops at the sheet',
+      overlap(canvas, bar) && !overlap(canvas, tabs),
     );
     check(
       'the compass is on the 3D view, clear of the bars',
@@ -1221,7 +1221,9 @@ async function smoke(out, homeId) {
     await settle();
     check('the arrow closes the sheet', (await snap()) === 'collapsed');
 
-    // The level switcher in the top bar.
+    // The level switcher opens from the compact chip in the top bar.
+    const levelChip = page.getByRole('button', { name: /^Level: / });
+    await levelChip.tap();
     const levels = page.getByRole('radiogroup', { name: 'Show up to level' }).getByRole('radio');
     const lowest = levels.last();
     const lowestName = await lowest.getAttribute('aria-label');
@@ -1231,6 +1233,7 @@ async function smoke(out, homeId) {
       `the level switches to "${lowestName}"`,
       (await lowest.getAttribute('aria-checked')) === 'true',
     );
+    await levelChip.tap();
     check(
       'room names show once the building is cut away',
       (await page.locator('.room-label').count()) > 0,

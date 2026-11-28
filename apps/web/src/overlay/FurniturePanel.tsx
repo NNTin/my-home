@@ -8,6 +8,7 @@ import type { SyncState, SyncStatus } from '../placements/sync';
 import { Link } from '../routing';
 import { SkPanel } from '../hud/SkPanel';
 import { SkButton } from '../hud/SkButton';
+import { SkIconButton } from '../hud/SkIconButton';
 import { SkCard } from '../hud/SkCard';
 
 export interface SelectedInfo {
@@ -56,6 +57,8 @@ export interface FlaggedItem {
 interface Props {
   /** Edit mode: without it the panel only shows, nothing in it changes the furniture. */
   editing: boolean;
+  onCloseInspector?: (() => void) | undefined;
+  onOpenFurniture?: (() => void) | undefined;
   /** The placements are loading, or failed to load. */
   loading: boolean;
   error: string | undefined;
@@ -185,6 +188,119 @@ export function FurniturePanel(props: Props) {
   const { sync, settings, selected, piece } = props;
   const set = (patch: Partial<EditorSettings>) => props.onSettings({ ...settings, ...patch });
 
+  const subject = selected ?? piece ?? props.room;
+  const compact = !!props.onCloseInspector;
+  const selection = selected ? (
+    <div className="selection" aria-label="Selected item">
+      <p>
+        {!compact && (
+          <>
+            <strong>{selected.name}</strong> ({selected.typeName}){' '}
+          </>
+        )}
+        {selected.where}
+      </p>
+      {selected.problems.map((p) => (
+        <p key={p} className="error">
+          {p}
+        </p>
+      ))}
+      {props.editing && <Mounting selected={selected} props={props} />}
+      <div className="buttons">
+        {props.editing && (
+          <>
+            <SkButton
+              size="compact"
+              variant="secondary"
+              onClick={() => props.onRotate(1)}
+              title="R"
+            >
+              Rotate ⟲
+            </SkButton>
+            <SkButton
+              size="compact"
+              variant="secondary"
+              onClick={() => props.onRotate(-1)}
+              title="Shift+R"
+            >
+              Rotate ⟳
+            </SkButton>
+            <SkButton
+              size="compact"
+              variant="secondary"
+              onClick={props.onDuplicate}
+              title="Shift+D"
+            >
+              Duplicate
+            </SkButton>
+            <SkButton size="compact" variant="secondary" onClick={props.onDelete} title="Delete">
+              Delete
+            </SkButton>
+          </>
+        )}
+        <PieceLink href={selected.href} name={selected.name} />
+      </div>
+    </div>
+  ) : piece ? (
+    <div className="selection piece-chip" aria-label="Selected piece">
+      <p>
+        {!compact ? (
+          <>
+            <strong>{piece.name}</strong> ({piece.typeName})
+          </>
+        ) : (
+          piece.typeName
+        )}
+      </p>
+      {piece.between && piece.between.length > 0 && (
+        <p className="note">Between {piece.between.join(' and ')}</p>
+      )}
+      <div className="buttons">
+        <PieceLink href={piece.href} name={piece.name} />
+      </div>
+    </div>
+  ) : props.room ? (
+    <div className="selection room-chip" aria-label="Selected room">
+      <p>
+        <strong>{props.room.name}</strong> ({props.room.levelName}
+        {props.room.apartmentName ? ` · ${props.room.apartmentName}` : ''})
+      </p>
+      <div className="buttons">
+        <SkButton size="compact" variant="secondary" onClick={props.room.onFocus}>
+          Focus room
+        </SkButton>
+      </div>
+    </div>
+  ) : (
+    <p className="note">
+      {props.editing
+        ? 'Click an item to select it; drag to move (a wall cabinet along its wall), drag the ring to rotate. Click a window, door or gate to open its piece page.'
+        : 'Click an item, window, door, gate or a room’s floor to see what it is.'}
+    </p>
+  );
+
+  if (compact && subject) {
+    return (
+      <SkPanel className="overlay panel contextual-inspector" label="Furniture">
+        <div className="contextual-inspector-heading">
+          <h1>{subject.name}</h1>
+          <SkIconButton
+            size="compact"
+            icon="close"
+            label="Close inspector"
+            onClick={props.onCloseInspector}
+          />
+        </div>
+        {selection}
+        {props.onOpenFurniture && (
+          <SkButton size="compact" variant="secondary" onClick={props.onOpenFurniture}>
+            Furniture controls
+          </SkButton>
+        )}
+      </SkPanel>
+    );
+  }
+
   return (
     <SkPanel className="overlay panel panel-right" label="Furniture">
       <h1>Furniture</h1>
@@ -279,88 +395,7 @@ export function FurniturePanel(props: Props) {
             </SkButton>
           </div>
         )}
-        {selected ? (
-          <div className="selection" aria-label="Selected item">
-            <p>
-              <strong>{selected.name}</strong> ({selected.typeName}) {selected.where}
-            </p>
-            {selected.problems.map((p) => (
-              <p key={p} className="error">
-                {p}
-              </p>
-            ))}
-            {props.editing && <Mounting selected={selected} props={props} />}
-            <div className="buttons">
-              {props.editing && (
-                <>
-                  <SkButton
-                    size="compact"
-                    variant="secondary"
-                    onClick={() => props.onRotate(1)}
-                    title="R"
-                  >
-                    Rotate ⟲
-                  </SkButton>
-                  <SkButton
-                    size="compact"
-                    variant="secondary"
-                    onClick={() => props.onRotate(-1)}
-                    title="Shift+R"
-                  >
-                    Rotate ⟳
-                  </SkButton>
-                  <SkButton
-                    size="compact"
-                    variant="secondary"
-                    onClick={props.onDuplicate}
-                    title="Shift+D"
-                  >
-                    Duplicate
-                  </SkButton>
-                  <SkButton
-                    size="compact"
-                    variant="secondary"
-                    onClick={props.onDelete}
-                    title="Delete"
-                  >
-                    Delete
-                  </SkButton>
-                </>
-              )}
-              <PieceLink href={selected.href} name={selected.name} />
-            </div>
-          </div>
-        ) : piece ? (
-          <div className="selection piece-chip" aria-label="Selected piece">
-            <p>
-              <strong>{piece.name}</strong> ({piece.typeName})
-            </p>
-            {piece.between && piece.between.length > 0 && (
-              <p className="note">Between {piece.between.join(' and ')}</p>
-            )}
-            <div className="buttons">
-              <PieceLink href={piece.href} name={piece.name} />
-            </div>
-          </div>
-        ) : props.room ? (
-          <div className="selection room-chip" aria-label="Selected room">
-            <p>
-              <strong>{props.room.name}</strong> ({props.room.levelName}
-              {props.room.apartmentName ? ` · ${props.room.apartmentName}` : ''})
-            </p>
-            <div className="buttons">
-              <SkButton size="compact" variant="secondary" onClick={props.room.onFocus}>
-                Focus room
-              </SkButton>
-            </div>
-          </div>
-        ) : (
-          <p className="note">
-            {props.editing
-              ? 'Click an item to select it; drag to move (a wall cabinet along its wall), drag the ring to rotate. Click a window, door or gate to open its piece page.'
-              : 'Click an item, window, door, gate or a room’s floor to see what it is.'}
-          </p>
-        )}
+        {selection}
         {props.editing && (
           <>
             <SkCheckbox

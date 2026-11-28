@@ -1,11 +1,11 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { shortLevelName } from './overlay/LevelControl';
 import type { SceneProps } from './scene/Scene';
 import { fakeApi, homeSummary } from './test/fakeApi';
 import { testPhoto, testRequest } from './test/fixtures';
-import { shownScene, stubScreen } from './test/screen';
+import { openLevelPicker, shownScene, stubScreen } from './test/screen';
 
 // jsdom has no WebGL, so the R3F canvas is replaced with a stub that exposes what it would draw.
 let lastScene: SceneProps | undefined;
@@ -26,8 +26,7 @@ const viewer = () => screen.getByTestId('scene').closest('.viewer') as HTMLEleme
 const sheet = () => screen.getByRole('region', { name: 'Panels' });
 const tab = (name: RegExp) => screen.getByRole('tab', { name });
 const topBar = () => within(screen.getByRole('toolbar'));
-const level = (name: string) =>
-  within(screen.getByRole('radiogroup', { name: 'Show up to level' })).getByRole('radio', { name });
+const level = (name: string) => openLevelPicker().getByRole('radio', { name });
 const region = (name: string) => screen.queryByRole('region', { name });
 /** Tools, in the stage tools (HUD v2 #200). */
 const tools = () => fireEvent.click(screen.getByRole('button', { name: 'Tools' }));
@@ -128,6 +127,7 @@ describe('phone layout', () => {
 
   it('switches the cutaway level in the top bar', async () => {
     await open('portrait');
+    expect(screen.queryByRole('radiogroup', { name: 'Show up to level' })).toBeNull();
     expect(level('Souterrain')).toBeChecked();
     expect(level('Roof')).not.toBeChecked();
     expect(level('First floor (attic)')).toHaveTextContent('Attic');
@@ -154,6 +154,23 @@ describe('phone layout', () => {
     fireEvent.click(screen.getByRole('switch', { name: 'Edit' }));
     fireEvent.click(tab(/Furniture/));
     expect(screen.getByText('Add to Souterrain')).toBeInTheDocument();
+  });
+
+  it('shows opening details in a shallow sheet and gives focus back on close', async () => {
+    await open('portrait');
+    act(() => lastScene!.pieces!.onSelectPiece('souterrain-patio-door'));
+    const details = screen.getByRole('button', { name: /: details$/ });
+    fireEvent.click(details);
+    const inspector = within(region('Furniture')!);
+    expect(inspector.getByRole('heading', { level: 1 })).toBeInTheDocument();
+    expect(viewer().style.getPropertyValue('--stage-inset')).toBe('28%');
+    fireEvent.click(inspector.getByRole('button', { name: 'Close inspector' }));
+    expect(details).toHaveFocus();
+    expect(sheet()).toHaveClass('sheet-collapsed');
+    fireEvent.click(details);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(details).toHaveFocus();
+    expect(sheet()).toHaveClass('sheet-collapsed');
   });
 
   it('offers the quality setting in the View panel, in a phone\u2019s words, and remembers it', async () => {
@@ -301,11 +318,7 @@ describe('phone layout', () => {
 
   it('follows the screen: desktop, phone upright, phone across', async () => {
     const { turn } = await open('desktop');
-    fireEvent.click(
-      within(screen.getByRole('radiogroup', { name: 'Show up to level' })).getByLabelText(
-        'Souterrain',
-      ),
-    );
+    fireEvent.click(openLevelPicker().getByLabelText('Souterrain'));
 
     turn('portrait');
     expect(viewer()).toHaveClass('mobile', 'portrait');

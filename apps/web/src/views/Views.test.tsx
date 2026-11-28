@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import type { SceneProps } from '../scene/Scene';
 import { fakeApi, homeSummary } from '../test/fakeApi';
-import { shownScene, stubScreen } from '../test/screen';
+import { openLevelPicker, shownScene, stubScreen } from '../test/screen';
 
 // jsdom has no WebGL: the canvas is a stub that records what it would be given.
 let lastScene: SceneProps | undefined;
@@ -127,7 +127,7 @@ describe('named views in the viewer', () => {
 
   it('changing what is shown by hand leaves the view too', async () => {
     await open('/?view=cutaway');
-    const cutaway = within(screen.getByRole('radiogroup', { name: 'Show up to level' }));
+    const cutaway = openLevelPicker();
     fireEvent.click(cutaway.getByLabelText('Ground floor'));
     expect(window.location.search).toBe('');
     expect(lastScene?.rigView).toEqual({ kind: 'cutaway' });
@@ -137,9 +137,11 @@ describe('named views in the viewer', () => {
   it('the backdrop is chosen in the control, or by ?backdrop= for a visit', async () => {
     const views = await open('/?backdrop=studio-dark');
     expect(lastScene?.backdrop).toBe('studio-dark');
+    expect(screen.getByRole('button', { name: 'Views' })).toHaveAttribute('tone', 'light');
     expect(views.getByLabelText('Backdrop')).toHaveValue('studio-dark');
     fireEvent.change(views.getByLabelText('Backdrop'), { target: { value: 'studio-light' } });
     expect(lastScene?.backdrop).toBe('studio-light');
+    expect(screen.getByRole('button', { name: 'Views' })).toHaveAttribute('tone', 'dark');
     // A chosen backdrop is the named views' too.
     fireEvent.change(views.getByLabelText('Backdrop'), { target: { value: 'sky' } });
     fireEvent.click(views.getByRole('radio', { name: 'Cutaway' }));
