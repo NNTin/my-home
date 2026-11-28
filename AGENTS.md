@@ -32,6 +32,10 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
   the other elements come in one deferred `sakuga-hud` script without the core, driven by the wrappers in
   `apps/web/src/hud/` (fallback in jsdom), with the measuring page `/?hud=measure` (`docs/hud.md`). The HUD is
   white paper: restyle through the `--sk-*`/`--hud-*` values in `styles.css`'s `:root`, never a colour of its own
+- **The folders of `src` are layers** (`docs/architecture.md`): in `apps/web` from `geom`, `api`, `routing` up
+  through `hud`, `catalog`, `builder`, `finishes`, `scene` and `views` to the lazy pages and `main.tsx`; in
+  `apps/api` `core` < `db` < `routes`; in `packages/shared` `finishes` < `catalog` < `model`. The table is
+  `tools/eslint/layers.mjs`, the rules `tools/eslint/import-layers.mjs`
 - `docs/`: project docs (designs not built yet in `docs/design/`: the realistic render, `realistic-render.md`);
   `docker-compose.yml` runs postgres + api + web
 - `charts/my-home`: Helm chart deployed to Kubernetes by CI + Flux (`docs/deployment.md`); `tools/check-chart.sh`
@@ -53,6 +57,11 @@ my-home: a 3D viewer for a home. pnpm monorepo, TypeScript (strict), Node 24 (`.
   Dockerfiles, compose and real Postgres are verified only in CI (`.github/workflows/ci.yml`).
 - **Tests run in CI, not on the agents' machine** (§ Where tests run). The machine is small and runs many agents
   at once.
+- **A folder imports only lower layers; nothing is excepted** (`pnpm lint`: `import-layers/order`, `no-cycle`;
+  `import type` counts). A report means a file is in the wrong folder: move it, or move what both sides need
+  down. Never an `eslint-disable`, never a list of allowed imports (a test fails on both). A new folder gets its
+  line in `tools/eslint/layers.mjs` and in the doc's table in the same pull request; `import()` only of a lazy
+  entry declared there.
 - API request/response shapes live in `packages/shared`; validate with them on both sides.
 - api tests use `fastify.inject` and must also pass against real Postgres (CI `test-postgres`).
 - web tests run in jsdom: mock the R3F canvas, never require WebGL.

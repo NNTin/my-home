@@ -15,7 +15,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r --workspace-concurrency=1 typecheck",
-    "test": "pnpm -r --workspace-concurrency=1 test",
+    "test": "node --test tools/eslint/import-layers.test.mjs && pnpm -r --workspace-concurrency=1 test",
     "db:generate": "pnpm --filter @my-home/api db:generate",
     "db:migrate": "pnpm --filter @my-home/api db:migrate",
     "db:seed": "pnpm --filter @my-home/api db:seed",
