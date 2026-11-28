@@ -131,6 +131,9 @@ What reading CI has taught us:
 - **A compact HUD control is 34 px with its 44 px hit area inside its shadow root** (#168 PR 3): a smoke checks
   a touch size by hit-testing (`mobile-smoke.mjs`), never by measuring a box; Playwright's CSS reaches the 34 px
   inner `<button>` too.
+- **Compact controls side by side need 12 px between them, and must not be stretched** (#168 PR 7): their 44 px hit
+  areas around a 34 px face overlap when closer, and a host stretched by its row (`align-items: stretch`) keeps its face
+  at the top, so the hit area misses its own box. Centre rows; `missedTouches` (`scripts/scene.mjs`) finds both.
 - **A bare `canvas` selector is not the 3D view any more** (#166): the HUD's Sakuga effects draw on a canvas over
   the page and on one in a control's shadow root (Playwright's CSS reaches into it). Use `SCENE` from
   `scripts/scene.mjs`, and wait for `loadingScreenGone` before a shot.

@@ -917,7 +917,20 @@ PRs 5 (containers) and 6 (walking) are not done separately: HUD v2 ([`hud-v2/`](
 their elements in its new layout: the shared HUD surface in #200, the inspectors in the sheet in #201, and the
 orientation area with the compass, the minimap and the walking controls in #202. PR 7 (the photos panel, the catalogue
 and piece pages, removing the old HUD CSS, the real-phone pass) stays in #168 and runs after #206, so the old styles
-are removed once. PR 7 is split in four (2026-11-28): 7/1 the photos panel, 7/2 the catalogue and piece pages, 7/3 the walk family (walk HUD, capture sheet, camera view, minimap; a changed walk or mobile smoke gets its old→new table and keeps every check), 7/4 the rest of the viewer's native buttons (furniture panel, sheet tabs, perf readout, render-still bar, shortcut slots), the old HUD styles removed and the real-phone pass listed (Closes #168). HUD v2 built the containers' and the walking elements, not every button around them: about 60 stayed native in paper.
+are removed once. PR 7 is split in four (2026-11-28): 7/1 the photos panel, 7/2 the catalogue and piece pages, 7/3 the walk family (walk HUD, capture sheet, camera view, minimap; a changed walk or mobile smoke gets its old→new table and keeps every check), 7/4 the rest of the viewer's native buttons (furniture panel, sheet tabs, perf readout, render-still bar, shortcut slots), the old HUD styles removed and the real-phone pass listed (Closes #168). HUD v2 built the containers' and the walking elements, not every button around them: about 60 stayed native in paper. **Done with 7/4 (#168 closed).** The real-phone pass is the owner's (below).
+
+**The owner's real-phone pass (#168, PR 7/4).** On the phone, at rest and with Effects on and off, about ten minutes:
+
+1. The top bar, the stage tools and the sheet: every tap lands on what it should (Edit, Tools, Reset view, the tabs, ⤢ and the arrow).
+2. Walk: the pad, Look up/down, the shutter, Overview, the camera mode switch (Sensors, Manual: a tap on the shown one keeps it), Calibrate and Requests open and close their sections.
+3. Take a photo: the capture sheet's tags, the nudges, Discard and Save; the upload bar.
+4. The large map: Heading/North, Photos on the map, Move, ✕.
+5. Photos (sheet): a thumbnail, View from here, the overlay switch and its opacity, the pose sliders and ±.
+6. The catalogue and a piece page: the search, a card, 3D/Section, the playground's colour, sliders and cm fields, Show in model.
+7. Tools: Keyboard shortcuts open (an external keyboard if there is one), Measure a distance with two taps.
+8. Reduced motion on: nothing jumps or flashes, choices still read at a glance.
+
+Anything that misses a tap, reads wrong or moves too much goes into a comment on the last PR or a new issue.
 
 Why this order: the foundation makes every later element cheap (the core once) and sleeping at rest before there
 are many elements on the page; paper second, so production never shows a mix of dark panels and paper controls
@@ -1028,6 +1041,9 @@ The owner asked (2026-11-27) that open points be decided with the most reasonabl
 | B45 | `SkSegmented` puts back the app's value after a pick the app does not take (a refused permission) (PR 7/3)                                                                                                                                                                              | The element moved alone; React had nothing new to set                                                                                     |
 | B46 | Compact controls stand 12 px apart and are not stretched (centred rows): their 44 px hit areas around 34 px faces do not overlap; the walk's two switches have a width (equal shares cut "Sensors") (PR 7/3)                                                                            | Hit-tested at 390 px with `missedTouches`                                                                                                 |
 | B47 | A button that opens a section is a disclosure: `sakuga-button expanded` says `aria-expanded` and has no look of its own (Link a photo…, Calibrate, Requests); `pressed` stays for true toggles (#222 review, PR 7/3)                                                                    | A disclosure is not a toggle                                                                                                              |
+| B48 | The camera view's "Camera app" and "Gallery" labels around a file input keep a paper look in their own rule: `sakuga-shutter` has no label variant yet (§4.5 asks for one; a follow-up, not built here) (PR 7/4)                                                                        | The old paper block went                                                                                                                  |
+| B49 | The phone sheet's bar (tabs, size, close) stays the sheet's own buttons and CSS, as V9 decided; the furniture panel's catalogue items are `sakuga-card`s, its buttons, the perf readout's, render mode's bar and the shortcut slots `sakuga-button`/`-icon-button` (PR 7/4)             | §4.6, §5.5, hud-v2 V9                                                                                                                     |
+| B50 | The old HUD styles are gone (PR 7/4): the paper rules for native buttons and fields, the panel, top bar, perf readout and render-still button rules, the sheet panel's native-control rules. No native button is left outside a Sakuga element or the sheet's bar                       | §12: removed once, after HUD v2                                                                                                           |
 
 ## 14. Open questions
 

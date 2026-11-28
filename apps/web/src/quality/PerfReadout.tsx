@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { FrameGovernor, PerfData } from './governor';
 import { perfReport, perfRows } from './perfReport';
 import { SkPanel } from '../hud/SkPanel';
+import { SkButton } from '../hud/SkButton';
+import { SkField } from '../hud/SkField';
 
 /**
  * The `?perf=1` readout (docs/design/realistic-render.md §10.3): a small panel over the viewer
@@ -111,22 +113,24 @@ export function PerfReadout({ governor, phone, view }: PerfReadoutProps) {
     // A note on a paper card (sakuga-panel); its fold stays a button: folded, the readings are not on the page.
     <SkPanel className="perf-readout" kind="note" size="compact" label="Perf readout">
       <div className="perf-head" ref={panel}>
-        <button type="button" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <SkButton size="compact" variant="secondary" expanded={open} onClick={() => setOpen(!open)}>
           Perf {open ? '▾' : '▸'}
-        </button>
-        <button type="button" onClick={() => void copy()}>
+        </SkButton>
+        <SkButton size="compact" variant="secondary" onClick={() => void copy()}>
           <span aria-live="polite">{copied ? 'Copied' : 'Copy'}</span>
-        </button>
+        </SkButton>
       </div>
       {manual !== undefined && (
         <div className="perf-manual">
           <label>
             Select all and copy:
-            <textarea ref={text} readOnly rows={4} value={manual} />
+            <SkField size="compact">
+              <textarea ref={text} readOnly rows={4} value={manual} />
+            </SkField>
           </label>
-          <button type="button" onClick={() => setManual(undefined)}>
+          <SkButton size="compact" variant="secondary" onClick={() => setManual(undefined)}>
             Close
-          </button>
+          </SkButton>
         </div>
       )}
       {open && (
