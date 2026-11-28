@@ -3,6 +3,9 @@ import { useEffect, useState } from 'react';
 import { photosApi, type PhotosApi } from '../api';
 import { fovHOf, headingDegrees } from './frustum';
 import type { Photos } from './usePhotos';
+import { SkButton } from '../hud/SkButton';
+import { SkField } from '../hud/SkField';
+import { SkSlider } from '../hud/SkSlider';
 
 /** Recorded with a correction made here, in the photo's pose history. */
 export const GALLERY_REASON = 'corrected in the gallery against the model';
@@ -125,45 +128,50 @@ export function PoseEditor({ photo, photos, onDraft, api = photosApi }: Props) {
         const { min, max, step, nudge } = LIMITS[key];
         return (
           <div key={key} className="pose-field">
-            <label className="field">
-              {LABELS[key]}{' '}
-              <input
-                type="range"
-                min={min}
-                max={max}
-                step={step}
-                value={values[key]}
-                onChange={(e) => set(key, Number(e.target.value))}
-              />
-            </label>
-            <button
-              type="button"
+            <span className="pose-label" aria-hidden="true">
+              {LABELS[key]}
+            </span>
+            <SkSlider
+              label={LABELS[key]}
+              unit="°"
+              min={min}
+              max={max}
+              step={step}
+              value={values[key]}
+              onInput={(v) => set(key, v)}
+            />
+            <SkButton
+              size="compact"
+              variant="secondary"
               aria-label={`${LABELS[key]} −${nudge}°`}
               onClick={() => set(key, values[key] - nudge)}
             >
               −
-            </button>
-            <input
-              type="number"
-              className="pose-value"
-              aria-label={`${LABELS[key]} in degrees`}
-              step={0.1}
-              value={values[key]}
-              onChange={(e) => set(key, Number(e.target.value))}
-            />
-            <button
-              type="button"
+            </SkButton>
+            <SkField size="compact">
+              <input
+                type="number"
+                className="pose-value"
+                aria-label={`${LABELS[key]} in degrees`}
+                step={0.1}
+                value={values[key]}
+                onChange={(e) => set(key, Number(e.target.value))}
+              />
+            </SkField>
+            <SkButton
+              size="compact"
+              variant="secondary"
               aria-label={`${LABELS[key]} +${nudge}°`}
               onClick={() => set(key, values[key] + nudge)}
             >
               +
-            </button>
+            </SkButton>
           </div>
         );
       })}
       <div className="buttons">
-        <button
-          type="button"
+        <SkButton
+          size="compact"
           disabled={!changed || busy}
           onClick={() =>
             void run(() =>
@@ -172,10 +180,15 @@ export function PoseEditor({ photo, photos, onDraft, api = photosApi }: Props) {
           }
         >
           Save pose
-        </button>
-        <button type="button" disabled={!changed || busy} onClick={() => setValues(stored)}>
+        </SkButton>
+        <SkButton
+          size="compact"
+          variant="secondary"
+          disabled={!changed || busy}
+          onClick={() => setValues(stored)}
+        >
           Reset
-        </button>
+        </SkButton>
       </div>
       {history && history.length > 0 && (
         <ul className="pose-history" aria-label="Pose history">
@@ -188,13 +201,14 @@ export function PoseEditor({ photo, photos, onDraft, api = photosApi }: Props) {
                 {change.reason && ` (${change.reason})`}
               </span>{' '}
               {change.canUndo && (
-                <button
-                  type="button"
+                <SkButton
+                  size="compact"
+                  variant="secondary"
                   disabled={busy}
                   onClick={() => void run(() => photos.undoPose(photo.id, change.id))}
                 >
                   Undo
-                </button>
+                </SkButton>
               )}
             </li>
           ))}

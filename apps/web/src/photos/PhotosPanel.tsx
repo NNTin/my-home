@@ -14,7 +14,13 @@ import { fovHOf, headingDegrees } from './frustum';
 import { PoseEditor } from './PoseEditor';
 import { openRequests } from './requests';
 import type { Photos } from './usePhotos';
+import { SkButton } from '../hud/SkButton';
+import { SkCard } from '../hud/SkCard';
+import { SkCheckbox } from '../hud/SkCheckbox';
+import { SkField } from '../hud/SkField';
 import { SkPanel } from '../hud/SkPanel';
+import { SkSlider } from '../hud/SkSlider';
+import { SkTabs } from '../hud/SkTabs';
 
 export interface OverlaySettings {
   /** Whether the photo is laid over the 3D view while viewing from its pose. */
@@ -71,16 +77,16 @@ function Thumbnail({
       loading="lazy"
     />
   );
+  // A card holding the image (docs/design/hud.md §4.6): selected is its pink shadow.
   return onClick ? (
-    <button
-      type="button"
-      className={selected ? 'thumbnail selected' : 'thumbnail'}
-      aria-pressed={selected}
-      title={`${room.name} · ${when(photo.takenAt)}`}
+    <SkCard
+      className="thumbnail"
+      label={`${room.name} · ${when(photo.takenAt)}`}
+      selected={selected ?? false}
       onClick={onClick}
     >
       {image}
-    </button>
+    </SkCard>
   ) : (
     <span className="thumbnail">{image}</span>
   );
@@ -178,37 +184,40 @@ function Detail({
       )}
       <label className="field">
         Note
-        <textarea
-          value={note}
-          rows={2}
-          maxLength={2000}
-          onChange={(e) => setNote(e.target.value)}
-        />
+        <SkField size="compact">
+          <textarea
+            value={note}
+            rows={2}
+            maxLength={2000}
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </SkField>
       </label>
       {note !== photo.note && (
         <div className="buttons">
-          <button type="button" onClick={() => void photos.update(photo.id, { note })}>
+          <SkButton size="compact" onClick={() => void photos.update(photo.id, { note })}>
             Save note
-          </button>
+          </SkButton>
         </div>
       )}
       <div className="chips" role="group" aria-label="Tags">
         {tags.map((tag) => (
-          <label key={tag} className={photo.tags.includes(tag) ? 'chip on' : 'chip'}>
-            <input
-              type="checkbox"
-              checked={photo.tags.includes(tag)}
-              disabled={savingTags}
-              onChange={() =>
-                setTags(
-                  photo.tags.includes(tag)
-                    ? photo.tags.filter((t) => t !== tag)
-                    : [...photo.tags, tag],
-                )
-              }
-            />
+          <SkCheckbox
+            key={tag}
+            className="chip"
+            size="compact"
+            checked={photo.tags.includes(tag)}
+            disabled={savingTags}
+            onChange={() =>
+              setTags(
+                photo.tags.includes(tag)
+                  ? photo.tags.filter((t) => t !== tag)
+                  : [...photo.tags, tag],
+              )
+            }
+          >
             {tag}
-          </label>
+          </SkCheckbox>
         ))}
         <form
           onSubmit={(e) => {
@@ -219,28 +228,32 @@ function Detail({
             setNewTag('');
           }}
         >
-          <input
-            type="text"
-            className="new-tag"
-            value={newTag}
-            maxLength={40}
-            placeholder="add tag"
-            aria-label="New tag"
-            disabled={savingTags}
-            onChange={(e) => setNewTag(e.target.value)}
-          />
+          {/* A native field in the paper frame: Enter adds the tag (a form's submit). */}
+          <SkField size="compact">
+            <input
+              type="text"
+              className="new-tag"
+              value={newTag}
+              maxLength={40}
+              placeholder="add tag"
+              aria-label="New tag"
+              disabled={savingTags}
+              onChange={(e) => setNewTag(e.target.value)}
+            />
+          </SkField>
         </form>
       </div>
       {savingTags && <p role="status">Saving tags...</p>}
       <div className="buttons">
-        <button type="button" aria-pressed={viewing} onClick={() => onViewFromHere(!viewing)}>
+        <SkButton size="compact" pressed={viewing} onClick={() => onViewFromHere(!viewing)}>
           {viewing ? 'Leave this view' : 'View from here'}
-        </button>
-        <button type="button" onClick={onClose}>
+        </SkButton>
+        <SkButton size="compact" variant="secondary" onClick={onClose}>
           Close
-        </button>
-        <button
-          type="button"
+        </SkButton>
+        <SkButton
+          size="compact"
+          variant="secondary"
           onClick={() => {
             onViewFromHere(false);
             onClose();
@@ -248,30 +261,31 @@ function Detail({
           }}
         >
           Delete
-        </button>
+        </SkButton>
       </div>
       {viewing && (
         <div className="overlay-settings">
-          <label className="toggle">
-            <input
-              type="checkbox"
-              checked={overlay.on}
-              onChange={() => onOverlay({ ...overlay, on: !overlay.on })}
-            />{' '}
+          <SkCheckbox
+            size="compact"
+            checked={overlay.on}
+            onChange={() => onOverlay({ ...overlay, on: !overlay.on })}
+          >
             Lay the photo over the 3D view
-          </label>
+          </SkCheckbox>
           {overlay.on && (
-            <label className="field">
-              Opacity{' '}
-              <input
-                type="range"
-                min={0.1}
-                max={1}
-                step={0.05}
-                value={overlay.opacity}
-                onChange={(e) => onOverlay({ ...overlay, opacity: Number(e.target.value) })}
+            // In percent, as it reads; the overlay keeps its fraction.
+            <div className="field">
+              <span aria-hidden="true">Opacity</span>
+              <SkSlider
+                label="Opacity"
+                unit="%"
+                min={10}
+                max={100}
+                step={5}
+                value={Math.round(overlay.opacity * 100)}
+                onInput={(v) => onOverlay({ ...overlay, opacity: v / 100 })}
               />
-            </label>
+            </div>
           )}
           <PoseEditor photo={photo} photos={photos} onDraft={onDraftPose} />
         </div>
@@ -317,13 +331,14 @@ export function PhotosPanel({
 
   const trashSwitch = (
     <div className="buttons">
-      <button
-        type="button"
-        aria-pressed={tab === 'trash'}
+      <SkButton
+        size="compact"
+        variant="secondary"
+        pressed={tab === 'trash'}
         onClick={() => setTab(tab === 'trash' ? 'photos' : 'trash')}
       >
         {tab === 'trash' ? '‹ Back to the photos' : `🗑 Trash (${trashCount})`}
-      </button>
+      </SkButton>
     </div>
   );
 
@@ -335,29 +350,21 @@ export function PhotosPanel({
         <>
           <div className="panel-head">
             <h1>Photos</h1>
-            <button type="button" onClick={onClose}>
+            <SkButton size="compact" variant="secondary" onClick={onClose}>
               Close
-            </button>
+            </SkButton>
           </div>
-          <div className="buttons" role="tablist">
-            {(
-              [
-                ['photos', `Photos (${photos.photos.length})`],
-                ['requests', `Requests (${open.length})`],
-                ['trash', `Trash (${trashCount})`],
-              ] as const
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={tab === id}
-                onClick={() => setTab(id)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <SkTabs
+            className="photos-tabs"
+            label="Photos, requests and trash"
+            tabs={[
+              { value: 'photos', label: `Photos (${photos.photos.length})` },
+              { value: 'requests', label: `Requests (${open.length})` },
+              { value: 'trash', label: `Trash (${trashCount})` },
+            ]}
+            value={tab}
+            onChange={(id) => setTab(id as PhotosTab)}
+          />
         </>
       )}
       {photos.error && (
@@ -372,66 +379,82 @@ export function PhotosPanel({
             <legend>Filter</legend>
             <label className="field">
               Level{' '}
-              <select value={filters.level} onChange={(e) => set({ level: e.target.value })}>
-                <option value="">Any</option>
-                {levels.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.name}
-                  </option>
-                ))}
-                <option value={OUTDOORS}>Outside</option>
-              </select>
+              <SkField size="compact">
+                <select value={filters.level} onChange={(e) => set({ level: e.target.value })}>
+                  <option value="">Any</option>
+                  {levels.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                  <option value={OUTDOORS}>Outside</option>
+                </select>
+              </SkField>
             </label>
             <label className="field">
               Room{' '}
-              <select value={filters.room} onChange={(e) => set({ room: e.target.value })}>
-                <option value="">Any</option>
-                {options.rooms.map((r) => (
-                  <option key={r.value} value={r.value}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
+              <SkField size="compact">
+                <select value={filters.room} onChange={(e) => set({ room: e.target.value })}>
+                  <option value="">Any</option>
+                  {options.rooms.map((r) => (
+                    <option key={r.value} value={r.value}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              </SkField>
             </label>
             <label className="field">
               Tag{' '}
-              <select value={filters.tag} onChange={(e) => set({ tag: e.target.value })}>
-                <option value="">Any</option>
-                {options.tags.map((t) => (
-                  <option key={t}>{t}</option>
-                ))}
-              </select>
+              <SkField size="compact">
+                <select value={filters.tag} onChange={(e) => set({ tag: e.target.value })}>
+                  <option value="">Any</option>
+                  {options.tags.map((t) => (
+                    <option key={t}>{t}</option>
+                  ))}
+                </select>
+              </SkField>
             </label>
             <label className="field">
               Request{' '}
-              <select value={filters.request} onChange={(e) => set({ request: e.target.value })}>
-                <option value="">Any</option>
-                <option value="any">Answers a request</option>
-                {photos.requests
-                  .filter((r) => r.photoIds.length > 0)
-                  .map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.reason.slice(0, 40)}
-                    </option>
-                  ))}
-              </select>
+              <SkField size="compact">
+                <select value={filters.request} onChange={(e) => set({ request: e.target.value })}>
+                  <option value="">Any</option>
+                  <option value="any">Answers a request</option>
+                  {photos.requests
+                    .filter((r) => r.photoIds.length > 0)
+                    .map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.reason.slice(0, 40)}
+                      </option>
+                    ))}
+                </select>
+              </SkField>
             </label>
             <label className="field">
               From{' '}
-              <input
-                type="date"
-                value={filters.from}
-                onChange={(e) => set({ from: e.target.value })}
-              />
+              <SkField size="compact">
+                <input
+                  type="date"
+                  value={filters.from}
+                  onChange={(e) => set({ from: e.target.value })}
+                />
+              </SkField>
             </label>
             <label className="field">
               To{' '}
-              <input type="date" value={filters.to} onChange={(e) => set({ to: e.target.value })} />
+              <SkField size="compact">
+                <input
+                  type="date"
+                  value={filters.to}
+                  onChange={(e) => set({ to: e.target.value })}
+                />
+              </SkField>
             </label>
             {filtered && (
-              <button type="button" className="link" onClick={() => onFilters(NO_FILTERS)}>
+              <SkButton size="compact" variant="secondary" onClick={() => onFilters(NO_FILTERS)}>
                 Clear filters
-              </button>
+              </SkButton>
             )}
           </fieldset>
 
@@ -497,8 +520,9 @@ export function PhotosPanel({
                 </p>
                 <div className="buttons">
                   {request.photoIds.length > 0 && (
-                    <button
-                      type="button"
+                    <SkButton
+                      size="compact"
+                      variant="secondary"
                       onClick={() => {
                         onFilters({ ...NO_FILTERS, request: request.id });
                         onSelect(request.photoIds[0]);
@@ -506,20 +530,32 @@ export function PhotosPanel({
                       }}
                     >
                       Show photos
-                    </button>
+                    </SkButton>
                   )}
                   {request.status === 'open' ? (
-                    <button type="button" onClick={() => void photos.cancelRequest(request.id)}>
+                    <SkButton
+                      size="compact"
+                      variant="secondary"
+                      onClick={() => void photos.cancelRequest(request.id)}
+                    >
                       Cancel
-                    </button>
+                    </SkButton>
                   ) : (
-                    <button type="button" onClick={() => void photos.reopenRequest(request.id)}>
+                    <SkButton
+                      size="compact"
+                      variant="secondary"
+                      onClick={() => void photos.reopenRequest(request.id)}
+                    >
                       Reopen
-                    </button>
+                    </SkButton>
                   )}
-                  <button type="button" onClick={() => void photos.removeRequest(request.id)}>
+                  <SkButton
+                    size="compact"
+                    variant="secondary"
+                    onClick={() => void photos.removeRequest(request.id)}
+                  >
                     Delete
-                  </button>
+                  </SkButton>
                 </div>
               </li>
             ))}
@@ -548,15 +584,20 @@ export function PhotosPanel({
                   </p>
                   <p className="note">Deleted for good on {when(photo.purgeAt!)}</p>
                   <div className="buttons">
-                    <button type="button" onClick={() => void photos.restore(photo.id)}>
+                    <SkButton
+                      size="compact"
+                      variant="secondary"
+                      onClick={() => void photos.restore(photo.id)}
+                    >
                       Restore
-                    </button>
-                    <button
-                      type="button"
+                    </SkButton>
+                    <SkButton
+                      size="compact"
+                      variant="secondary"
                       onClick={() => forGood('this photo') && void photos.purge(photo.id)}
                     >
                       Delete for good
-                    </button>
+                    </SkButton>
                   </div>
                 </div>
               </li>
@@ -567,17 +608,22 @@ export function PhotosPanel({
                   <p>Request: {request.reason}</p>
                   <p className="note">Deleted for good on {when(request.purgeAt!)}</p>
                   <div className="buttons">
-                    <button type="button" onClick={() => void photos.restoreRequest(request.id)}>
+                    <SkButton
+                      size="compact"
+                      variant="secondary"
+                      onClick={() => void photos.restoreRequest(request.id)}
+                    >
                       Restore
-                    </button>
-                    <button
-                      type="button"
+                    </SkButton>
+                    <SkButton
+                      size="compact"
+                      variant="secondary"
                       onClick={() =>
                         forGood('this request') && void photos.purgeRequest(request.id)
                       }
                     >
                       Delete for good
-                    </button>
+                    </SkButton>
                   </div>
                 </div>
               </li>
@@ -585,12 +631,13 @@ export function PhotosPanel({
           </ul>
           {trashCount > 0 && (
             <div className="buttons">
-              <button
-                type="button"
+              <SkButton
+                size="compact"
+                variant="secondary"
                 onClick={() => forGood('everything in the trash') && void photos.emptyTrash()}
               >
                 Empty trash
-              </button>
+              </SkButton>
             </div>
           )}
         </>
