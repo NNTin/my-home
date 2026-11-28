@@ -297,18 +297,18 @@ describe('photo gallery', () => {
     fireEvent.click(detail.getByRole('button', { name: 'Save note' }));
     await waitFor(() => expect(api.photos.get('hallway')!.note).toBe('Coat rack, 1.2 m wide'));
 
-    fireEvent.click(detail.getByLabelText('window'));
+    fireEvent.click(detail.getByRole('checkbox', { name: 'window' }));
     await waitFor(() => expect(api.photos.get('hallway')!.tags).toEqual(['wall', 'window']));
     // Tag controls stay locked until both the save and its refresh finish.
-    await waitFor(() => expect(detail.getByLabelText('window')).toBeEnabled());
-    expect(detail.getByLabelText('window')).toBeChecked();
-    fireEvent.click(detail.getByLabelText('wall'));
+    await waitFor(() => expect(detail.getByRole('checkbox', { name: 'window' })).toBeEnabled());
+    expect(detail.getByRole('checkbox', { name: 'window' })).toBeChecked();
+    fireEvent.click(detail.getByRole('checkbox', { name: 'wall' }));
     await waitFor(() => expect(api.photos.get('hallway')!.tags).toEqual(['window']));
     await waitFor(() => expect(detail.getByLabelText('New tag')).toBeEnabled());
     fireEvent.change(detail.getByLabelText('New tag'), { target: { value: ' Radiator ' } });
     fireEvent.submit(detail.getByLabelText('New tag'));
     await waitFor(() => expect(api.photos.get('hallway')!.tags).toEqual(['window', 'radiator']));
-    expect(await detail.findByLabelText('radiator')).toBeChecked();
+    expect(await detail.findByRole('checkbox', { name: 'radiator' })).toBeChecked();
   });
 
   describe('view from here', () => {
@@ -347,15 +347,22 @@ describe('photo gallery', () => {
     it('lays the photo over the view at a chosen opacity', async () => {
       const { panel } = await openGallery();
       fireEvent.click(panel.getByRole('img', { name: /^Hallway,/ }));
-      expect(panel.queryByLabelText(/Lay the photo over/)).not.toBeInTheDocument();
+      expect(panel.queryByRole('checkbox', { name: /Lay the photo over/ })).not.toBeInTheDocument();
       fireEvent.click(panel.getByRole('button', { name: 'View from here' }));
       expect(document.querySelector('.photo-overlay')).toBeNull();
 
-      fireEvent.click(panel.getByLabelText(/Lay the photo over/));
+      fireEvent.click(panel.getByRole('checkbox', { name: /Lay the photo over/ }));
       const overlay = document.querySelector<HTMLImageElement>('.photo-overlay')!;
       expect(overlay).toHaveAttribute('src', '/api/photos/hallway/image');
       expect(overlay.style.opacity).toBe('0.5');
-      fireEvent.change(panel.getByLabelText('Opacity'), { target: { value: '0.8' } });
+      // A sakuga-slider in percent (its fallback here): set it and say so, as a drag does.
+      act(() => {
+        const opacity = panel.getByRole('slider', { name: 'Opacity' }) as HTMLElement & {
+          value: string;
+        };
+        opacity.value = '80';
+        fireEvent.input(opacity);
+      });
       expect(overlay.style.opacity).toBe('0.8');
 
       // Another photo, or closing the gallery, leaves the view.
@@ -374,7 +381,7 @@ describe('photo gallery', () => {
       // Only while viewing from the photo's pose, where the model can be compared.
       expect(panel.queryByRole('group', { name: 'Correct the pose' })).toBeNull();
       fireEvent.click(panel.getByRole('button', { name: 'View from here' }));
-      fireEvent.click(panel.getByLabelText(/Lay the photo over/));
+      fireEvent.click(panel.getByRole('checkbox', { name: /Lay the photo over/ }));
       const editor = within(panel.getByRole('group', { name: 'Correct the pose' }));
       expect(editor.getByRole('button', { name: 'Save pose' })).toBeDisabled();
 

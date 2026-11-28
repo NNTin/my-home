@@ -917,7 +917,7 @@ PRs 5 (containers) and 6 (walking) are not done separately: HUD v2 ([`hud-v2/`](
 their elements in its new layout: the shared HUD surface in #200, the inspectors in the sheet in #201, and the
 orientation area with the compass, the minimap and the walking controls in #202. PR 7 (the photos panel, the catalogue
 and piece pages, removing the old HUD CSS, the real-phone pass) stays in #168 and runs after #206, so the old styles
-are removed once.
+are removed once. PR 7 is split in three (2026-11-28): 7/1 the photos panel, 7/2 the catalogue and piece pages, 7/3 the old HUD styles removed and the real-phone pass listed.
 
 Why this order: the foundation makes every later element cheap (the core once) and sleeping at rest before there
 are many elements on the page; paper second, so production never shows a mix of dark panels and paper controls
@@ -1016,6 +1016,9 @@ The owner asked (2026-11-27) that open points be decided with the most reasonabl
 | B33 | The smokes find the named views as radios (`aria-checked`), Edit as the switch named "Edit" (`aria-checked`; "Done" is the same switch off), the quality's names by `aria-label`, and hit-test the Edit switch's 44 px (PR 4)                                                           | The controls changed role; the checks keep what they check                                                                                |
 | B34 | The page's paper rules for native controls skip a control inside a `sakuga-field` (`:not(sakuga-field > *)`) (PR 4)                                                                                                                                                                     | Page CSS wins over `::slotted`: a wrapped select got a second frame                                                                       |
 | B35 | On the desktop, Edit has its own line under the home's name, at the right; the panel's action buttons stay as they are until PR 5 (PR 4)                                                                                                                                                | §5.13: the header's second line, 58 px below the window's top                                                                             |
+| B36 | The photos panel (PR 7/1): tabs `sakuga-tabs`, a thumbnail a `sakuga-card` with the image (selected: its pink shadow), each button `sakuga-button` compact (View from here pressed while viewing), the tags and "Lay the photo over" `sakuga-checkbox` compact                          | §4.6; the tags stay checkboxes (§4.8)                                                                                                     |
+| B37 | Selects, dates, the note, the new tag and the pose's numbers stay native in `sakuga-field` (the new tag keeps its form: Enter adds it); opacity and the pose's angles are `sakuga-slider` with a caption beside, as "Cut at"; opacity in % (PR 7/1)                                     | Upstream's input cannot submit a form                                                                                                     |
+| B38 | A script clicks a `sakuga-checkbox` on its host: `getByRole('checkbox')` finds its hidden native input (1×1 px), never visible (PR 7/1)                                                                                                                                                 | Found taking the shots; no smoke opens the photos                                                                                         |
 
 ## 14. Open questions
 

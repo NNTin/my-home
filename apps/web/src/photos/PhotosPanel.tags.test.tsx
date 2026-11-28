@@ -73,26 +73,26 @@ describe('gallery tag saves', () => {
       });
       api.list.mockImplementationOnce(() => refresh.promise);
 
-      fireEvent.click(detail.getByLabelText(first));
+      fireEvent.click(detail.getByRole('checkbox', { name: first }));
       expect(detail.getByRole('status')).toHaveTextContent('Saving tags...');
       for (const checkbox of detail.getAllByRole('checkbox')) expect(checkbox).toBeDisabled();
       expect(detail.getByLabelText('New tag')).toBeDisabled();
-      fireEvent.click(detail.getByLabelText(blocked));
-      fireEvent.click(detail.getByLabelText(first));
+      fireEvent.click(detail.getByRole('checkbox', { name: blocked }));
+      fireEvent.click(detail.getByRole('checkbox', { name: first }));
       expect(api.update).toHaveBeenCalledTimes(1);
       expect(stored().tags).toEqual(['wall']);
 
       await act(async () => save.resolve());
       expect(stored().tags).toEqual(expected);
-      expect(detail.getByLabelText(first)).toBeDisabled();
-      fireEvent.click(detail.getByLabelText(blocked));
+      expect(detail.getByRole('checkbox', { name: first })).toBeDisabled();
+      fireEvent.click(detail.getByRole('checkbox', { name: blocked }));
       expect(api.update).toHaveBeenCalledTimes(1);
 
       await act(async () => refresh.resolve({ items: [stored()], total: 1 }));
       expect(detail.queryByRole('status')).not.toBeInTheDocument();
-      expect(detail.getByLabelText(first)).toBeEnabled();
-      fireEvent.click(detail.getByLabelText(blocked));
-      await waitFor(() => expect(detail.getByLabelText(blocked)).toBeEnabled());
+      expect(detail.getByRole('checkbox', { name: first })).toBeEnabled();
+      fireEvent.click(detail.getByRole('checkbox', { name: blocked }));
+      await waitFor(() => expect(detail.getByRole('checkbox', { name: blocked })).toBeEnabled());
       expect(stored().tags).toEqual(
         expected.includes(blocked)
           ? expected.filter((tag) => tag !== blocked)
@@ -111,7 +111,7 @@ describe('gallery tag saves', () => {
     });
     const input = detail.getByLabelText('New tag');
     fireEvent.change(input, { target: { value: ' Radiator ' } });
-    fireEvent.click(detail.getByLabelText('window'));
+    fireEvent.click(detail.getByRole('checkbox', { name: 'window' }));
     fireEvent.submit(input);
     expect(api.update).toHaveBeenCalledTimes(1);
     expect(input).toHaveValue(' Radiator ');
@@ -119,7 +119,7 @@ describe('gallery tag saves', () => {
     await act(async () => save.resolve());
     expect(input).toBeEnabled();
     fireEvent.submit(input);
-    await waitFor(() => expect(detail.getByLabelText('radiator')).toBeChecked());
+    await waitFor(() => expect(detail.getByRole('checkbox', { name: 'radiator' })).toBeChecked());
     expect(stored().tags).toEqual(['wall', 'window', 'radiator']);
   });
 
@@ -131,33 +131,33 @@ describe('gallery tag saves', () => {
       await save.promise;
       return update(id, body);
     });
-    fireEvent.click(detail.getByLabelText('window'));
+    fireEvent.click(detail.getByRole('checkbox', { name: 'window' }));
     fireEvent.click(detail.getByRole('button', { name: 'Close' }));
     fireEvent.click(screen.getByRole('img', { name: /^Hallway,/ }));
     const reopened = within(screen.getByRole('group', { name: 'Photo details' }));
-    expect(reopened.getByLabelText('door')).toBeDisabled();
+    expect(reopened.getByRole('checkbox', { name: 'door' })).toBeDisabled();
     expect(reopened.getByLabelText('New tag')).toBeDisabled();
-    fireEvent.click(reopened.getByLabelText('door'));
+    fireEvent.click(reopened.getByRole('checkbox', { name: 'door' }));
     expect(api.update).toHaveBeenCalledTimes(1);
     await act(async () => save.resolve());
-    expect(reopened.getByLabelText('window')).toBeChecked();
-    expect(reopened.getByLabelText('door')).toBeEnabled();
+    expect(reopened.getByRole('checkbox', { name: 'window' })).toBeChecked();
+    expect(reopened.getByRole('checkbox', { name: 'door' })).toBeEnabled();
   });
 
   it('shows a failed save with unchanged tags and allows retry', async () => {
     const { api, detail, stored } = await gallery();
     const save = deferred<Photo>();
     api.update.mockImplementationOnce(() => save.promise);
-    fireEvent.click(detail.getByLabelText('window'));
+    fireEvent.click(detail.getByRole('checkbox', { name: 'window' }));
     await act(async () => save.reject(new Error('Tag save failed')));
 
     expect(screen.getByRole('alert')).toHaveTextContent('Tag save failed');
-    expect(detail.getByLabelText('window')).not.toBeChecked();
-    expect(detail.getByLabelText('window')).toBeEnabled();
+    expect(detail.getByRole('checkbox', { name: 'window' })).not.toBeChecked();
+    expect(detail.getByRole('checkbox', { name: 'window' })).toBeEnabled();
     expect(stored().tags).toEqual(['wall']);
-    fireEvent.click(detail.getByLabelText('window'));
-    await waitFor(() => expect(detail.getByLabelText('window')).toBeEnabled());
-    expect(detail.getByLabelText('window')).toBeChecked();
+    fireEvent.click(detail.getByRole('checkbox', { name: 'window' }));
+    await waitFor(() => expect(detail.getByRole('checkbox', { name: 'window' })).toBeEnabled());
+    expect(detail.getByRole('checkbox', { name: 'window' })).toBeChecked();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(stored().tags).toEqual(['wall', 'window']);
   });
@@ -166,16 +166,16 @@ describe('gallery tag saves', () => {
     const { api, detail, stored } = await gallery();
     const refresh = deferred<{ items: Photo[]; total: number }>();
     api.list.mockImplementationOnce(() => refresh.promise);
-    fireEvent.click(detail.getByLabelText('window'));
-    await waitFor(() => expect(detail.getByLabelText('window')).toBeChecked());
-    expect(detail.getByLabelText('door')).toBeDisabled();
+    fireEvent.click(detail.getByRole('checkbox', { name: 'window' }));
+    await waitFor(() => expect(detail.getByRole('checkbox', { name: 'window' })).toBeChecked());
+    expect(detail.getByRole('checkbox', { name: 'door' })).toBeDisabled();
     await act(async () => refresh.reject(new Error('Refresh failed')));
 
     expect(screen.getByRole('alert')).toHaveTextContent('Refresh failed');
-    expect(detail.getByLabelText('window')).toBeChecked();
-    expect(detail.getByLabelText('door')).toBeEnabled();
-    fireEvent.click(detail.getByLabelText('door'));
-    await waitFor(() => expect(detail.getByLabelText('door')).toBeEnabled());
+    expect(detail.getByRole('checkbox', { name: 'window' })).toBeChecked();
+    expect(detail.getByRole('checkbox', { name: 'door' })).toBeEnabled();
+    fireEvent.click(detail.getByRole('checkbox', { name: 'door' }));
+    await waitFor(() => expect(detail.getByRole('checkbox', { name: 'door' })).toBeEnabled());
     expect(stored().tags).toEqual(['wall', 'window', 'door']);
   });
 });
