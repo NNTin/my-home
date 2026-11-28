@@ -69,6 +69,21 @@ describe('photos and notes on the piece page', () => {
     expect(rowOf('mock-home', kitchen).getByText('📷 1 photo')).toBeInTheDocument();
   });
 
+  it('puts the focus on the viewer’s Close button itself when a photo opens (#222 review)', async () => {
+    openPiece('/catalog/openings/window.casement', { photos });
+    await screen.findByText(/uses in this environment/);
+    const strip = typeSection().getByRole('list', { name: 'Photos of Casement window' });
+    fireEvent.click(within(strip).getAllByRole('button')[0]!);
+    const close = within(screen.getByRole('dialog')).getByRole('button', { name: 'Close' });
+    // The sakuga-button itself, not the span the viewer finds it through.
+    expect(close.tagName).toBe('SAKUGA-BUTTON');
+    expect(document.activeElement).toBe(close);
+    // The element delegates the focus into its shadow root (a browser): its own button holds it there. The jsdom
+    // fallback is the button itself, without a shadow root.
+    const inner = close.shadowRoot?.activeElement ?? close;
+    if (close.shadowRoot) expect(inner.tagName).toBe('BUTTON');
+  });
+
   it('keeps the focus where it is while the page behind the photo re-renders', async () => {
     openPiece('/catalog/openings/window.casement', { photos });
     await screen.findByText(/uses in this environment/);
@@ -94,7 +109,12 @@ describe('photos and notes on the piece page', () => {
     const api = openPiece('/catalog/openings/window.casement', { photos });
     const group = await openRow();
     expect(group.getByRole('list', { name: 'Photos of Kitchen · back window' })).toBeTruthy();
-    fireEvent.click(group.getByRole('button', { name: 'Link a photo…' }));
+    // A disclosure (#222 review): it says whether the picker is open, and is no toggle.
+    const linkPhoto = group.getByRole('button', { name: 'Link a photo…' });
+    expect(linkPhoto).toHaveAttribute('aria-expanded', 'false');
+    expect(linkPhoto).not.toHaveAttribute('aria-pressed');
+    fireEvent.click(linkPhoto);
+    expect(linkPhoto).toHaveAttribute('aria-expanded', 'true');
     const picker = within(group.getByRole('group', { name: 'Link a photo' }));
     // The kitchen's other photo only, until the room filter is off.
     expect(picker.getAllByRole('button')).toHaveLength(1);

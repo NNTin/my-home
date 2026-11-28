@@ -28,6 +28,8 @@ export interface SkButtonProps {
   disabled?: boolean;
   /** A toggle button: `aria-pressed` and an ink fill. Set from code, it plays nothing. */
   pressed?: boolean;
+  /** A disclosure (it opens a section): `aria-expanded`, no look of its own. Not with `pressed`. */
+  expanded?: boolean;
   /** A real link; a plain click goes through the app's router. */
   href?: string;
   title?: string;
@@ -49,6 +51,7 @@ export function SkButton({
   type,
   disabled,
   pressed,
+  expanded,
   href,
   title,
   'aria-label': ariaLabel,
@@ -73,6 +76,8 @@ export function SkButton({
       href,
       // A property (React sets it on a custom element): a toggle, even when off; a change plays nothing.
       pressed,
+      // An attribute, "true" or "false": the element reads it as such.
+      expanded: expanded === undefined ? undefined : String(expanded),
       title,
       label: ariaLabel,
       className,

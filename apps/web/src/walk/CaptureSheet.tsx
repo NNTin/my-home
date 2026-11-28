@@ -4,6 +4,9 @@ import type { PhotosApi } from '../api';
 import { SakugaProgress } from '../loading/SakugaProgress';
 import { poseOf, type Figure } from './figure';
 import { prepareImage, takenAtOf, type CameraHints, type PreparedImage } from './prepareImage';
+import { SkButton } from '../hud/SkButton';
+import { SkCheckbox } from '../hud/SkCheckbox';
+import { SkField } from '../hud/SkField';
 
 /** Suggested tags; the api stores any short lower-case label. */
 export const PHOTO_TAGS = ['wall', 'window', 'door', 'floor', 'ceiling', 'furniture', 'outside'];
@@ -138,30 +141,70 @@ export function CaptureSheet({
   const busy = phase.step === 'uploading';
   const nudges = (
     <div className="nudges" role="group" aria-label="Adjust the pose">
-      <button type="button" onClick={() => onLook(NUDGE_ANGLE, 0)} aria-label="Turn left">
+      <SkButton
+        size="compact"
+        variant="secondary"
+        onClick={() => onLook(NUDGE_ANGLE, 0)}
+        aria-label="Turn left"
+      >
         ⟲
-      </button>
-      <button type="button" onClick={() => onNudge(NUDGE_DISTANCE, 0)} aria-label="Forward">
+      </SkButton>
+      <SkButton
+        size="compact"
+        variant="secondary"
+        onClick={() => onNudge(NUDGE_DISTANCE, 0)}
+        aria-label="Forward"
+      >
         ↑
-      </button>
-      <button type="button" onClick={() => onLook(-NUDGE_ANGLE, 0)} aria-label="Turn right">
+      </SkButton>
+      <SkButton
+        size="compact"
+        variant="secondary"
+        onClick={() => onLook(-NUDGE_ANGLE, 0)}
+        aria-label="Turn right"
+      >
         ⟳
-      </button>
-      <button type="button" onClick={() => onLook(0, NUDGE_ANGLE)} aria-label="Look up">
+      </SkButton>
+      <SkButton
+        size="compact"
+        variant="secondary"
+        onClick={() => onLook(0, NUDGE_ANGLE)}
+        aria-label="Look up"
+      >
         ⤒
-      </button>
-      <button type="button" onClick={() => onNudge(0, -NUDGE_DISTANCE)} aria-label="Left">
+      </SkButton>
+      <SkButton
+        size="compact"
+        variant="secondary"
+        onClick={() => onNudge(0, -NUDGE_DISTANCE)}
+        aria-label="Left"
+      >
         ←
-      </button>
-      <button type="button" onClick={() => onNudge(-NUDGE_DISTANCE, 0)} aria-label="Back">
+      </SkButton>
+      <SkButton
+        size="compact"
+        variant="secondary"
+        onClick={() => onNudge(-NUDGE_DISTANCE, 0)}
+        aria-label="Back"
+      >
         ↓
-      </button>
-      <button type="button" onClick={() => onNudge(0, NUDGE_DISTANCE)} aria-label="Right">
+      </SkButton>
+      <SkButton
+        size="compact"
+        variant="secondary"
+        onClick={() => onNudge(0, NUDGE_DISTANCE)}
+        aria-label="Right"
+      >
         →
-      </button>
-      <button type="button" onClick={() => onLook(0, -NUDGE_ANGLE)} aria-label="Look down">
+      </SkButton>
+      <SkButton
+        size="compact"
+        variant="secondary"
+        onClick={() => onLook(0, -NUDGE_ANGLE)}
+        aria-label="Look down"
+      >
         ⤓
-      </button>
+      </SkButton>
     </div>
   );
 
@@ -202,56 +245,60 @@ export function CaptureSheet({
             {phase.adjusted === 'failed' && 'Could not update the pose. Try again.'}
           </p>
           <div className="capture-actions">
-            <button
-              type="button"
+            <SkButton
+              size="compact"
+              variant="secondary"
               onClick={() => void updatePose(phase.photo)}
               disabled={phase.adjusted === 'saving'}
             >
               Update pose
-            </button>
-            <button type="button" className="primary" onClick={onClose}>
+            </SkButton>
+            <SkButton size="compact" onClick={onClose}>
               Done
-            </button>
+            </SkButton>
           </div>
         </>
       ) : (
         <>
           <label className="capture-note">
             Note
-            <textarea
-              value={note}
-              maxLength={2000}
-              rows={2}
-              placeholder="What does it show?"
-              disabled={busy}
-              onChange={(e) => setNote(e.target.value)}
-            />
+            <SkField size="compact">
+              <textarea
+                value={note}
+                maxLength={2000}
+                rows={2}
+                placeholder="What does it show?"
+                disabled={busy}
+                onChange={(e) => setNote(e.target.value)}
+              />
+            </SkField>
           </label>
           <div className="capture-tags" role="group" aria-label="Tags">
             {PHOTO_TAGS.map((tag) => (
-              <label key={tag} className={tags.includes(tag) ? 'chip on' : 'chip'}>
-                <input
-                  type="checkbox"
-                  checked={tags.includes(tag)}
-                  disabled={busy}
-                  onChange={() =>
-                    setTags(tags.includes(tag) ? tags.filter((t) => t !== tag) : [...tags, tag])
-                  }
-                />
+              <SkCheckbox
+                key={tag}
+                className="chip"
+                size="compact"
+                checked={tags.includes(tag)}
+                disabled={busy}
+                onChange={() =>
+                  setTags(tags.includes(tag) ? tags.filter((t) => t !== tag) : [...tags, tag])
+                }
+              >
                 {tag}
-              </label>
+              </SkCheckbox>
             ))}
           </div>
           {request && (
-            <label className="capture-request">
-              <input
-                type="checkbox"
-                checked={answers}
-                disabled={busy}
-                onChange={() => setAnswers(!answers)}
-              />{' '}
+            <SkCheckbox
+              className="capture-request"
+              size="compact"
+              checked={answers}
+              disabled={busy}
+              onChange={() => setAnswers(!answers)}
+            >
               Answers the request: <em>{request.reason}</em>
-            </label>
+            </SkCheckbox>
           )}
           <p className="hint">The photo is saved at the figure's position and view. Adjust:</p>
           {nudges}
@@ -271,12 +318,12 @@ export function CaptureSheet({
             Save a copy on the phone
           </a>
           <div className="capture-actions">
-            <button type="button" onClick={onClose} disabled={busy}>
+            <SkButton size="compact" variant="secondary" onClick={onClose} disabled={busy}>
               Discard
-            </button>
-            <button type="button" className="primary" onClick={() => void save()} disabled={busy}>
+            </SkButton>
+            <SkButton size="compact" onClick={() => void save()} disabled={busy}>
               {phase.step === 'failed' ? 'Try again' : busy ? 'Saving…' : 'Save photo'}
-            </button>
+            </SkButton>
           </div>
         </>
       )}

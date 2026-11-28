@@ -451,11 +451,11 @@ describe('WalkHud', () => {
 
     it('moves between the modes with the arrow keys', () => {
       render(<Harness />);
-      const group = screen.getByRole('radiogroup', { name: 'Camera mode' });
-      fireEvent.keyDown(group, { key: 'ArrowLeft' });
+      // A sakuga-segmented (§4.5): the arrows on its chosen radio move the choice and the focus.
+      fireEvent.keyDown(modeButton(/Manual/), { key: 'ArrowLeft' });
       expect(modeButton(/Sensors/)).toHaveAttribute('aria-checked', 'true');
       expect(modeButton(/Sensors/)).toHaveFocus();
-      fireEvent.keyDown(group, { key: 'ArrowRight' });
+      fireEvent.keyDown(modeButton(/Sensors/), { key: 'ArrowRight' });
       expect(modeButton(/Manual/)).toHaveAttribute('aria-checked', 'true');
     });
 
@@ -502,7 +502,16 @@ describe('WalkHud', () => {
       await waitFor(() =>
         expect(screen.getByRole('status', { name: 'Compass' })).toBeInTheDocument(),
       );
+      // A disclosure: it says whether the calibration section is open (#222 review).
+      expect(screen.getByRole('button', { name: 'Calibrate' })).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      );
       fireEvent.click(screen.getByRole('button', { name: 'Calibrate' }));
+      expect(screen.getByRole('button', { name: 'Calibrate' })).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      );
       const sheet = screen.getByRole('region', { name: 'Calibrate the compass' });
       const head = sheet.firstElementChild as HTMLElement;
       expect(head).toHaveClass('walk-calibrate-head');
@@ -728,9 +737,9 @@ describe('WalkHud', () => {
       expect(sheet.getByText('Hallway · souterrain')).toBeInTheDocument();
 
       fireEvent.change(sheet.getByLabelText('Note'), { target: { value: 'North wall' } });
-      fireEvent.click(sheet.getByLabelText('wall'));
-      fireEvent.click(sheet.getByLabelText('window'));
-      fireEvent.click(sheet.getByLabelText('window'));
+      fireEvent.click(sheet.getByRole('checkbox', { name: 'wall' }));
+      fireEvent.click(sheet.getByRole('checkbox', { name: 'window' }));
+      fireEvent.click(sheet.getByRole('checkbox', { name: 'window' }));
       // The pose is adjusted after the photo was taken: forward 10 cm twice, turned left once.
       fireEvent.click(sheet.getByRole('button', { name: 'Forward' }));
       fireEvent.click(sheet.getByRole('button', { name: 'Forward' }));
@@ -851,7 +860,7 @@ describe('WalkHud', () => {
           'The coat rack',
         );
         takePhoto();
-        expect(screen.getByLabelText(/Answers the request/)).toBeChecked();
+        expect(screen.getByRole('checkbox', { name: /Answers the request/ })).toBeChecked();
         fireEvent.click(screen.getByRole('button', { name: 'Save photo' }));
         await screen.findByText('Photo saved');
         expect(api.upload.mock.calls[0]![1].requestId).toBe('here');
@@ -862,7 +871,7 @@ describe('WalkHud', () => {
         const api = fakeApi();
         render(<Harness api={api} requests={[here]} />);
         takePhoto();
-        fireEvent.click(screen.getByLabelText(/Answers the request/));
+        fireEvent.click(screen.getByRole('checkbox', { name: /Answers the request/ }));
         fireEvent.click(screen.getByRole('button', { name: 'Save photo' }));
         await screen.findByText('Photo saved');
         expect(api.upload.mock.calls[0]![1]).not.toHaveProperty('requestId');
@@ -890,7 +899,9 @@ describe('WalkHud', () => {
         render(<Harness requests={[{ ...here, status: 'fulfilled' }]} />);
         expect(screen.queryByRole('button', { name: /Requests/ })).not.toBeInTheDocument();
         takePhoto();
-        expect(screen.queryByLabelText(/Answers the request/)).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole('checkbox', { name: /Answers the request/ }),
+        ).not.toBeInTheDocument();
       });
     });
   });
@@ -963,7 +974,7 @@ describe('WalkHud', () => {
       const first = render(<Harness />);
       takePhoto();
       fireEvent.change(screen.getByLabelText('Note'), { target: { value: 'Kitchen window' } });
-      fireEvent.click(screen.getByLabelText('window'));
+      fireEvent.click(screen.getByRole('checkbox', { name: 'window' }));
       expect(kept().draft).toEqual({ note: 'Kitchen window', tags: ['window'] });
       const draft = kept().draft;
       first.unmount();

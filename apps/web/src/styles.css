@@ -115,7 +115,6 @@ body {
 .panel button:not(.link, .thumbnail),
 .panel .button,
 .walk-hud button:not(.shutter),
-.walk-hud .chip,
 .walk-hud .camera-alt,
 .topbar button,
 .topbar select,
@@ -154,7 +153,6 @@ body {
 .panel button[aria-pressed='true'],
 .panel [role='tab'][aria-selected='true'],
 .walk-hud button:not(.shutter)[aria-pressed='true'],
-.walk-hud .chip.on,
 .topbar button[aria-pressed='true'],
 .piece-page button[aria-pressed='true'] {
   background: var(--sk-ink);
@@ -191,7 +189,6 @@ body {
 .walk-hud :is(button, select, input, textarea, a):focus-visible,
 .walk-hud .shutter:focus-within,
 .walk-hud .camera-alt:focus-within,
-.walk-hud .chip:focus-within,
 .perf-readout :is(button, textarea):focus-visible,
 .render-still-bar button:focus-visible,
 .topbar :is(button, select, a):focus-visible,
@@ -448,8 +445,7 @@ body {
 }
 
 .walk-hud button,
-.walk-hud .shutter,
-.walk-hud .chip {
+.walk-hud .shutter {
   font: inherit;
   cursor: pointer;
   touch-action: manipulation;
@@ -475,7 +471,8 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
+  /* Compact Sakuga controls take touches 44 px around a 34 px face: 12 px apart, their hit areas stay apart. */
+  gap: 0.75rem;
   pointer-events: none;
 }
 
@@ -509,13 +506,16 @@ body {
 }
 
 /* The camera mode: one switch, Sensors or Manual; the chosen one is lit. */
-.walk-bar .walk-mode {
+.walk-bar .walk-mode-pick {
   flex: 0 0 auto;
 }
 
-.walk-bar .walk-mode button {
-  flex: 0 0 auto;
-  padding: 0 0.625rem;
+/*
+ * A sakuga-segmented shares its width equally (flex: 1 1 0) out of the sum of its labels: the longer one would be
+ * cut ("Sens…"). Wide enough for twice the longer label.
+ */
+.walk-mode-pick sakuga-segmented {
+  width: 12rem;
 }
 
 .walk-controls {
@@ -584,8 +584,7 @@ body {
 }
 
 .shutter input,
-.camera-alt input,
-.chip input {
+.camera-alt input {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -759,14 +758,10 @@ body {
 .nudges {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.375rem;
-  margin: 0.5rem 0;
-}
-
-.walk-hud .chip {
-  position: relative;
-  padding: 0.375rem 0.625rem;
-  border-radius: 1rem;
+  /* 12 px: the compact controls' 44 px hit areas stay apart; centred, a host is never stretched past its face. */
+  gap: 0.75rem;
+  align-items: center;
+  margin: 0.75rem 0;
 }
 
 .nudges {
@@ -1060,13 +1055,9 @@ body {
   margin-right: auto;
 }
 
-.walk-map-head .segmented {
+.walk-map-head sakuga-segmented {
   flex: 0 0 auto;
-}
-
-.walk-map-head .segmented button {
-  flex: 0 0 auto;
-  padding: 0 0.5rem;
+  width: 13rem;
 }
 
 .walk-map-large .hint {
@@ -1266,7 +1257,6 @@ body {
 
 .walk-declination input {
   width: 5rem;
-  padding: 0.25rem;
   font: inherit;
   font-size: 1rem;
 }
@@ -1275,14 +1265,9 @@ body {
   display: flex;
   flex: none;
   flex-direction: column;
-  gap: 0.375rem;
+  /* Two compact icon buttons, 12 px apart: their 44 px hit areas do not overlap. */
+  gap: 0.75rem;
   margin-left: auto;
-}
-
-.walk-tilt button {
-  width: 3rem;
-  min-height: 2.75rem;
-  font-size: 1.1rem;
 }
 
 /*
@@ -2223,17 +2208,6 @@ body {
   min-height: 2.75rem;
 }
 
-.viewer.mobile .walk-hud .chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2.75rem;
-  padding: 0 0.875rem;
-}
-
-.viewer.mobile .walk-tilt button {
-  width: 3rem;
-}
-
 /* The calibration sheet's head stays in reach while the rest scrolls. */
 .walk-calibrate-head {
   position: sticky;
@@ -2294,13 +2268,11 @@ body {
 
 .viewer.mobile .walk-declination input,
 .viewer.mobile .walk-declination select {
-  box-sizing: border-box;
-  min-height: 2.75rem;
   font: inherit;
   font-size: 1rem;
 }
 
-.viewer.mobile .walk-declination select {
+.viewer.mobile .walk-declination sakuga-field {
   flex: 1;
   min-width: 0;
 }

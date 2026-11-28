@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { jpegIsPortrait, type CameraHints } from './prepareImage';
+import { SkButton } from '../hud/SkButton';
 
 /** Whether this browser can show the camera inside the page (HTTPS and `getUserMedia`). */
 export function hasInPageCamera(): boolean {
@@ -178,9 +179,9 @@ export function CameraView({ onShutter, onPhoto, onClose, suspended = false, chi
         </p>
       )}
       <div className="camera-actions">
-        <button type="button" onClick={onClose}>
+        <SkButton size="compact" variant="secondary" onClick={onClose}>
           ✕ Close
-        </button>
+        </SkButton>
         <button
           type="button"
           className="camera-shutter"
