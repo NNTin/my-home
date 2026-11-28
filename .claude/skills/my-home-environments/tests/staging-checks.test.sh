@@ -23,13 +23,17 @@ cat >"$work/smoke" <<'STUB'
 #!/usr/bin/env bash
 echo "ok    the view is on screen"
 echo "ok    nothing is drawn while idle"
+echo "time  layout 12.5 s"
 [[ ${STUB_SMOKE_EXIT:-0} -eq 0 ]] || echo "FAIL  the sheet opens"
 exit "${STUB_SMOKE_EXIT:-0}"
 STUB
 # visual-diff: shoot writes nothing; compare prints the table in $STUB_TABLE and exits 5 when it has a DIFFERS.
 cat >"$work/visual-diff.sh" <<'STUB'
 #!/usr/bin/env bash
-[[ $1 == compare ]] || exit 0
+if [[ $1 != compare ]]; then
+  echo "time  default 30.0 s"
+  exit 0
+fi
 cat "$STUB_TABLE"
 grep -q DIFFERS "$STUB_TABLE" && exit 5
 exit 0
@@ -77,6 +81,8 @@ check 'a smoke that passes on the commit passes' test "$code" -eq 0
 check 'the summary says what passed and on which commit' grep -q 'walk on staging at abc: passed' "$work/summary"
 check 'the summary counts the checks' grep -q '^2 checks passed' "$work/summary"
 check 'the smoke output is printed' grep -q 'nothing is drawn while idle' "$work/out"
+check 'the summary lists the time of each part' grep -q '^| layout | 12.5 |' "$work/summary"
+check 'and of the whole check' grep -Eq '^\| walk \| [0-9]+\.[0-9] \|' "$work/summary"
 
 STUB_SMOKE_EXIT=1 run 'abc abc' mobile abc
 check 'a smoke that fails fails the check' test "$code" -eq 1
@@ -100,6 +106,8 @@ printf '| View | Result | Detail |\n| --- | --- | --- |\n| default | identical |
 run 'abc abc' visual-diff abc
 check 'two identical shoots pass, orbit-180 may differ' test "$code" -eq 0
 check 'the summary holds the table' grep -q '^| default | identical' "$work/summary"
+check 'the time of each view is named after its shoot' \
+  bash -c 'grep -q "^| first/default | 30.0 |" "$1" && grep -q "^| second/default | 30.0 |" "$1"' _ "$work/summary"
 
 printf '| View | Result | Detail |\n| --- | --- | --- |\n| default | DIFFERS | 3 pixels |\n| orbit-180 | identical | sha256 2 |\n' >"$work/table.md"
 run 'abc abc' visual-diff abc

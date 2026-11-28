@@ -10,6 +10,7 @@
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { answeredInfrastructure } from './infrastructure.mjs';
+import { stopwatch } from './parts.mjs';
 import { loadingScreenGone, missedTouches, SCENE } from './scene.mjs';
 
 const require = createRequire(path.join(process.env.MY_HOME_PLAYWRIGHT_DIR, 'package.json'));
@@ -89,6 +90,7 @@ async function smoke(out, homeId) {
   const blocked = [];
   /** Writes answered inside the browser. */
   const faked = [];
+  const lap = stopwatch();
   try {
     for (const { label, viewport, across, ...device } of SCREENS) {
       /**
@@ -201,6 +203,7 @@ async function smoke(out, homeId) {
         );
         await focusContext.close();
       }
+      lap(`${label}/focus`);
 
       // 1. From the viewer to the catalogue.
       const { context, page, errors } = await open();
@@ -263,6 +266,7 @@ async function smoke(out, homeId) {
       check(`${label}: the entry opens /catalog`, path(page) === '/catalog', page.url());
       check(`${label}: the viewer is gone`, (await page.locator(SCENE).count()) === 0);
 
+      lap(`${label}/entry`);
       // 2. Both kinds, cards, counts, thumbnails.
       for (const kind of ['Windows & doors', 'Furniture']) {
         check(
@@ -392,6 +396,7 @@ async function smoke(out, homeId) {
         );
       }
 
+      lap(`${label}/kinds`);
       // 3. Search filters.
       const search = page.getByRole('searchbox', { name: 'Search the catalogue' });
       await search.fill('casement');
@@ -483,6 +488,7 @@ async function smoke(out, homeId) {
         await page.screenshot({ path: out });
       }
 
+      lap(`${label}/search`);
       // 4. A card opens its page; the back button returns to the catalogue, then to the viewer.
       await press(page.locator(`${CARD}[data-type-id="furniture.bed"]`));
       const opened = await shows(page.getByRole('heading', { level: 1, name: /Bed/ }));
@@ -511,6 +517,7 @@ async function smoke(out, homeId) {
       );
       await context.close();
 
+      lap(`${label}/card`);
       // 5. A deep link in a fresh context, and a reload.
       const deep = await open();
       const response = await deep.page.goto(at(PIECE), {
@@ -571,6 +578,7 @@ async function smoke(out, homeId) {
       );
       await deep.context.close();
 
+      lap(`${label}/deep-link`);
       // 6. Every type's piece page: the 3D inspector, dimensions in cm, the section of openings,
       // and the playground (which never writes: see "nothing was written").
       const pages = await open();
@@ -584,6 +592,7 @@ async function smoke(out, homeId) {
           href: new URL(a.getAttribute('href'), a.baseURI).pathname,
         })),
       );
+      lap(`${label}/piece-list`);
       const cm = /^\d+\.\d cm$/;
       const shot = (name) =>
         out.replace(/\.png$/, `-${name}${device.hasTouch ? '-phone' : ''}.png`);
@@ -717,6 +726,7 @@ async function smoke(out, homeId) {
             await p.screenshot({ path: shot('door') });
           }
         }
+        lap(`${label}/piece/${id}`);
       }
 
       // The playground: a colour and a size change the preview live, and nothing is sent.
@@ -806,8 +816,10 @@ async function smoke(out, homeId) {
         pages.errors.slice(0, 5).map(redact).join(' | '),
       );
       await pages.context.close();
+      lap(`${label}/playground`);
 
       await usesStep({ label, device, open, press, base, homeId, shot });
+      lap(`${label}/uses`);
     }
     check(
       'nothing was written: every write was answered in the browser',

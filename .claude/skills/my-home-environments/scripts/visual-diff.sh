@@ -73,6 +73,11 @@ view_args() {
   esac
 }
 
+# elapsed <start>: the seconds since <start> (from `date +%s.%N`), to a tenth.
+elapsed() {
+  awk -v a="$1" -v b="$(date +%s.%N)" 'BEGIN { printf "%.1f", b - a }'
+}
+
 deployed_commit() {
   "$script_dir/site-curl.sh" "$SITE_ENV" /api/health/live | jq -r '.commit // empty'
 }
@@ -104,8 +109,10 @@ shoot() {
   before=$(deployed_commit)
   [[ -n $before ]] || die "no commit from /api/health/live on $SITE_ENV"
   echo "shooting ${#selected[@]} views of $SITE_ENV at commit $before into $out"
+  local start
   for view in "${selected[@]}"; do
     view_args "$view"
+    start=$(date +%s.%N)
     log=$("$script_dir/screenshot.sh" "$SITE_ENV" --canvas --out "$out/$view.png" "${ARGS[@]}" 2>&1) ||
       die "screenshot of $view failed: $log"
     if ! grep -q '^errors none' <<<"$log"; then
@@ -115,6 +122,9 @@ shoot() {
     manifest=$(jq -c --arg v "$view" --arg sha "$(sha256sum "$out/$view.png" | cut -d' ' -f1)" \
       '. + [{view: $v, args: $ARGS.positional, sha256: $sha}]' --args -- "${ARGS[@]}" <<<"$manifest")
     echo "  $view"
+    # What the shot cost, and its parts (screenshot.mjs: launch, load, wait, settle, actions, shot).
+    printf 'time  %s %s s\n' "$view" "$(elapsed "$start")"
+    sed -n "s|^time  |time  $view/|p" <<<"$log"
   done
   after=$(deployed_commit)
   [[ $before == "$after" ]] || die "$SITE_ENV changed from $before to $after during the shoot; shoot again"
