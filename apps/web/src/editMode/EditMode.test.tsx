@@ -98,7 +98,7 @@ describe('edit mode on a desktop', () => {
     fireEvent.click(label);
     expect(label).toHaveAttribute('aria-pressed', 'true');
     const selection = within(panel().getByLabelText('Selected item'));
-    expect(selection.getByText('Bed')).toBeInTheDocument();
+    expect(panel().getByRole('heading', { name: 'Bed' })).toBeInTheDocument();
     expect(selection.getByRole('link', { name: /Open piece page: Bed/ })).toBeInTheDocument();
     // Escape closes it and gives the focus back to the label.
     fireEvent.keyDown(window, { key: 'Escape' });
@@ -173,7 +173,12 @@ describe('edit mode on a phone', () => {
     // Details opens the inspector in the sheet: the Furniture tab on the selection (HUD v2 #201).
     fireEvent.click(within(view).getByRole('button', { name: 'Bed: details' }));
     expect(screen.getByRole('tab', { name: /Furniture/ })).toHaveAttribute('aria-selected', 'true');
-    expect(within(panel().getByLabelText('Selected item')).getByText('Bed')).toBeInTheDocument();
+    expect(panel().getByRole('heading', { name: 'Bed' })).toBeInTheDocument();
+    expect(
+      within(panel().getByLabelText('Selected item')).getByRole('link', {
+        name: /Open piece page: Bed/,
+      }),
+    ).toBeInTheDocument();
   });
 
   it('floats the tools after "Edit" and takes them away after "Done"', async () => {

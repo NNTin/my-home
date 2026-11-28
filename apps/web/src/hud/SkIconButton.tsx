@@ -24,6 +24,7 @@ export type IconName =
   | 'delete'
   | 'info'
   | 'more'
+  | 'tools'
   | 'close'
   | 'camera'
   | 'gallery'

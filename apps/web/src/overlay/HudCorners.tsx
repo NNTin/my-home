@@ -9,7 +9,7 @@ import { LevelControl } from './LevelControl';
 import { StatusBadge, type StageStatus } from './StageTools';
 
 /** What the desktop's one shared surface shows (Photos is its own: the photos panel). */
-export type Surface = 'views' | 'tools' | 'furniture' | 'map';
+export type Surface = 'views' | 'tools' | 'furniture' | 'inspector' | 'map';
 
 /**
  * The desktop's resting HUD (HUD v2 #200, docs/design/hud-v2/layers.md § Primary): the mode, Walk and the level
@@ -24,6 +24,10 @@ export function HudCorners({
   surface,
   onSurface,
   status,
+  levelOpen,
+  onLevelToggle,
+  onLevelDismiss,
+  tone,
 }: {
   scene: HomeScene;
   visibility: Visibility;
@@ -34,6 +38,10 @@ export function HudCorners({
   onSurface(surface: 'views' | 'tools'): void;
   /** Loading and saving: the status badge beside the actions, as on a phone (#203). */
   status: StageStatus;
+  levelOpen: boolean;
+  onLevelToggle(): void;
+  onLevelDismiss(): void;
+  tone: 'dark' | 'light';
 }) {
   // The current keys, on the controls' hints (#205): a change of a binding shows here at once.
   useBindings();
@@ -43,15 +51,25 @@ export function HudCorners({
         {/* The mode, read: Orbit here; Walk has its own HUD with its Exit (§ Primary). */}
         <span className="hud-mode">Orbit</span>
         <SkButton
+          className="hud-walk"
           size="compact"
           appearance="clear"
+          tone={tone}
           aria-label="Walk and take photos"
           title={`Walk and take photos${hint('walk')}`}
           onClick={onWalk}
         >
           <HudIcon name="walk" /> Walk
         </SkButton>
-        <LevelControl scene={scene} visibility={visibility} onChange={onChange} />
+        <LevelControl
+          scene={scene}
+          visibility={visibility}
+          onChange={onChange}
+          open={levelOpen}
+          onToggle={onLevelToggle}
+          onDismiss={onLevelDismiss}
+          tone={tone}
+        />
       </div>
       <div
         className="hud-corner hud-bottom-right"
@@ -63,7 +81,7 @@ export function HudCorners({
           className="hud-views"
           size="compact"
           appearance="clear"
-          backing
+          tone={tone}
           icon="view"
           label="Views"
           title={`Views${hint('views')}`}
@@ -75,8 +93,8 @@ export function HudCorners({
           className="hud-tools"
           size="compact"
           appearance="clear"
-          backing
-          icon="more"
+          tone={tone}
+          icon="tools"
           label="Tools"
           pressed={surface === 'tools' || surface === 'photos'}
           onClick={() => onSurface('tools')}

@@ -1,4 +1,4 @@
-import { act, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { vi } from 'vitest';
 import type { HomeScene } from '../builder/buildHome';
 import { visibleScene, type Visibility } from '../builder/visibility';
@@ -75,3 +75,10 @@ export function pointerEvent(
  */
 export const shownScene = (props: { scene: HomeScene; visibility?: Visibility | undefined }) =>
   props.visibility ? visibleScene(props.scene, props.visibility) : props.scene;
+
+/** Open the level chip and return the existing segmented selector. */
+export function openLevelPicker() {
+  const trigger = screen.getByRole('button', { name: /^Level: / });
+  if (trigger.getAttribute('aria-expanded') !== 'true') fireEvent.click(trigger);
+  return within(screen.getByRole('radiogroup', { name: 'Show up to level' }));
+}

@@ -66,15 +66,18 @@ async function settled(page) {
 }
 
 /**
- * Runs `[{ click: selector } | { drag: [dx, dy] } | { pad: [dx, dy, ms] } | { key: [key, ms] }]` in order.
+ * Runs click, optional click, drag, pad and key actions in order.
  * Drags start at the canvas centre; `pad` holds the walk mode's movement pad deflected, `key` holds a key.
  */
 async function runActions(page, actions, settle) {
   let paused = false;
   for (const action of actions) {
-    if (action.click !== undefined) {
-      console.log(`click ${action.click}`);
-      await page.locator(action.click).first().click({ timeout: 15_000 });
+    const selector = action.click ?? action.clickIfPresent;
+    if (selector !== undefined) {
+      const target = page.locator(selector).first();
+      if (action.clickIfPresent !== undefined && !(await target.isVisible())) continue;
+      console.log(`click ${selector}`);
+      await target.click({ timeout: 15_000 });
     } else if (action.pad) {
       const [dx, dy, ms] = action.pad;
       const box = await page.locator('.joystick').first().boundingBox({ timeout: 15_000 });
