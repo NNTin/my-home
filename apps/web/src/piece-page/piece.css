@@ -270,9 +270,10 @@ svg.section rect {
   width: auto;
 }
 
+/* The native controls keep a 44 px touch inside their frame (the catalogue smoke hit-tests them, not the frame). */
 .playground-color {
-  width: 2.5rem;
-  height: 2rem;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border: 0;
   background: none;
@@ -282,6 +283,8 @@ svg.section rect {
 /* The native fields in their sakuga-field frame (§5.3): the frame draws the line; 16 px, so iOS does not zoom. */
 .playground-field {
   width: 6.5rem;
+  min-height: 44px;
+  box-sizing: border-box;
   font-size: 1rem;
   font-variant-numeric: tabular-nums;
 }
