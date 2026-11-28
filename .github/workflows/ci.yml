@@ -468,10 +468,6 @@ jobs:
           - { check: visual-diff, shard: 2/4 }
           - { check: visual-diff, shard: 3/4 }
           - { check: visual-diff, shard: 4/4 }
-          # TEMPORARY (#237 PR 3, the proof): the same checks unsharded, at the same commit.
-          - check: mobile
-          - check: catalog
-          - check: visual-diff
     env:
       REVISION: ${{ needs.publish.outputs.revision }}
       SCRIPTS: .claude/skills/my-home-environments/scripts
@@ -525,16 +521,6 @@ jobs:
             staging-checks/compare.md
           if-no-files-found: ignore
           retention-days: 14
-      # TEMPORARY (#237 PR 3, the proof): the names of the checks only, and the comparison table.
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always() && steps.token.outputs.present == 'true' && matrix.check != 'walk'
-        with:
-          name: check-names-${{ matrix.check }}-${{ steps.token.outputs.part || 'whole' }}
-          path: |
-            staging-checks/${{ matrix.check }}.names
-            staging-checks/compare.md
-          if-no-files-found: ignore
-          retention-days: 1
 
   staging-checks-result:
     # One result for the browser checks: fails if any shard failed, was cancelled or skipped though staging was
