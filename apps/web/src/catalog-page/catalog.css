@@ -5,15 +5,6 @@
   min-width: 0;
   max-width: 24rem;
   min-height: 44px;
-  box-sizing: border-box;
-  padding: 0.5rem 0.75rem;
-  border: var(--hud-line-compact);
-  border-radius: var(--hud-r-compact);
-  background: var(--sk-card);
-  box-shadow: var(--hud-sh-compact);
-  color: var(--sk-ink);
-  /* 16 px: iOS does not zoom the page when the field is focused. */
-  font-size: 1rem;
 }
 
 .catalog-page h2 {

@@ -108,48 +108,9 @@
   user-select: none;
 }
 
-.piece-page button,
-.piece-page .button {
-  min-width: 44px;
-  min-height: 44px;
-  box-sizing: border-box;
-  padding: 0.375rem 0.75rem;
-  font: inherit;
-  font-style: italic;
-  font-weight: 800;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-.piece-page button:disabled {
-  cursor: default;
-}
-
-/* One segmented row: the chosen one filled with the primary tone (§5.2). */
+/* 3D / Section: a sakuga-segmented (§4.7). */
 .piece-views {
-  display: inline-flex;
   margin-bottom: 0.5rem;
-  border-radius: var(--hud-r-compact);
-  box-shadow: var(--hud-sh-compact);
-}
-
-.piece-page .piece-views button {
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.piece-page .piece-views button:first-child {
-  border-radius: var(--hud-r-compact) 0 0 var(--hud-r-compact);
-}
-
-.piece-page .piece-views button:last-child {
-  border-left: none;
-  border-radius: 0 var(--hud-r-compact) var(--hud-r-compact) 0;
-}
-
-.piece-page .piece-views button[aria-pressed='true'] {
-  background: var(--sk-pri);
-  color: var(--sk-ink);
 }
 
 .piece-tools {
@@ -165,11 +126,6 @@
   gap: 0.5rem;
   align-items: center;
   min-height: 44px;
-}
-
-.piece-toggle input {
-  width: 1.25rem;
-  height: 1.25rem;
 }
 
 .piece-dimensions,
@@ -306,27 +262,26 @@ svg.section rect {
   align-items: center;
 }
 
+/* A field's frame is as wide as its control: the picker, the hex and the cm stay on one row. */
+.playground-control > sakuga-field,
+.playground-cm > sakuga-field {
+  display: inline-block;
+  flex: none;
+  width: auto;
+}
+
 .playground-color {
-  width: 44px;
-  height: 44px;
+  width: 2.5rem;
+  height: 2rem;
   padding: 0;
-  border: var(--hud-line-compact);
-  border-radius: var(--hud-r-compact);
-  background: var(--sk-card);
-  box-shadow: var(--hud-sh-compact);
+  border: 0;
+  background: none;
   cursor: pointer;
 }
 
+/* The native fields in their sakuga-field frame (§5.3): the frame draws the line; 16 px, so iOS does not zoom. */
 .playground-field {
   width: 6.5rem;
-  min-height: 44px;
-  box-sizing: border-box;
-  padding: 0.375rem 0.5rem;
-  border: var(--hud-line-compact);
-  border-radius: var(--hud-r-compact);
-  background: var(--sk-card);
-  color: var(--sk-ink);
-  /* 16 px: iOS does not zoom the page when the field is focused. */
   font-size: 1rem;
   font-variant-numeric: tabular-nums;
 }
@@ -338,16 +293,9 @@ select.playground-field {
   max-width: 100%;
 }
 
-/* Invalid: a pink shadow (§5.3). */
-.playground-field[aria-invalid='true'] {
-  box-shadow: 3px 4px 0 var(--sk-acc);
-}
-
 .playground-slider {
   flex: 1 1 10rem;
   min-width: 8rem;
-  min-height: 44px;
-  margin: 0;
 }
 
 .playground-stepper output {
@@ -395,21 +343,6 @@ select.playground-field {
 
 /* #45: Place, where-used, the per-use editor, history, photos and notes. */
 
-.piece-page a.button {
-  display: inline-flex;
-  align-items: center;
-  text-decoration: none;
-}
-
-.piece-page .link-button {
-  border-color: transparent;
-  background: none;
-  color: var(--sk-ink);
-  font-style: normal;
-  font-weight: 500;
-  text-decoration: underline;
-}
-
 .piece-page .buttons {
   display: flex;
   flex-wrap: wrap;
@@ -425,16 +358,7 @@ select.playground-field {
   font-weight: 800;
 }
 
-.piece-page .field input,
-.piece-page .field select,
-.piece-page textarea {
-  min-height: 44px;
-  box-sizing: border-box;
-  padding: 0.375rem 0.5rem;
-  border: var(--hud-line-compact);
-  border-radius: var(--hud-r-compact);
-  background: var(--sk-card);
-  color: var(--sk-ink);
+.piece-page sakuga-field > :is(input, select, textarea) {
   font: inherit;
   /* 16 px: iOS does not zoom the page when the field is focused. */
   font-size: 1rem;
@@ -469,8 +393,7 @@ select.playground-field {
   box-shadow: 3px 4px 0 var(--sk-acc);
 }
 
-.uses-attention h3,
-.uses-home h3 {
+.uses-attention h3 {
   display: inline;
   margin: 0;
   font-size: 1rem;
@@ -478,13 +401,6 @@ select.playground-field {
 
 .uses-home {
   margin-bottom: 1rem;
-}
-
-.uses-home > summary {
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
 }
 
 .uses-level-name {
@@ -655,16 +571,6 @@ select.playground-field {
   align-items: center;
 }
 
-.photo-strip .thumbnail {
-  padding: 0;
-  overflow: hidden;
-  border: 2px solid var(--sk-ink);
-  border-radius: var(--hud-r-compact);
-  background: var(--sk-card);
-  box-shadow: var(--hud-sh-compact);
-  cursor: pointer;
-}
-
 .photo-strip .thumbnail img {
   display: block;
   width: 72px;
@@ -688,6 +594,8 @@ select.playground-field {
 
 .photo-viewer {
   position: fixed;
+  /* A dialog panel (sakuga-panel kind="dialog") covering the page in opaque paper. */
+  margin: 0;
   inset: 0;
   z-index: 20;
   display: flex;
@@ -732,14 +640,6 @@ select.playground-field {
 
 .use-trash {
   margin-top: 0.5rem;
-}
-
-.use-trash > summary {
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  color: var(--sk-dim);
 }
 
 .place-form select {

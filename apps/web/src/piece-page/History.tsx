@@ -1,6 +1,7 @@
 import { isSeedChange, UseConflict, type HistoryEntry } from '@my-home/shared';
 import { useEffect, useState } from 'react';
 import { ApiRequestError, usesApi } from '../api';
+import { SkButton } from '../hud/SkButton';
 
 const ACTORS = { owner: 'You', agent: 'Agent', system: 'System' } as const;
 /** The same, inside a sentence: "undone by you at …". */
@@ -170,15 +171,16 @@ export function History({
                   </span>
                 )}
                 {entry.canUndo && canUndo && (
-                  <button
-                    type="button"
-                    className="button history-undo"
+                  <SkButton
+                    size="compact"
+                    variant="secondary"
+                    className="history-undo"
                     disabled={busy}
                     aria-label={`Undo: ${whatOf(entry)}`}
                     onClick={() => void undo(entry)}
                   >
                     Undo
-                  </button>
+                  </SkButton>
                 )}
               </li>
             );

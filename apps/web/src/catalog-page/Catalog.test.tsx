@@ -157,7 +157,7 @@ describe('CatalogPage', () => {
   it('filters as you type', async () => {
     fakeApi();
     render(<CatalogPage />);
-    fireEvent.change(search(), { target: { value: 'Bed' } });
+    fireEvent.input(search(), { target: { value: 'Bed' } });
     expect(screen.queryByRole('region', { name: 'Windows & doors' })).not.toBeInTheDocument();
     // The bed by name, the wardrobe by its category ("Bed room").
     expect(
@@ -165,9 +165,9 @@ describe('CatalogPage', () => {
         .getAllByRole('link')
         .map((l) => l.dataset.typeId),
     ).toEqual(['furniture.bed', 'furniture.wardrobe']);
-    fireEvent.change(search(), { target: { value: 'xyz' } });
+    fireEvent.input(search(), { target: { value: 'xyz' } });
     expect(screen.getByText('Nothing matches “xyz”.')).toBeInTheDocument();
-    fireEvent.change(search(), { target: { value: '' } });
+    fireEvent.input(search(), { target: { value: '' } });
     expect(document.querySelectorAll('[data-type-id]')).toHaveLength(catalog.types.length);
   });
 
@@ -242,14 +242,14 @@ describe('CatalogPage', () => {
   it('searches the finishes too, and says what a finish is for', () => {
     fakeApi();
     render(<CatalogPage />);
-    fireEvent.change(search(), { target: { value: 'clay' } });
+    fireEvent.input(search(), { target: { value: 'clay' } });
     expect(
       section('Finishes')
         .getAllByRole('listitem')
         .map((c) => c.dataset.finishId),
     ).toEqual(['roof.clay-tile']);
     expect(screen.queryByText(/Nothing matches/)).not.toBeInTheDocument();
-    fireEvent.change(search(), { target: { value: 'window' } });
+    fireEvent.input(search(), { target: { value: 'window' } });
     expect(screen.queryByRole('region', { name: 'Finishes' })).not.toBeInTheDocument();
     expect(listedFinishes('PAINT.').map((f) => f.id)).toEqual(['paint.plain']);
     expect(surfacesText(finishes.get('cut.dark')!)).toBe('Drawn by the viewer only');

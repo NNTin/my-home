@@ -12,7 +12,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { previewContext } from '../catalog-page/preview';
 import { pieces } from '../catalog/registry';
 import { useLayoutMode } from '../overlay/useLayoutMode';
-import { href, keptQuery, Link, navigate, useDocumentTitle, useRestoredScroll } from '../routing';
+import { href, keptQuery, navigate, useDocumentTitle, useRestoredScroll } from '../routing';
 import { Inspector } from './Inspector';
 import { Notes } from './Notes';
 import { PhotoList } from './Photos';
@@ -28,6 +28,15 @@ import { Uses, type OpenUse } from './Uses';
 import { contextOfUse, hashedUseId, hashOfUse, photosOfType, rowId, type HomeData } from './uses';
 import { useWhereUsed, type WhereUsedState } from './useWhereUsed';
 import './piece.css';
+import { SkButton } from '../hud/SkButton';
+import { SkCheckbox } from '../hud/SkCheckbox';
+import { SkSegmented } from '../hud/SkSegmented';
+
+/** The preview's two views (§4.7: a segmented switch). */
+const VIEWS = [
+  { value: '3d', label: '3D' },
+  { value: 'section', label: 'Section' },
+] as const;
 
 const KIND_NAMES = {
   openings: 'Windows & doors',
@@ -234,9 +243,9 @@ function Piece({ type, layout }: { type: CatalogType; layout: ReturnType<typeof 
   return (
     <div className={`page piece-page ${phone ? `mobile ${layout}` : 'desktop'}`}>
       <header className="page-header">
-        <Link className="page-back" to={href({ page: 'catalog' }, home)}>
+        <SkButton className="page-back" variant="secondary" href={href({ page: 'catalog' }, home)}>
           ← Catalogue
-        </Link>
+        </SkButton>
         <h1>
           <span aria-hidden="true">{type.icon}</span> {type.name}
         </h1>
@@ -253,18 +262,14 @@ function Piece({ type, layout }: { type: CatalogType; layout: ReturnType<typeof 
         <div className="piece-layout">
           <section className="piece-stage" aria-label="Preview">
             {opening && (
-              <div className="piece-views" role="group" aria-label="View">
-                <button type="button" aria-pressed={view === '3d'} onClick={() => setView('3d')}>
-                  3D
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={view === 'section'}
-                  onClick={() => setView('section')}
-                >
-                  Section
-                </button>
-              </div>
+              <SkSegmented
+                className="piece-views"
+                label="View"
+                size="compact"
+                options={VIEWS}
+                value={view}
+                onChange={(v) => setView(v === 'section' ? 'section' : '3d')}
+              />
             )}
             {shown && (
               <p className="piece-showing" role="status">
@@ -295,17 +300,17 @@ function Piece({ type, layout }: { type: CatalogType; layout: ReturnType<typeof 
             </div>
             {view === '3d' && (
               <div className="piece-tools">
-                <button type="button" className="button" onClick={() => resetRef.current?.()}>
+                <SkButton size="compact" variant="secondary" onClick={() => resetRef.current?.()}>
                   Reset view
-                </button>
-                <label className="piece-toggle">
-                  <input
-                    type="checkbox"
-                    checked={showDimensions}
-                    onChange={(e) => setShowDimensions(e.target.checked)}
-                  />
+                </SkButton>
+                <SkCheckbox
+                  className="piece-toggle"
+                  size="compact"
+                  checked={showDimensions}
+                  onChange={setShowDimensions}
+                >
                   Dimensions
-                </label>
+                </SkCheckbox>
               </div>
             )}
             <h2 id="dimensions-title">Dimensions</h2>

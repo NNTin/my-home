@@ -29,17 +29,21 @@ const twoHomes = {
 };
 
 describe('where-used', () => {
-  afterEach(() => {
+  afterEach(async () => {
     cleanup();
     vi.unstubAllGlobals();
     window.location.hash = '';
+    // jsdom says "hashchange" in a task of its own: let it arrive now, not in the next test's page (a second
+    // scroll to its use).
+    await new Promise((r) => setTimeout(r, 0));
   });
 
   it('lists the uses of every home, grouped by home and level', async () => {
     openPiece('/catalog/openings/door.interior', twoHomes);
     expect(await screen.findByText('8 uses in this environment')).toBeInTheDocument();
     const homes = [...document.querySelectorAll('.uses-home')];
-    expect(homes.map((h) => h.querySelector('h3')!.textContent)).toEqual([
+    // Each home is a fold (sakuga-fold), titled by its name.
+    expect(homes.map((h) => h.querySelector('[slot=summary]')!.textContent)).toEqual([
       'Mock home',
       'Other home',
     ]);

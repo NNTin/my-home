@@ -1,8 +1,10 @@
 import { catalog, type CatalogType } from '@my-home/shared';
 import { useMemo, useState } from 'react';
+import { SkButton } from '../hud/SkButton';
 import { SkCard } from '../hud/SkCard';
+import { SkInput } from '../hud/SkInput';
 import { useLayoutMode } from '../overlay/useLayoutMode';
-import { href, keptQuery, Link, useDocumentTitle, useRestoredScroll } from '../routing';
+import { href, keptQuery, useDocumentTitle, useRestoredScroll } from '../routing';
 import './catalog.css';
 import { FinishesSection, listedFinishes } from './Finishes';
 import { catalogSections, usesText, type CatalogGroup } from './sections';
@@ -82,17 +84,17 @@ export default function CatalogPage() {
   return (
     <div className={`page catalog-page ${layout === 'desktop' ? 'desktop' : `mobile ${layout}`}`}>
       <header className="page-header">
-        <Link className="page-back" to={href({ page: 'viewer' }, home)}>
+        <SkButton className="page-back" variant="secondary" href={href({ page: 'viewer' }, home)}>
           ← Home
-        </Link>
+        </SkButton>
         <h1>Catalogue</h1>
-        <input
-          type="search"
+        <SkInput
           className="catalog-search"
-          aria-label="Search the catalogue"
+          type="search"
+          label="Search the catalogue"
           placeholder="Search"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onInput={setQuery}
         />
       </header>
       <main className="page-main">

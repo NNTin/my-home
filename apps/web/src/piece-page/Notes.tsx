@@ -1,6 +1,8 @@
 import { MAX_NOTE_LENGTH, type Note, type Subject } from '@my-home/shared';
 import { useEffect, useId, useState } from 'react';
 import { notesApi } from '../api';
+import { SkButton } from '../hud/SkButton';
+import { SkField } from '../hud/SkField';
 
 const BY = { owner: 'you', agent: 'an agent', system: 'the system' } as const;
 
@@ -25,13 +27,15 @@ function NoteItem({ note, onChanged }: { note: Note; onChanged(): void }) {
       {draft === undefined ? (
         <p className="note-body">{note.body}</p>
       ) : (
-        <textarea
-          aria-label="Edit the note"
-          value={draft}
-          rows={3}
-          maxLength={MAX_NOTE_LENGTH}
-          onChange={(e) => setDraft(e.target.value)}
-        />
+        <SkField size="compact">
+          <textarea
+            aria-label="Edit the note"
+            value={draft}
+            rows={3}
+            maxLength={MAX_NOTE_LENGTH}
+            onChange={(e) => setDraft(e.target.value)}
+          />
+        </SkField>
       )}
       <p className="piece-note">
         By {BY[note.createdBy]}, {when(note.createdAt)}
@@ -44,31 +48,31 @@ function NoteItem({ note, onChanged }: { note: Note; onChanged(): void }) {
       )}
       <div className="buttons">
         {draft === undefined ? (
-          <button type="button" className="button" onClick={() => setDraft(note.body)}>
+          <SkButton size="compact" variant="secondary" onClick={() => setDraft(note.body)}>
             Edit note
-          </button>
+          </SkButton>
         ) : (
           <>
-            <button
-              type="button"
-              className="button"
+            <SkButton
+              size="compact"
+              variant="secondary"
               disabled={draft.trim() === '' || draft.trim() === note.body}
               onClick={() => void run(() => notesApi.update(note.id, draft.trim()))}
             >
               Save note
-            </button>
-            <button type="button" className="button" onClick={() => setDraft(undefined)}>
+            </SkButton>
+            <SkButton size="compact" variant="secondary" onClick={() => setDraft(undefined)}>
               Cancel
-            </button>
+            </SkButton>
           </>
         )}
-        <button
-          type="button"
-          className="button"
+        <SkButton
+          size="compact"
+          variant="secondary"
           onClick={() => void run(() => notesApi.remove(note.id))}
         >
           Delete note
-        </button>
+        </SkButton>
       </div>
     </li>
   );
@@ -136,17 +140,19 @@ export function Notes({ subject, homeId }: { subject: Subject; homeId?: string }
           if (text.trim() !== '') void add();
         }}
       >
-        <textarea
-          aria-label="New note"
-          placeholder="Add a note…"
-          value={text}
-          rows={2}
-          maxLength={MAX_NOTE_LENGTH}
-          onChange={(e) => setText(e.target.value)}
-        />
-        <button type="submit" className="button" disabled={text.trim() === ''}>
+        <SkField size="compact">
+          <textarea
+            aria-label="New note"
+            placeholder="Add a note…"
+            value={text}
+            rows={2}
+            maxLength={MAX_NOTE_LENGTH}
+            onChange={(e) => setText(e.target.value)}
+          />
+        </SkField>
+        <SkButton size="compact" variant="secondary" type="submit" disabled={text.trim() === ''}>
           Add note
-        </button>
+        </SkButton>
       </form>
     </div>
   );

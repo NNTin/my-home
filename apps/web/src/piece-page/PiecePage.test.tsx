@@ -136,9 +136,10 @@ describe('the piece page', () => {
   it('swaps the 3D view for the section of an opening', async () => {
     open('/catalog/openings/window.casement');
     await screen.findByRole('heading', { level: 1, name: /Casement/ });
-    fireEvent.click(screen.getByRole('button', { name: 'Section' }));
+    // 3D and Section are a sakuga-segmented (§4.7): its choices are radios.
+    fireEvent.click(screen.getByRole('radio', { name: 'Section' }));
     expect(screen.queryByTestId('inspector')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Section' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('radio', { name: 'Section' })).toHaveAttribute('aria-checked', 'true');
     const svg = screen.getByRole('img', { name: /^Section:/ });
     expect(svg.querySelectorAll('rect[data-role="frame"]').length).toBeGreaterThan(0);
     expect(svg.querySelectorAll('rect[data-role="glass"]')).toHaveLength(1);
@@ -155,7 +156,7 @@ describe('the piece page', () => {
     // The section follows the playground.
     fireEvent.click(panel().getByRole('button', { name: 'More sashes' }));
     expect(svg.querySelectorAll('rect[data-role="frame"]')).toHaveLength(3);
-    fireEvent.click(screen.getByRole('button', { name: '3D' }));
+    fireEvent.click(screen.getByRole('radio', { name: '3D' }));
     expect(screen.getByTestId('inspector')).toBeInTheDocument();
   });
 
@@ -194,14 +195,19 @@ describe('the piece page', () => {
       const region = panel();
       for (const field of region.queryAllByRole('textbox'))
         fireEvent.change(field, { target: { value: '#abc' } });
+      // A sakuga-slider (its fallback here): its value set, and said, as a drag does.
       for (const slider of region.queryAllByRole('slider'))
-        fireEvent.change(slider, { target: { value: slider.getAttribute('max') } });
+        act(() => {
+          (slider as HTMLElement & { value: string }).value = slider.getAttribute('max')!;
+          fireEvent.input(slider);
+        });
       for (const button of region.queryAllByRole('button')) fireEvent.click(button);
       await act(() => new Promise((r) => setTimeout(r, 450)));
       expect(nonGet(api), type.id).toEqual([]);
       cleanup();
     }
-  }, 30_000);
+    // About 25 s of it is the 450 ms wait for each of the catalogue's types; the slider's act() costs a little more.
+  }, 60_000);
 
   it('keeps the playground in ?p=, and opens a shared state', async () => {
     const p = encodeOverrides({ width: 1.8 });

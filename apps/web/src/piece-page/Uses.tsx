@@ -1,7 +1,7 @@
 import type { CatalogType, ParamValues, Placement } from '@my-home/shared';
 import { useState, type Dispatch, type SetStateAction } from 'react';
 import { placementsApi } from '../api';
-import { href, Link } from '../routing';
+import { href } from '../routing';
 import { History } from './History';
 import { Notes } from './Notes';
 import { UsePhotos } from './Photos';
@@ -17,6 +17,8 @@ import {
   type UseRow,
 } from './uses';
 import type { WhereUsedState } from './useWhereUsed';
+import { SkButton } from '../hud/SkButton';
+import { SkFold } from '../hud/SkFold';
 
 /** The use whose row is open, and which of its panels. */
 export interface OpenUse {
@@ -96,43 +98,44 @@ function UseItem({ type, row, data, attention, open, onOpen, draft, onDraft, rel
       </div>
       <div className="use-actions">
         {!orphan && (
-          <Link
-            className="button"
-            to={href({ page: 'viewer' }, { home: homeId, focus: use.id })}
+          <SkButton
+            size="compact"
+            variant="secondary"
+            href={href({ page: 'viewer' }, { home: homeId, focus: use.id })}
             aria-label={`Show ${use.name} in model`}
           >
             Show in model
-          </Link>
+          </SkButton>
         )}
         {!orphan && editing && (
-          <button
-            type="button"
-            className="button"
-            aria-pressed={panel === 'edit'}
+          <SkButton
+            size="compact"
+            variant="secondary"
+            pressed={panel === 'edit'}
             aria-label={`Edit ${use.name}`}
             onClick={() => toggle('edit')}
           >
             Edit
-          </button>
+          </SkButton>
         )}
-        <button
-          type="button"
-          className="button"
-          aria-pressed={panel === 'history'}
+        <SkButton
+          size="compact"
+          variant="secondary"
+          pressed={panel === 'history'}
           aria-label={`${attention ? 'Show history' : 'History'} of ${use.name}`}
           onClick={() => toggle('history')}
         >
           {attention ? 'Show history' : 'History'}
-        </button>
+        </SkButton>
         {attention && placement && editing && (
-          <button
-            type="button"
-            className="button"
+          <SkButton
+            size="compact"
+            variant="secondary"
             aria-label={`Remove ${use.name} (to the trash)`}
             onClick={() => void remove()}
           >
             Remove
-          </button>
+          </SkButton>
         )}
       </div>
       {error && (
@@ -200,21 +203,20 @@ function Trash({
     }
   };
   return (
-    <details className="use-trash">
-      <summary>In the trash ({trash.length})</summary>
+    <SkFold className="use-trash" size="compact" title={`In the trash (${trash.length})`}>
       <ul>
         {trash.map((p) => (
           <li key={p.id}>
             {p.name} <span className="piece-note">until {until(p.purgeAt)}</span>{' '}
             {editing && (
-              <button
-                type="button"
-                className="button"
+              <SkButton
+                size="compact"
+                variant="secondary"
                 aria-label={`Restore ${p.name}`}
                 onClick={() => void restore(p)}
               >
                 Restore
-              </button>
+              </SkButton>
             )}
           </li>
         ))}
@@ -224,7 +226,7 @@ function Trash({
           {error}
         </p>
       )}
-    </details>
+    </SkFold>
   );
 }
 
@@ -287,10 +289,7 @@ export function Uses({
             </section>
           )}
           {used.homes.map(({ data, levels, trash }) => (
-            <details key={data.home.id} className="uses-home" open>
-              <summary>
-                <h3>{data.home.name}</h3>
-              </summary>
+            <SkFold key={data.home.id} className="uses-home" title={data.home.name} defaultOpen>
               {data.error && (
                 <p className="error" role="alert">
                   {data.error}
@@ -312,7 +311,7 @@ export function Uses({
                 </section>
               ))}
               {trash.length > 0 && <Trash homeId={data.home.id} trash={trash} reload={reload} />}
-            </details>
+            </SkFold>
           ))}
         </>
       )}
