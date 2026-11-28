@@ -91,6 +91,7 @@ if [[ $check == visual-diff ]]; then
 fi
 log="$out/$check.log"
 status=0
+started=$(date +%s.%N)
 case "$check" in
   walk) "$checks_dir/walk-smoke.sh" staging --out "$out/walk.png" >"$log" 2>&1 || status=$? ;;
   mobile) "$checks_dir/mobile-smoke.sh" staging --out "$out/mobile.png" >"$log" 2>&1 || status=$? ;;
@@ -100,9 +101,10 @@ case "$check" in
       "$checks_dir/catalog-smoke.sh" staging --out "$out/catalog.png" >"$log" 2>&1 || status=$?
     ;;
   visual-diff)
+    # The time lines of each shoot are named after it.
     {
-      "$checks_dir/visual-diff.sh" staging shoot --out "$out/first" &&
-        "$checks_dir/visual-diff.sh" staging shoot --out "$out/second"
+      "$checks_dir/visual-diff.sh" staging shoot --out "$out/first" | sed 's|^time  |time  first/|' &&
+        "$checks_dir/visual-diff.sh" staging shoot --out "$out/second" | sed 's|^time  |time  second/|'
     } >"$log" 2>&1 || status=$?
     if [[ $status -eq 0 ]]; then
       # compare exits 5 when views differ: which ones decides.
@@ -113,6 +115,7 @@ case "$check" in
     fi
     ;;
 esac
+awk -v a="$started" -v b="$(date +%s.%N)" -v c="$check" 'BEGIN { printf "time  %s %.1f s\n", c, b - a }' >>"$log"
 cat "$log"
 same_commit after
 [[ -z $mark ]] || same_data "$mark"
@@ -129,5 +132,9 @@ verdict=passed
     grep -E '^(FAIL|FAILED|skip) ' "$log" | sed 's/^/- /' || true
   fi
   printf '\n'
+  # What each part took (the `time` lines of the scripts), to balance the checks over runners.
+  printf '<details><summary>Time per part</summary>\n\n| Part | Seconds |\n| --- | --- |\n'
+  awk '$1 == "time" { printf "| %s | %s |\n", $2, $3 }' "$log"
+  printf '\n</details>\n\n'
 } | summary
 exit "$status"

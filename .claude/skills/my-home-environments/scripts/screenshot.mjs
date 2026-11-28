@@ -6,6 +6,7 @@ import { writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { answeredInfrastructure } from './infrastructure.mjs';
+import { stopwatch } from './parts.mjs';
 import { loadingScreenGone, SCENE } from './scene.mjs';
 
 const require = createRequire(path.join(process.env.MY_HOME_PLAYWRIGHT_DIR, 'package.json'));
@@ -130,6 +131,7 @@ async function shoot([
 ]) {
   const base = process.env.SITE_BASE;
   const host = new URL(base).host;
+  const lap = stopwatch();
   const browser = await chromium.launch({ args: LAUNCH_ARGS });
   try {
     // `touch` emulates a phone: a touch screen with a coarse pointer and a mobile viewport.
@@ -150,6 +152,7 @@ async function shoot([
       });
     });
     const page = await context.newPage();
+    lap('launch');
     const errors = [];
     page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`));
     page.on('console', (message) => {
@@ -170,16 +173,20 @@ async function shoot([
     // The viewer (`/`) draws a canvas; the other pages (`/catalog`, …) have a heading instead.
     const viewer = new URL(page.url()).pathname === '/';
     await page.waitForSelector(viewer ? SCENE : 'h1', { timeout: 30_000 });
+    lap('load');
     await page.waitForTimeout(Number(waitMs));
+    lap('wait');
     console.log(`title ${await page.title()}`);
     if (viewer) await settled(page);
     // Its exit runs on the page's timers, which the actions may pause; it covers the shot (scene.mjs).
     await loadingScreenGone(page, viewer ? 30_000 : 60_000).catch(() =>
       console.log('warning: the loading screen is still up'),
     );
+    lap('settle');
     const paused = await runActions(page, JSON.parse(actions), canvas === 'canvas');
     // Not with a paused clock: there the frames after a drag are run by hand (SETTLE_MS).
     if (viewer && !paused) await settled(page);
+    lap('actions');
     if (canvas === 'canvas') {
       // Only the 3D view: hide every other element (visibility keeps the layout, so nothing redraws)
       // and clip to the canvas.
@@ -205,6 +212,7 @@ async function shoot([
     } else {
       await page.screenshot({ path: out, timeout: SHOT_TIMEOUT_MS });
     }
+    lap('shot');
     console.log(`errors ${errors.length ? '' : 'none'}`);
     for (const error of errors.slice(0, 10)) console.log(`  ${redact(error)}`);
     console.log(`screenshot ${out}`);

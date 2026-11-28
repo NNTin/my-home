@@ -15,6 +15,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { answeredInfrastructure } from './infrastructure.mjs';
+import { stopwatch } from './parts.mjs';
 import { loadingScreenGone, missedTouches, SCENE } from './scene.mjs';
 
 const require = createRequire(path.join(process.env.MY_HOME_PLAYWRIGHT_DIR, 'package.json'));
@@ -127,8 +128,12 @@ async function frameChecks(browser, { device, base, host, homeId }) {
     }
     await page.waitForTimeout(1500);
   };
+  const lap = stopwatch();
+  let timing = '';
   try {
     for (const quality of QUALITIES) {
+      if (timing) lap(timing);
+      timing = `frames-${device}/${quality}`;
       // Stepping down is off: a software renderer is slow, and the tier asked for must be drawn.
       const query = new URLSearchParams({ quality, perf: '1', hints: 'off', stepdown: 'off' });
       if (homeId) query.set('home', homeId);
@@ -258,7 +263,9 @@ async function frameChecks(browser, { device, base, host, homeId }) {
       check(`${where}: nothing is drawn afterwards`, (await draws()) === rest);
       await copyReadout(page, { device, where, draws, perf });
     }
+    lap(timing);
     await lampWalk(page, { device, base, homeId, perf, settled });
+    lap(`frames-${device}/lamp-walk`);
   } finally {
     await context.close();
   }
@@ -641,6 +648,7 @@ async function viewChecks(browser, { device, base, host, homeId }) {
     if (!['GET', 'HEAD'].includes(request.method())) return route.abort();
     return route.continue({ headers: { ...request.headers(), authorization: `Bearer ${token}` } });
   });
+  const lap = stopwatch();
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (error) => errors.push(String(error)));
@@ -861,7 +869,9 @@ async function viewChecks(browser, { device, base, host, homeId }) {
         (await settled('fast')),
       `${restored.width}x${restored.height}, before ${buffer.width}x${buffer.height}`,
     );
+    lap(`views-${device}/named`);
     await renderChecks(page, { device, where, views, renderChunk });
+    lap(`views-${device}/render`);
     check(`${where}: the named views log no page error`, errors.length === 0, errors[0] ?? '');
   } finally {
     await context.close();
@@ -891,6 +901,7 @@ async function smoke(out, homeId) {
   const now = () => new Date().toISOString();
   const active = () => [...fake.values()].filter((p) => p.removedAt === null);
   const target = homeId ? `/?home=${encodeURIComponent(homeId)}` : '/';
+  const lap = stopwatch();
   try {
     // MOBILE_SMOKE_ONLY=views: the named views alone, a few minutes instead of the whole run.
     if (process.env.MOBILE_SMOKE_ONLY === 'views') {
@@ -1536,12 +1547,16 @@ async function smoke(out, homeId) {
     check('nothing was written', blocked.length === 0, blocked.join(', '));
     console.log(`screenshot ${out}`);
     await context.close();
+    lap('layout');
 
     // The frame loop: budgets and rest, on a phone and on a desktop.
     for (const device of ['phone', 'desktop']) {
       await frameChecks(browser, { device, base, host, homeId });
+      lap(`frames-${device}`);
       await textureChecks(browser, { device, base, host, homeId });
+      lap(`textures-${device}`);
       await viewChecks(browser, { device, base, host, homeId });
+      lap(`views-${device}`);
     }
   } finally {
     await browser.close();
