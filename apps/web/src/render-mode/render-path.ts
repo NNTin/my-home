@@ -7,4 +7,4 @@
 export { Gate } from './Gate';
 export type { GateInputs } from './gate';
 export { RenderStill, type RenderStillProps } from './RenderStill';
-export type { TraceInputs } from './traceScene';
+export type { TraceInputs } from '../views/traceInputs';

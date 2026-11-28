@@ -13,7 +13,6 @@ import {
 } from 'three';
 // The tracer's types say what it reads off a material beyond three.js' own (`castShadow`).
 import type {} from 'three-gpu-pathtracer/webgpu';
-import type { HomeScene } from '../builder/buildHome';
 import type { Vec3 } from '../geom/types';
 import {
   groupShown,
@@ -26,18 +25,18 @@ import {
   wallSolidItems,
   type DrawItem,
   type DrawMaterial,
-  type PlacementDraw,
 } from '../builder/drawList';
-import type { Visibility } from '../builder/visibility';
 import type { FinishMaterials } from '../finishes/materials';
-import { lampRooms, sceneEmitters, type EmitterSource } from '../lighting/lamps';
-import { backdropColors, type BackdropColors, type LightRig } from '../lighting/rig';
+import { lampRooms, sceneEmitters } from '../lighting/lamps';
+import { backdropColors, type BackdropColors } from '../lighting/rig';
 import { batchMaterial, batches, shapeGeometry } from '../scene/batches';
 import { extentDistance, frameDistance } from '../scene/Scene';
 import type { FrameRequest } from '../placements/focus';
 import { CAP_FINISH, capped, furnitureItems, type CapKind } from '../views/caps';
 import { stageGround } from '../views/Stage';
-import { capGeometry, clipGeometry, sectionLoops, type CutPlane } from './cut';
+import type { TraceInputs } from '../views/traceInputs';
+import { capGeometry, clipGeometry, sectionLoops } from './cut';
+import type { CutPlane } from '../views/traceInputs';
 import { studioEquirect } from './studio';
 
 /**
@@ -46,25 +45,6 @@ import { studioEquirect } from './studio';
  * finishes with their textures; the light rig; and for a section a real cut of the geometry.
  * Everything here is plain three.js and needs no GPU: the tracer (`tracer.ts`) takes the result.
  */
-
-export interface TraceInputs {
-  scene: HomeScene;
-  /** The furniture that is drawn, as the viewer's scene gets it (`furnitureViews`). */
-  placements: readonly (PlacementDraw & EmitterSource)[];
-  visibility: Visibility;
-  /** "Plan colours" (§5.5). */
-  planColours: boolean;
-  /** How the view is lit, with the backdrop that is shown. */
-  rig: LightRig;
-  /** The view is from inside a room: the backdrop is its gradient (§6.3). */
-  eye: boolean;
-  /** The cut of a section (`sectionPlane`); nothing is cut without it. */
-  plane?: CutPlane | undefined;
-  /** A named view stands on the neutral ground (§7.3); the free view does not. */
-  ground: boolean;
-  /** The materials of finishes, with the textures that have arrived (`whenTexturesArrived`). */
-  materials: FinishMaterials;
-}
 
 /** One mesh of the traced scene, before it has a material. */
 export interface TraceMesh {

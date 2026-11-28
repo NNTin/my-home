@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, type RefObject } from 'react';
 import { Vector3 } from 'three';
 import type { Vec3 } from '../geom/types';
 import { PartsMesh } from '../scene/PartsMesh';
-import { projectLabel } from '../scene/RoomLabels';
+import { projectLabel } from '../geom/projectLabel';
 import type { DimensionLine, Part } from '../catalog/types';
 
 /**

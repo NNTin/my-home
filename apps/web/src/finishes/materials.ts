@@ -10,8 +10,8 @@ import {
   type Texture,
 } from 'three';
 import type { DrawMaterial } from '../builder/drawList';
-import type { Glow } from '../scene/batches';
-import { SECTION_PLANES } from '../views/planes';
+import type { Glow } from './glow';
+import { SECTION_PLANES } from './planes';
 import { FinishTextures, type TextureEvent } from './textures';
 
 /**

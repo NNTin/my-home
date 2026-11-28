@@ -1,5 +1,5 @@
 import { DirectionalLight, Group, PointLight, type Box3 } from 'three';
-import { fitShadowCamera } from '../scene/sunShadow';
+import { fitShadowCamera } from './sunShadow';
 import type { Vec3 } from '../geom/types';
 import { assignPool, poolSize, shadowLamps, type Emitter } from './lamps';
 import type { LightRig } from './rig';

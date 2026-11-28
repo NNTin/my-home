@@ -31,7 +31,8 @@ import {
   type DrawMaterial,
   type DrawShape,
 } from '../builder/drawList';
-import { SECTION_PLANES } from '../views/planes';
+import { SECTION_PLANES } from '../finishes/planes';
+import type { Glow } from '../finishes/glow';
 
 /**
  * Batching: merges draw items into few geometries (docs/design/realistic-render.md §4.2). Every
@@ -365,12 +366,6 @@ export function batches(items: readonly DrawItem[]): Batch[] {
       ...merge(list, first.material?.transparent === true, finishHasTexture(first.finish)),
     };
   });
-}
-
-/** How a mesh glows: selected in the editor or after `?focus=`, or overlapping something. */
-export interface Glow {
-  color: string;
-  intensity: number;
 }
 
 const materials = new Map<string, MeshStandardMaterial>();

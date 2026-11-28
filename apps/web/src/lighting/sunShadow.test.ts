@@ -9,7 +9,7 @@ import {
   type OrthographicCamera,
 } from 'three';
 import { describe, expect, it } from 'vitest';
-import { targetSamples, usesFxaa } from './output';
+import { targetSamples, usesFxaa } from '../scene/output';
 import { casterBounds, fitShadowCamera } from './sunShadow';
 
 function sun() {

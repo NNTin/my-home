@@ -6,7 +6,7 @@ import type { Visibility } from '../builder/visibility';
 import { finishMaterials } from '../finishes/materials';
 import type { EmitterSource } from '../lighting/lamps';
 import { rigFor, type Backdrop } from '../lighting/rig';
-import type { TraceInputs } from '../render-mode/render-path';
+import type { TraceInputs } from './traceInputs';
 import type { SaveImage, ViewCamera } from './ImageExport';
 import { sectionPlane, viewRig, type NamedView } from './named';
 import { NO_RENDER, renderSupport } from './renderSupport';

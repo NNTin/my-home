@@ -2,7 +2,8 @@ import { render } from '@testing-library/react';
 import { PerspectiveCamera } from 'three';
 import { describe, expect, it } from 'vitest';
 import { createRef } from 'react';
-import { projectLabel, RoomLabels } from './RoomLabels';
+import { RoomLabels } from './RoomLabels';
+import { projectLabel } from '../geom/projectLabel';
 
 function camera() {
   const c = new PerspectiveCamera(45, 2, 0.1, 100);

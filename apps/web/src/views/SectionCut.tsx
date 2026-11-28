@@ -36,7 +36,7 @@ import {
   type CapSolids,
 } from './caps';
 import { sectionPlane, type NamedView } from './named';
-import { SECTION_PLANES } from './planes';
+import { SECTION_PLANES } from '../finishes/planes';
 
 /**
  * The cut of a section (docs/design/realistic-render.md §7.2): one clipping plane in every

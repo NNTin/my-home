@@ -2,7 +2,8 @@ import { useThree } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
 import { IDENTITY, PART_FINISH, partItems, type DrawGroup } from '../builder/drawList';
 import { finishMaterials } from '../finishes/materials';
-import { batches, batchMaterial, type Batch, type Glow } from './batches';
+import { batches, batchMaterial, type Batch } from './batches';
+import type { Glow } from '../finishes/glow';
 import { useFrameControl } from './frameControl';
 import type { Part, PartState } from '../catalog/types';
 

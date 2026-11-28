@@ -9,7 +9,8 @@ import type {
   TraceProgress,
   TraceSettings,
 } from './tracer';
-import type { TraceInputs, TraceScene } from './traceScene';
+import type { TraceScene } from './traceScene';
+import type { TraceInputs } from '../views/traceInputs';
 
 describe('a still of render mode', () => {
   it('has a pixel for each CSS pixel of the view, at most 1920 wide', () => {
