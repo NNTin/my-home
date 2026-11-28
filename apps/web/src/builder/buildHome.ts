@@ -25,7 +25,7 @@ import { numberParam } from '../catalog/parts';
 import { pieces } from '../catalog/registry';
 import type { Part } from '../catalog/types';
 import { pointInPolygon } from '../geom/geometry';
-import { fenceLine, fenceSlats, fenceSpec, type FenceSlat } from './fence';
+import { fenceLine, fenceSlats, fenceSpec, type FenceSlat } from '../catalog/fence';
 import {
   doorReveal,
   gableChimneys,
@@ -39,11 +39,12 @@ import {
 } from './shellDetail';
 import { simplify, wallFaceShapes, wallUv, type WallEnd, type WallFaceShape } from './wallFaces';
 import type { Box, Vec2, Vec3 } from '../geom/types';
-import { EPS, rotationFor, toOutline, toVec2 } from './plan';
+import type { Gable, ProfileSolid, UvFrame } from './types';
+import { EPS, rotationFor, toOutline, toVec2 } from '../geom/plan';
 import { buildStair, type StairDescriptor } from './stair';
 
-export { FENCE_BAY } from './fence';
-export { rotationFor } from './plan';
+export { FENCE_BAY } from '../catalog/fence';
+export { rotationFor } from '../geom/plan';
 export type {
   ChimneyDescriptor,
   DoorRevealDescriptor,
@@ -60,28 +61,6 @@ export { buildStair, MAX_RISER, type StairDescriptor } from './stair';
  *
  * World axes follow the model: x east, y up, z south. Plan points are `[x, z]`.
  */
-
-/**
- * A polygon in a local (x, y) plane, extruded through `depth` along local z (centred on the
- * plane), rotated about y by `rotationY` and moved to `center`. See `solidPoint`.
- */
-export interface ProfileSolid {
-  center: Vec3;
-  rotationY: number;
-  depth: number;
-  outline: Vec2[];
-}
-
-/**
- * How a texture is laid on a surface (docs/design/realistic-render.md §5.4): a point of the world
- * and two unit directions. A vertex's texture coordinate, in metres, is its distance from `origin`
- * along `u` and along `v`.
- */
-export interface UvFrame {
-  origin: Vec3;
-  u: Vec3;
-  v: Vec3;
-}
 
 /**
  * A solid stretch of a wall between and around its openings: a box, or under a pitched roof the
@@ -404,22 +383,6 @@ export function boxCorners(box: Box): Vec3[] {
       [-1, 1].map((k) => solidPoint(solid, [(i * sx) / 2, (j * sy) / 2], (k * sz) / 2)),
     ),
   );
-}
-
-/** A gable roof resolved against the footprint; "across" is the plan axis across the ridge. */
-export interface Gable {
-  levelId: string;
-  ridgeAxis: 'x' | 'z';
-  /** Footprint bounds along the ridge and across it. */
-  along: Vec2;
-  across: Vec2;
-  /** Across coordinate of the ridge. */
-  ridge: number;
-  /** Height of the roof underside at the footprint edge, and its slope (rise per metre). */
-  eaveY: number;
-  slope: number;
-  thickness: number;
-  overhang: number;
 }
 
 export function gableOf(model: HomeModel, top: LevelInfo | undefined): Gable | undefined {

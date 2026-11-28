@@ -4,7 +4,7 @@ import realHomeJson from '../../../../data/homes/home.json';
 import mockHomeJson from '../../../../packages/shared/test-fixtures/mock-home.json';
 import { buildHome } from '../builder/buildHome';
 import { drawList, partItems, type DrawItem } from '../builder/drawList';
-import { goldenJson } from './drawRecords';
+import { goldenJson } from '../test/drawRecords';
 import { furniture, unknownParts } from './furniture';
 
 /**

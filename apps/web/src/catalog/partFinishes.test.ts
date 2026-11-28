@@ -15,7 +15,7 @@ import { hashParts } from '../catalog-page/thumbnails';
 import { FinishMaterials, PLACEHOLDERS } from '../finishes/materials';
 import { FinishTextures } from '../finishes/textures';
 import { batches } from '../scene/batches';
-import { partBatches } from './PartsMesh';
+import { partBatches } from '../scene/PartsMesh';
 import { box } from './parts';
 import { pieces } from './registry';
 

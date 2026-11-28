@@ -2,7 +2,7 @@ import { Blob as NodeBlob } from 'node:buffer';
 import { catalog, defaultParams } from '@my-home/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { box } from '../catalog/parts';
-import { partBatches } from '../catalog/PartsMesh';
+import { partBatches } from '../scene/PartsMesh';
 import { previewParts, thumbnailParts } from './preview';
 import {
   cacheStorageStore,

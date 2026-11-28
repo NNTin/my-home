@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import { DoubleSide, Plane, Vector3, type Camera, type Object3D, type Ray } from 'three';
 import type { Vec2, Vec3 } from '../geom/types';
 import type { ItemSize } from '../catalog/furniture';
-import { PartsMesh, SELECTION_COLOR } from '../catalog/PartsMesh';
+import { PartsMesh, SELECTION_COLOR } from './PartsMesh';
 import type { Part, PieceEmitter } from '../catalog/types';
 import { FurnitureToolbar, type FurnitureToolbarProps } from '../overlay/FurnitureToolbar';
 import { onCanvas, swallowNextClick } from './canvasEvent';

@@ -2,7 +2,7 @@ import { catalog, effectiveParams, furnitureSize } from '@my-home/shared';
 import { describe, expect, it } from 'vitest';
 import { boundsOf } from '../../piece-page/Inspector';
 import { BUDGETS } from '../../quality/perfReport';
-import { partBatches } from '../PartsMesh';
+import { partBatches } from '../../scene/PartsMesh';
 import { pieces } from '../registry';
 import type { Part } from '../types';
 

@@ -5,7 +5,7 @@ import mockHomeJson from '../../../../packages/shared/test-fixtures/mock-home.js
 import { buildHome } from '../builder/buildHome';
 import { batchKey, linearRgb, shellItems, type DrawItem } from '../builder/drawList';
 import { furniture } from '../catalog/furniture';
-import { partBatches } from '../catalog/PartsMesh';
+import { partBatches } from './PartsMesh';
 import { box } from '../catalog/parts';
 import { batches, batchMaterial, shapeGeometry } from './batches';
 

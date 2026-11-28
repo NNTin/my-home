@@ -6,7 +6,7 @@ import { buildHome } from '../builder/buildHome';
 import { groupShown, scenePieceDraws, shellItems } from '../builder/drawList';
 import { defaultVisibility, wholeVisibility, type Visibility } from '../builder/visibility';
 import { furniture } from '../catalog/furniture';
-import { partBatches } from '../catalog/PartsMesh';
+import { partBatches } from './PartsMesh';
 import { createContext, defaultSettings } from '../editor/operations';
 import { batches } from './batches';
 import { BUDGETS } from '../quality/perfReport';

@@ -1,7 +1,7 @@
 import { stairFinishes, type Stair, type StairFinishes } from '@my-home/shared';
-import type { ProfileSolid } from './buildHome';
+import type { ProfileSolid } from './types';
 import type { Box, Vec2, Vec3 } from '../geom/types';
-import { EPS, rotationFor, toOutline } from './plan';
+import { EPS, rotationFor, toOutline } from '../geom/plan';
 
 /**
  * A stair (docs/design/realistic-render.md §8.1, docs/home-model.md § Stairs): treads with a

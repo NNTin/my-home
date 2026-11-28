@@ -2,7 +2,7 @@ import { Box3 } from 'three';
 import { describe, expect, it } from 'vitest';
 import { boundsOf } from '../piece-page/Inspector';
 import { handle } from './cabinet';
-import { partBatches } from './PartsMesh';
+import { partBatches } from '../scene/PartsMesh';
 import { arc, plank, rod, roundedRect, slab, strip, veneerTint } from './parts';
 import type { Part } from './types';
 
