@@ -55,11 +55,6 @@ export function StageTools({
   onTools(): void;
   tools: ReactNode;
 }) {
-  const chip = stageStatusText(status);
-  // The last words stay on the badge while it shrinks away (state adjusted while rendering, when they change).
-  const [last, setLast] = useState(chip);
-  if (chip && (chip.text !== last?.text || chip.warn !== last?.warn)) setLast(chip);
-  const shown = chip ?? last;
   return (
     <div className="stage-tools">
       {/* Edit, here and not in the top bar: its splash rises over the view (§5.13). */}
@@ -77,19 +72,34 @@ export function StageTools({
           <HudIcon name="reset" /> Reset view
         </SkButton>
       )}
-      {/* "Saved" draws its check and leaves by shrinking after a while; a new status brings it back (§4.3). */}
-      <SkBadge
-        className="status-chip"
-        role="status"
-        aria-label="Status"
-        shown={!!chip}
-        kind={shown?.warn ? 'warn' : undefined}
-        done={chip?.text === 'Saved'}
-        duration={chip?.text === 'Saved' ? 2.5 : undefined}
-      >
-        {shown?.text}
-      </SkBadge>
+      <StatusBadge status={status} />
       {toolsOpen && tools}
     </div>
+  );
+}
+
+/**
+ * The status chip: loading, saving and their problems, in words as well as in its look (§4.3). "Saved" draws its check
+ * and leaves by shrinking after a while; a new status brings it back. On the phone's stage tools and at the desktop's
+ * lower right (HUD v2 #203).
+ */
+export function StatusBadge({ status }: { status: StageStatus }) {
+  const chip = stageStatusText(status);
+  // The last words stay on the badge while it shrinks away (state adjusted while rendering, when they change).
+  const [last, setLast] = useState(chip);
+  if (chip && (chip.text !== last?.text || chip.warn !== last?.warn)) setLast(chip);
+  const shown = chip ?? last;
+  return (
+    <SkBadge
+      className="status-chip"
+      role="status"
+      aria-label="Status"
+      shown={!!chip}
+      kind={shown?.warn ? 'warn' : undefined}
+      done={chip?.text === 'Saved'}
+      duration={chip?.text === 'Saved' ? 2.5 : undefined}
+    >
+      {shown?.text}
+    </SkBadge>
   );
 }

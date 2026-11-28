@@ -3,7 +3,12 @@ import { HudIcon } from '../hud/HudIcon';
 import { SkBadge } from '../hud/SkBadge';
 import { SkButton } from '../hud/SkButton';
 import { SkPanel } from '../hud/SkPanel';
+import { setPerfShown, usePerfShown } from '../quality/perfSwitch';
 import { href, keptQuery } from '../routing';
+import { SkToggle } from '../hud/SkToggle';
+import { EffectsSwitch } from './QualityControl';
+import { stageStatusText, type StageStatus } from './StageTools';
+import { ToolsHelp } from './ToolsHelp';
 
 export interface ToolsMenuProps {
   homes: HomeSummary[];
@@ -14,6 +19,10 @@ export interface ToolsMenuProps {
   /** The photos are the open surface. */
   photosOpen: boolean;
   onPhotos(): void;
+  /** Loading and saving, in words (#203). */
+  status: StageStatus;
+  /** A touch screen: its gestures in the help. */
+  touch: boolean;
   className?: string;
 }
 
@@ -29,8 +38,12 @@ export function ToolsMenu({
   openRequests,
   photosOpen,
   onPhotos,
+  status,
+  touch,
   className,
 }: ToolsMenuProps) {
+  const perf = usePerfShown();
+  const said = stageStatusText(status);
   return (
     <SkPanel className={`overlay panel tools-menu ${className ?? ''}`} label="Tools" arrive>
       <h1>Tools</h1>
@@ -63,6 +76,29 @@ export function ToolsMenu({
           <HudIcon name="catalogue" /> Catalogue
         </SkButton>
       </div>
+      {/* Status in words: what the badge says, and "All is well" when it says nothing (#203). */}
+      <p className={said?.warn ? 'tools-status warning' : 'tools-status'} role="status">
+        {said?.text ?? 'All changes saved'}
+      </p>
+      <EffectsSwitch />
+      <ToolsHelp touch={touch} />
+      {/* Measure (#206) comes here, beside the diagnostics. */}
+      <fieldset className="tools-diagnostics">
+        <legend>Diagnostics</legend>
+        <SkToggle
+          className="toggle"
+          size="compact"
+          label="Performance readout"
+          checked={perf}
+          onChange={setPerfShown}
+        >
+          Performance readout
+        </SkToggle>
+        <p className="tools-links">
+          <a href="/?hud=measure">Measure the HUD</a> ·{' '}
+          <a href="/?render=measure">Measure render mode</a>
+        </p>
+      </fieldset>
     </SkPanel>
   );
 }

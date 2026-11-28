@@ -20,7 +20,8 @@ import { lampRooms, sceneEmitters } from '../lighting/lamps';
 import { rigFor, type Backdrop, type RigView } from '../lighting/rig';
 import { FrameGovernor } from '../quality/governor';
 import { hudMeasureRequested } from '../hud/measure/request';
-import { PerfReadout, perfRequested } from '../quality/PerfReadout';
+import { PerfReadout } from '../quality/PerfReadout';
+import { usePerfShown } from '../quality/perfSwitch';
 import { perfView } from '../quality/perfReport';
 import type { Quality } from '../quality/setting';
 import { onCanvas } from './canvasEvent';
@@ -316,6 +317,8 @@ export function Scene({
   busy = false,
 }: SceneProps) {
   const roseRef = useRef<HTMLElement>(null);
+  // The performance readout: `?perf=1`, or Tools' Diagnostics (#203).
+  const perfShown = usePerfShown();
   const labelsRef = useRef<HTMLDivElement>(null);
   const northUpRef = useRef<() => void>(undefined);
   /** Whether the orbit controls are in hand: between their `start` and `end`. */
@@ -465,7 +468,7 @@ export function Scene({
           <HudMeasurePage walking={walk?.view === 'first'} />
         </Suspense>
       )}
-      {perfRequested() && (
+      {perfShown && (
         <PerfReadout
           governor={governor}
           phone={touch}

@@ -1,6 +1,6 @@
 import { useEffectsSetting } from '../hud/effects';
-import { SkSegmented } from '../hud/SkSegmented';
 import { SkToggle } from '../hud/SkToggle';
+import { SkSegmented } from '../hud/SkSegmented';
 import { QUALITIES, qualityLabel, type Quality } from '../quality/setting';
 
 /**
@@ -16,7 +16,6 @@ export function QualityControl({
   onChange(quality: Quality): void;
   phone: boolean;
 }) {
-  const [effects, setEffects] = useEffectsSetting();
   return (
     <fieldset className="quality-control">
       <legend>Quality</legend>
@@ -28,16 +27,25 @@ export function QualityControl({
         options={QUALITIES.map((q) => ({ value: q, label: qualityLabel(q, phone) }))}
         onChange={onChange}
       />
-      {/* Effects: off is calm, as reduced motion (C3, §10.4): for a slow phone or a quiet evening. */}
-      <SkToggle
-        className="toggle"
-        size="compact"
-        label="Effects"
-        checked={effects}
-        onChange={setEffects}
-      >
-        Effects
-      </SkToggle>
     </fieldset>
+  );
+}
+
+/**
+ * Effects: off is calm, as reduced motion (C3, §10.4): for a slow phone or a quiet evening. In Tools since HUD v2 #203;
+ * view quality stays with Views.
+ */
+export function EffectsSwitch() {
+  const [effects, setEffects] = useEffectsSetting();
+  return (
+    <SkToggle
+      className="toggle"
+      size="compact"
+      label="Effects"
+      checked={effects}
+      onChange={setEffects}
+    >
+      Effects
+    </SkToggle>
   );
 }

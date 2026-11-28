@@ -1,7 +1,7 @@
 // The "Effects" switch (docs/design/hud.md §10.4): on by default, remembered on the device; off is calm (C3).
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { QualityControl } from '../overlay/QualityControl';
+import { EffectsSwitch } from '../overlay/QualityControl';
 import { EFFECTS_KEY } from './effects';
 
 afterEach(() => {
@@ -14,8 +14,8 @@ afterEach(() => {
 const stubSakuga = () => ((window as { SakugaFX?: { calm: boolean } }).SakugaFX = { calm: false });
 
 describe('the Effects switch', () => {
-  it('is on by default, in the Quality group, and a flip off is remembered on the device', () => {
-    render(<QualityControl quality="auto" onChange={() => {}} phone={false} />);
+  it('is on by default, in Tools (HUD v2 #203), and a flip off is remembered on the device', () => {
+    render(<EffectsSwitch />);
     const effects = screen.getByRole('switch', { name: 'Effects' });
     expect(effects).toBeChecked();
     fireEvent.click(effects);
@@ -25,14 +25,14 @@ describe('the Effects switch', () => {
 
   it('starts off on a device that said so', () => {
     window.localStorage.setItem(EFFECTS_KEY, 'off');
-    render(<QualityControl quality="auto" onChange={() => {}} phone />);
+    render(<EffectsSwitch />);
     expect(screen.getByRole('switch', { name: 'Effects' })).not.toBeChecked();
   });
 
   it('stops the effects after its flip when switched off', () => {
     vi.useFakeTimers();
     const fx = stubSakuga();
-    render(<QualityControl quality="auto" onChange={() => {}} phone={false} />);
+    render(<EffectsSwitch />);
     fireEvent.click(screen.getByRole('switch', { name: 'Effects' }));
     expect(fx.calm).toBe(false); // its own flip plays first
     vi.advanceTimersByTime(2000);
@@ -42,7 +42,7 @@ describe('the Effects switch', () => {
   it('keeps the effects on when switched off and on again within the flip', () => {
     vi.useFakeTimers();
     const fx = stubSakuga();
-    render(<QualityControl quality="auto" onChange={() => {}} phone={false} />);
+    render(<EffectsSwitch />);
     const effects = screen.getByRole('switch', { name: 'Effects' });
     fireEvent.click(effects);
     vi.advanceTimersByTime(500);
