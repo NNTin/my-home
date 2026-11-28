@@ -19,7 +19,7 @@ import {
 } from './figure';
 import { easeAngle, type FollowTarget } from './orientation';
 import { chordOf, type ActionId } from '../keys/actions';
-import { heldAction } from '../keys/bindings';
+import { boundAction, heldAction } from '../keys/bindings';
 import type { WalkWorld } from './world';
 
 export interface Walk {
@@ -156,7 +156,12 @@ export function useWalk(world: WalkWorld, start: Figure, active: boolean): Walk 
       if (e.ctrlKey || e.metaKey || e.altKey || e.isComposing || e.defaultPrevented) return;
       if (isTyping(e.composedPath?.()[0] ?? e.target)) return;
       const chord = chordOf(e);
-      const action = chord && heldAction(chord);
+      let action = chord && heldAction(chord);
+      // Shift held while walking (a habit from games) keeps walking: a Shift chord bound to nothing in Walk falls back
+      // to its key without Shift; a key bound with Shift on purpose still wins (#219 review).
+      if (!action && chord?.startsWith('Shift+') && !boundAction(chord, 'walk')) {
+        action = heldAction(chord.slice('Shift+'.length));
+      }
       const axis = action && AXIS_KEY[action];
       if (!axis) return;
       pressed.set(e.key.toLowerCase(), axis);
