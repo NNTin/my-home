@@ -1,6 +1,6 @@
 # HUD layout concepts
 
-The current direction is a minimal game HUD. Both new mockups show the same fictional cutaway in Orbit with an armchair selected. The map is collapsed and the scene time is a placeholder. These are desktop studies. See the [visual design](../visual-design.md) for the interaction states and touch layout.
+The current direction is a minimal game HUD. The first two mockups show the same fictional cutaway in Orbit with an armchair selected. The map is collapsed and the scene time is a placeholder. These are desktop studies. See the [visual design](../visual-design.md) for the interaction states and touch layout. See the [contextual concepts](contextual-states.md) for open furniture, room and door inspectors.
 
 ## Corner clusters
 
