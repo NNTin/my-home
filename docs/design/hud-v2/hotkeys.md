@@ -17,11 +17,11 @@ Use one action list for shortcut dispatch, help, current bindings in the HUD, an
 | Walk with manual turning  | Turn left / right                                                                           | `Q` / `E`, or `←` / `→`                                        |
 | Edit with a selected item | Rotate by one step / rotate back                                                            | `R` / `Shift+R`                                                |
 | Edit with a selected item | Duplicate                                                                                   | `Shift+D`                                                      |
-| Edit with a selected item | Delete                                                                                      | `Delete`                                                       |
+| Edit with a selected item | Delete                                                                                      | `Delete` or `Backspace`                                        |
 | Edit                      | Undo                                                                                        | `Ctrl/Cmd+Z`                                                   |
 | Edit                      | Redo                                                                                        | `Ctrl/Cmd+Shift+Z`, with `Ctrl+Y` as a Windows/Linux alternate |
 
-The default movement positions and rotation keys carry forward the existing behavior. Use the printed character for letter keys and show the detected chord during capture. Arrows offer a layout-independent movement preset, and users can set letter positions that suit their own keyboards. The proposed duplicate key gives the browser its bookmark shortcut. Delete needs an active Edit selection. A keyboard with no forward Delete can use the visible action or a custom binding. Edit entry, Photos, Catalogue, Render, scene clock, Reset view and Measure start unassigned.
+The default movement positions and rotation keys carry forward the existing behavior. Use the printed character for letter keys and show the detected chord during capture. Arrows offer a layout-independent movement preset, and users can set letter positions that suit their own keyboards. The proposed duplicate key gives the browser its bookmark shortcut. Delete needs an active Edit selection. `Backspace` deletes too, because a Mac laptop has no forward Delete key (decided on the #204 review); fields, editable content and composition keep their own Backspace. Edit entry, Photos, Catalogue, Render, scene clock, Reset view and Measure start unassigned.
 
 ## Scope and precedence
 

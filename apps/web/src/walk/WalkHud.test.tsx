@@ -246,6 +246,29 @@ describe('WalkHud', () => {
     expect(live()).toBe(before);
   });
 
+  it('lets go of a held key when the page is hidden or a field takes the keys (HUD v2 #204)', async () => {
+    render(<Harness />);
+    fireEvent.keyDown(window, { key: 'w' });
+    await waitFor(() => expect(at().z).toBeLessThan(-0.1));
+    // The page hidden (another app, the lock screen): it stops, though the key never came up.
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+    act(() => void document.dispatchEvent(new Event('visibilitychange')));
+    Object.defineProperty(document, 'hidden', { configurable: true, value: false });
+    await frames();
+    let still = live();
+    await frames();
+    expect(live()).toBe(still);
+    // Held again, then a field takes the focus: it stops too.
+    fireEvent.keyDown(window, { key: 'w' });
+    await waitFor(() => expect(live()).not.toBe(still));
+    takePhoto();
+    fireEvent.focusIn(screen.getByLabelText('Note'));
+    await frames();
+    still = live();
+    await frames();
+    expect(live()).toBe(still);
+  });
+
   it('switches between first person and the overview, and exits', () => {
     render(<Harness />);
     fireEvent.click(screen.getByRole('button', { name: 'Overview' }));

@@ -390,6 +390,34 @@ describe('App', () => {
     expect(window.location.search).not.toContain('perf');
   });
 
+  it('routes the viewer’s keys: one Escape layer per press, ? and V open Tools and Views (HUD v2 #204)', async () => {
+    stubApi();
+    render(<App />);
+    await screen.findByTestId('scene');
+    const key = (k: string, init: KeyboardEventInit = {}) =>
+      fireEvent.keyDown(window, { key: k, ...init });
+    // ? : Tools with the keys unfolded.
+    key('?', { shiftKey: true });
+    expect(screen.getByRole('group', { name: 'Gestures and keys' })).toHaveAttribute('open');
+    // A selected room and an open surface: Escape closes the surface first, then clears the selection.
+    const room = (await import('./builder/buildHome')).buildHome(mockHome).roomFloors[0]!;
+    act(() => lastScene!.pieces!.onSelectRoom!([room.labelAt[0], room.y, room.labelAt[2]]));
+    key('Escape');
+    expect(screen.queryByRole('region', { name: 'Tools' })).toBeNull();
+    expect(lastScene!.roomOutline).toBeDefined();
+    key('Escape');
+    expect(lastScene!.roomOutline).toBeUndefined();
+    // V opens Views; in a text field it is a letter.
+    key('v');
+    expect(screen.getByRole('region', { name: 'View controls' })).toBeInTheDocument();
+    key('Escape');
+    // Shift+W walks; Escape leaves Walk.
+    key('W', { shiftKey: true });
+    expect(lastScene?.walk).toBeDefined();
+    key('Escape');
+    expect(lastScene?.walk).toBeUndefined();
+  });
+
   describe('pages', () => {
     it('shows the viewer on / with the title of the app', async () => {
       stubApi();

@@ -148,14 +148,18 @@ rotate it (in the chosen step, or freely). Touch works the same way;
 [on a phone](mobile.md#touch) the ring is wider, the selected item's tools (rotate, duplicate, delete, piece page)
 float next to it, and a long press on an item opens the panel.
 
-| Key                       | Action                      |
-| ------------------------- | --------------------------- |
-| `R` / `Shift+R`           | rotate by one step (⟲ / ⟳)  |
-| `Delete` / `Backspace`    | delete the selected item    |
-| `Ctrl+D`                  | duplicate the selected item |
-| `Ctrl+Z`                  | undo                        |
-| `Ctrl+Shift+Z` / `Ctrl+Y` | redo                        |
-| `Escape`                  | clear the selection         |
+| Key                       | Action                                     |
+| ------------------------- | ------------------------------------------ |
+| `R` / `Shift+R`           | rotate by one step (⟲ / ⟳)                 |
+| `Delete` / `Backspace`    | delete the selected item                   |
+| `Shift+D`                 | duplicate the selected item                |
+| `Ctrl+Z`                  | undo                                       |
+| `Ctrl+Shift+Z` / `Ctrl+Y` | redo                                       |
+| `Escape`                  | one layer: close what is open, or deselect |
+
+The keys come from the viewer's one action list (HUD v2 #204, `apps/web/src/keys/actions.ts`, `docs/design/hud-v2/hotkeys.md`):
+`Ctrl+D` is left to the browser (a bookmark); `Backspace` deletes too (a Mac laptop has no forward `Delete`). Tools →
+Gestures and keys lists them all; `?` opens it.
 
 (`Cmd` instead of `Ctrl` on macOS.) Moves are constrained and snapped in this order:
 

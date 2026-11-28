@@ -70,6 +70,29 @@ describe('furniture editor', () => {
     expect(status()).toBe('All changes saved');
   });
 
+  it('deletes the selected item with Delete or Backspace, but Backspace in a field is the field’s (#218 review)', async () => {
+    fakeApi();
+    await renderApp();
+    showSouterrain();
+    place(/Chair/);
+    expect(furniture()).toHaveLength(1);
+    // Typed in a field, Backspace edits the field: the item stays.
+    const field = document.body.appendChild(document.createElement('input'));
+    expect(fireEvent.keyDown(field, { key: 'Backspace' })).toBe(true);
+    expect(furniture()).toHaveLength(1);
+    field.remove();
+    // On the view, Backspace deletes it (a Mac laptop has no forward Delete), and is taken.
+    expect(fireEvent.keyDown(window, { key: 'Backspace' })).toBe(false);
+    expect(furniture()).toHaveLength(0);
+    // Undo, and Delete deletes it too.
+    key('z', { ctrlKey: true });
+    expect(furniture()).toHaveLength(1);
+    const id = furniture()[0]!.id;
+    scene((h) => h.onSelect(id));
+    key('Delete');
+    expect(furniture()).toHaveLength(0);
+  });
+
   it('places furniture in the chosen room, saves it as a placement and links its piece page', async () => {
     const api = fakeApi();
     await renderApp();
@@ -158,7 +181,10 @@ describe('furniture editor', () => {
     key('r');
     expect(furniture()[0]!.rotationY).toBeCloseTo(Math.PI / 2);
     await waitSaved();
-    key('d', { ctrlKey: true });
+    // Ctrl+D is the browser's (a bookmark): it duplicates nothing and is not taken. Shift+D duplicates (#204).
+    expect(fireEvent.keyDown(window, { key: 'd', ctrlKey: true })).toBe(true);
+    expect(furniture()).toHaveLength(1);
+    key('D', { shiftKey: true });
     expect(furniture()).toHaveLength(2);
     expect(furniture().some((f) => f.colliding)).toBe(false);
     await waitSaved();

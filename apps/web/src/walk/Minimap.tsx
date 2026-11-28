@@ -301,7 +301,11 @@ export function Minimap({
       className="walk-map-large"
       aria-label={overview ? 'Floor overview' : 'Map'}
       onKeyDown={(e) => {
-        if (e.key === 'Escape') shrink();
+        // Its own Escape: the viewer's keys leave a taken key alone (#204).
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          shrink();
+        }
       }}
     >
       <div className="walk-map-head">

@@ -23,6 +23,8 @@ export interface ToolsMenuProps {
   status: StageStatus;
   /** A touch screen: its gestures in the help. */
   touch: boolean;
+  /** How many times `?` asked for the keys: the help opens unfolded (#204). */
+  helpAsked?: number;
   className?: string;
 }
 
@@ -40,6 +42,7 @@ export function ToolsMenu({
   onPhotos,
   status,
   touch,
+  helpAsked = 0,
   className,
 }: ToolsMenuProps) {
   const perf = usePerfShown();
@@ -81,7 +84,7 @@ export function ToolsMenu({
         {said?.text ?? 'All changes saved'}
       </p>
       <EffectsSwitch />
-      <ToolsHelp touch={touch} />
+      <ToolsHelp key={helpAsked} touch={touch} open={helpAsked > 0} />
       {/* Measure (#206) comes here, beside the diagnostics. */}
       <fieldset className="tools-diagnostics">
         <legend>Diagnostics</legend>
