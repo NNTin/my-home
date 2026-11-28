@@ -2033,6 +2033,102 @@ body {
   color: var(--sk-dim);
 }
 
+/* The measure tool (HUD v2 #206): the keyboard's cross over the view and the task bar; a paper strip like render
+   mode's, at the foot of the stage between the corners (on a phone, at its head, clear of the compass). */
+.measure-cross {
+  position: absolute;
+  z-index: 6;
+  width: 1.75rem;
+  height: 1.75rem;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  background:
+    linear-gradient(var(--sk-ink), var(--sk-ink)) center / 2px 100% no-repeat,
+    linear-gradient(var(--sk-ink), var(--sk-ink)) center / 100% 2px no-repeat;
+  filter: drop-shadow(0 0 1px var(--sk-card)) drop-shadow(0 0 1px var(--sk-card));
+}
+
+.measure-label {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+.measure-bar {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  z-index: 7;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  align-items: center;
+  max-width: min(36rem, calc(100% - 26rem));
+  padding: 0.4rem 0.6rem 0.4rem 0.9rem;
+  transform: translateX(-50%);
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  background: var(--sk-card);
+  color: var(--sk-ink);
+  box-shadow: var(--hud-sh-compact);
+}
+
+.measure-status {
+  flex: 1 1 100%;
+  margin: 0;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.measure-coords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.75rem;
+  margin: 0;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.measure-coords div {
+  display: flex;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+.measure-coords dt {
+  font-weight: 800;
+}
+
+.measure-coords dt span {
+  font-weight: 400;
+  color: var(--sk-dim);
+}
+
+.measure-coords dd {
+  margin: 0;
+}
+
+.measure-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-left: auto;
+}
+
+.viewer.mobile .measure-bar {
+  top: 0.5rem;
+  right: 5.25rem;
+  bottom: auto;
+  left: 0.5rem;
+  max-width: none;
+  padding-left: 0.6rem;
+  transform: none;
+}
+
+/* A phone's bar is narrow: the axes without their directions (the readout's label and the docs say them). */
+.viewer.mobile .measure-coords dt span {
+  display: none;
+}
+
 /* First-run hints, over the foot of the 3D view until dismissed. */
 .hints {
   position: absolute;
