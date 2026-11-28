@@ -9,8 +9,8 @@ import {
   roofUnderside,
   slopeY,
   SURFACE_OFFSET,
-  type Vec2,
 } from './buildHome';
+import type { Vec2 } from '../geom/types';
 import { wholeVisibility, visibleScene } from './visibility';
 
 const home = () => HomeModel.parse(structuredClone(realHomeJson));

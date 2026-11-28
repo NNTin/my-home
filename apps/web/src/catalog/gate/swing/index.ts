@@ -1,5 +1,5 @@
 import type { ParamValues } from '@my-home/shared';
-import type { Box } from '../../../builder/buildHome';
+import type { Box } from '../../../geom/types';
 import { fenceLine, type FenceSpec } from '../../../builder/fence';
 import { LACQUER } from '../../cabinet';
 import { box, colorParam, dimension, numberParam, shade } from '../../parts';

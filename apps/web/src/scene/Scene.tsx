@@ -13,7 +13,8 @@ import {
 import { PCFShadowMap, type PerspectiveCamera } from 'three';
 import { distance, metres } from '../measure/measure';
 import { MeasureRig, type MeasureRigProps } from '../measure/MeasureRig';
-import type { HomeScene, Vec2, Vec3 } from '../builder/buildHome';
+import type { HomeScene } from '../builder/buildHome';
+import type { Vec2, Vec3 } from '../geom/types';
 import { roofIndex, type RoomLabel, type Visibility } from '../builder/visibility';
 import type { CompassMarker } from '../compass/compass';
 import { CompassMarkers, CompassRose, CompassTracker } from '../compass/Compass';

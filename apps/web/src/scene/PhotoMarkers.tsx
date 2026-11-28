@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import type { Group, Mesh, PerspectiveCamera } from 'three';
 import type { PhotoPose } from '@my-home/shared';
-import type { Vec3 } from '../builder/buildHome';
+import type { Vec3 } from '../geom/types';
 import { turnRose, type RoseTarget } from '../compass/Compass';
 import { onCanvas } from './canvasEvent';
 import { matchingVerticalFov } from '../photos/frustum';

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { mockHome } from '../test/fixtures';
 import { floorPlan } from './floorPlan';
-import { rectangle, transform, type Vec2 } from './geometry';
+import { rectangle, transform, type Vec2 } from '../geom/geometry';
 import { allowedArea, constrainMove, isInside, placementPosition, roomAt } from './placement';
 
 const plan = floorPlan(mockHome, 'souterrain')!;

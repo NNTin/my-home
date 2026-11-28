@@ -1,5 +1,6 @@
 import { stairFinishes, type Stair, type StairFinishes } from '@my-home/shared';
-import type { Box, ProfileSolid, Vec2, Vec3 } from './buildHome';
+import type { ProfileSolid } from './buildHome';
+import type { Box, Vec2, Vec3 } from '../geom/types';
 import { EPS, rotationFor, toOutline } from './plan';
 
 /**

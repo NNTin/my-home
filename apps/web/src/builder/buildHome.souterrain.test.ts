@@ -12,9 +12,8 @@ import {
   FENCE_BAY,
   slopeY,
   SURFACE_OFFSET,
-  type Box,
-  type Vec2,
 } from './buildHome';
+import type { Box, Vec2 } from '../geom/types';
 import { shellItems } from './drawList';
 import {
   defaultVisibility,

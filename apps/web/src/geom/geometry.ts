@@ -1,4 +1,4 @@
-import type { Vec2 } from '../builder/buildHome';
+import type { Vec2 } from './types';
 
 /**
  * 2D plan geometry for the furniture editor: plain numbers, no three.js. Plan points are `[x, z]`

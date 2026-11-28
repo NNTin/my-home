@@ -2,7 +2,7 @@ import { Line, OrbitControls } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, type RefObject } from 'react';
 import { Vector3 } from 'three';
-import type { Vec3 } from '../builder/buildHome';
+import type { Vec3 } from '../geom/types';
 import { PartsMesh } from '../catalog/PartsMesh';
 import { projectLabel } from '../scene/RoomLabels';
 import type { DimensionLine, Part } from '../catalog/types';

@@ -1,7 +1,7 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react';
 import { Box3, type Light, type Vector3, type WebGLRenderer } from 'three';
-import type { Vec3 } from '../builder/buildHome';
+import type { Vec3 } from '../geom/types';
 import { finishMaterials, releaseOtherDevices } from '../finishes/materials';
 import { studioEnvironment } from '../lighting/environment';
 import { roomAt, type Emitter, type LampRoom } from '../lighting/lamps';

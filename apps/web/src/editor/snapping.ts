@@ -1,7 +1,16 @@
-import type { Vec2 } from '../builder/buildHome';
+import type { Vec2 } from '../geom/types';
 import type { WallSnap } from '../catalog/furniture';
 import type { PlanWall } from './floorPlan';
-import { angleDiff, dot, length, normalizeAngle, rotate, scale, sub, transform } from './geometry';
+import {
+  angleDiff,
+  dot,
+  length,
+  normalizeAngle,
+  rotate,
+  scale,
+  sub,
+  transform,
+} from '../geom/geometry';
 
 export const DEFAULT_GRID_STEP = 0.1;
 /** Walls closer than this (25 cm) pull an item flush against them. */

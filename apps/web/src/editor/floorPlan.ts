@@ -1,6 +1,7 @@
 import { wallLength, type HomeModel, type Point } from '@my-home/shared';
-import { splitWall, type Vec2 } from '../builder/buildHome';
-import { add, scale, segmentRectangle, sub } from './geometry';
+import { splitWall } from '../builder/buildHome';
+import type { Vec2 } from '../geom/types';
+import { add, scale, segmentRectangle, sub } from '../geom/geometry';
 
 /** What the furniture editor needs to know about one level, in plan coordinates. */
 export interface PlanRoom {

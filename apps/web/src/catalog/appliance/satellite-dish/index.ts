@@ -1,4 +1,4 @@
-import type { Vec2 } from '../../../builder/buildHome';
+import type { Vec2 } from '../../../geom/types';
 import { LACQUER, METAL } from '../../cabinet';
 import { box, colorParam, lathe, numberParam, rod, tilted } from '../../parts';
 import type { Part } from '../../types';

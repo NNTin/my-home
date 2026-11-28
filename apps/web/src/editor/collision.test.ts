@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { mockHome } from '../test/fixtures';
 import { findCollisions } from './collision';
 import { floorPlan } from './floorPlan';
-import { rectangle, transform } from './geometry';
+import { rectangle, transform } from '../geom/geometry';
 
 const plan = floorPlan(mockHome, 'souterrain')!;
 const box = (id: string, at: [number, number], w = 1, d = 1, r = 0) => ({

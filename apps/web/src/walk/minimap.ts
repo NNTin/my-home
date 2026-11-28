@@ -1,6 +1,7 @@
-import type { Box, HomeScene, Vec2 } from '../builder/buildHome';
+import type { HomeScene } from '../builder/buildHome';
+import type { Box, Vec2 } from '../geom/types';
 import type { FloorPlan } from '../editor/floorPlan';
-import { add, rotate } from '../editor/geometry';
+import { add, rotate } from '../geom/geometry';
 
 /**
  * What the minimap draws of one level, in plan coordinates (metres, +x east-ish, +z towards the

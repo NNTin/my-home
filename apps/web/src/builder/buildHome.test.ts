@@ -8,9 +8,9 @@ import {
   solidPoint,
   splitWall,
   SURFACE_OFFSET,
-  type Vec2,
   type WallSegment,
 } from './buildHome';
+import type { Vec2 } from '../geom/types';
 import {
   defaultVisibility,
   roofIndex,

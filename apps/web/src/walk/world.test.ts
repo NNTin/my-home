@@ -1,7 +1,8 @@
 import { HomeModel } from '@my-home/shared';
 import { describe, expect, it } from 'vitest';
 import realHomeJson from '../../../../data/homes/home.json';
-import { buildHome, type Vec2 } from '../builder/buildHome';
+import { buildHome } from '../builder/buildHome';
+import type { Vec2 } from '../geom/types';
 import { createContext } from '../editor/operations';
 import { roomAt } from '../editor/placement';
 import { furniture } from '../catalog/furniture';

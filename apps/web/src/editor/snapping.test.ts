@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { mockHome } from '../test/fixtures';
 import { floorPlan } from './floorPlan';
-import { rectangle } from './geometry';
+import { rectangle } from '../geom/geometry';
 import { rotationFromDrag, snapAngle, snapToGrid, snapToWalls, type SnapInput } from './snapping';
 
 const plan = floorPlan(mockHome, 'souterrain')!;

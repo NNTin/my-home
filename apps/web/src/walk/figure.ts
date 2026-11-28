@@ -1,6 +1,6 @@
 import type { PhotoPose } from '@my-home/shared';
-import type { Vec2 } from '../builder/buildHome';
-import { normalizeAngle } from '../editor/geometry';
+import type { Vec2 } from '../geom/types';
+import { normalizeAngle } from '../geom/geometry';
 import { EYE_HEIGHT, walk, type Footing, type WalkWorld } from './world';
 
 /**

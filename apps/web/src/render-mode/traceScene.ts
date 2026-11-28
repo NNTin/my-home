@@ -13,7 +13,8 @@ import {
 } from 'three';
 // The tracer's types say what it reads off a material beyond three.js' own (`castShadow`).
 import type {} from 'three-gpu-pathtracer/webgpu';
-import type { HomeScene, Vec3 } from '../builder/buildHome';
+import type { HomeScene } from '../builder/buildHome';
+import type { Vec3 } from '../geom/types';
 import {
   groupShown,
   linearRgb,

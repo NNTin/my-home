@@ -1,4 +1,4 @@
-import { normalizeAngle } from '../editor/geometry';
+import { normalizeAngle } from '../geom/geometry';
 import { MAX_PITCH, yawFromCompass } from './figure';
 
 /**

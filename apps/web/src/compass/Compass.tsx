@@ -3,7 +3,7 @@ import { createElement, useEffect, useMemo, useRef, type RefObject } from 'react
 import { useHost } from '../hud/useElement';
 import { hint, useBindings } from '../keys/bindings';
 import { CanvasTexture, SRGBColorSpace, type Vector3 } from 'three';
-import type { Vec3 } from '../builder/buildHome';
+import type { Vec3 } from '../geom/types';
 import { compassRotation, northUpPosition, type CompassMarker } from './compass';
 
 /**

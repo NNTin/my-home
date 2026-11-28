@@ -2,7 +2,7 @@ import { Html } from '@react-three/drei';
 import { useThree, type ThreeEvent } from '@react-three/fiber';
 import { useEffect, useRef } from 'react';
 import { DoubleSide, Plane, Vector3, type Camera, type Object3D, type Ray } from 'three';
-import type { Vec2, Vec3 } from '../builder/buildHome';
+import type { Vec2, Vec3 } from '../geom/types';
 import type { ItemSize } from '../catalog/furniture';
 import { PartsMesh, SELECTION_COLOR } from '../catalog/PartsMesh';
 import type { Part, PieceEmitter } from '../catalog/types';

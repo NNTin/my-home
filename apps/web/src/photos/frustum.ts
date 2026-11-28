@@ -1,5 +1,5 @@
 import { poseDirection, type Photo, type PhotoPose } from '@my-home/shared';
-import type { Vec3 } from '../builder/buildHome';
+import type { Vec3 } from '../geom/types';
 import { DEFAULT_FOCAL_LENGTH_35MM, horizontalFov } from '../walk/figure';
 
 /**

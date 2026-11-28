@@ -17,7 +17,8 @@ import {
   Vector3,
 } from 'three';
 import { finishes } from '@my-home/shared';
-import { slopeY, type PlaneSlope, type UvFrame, type Vec2, type Vec3 } from '../builder/buildHome';
+import { slopeY, type PlaneSlope, type UvFrame } from '../builder/buildHome';
+import type { Vec2, Vec3 } from '../geom/types';
 import {
   batchKey,
   CYLINDER_SEGMENTS,

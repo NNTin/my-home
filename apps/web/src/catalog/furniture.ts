@@ -6,8 +6,8 @@ import {
   type CatalogType,
   type ParamValues,
 } from '@my-home/shared';
-import type { Vec2 } from '../builder/buildHome';
-import { ellipse, rectangle } from '../editor/geometry';
+import type { Vec2 } from '../geom/types';
+import { ellipse, rectangle } from '../geom/geometry';
 import { box } from './parts';
 import { pieces } from './registry';
 import { sizeOf } from './furniture/size';

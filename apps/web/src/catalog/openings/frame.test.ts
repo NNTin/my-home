@@ -1,6 +1,6 @@
 import { catalog, defaultParams, effectiveParams, type OpeningType } from '@my-home/shared';
 import { describe, expect, it } from 'vitest';
-import type { Box } from '../../builder/buildHome';
+import type { Box } from '../../geom/types';
 import { veneerTint } from '../parts';
 import { pieces } from '../registry';
 import type { Part, PieceContext } from '../types';

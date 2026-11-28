@@ -1,5 +1,5 @@
 import { BufferAttribute, BufferGeometry, ShapeUtils, Vector2 } from 'three';
-import type { Vec3 } from '../builder/buildHome';
+import type { Vec3 } from '../geom/types';
 
 /**
  * The cut of a section in render mode (docs/design/realistic-render.md §9): a real cut of the

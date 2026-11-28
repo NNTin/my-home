@@ -2,7 +2,7 @@ import { finishes, HomeModel, withoutFinishes } from '@my-home/shared';
 import { describe, expect, it } from 'vitest';
 import realHomeJson from '../../../../data/homes/home.json';
 import mockHomeJson from '../../../../packages/shared/test-fixtures/mock-home.json';
-import { pointInPolygon } from '../editor/geometry';
+import { pointInPolygon } from '../geom/geometry';
 import { buildHome, type HomeScene, type WallFace } from './buildHome';
 import { PLAN_COLORS, shellItems } from './drawList';
 import { toOutline } from './plan';
