@@ -553,6 +553,25 @@ class FallbackMap extends HTMLElement {
   placed() {}
 }
 
+/** The movement pad's look: a knob the page moves with `move(dx, dy)` (styles.css draws them). */
+class FallbackPad extends HTMLElement {
+  private knob = document.createElement('span');
+  connectedCallback() {
+    this.dataset.fallback = '';
+    if (!this.knob.isConnected) this.append(this.knob);
+  }
+  move(dx: number, dy: number) {
+    this.knob.style.transform = dx || dy ? `translate(${dx}px, ${dy}px)` : '';
+  }
+}
+
+/** The shutter's look: the control is the page's label or button around it (styles.css draws it). */
+class FallbackShutter extends HTMLElement {
+  connectedCallback() {
+    this.dataset.fallback = '';
+  }
+}
+
 /** The phone's sheet: its size is the page's CSS, without the spring (styles.css, "Fallbacks"). */
 class FallbackSheet extends HTMLElement {
   connectedCallback() {
@@ -578,6 +597,8 @@ export const FALLBACKS: Record<string, CustomElementConstructor> = {
   'sakuga-sheet': FallbackSheet,
   'sakuga-compass': FallbackCompass,
   'sakuga-map': FallbackMap,
+  'sakuga-pad': FallbackPad,
+  'sakuga-shutter': FallbackShutter,
 };
 
 /** Defines a plain stand-in for every HUD tag still undefined; returns the tags it defined. */

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sakuga Pad</title>
+<style>
+  :root { --text: #1d1a4a; --mute: #8580b0; }
+  html { overflow-x: clip; }
+  body { margin: 0; font: 15px/1.45 -apple-system, "Helvetica Neue", "Segoe UI", sans-serif; color: var(--text); background: #fff; overflow-x: clip; }
+  main { width: min(640px, 100vw - 32px); margin: 0 auto; padding: 32px 0 60px; }
+  h1 { margin: 0; font: italic 800 26px/1.1 "Avenir Next", "Nunito", -apple-system, sans-serif; }
+  .sub { margin: 4px 0 16px; color: var(--mute); }
+  .stage { display: flex; gap: 28px; align-items: center; padding: 24px 8px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Pad</h1>
+  <p class="sub">The look of a movement pad: the page keeps the control and calls move(dx, dy, pressed). Drag the knob, and hit the rim fast. Made for my-home (#168 §5.10, HUD v2 #202), not from upstream.</p>
+  <div class="stage"><sakuga-pad id="p" travel="44" style="touch-action:none"></sakuga-pad></div>
+  <div class="row"><button id="flick" type="button">Flick to the rim</button></div>
+</main>
+<script src="../pad/pad.js"></script>
+<script>
+// The page's control: the pointer, the travel, the output; the element only shows it.
+const p = document.getElementById('p'); let id;
+const at = (e) => { const r = p.getBoundingClientRect(); let dx = e.clientX - r.left - r.width / 2, dy = e.clientY - r.top - r.height / 2; const d = Math.hypot(dx, dy); if (d > 44) { dx *= 44 / d; dy *= 44 / d; } return [dx, dy]; };
+p.addEventListener('pointerdown', (e) => { id = e.pointerId; p.setPointerCapture(id); p.move(...at(e), true); });
+p.addEventListener('pointermove', (e) => { if (e.pointerId === id) p.move(...at(e), true); });
+const up = (e) => { if (e.pointerId !== id) return; id = undefined; p.move(0, 0, false); };
+p.addEventListener('pointerup', up); p.addEventListener('pointercancel', up);
+document.getElementById('flick').onclick = () => { p.move(44, 0, true); setTimeout(() => p.move(0, 0, false), 500); };
+</script>
+</body>
+</html>

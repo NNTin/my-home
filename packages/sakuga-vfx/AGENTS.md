@@ -204,6 +204,11 @@ Made here with the workflow above, in `NAMES`, each with a README and an `index.
   `large` springs the frame from its box on screen to the new one (scale anchored at the lower right), シュッ and speed
   lines when it enlarges, a squash and two puffs when it lands; `placed(x, y)` (page coordinates): a ring, a puff,
   ポン. Its content (the map, its controls) is the page's, slotted.
+- `pad` and `shutter` (HUD v2 #202 3/3, §5.10, §5.11): the look and beats only; the page keeps the controls. `pad`:
+  `move(dx, dy, pressed)` (the knob on a stiff spring, stretched by its speed; rim dust at most every 0.4 s, on the
+  front layer: `puff` takes no layer; released, back with one overshoot), `travel` (a setter too: React 19 sets it as
+  a property). `shutter`: inside the page's `<label>` around a file input or its `<button>`; press: a deep squash;
+  release: ink for 0.19 s, a burst on its back layer, a ring, four wedges, カチッ; `busy` dims the icon.
 
 ## Upstream changes come in by hand
 

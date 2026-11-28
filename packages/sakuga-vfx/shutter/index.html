@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sakuga Shutter</title>
+<style>
+  :root { --text: #1d1a4a; --mute: #8580b0; }
+  html { overflow-x: clip; }
+  body { margin: 0; font: 15px/1.45 -apple-system, "Helvetica Neue", "Segoe UI", sans-serif; color: var(--text); background: #fff; overflow-x: clip; }
+  main { width: min(640px, 100vw - 32px); margin: 0 auto; padding: 32px 0 60px; }
+  h1 { margin: 0; font: italic 800 26px/1.1 "Avenir Next", "Nunito", -apple-system, sans-serif; }
+  .sub { margin: 4px 0 16px; color: var(--mute); }
+  .stage { display: flex; gap: 28px; align-items: center; padding: 24px 8px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Shutter</h1>
+  <p class="sub">The look of a camera's shutter inside the page's own label or button. Press it. Made for my-home (#168 §5.11, HUD v2 #202), not from upstream.</p>
+  <div class="stage"><label id="l" style="display:block;width:72px;height:72px"><sakuga-shutter id="s"></sakuga-shutter><input type="file" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0" aria-label="Take photo"></label>
+  <button id="b" type="button" style="width:72px;height:72px;padding:0;border:0;background:none" aria-label="Take photo"><sakuga-shutter id="t"></sakuga-shutter></button></div>
+  <div class="row"><button id="busy" type="button">Busy</button></div>
+</main>
+<script src="../shutter/shutter.js"></script>
+<script src="../icons/icons.js"></script>
+<script>
+document.getElementById('busy').onclick = () => { for (const s of document.querySelectorAll('sakuga-shutter')) s.toggleAttribute('busy'); };
+</script>
+</body>
+</html>

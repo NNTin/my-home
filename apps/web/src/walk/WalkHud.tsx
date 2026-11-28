@@ -1,5 +1,12 @@
 import type { PhotoRequest, PhotoSensors } from '@my-home/shared';
-import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import {
+  createElement,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+} from 'react';
 import type { PhotosApi } from '../api';
 import { activeRequest, openRequests } from '../photos/requests';
 import { CameraView, hasInPageCamera } from './CameraView';
@@ -670,7 +677,7 @@ export function WalkHud({
               aria-label="Take photo"
               onClick={() => setViewfinder(true)}
             >
-              <span aria-hidden="true">📷</span>
+              <Shutter />
             </button>
           ) : (
             <FileInput
@@ -725,8 +732,14 @@ function FileInput({
   }, []);
   return (
     <label className={shutter ? 'shutter' : 'camera-alt'} title={label}>
-      <span aria-hidden="true">{icon}</span>
-      {!shutter && <span>{label}</span>}
+      {shutter ? (
+        <Shutter />
+      ) : (
+        <>
+          <span aria-hidden="true">{icon}</span>
+          <span>{label}</span>
+        </>
+      )}
       <input
         ref={input}
         aria-label={label}
@@ -742,4 +755,9 @@ function FileInput({
       />
     </label>
   );
+}
+
+/** `<sakuga-shutter>`: the shutter's look and beats, inside the page's own label or button (HUD v2 #202). */
+function Shutter() {
+  return createElement('sakuga-shutter', { 'aria-hidden': 'true' });
 }
