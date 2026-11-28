@@ -46,8 +46,9 @@ case "$check" in
 esac
 if [[ -n $shard ]]; then
   [[ $check != walk ]] || die "walk is not sharded"
-  [[ $shard =~ ^([0-9]+)/([0-9]+)$ ]] && ((BASH_REMATCH[1] >= 1 && BASH_REMATCH[1] <= BASH_REMATCH[2])) ||
+  if ! [[ $shard =~ ^([0-9]+)/([0-9]+)$ ]] || ((BASH_REMATCH[1] < 1 || BASH_REMATCH[1] > BASH_REMATCH[2])); then
     die "--shard must be I/N with 1 <= I <= N, e.g. 2/4"
+  fi
 fi
 # The check's name in the summary: with its shard.
 name=$check${shard:+ $shard}

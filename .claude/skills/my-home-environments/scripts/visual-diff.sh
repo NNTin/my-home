@@ -111,7 +111,9 @@ shoot() {
     mapfile -t selected < <(node "$script_dir/parts.mjs" shard visual-diff "$shard" "${selected[@]}") ||
       die "--shard must be I/N with 1 <= I <= N"
     [[ ${#selected[@]} -gt 0 ]] || die "shard $shard has no view"
-    echo "shard  visual-diff $shard: ${#selected[@]} of $all parts: $(IFS=,; echo "${selected[*]}" | sed 's/,/, /g')"
+    local list
+    printf -v list '%s, ' "${selected[@]}"
+    echo "shard  visual-diff $shard: ${#selected[@]} of $all parts: ${list%, }"
   fi
 
   local before after manifest='[]' log
