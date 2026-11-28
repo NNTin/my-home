@@ -200,6 +200,10 @@ Made here with the workflow above, in `NAMES`, each with a README and an `index.
   squashes, the needle swings in from the old turn (`--wob`, set at the press so no frame shows north early) and lands
   with a ring, two wedges at N and カチッ the first time it crosses north; `poor`: a dashed ring; `size="compact"`
   (60 px). Its method is `named()`, not `label()`: React 19 sets `label={…}` as a property and would overwrite it.
+- `map` (HUD v2 #202 2/3, §5.8): the frame of a map; the page's CSS gives its box small and with `large`; a change of
+  `large` springs the frame from its box on screen to the new one (scale anchored at the lower right), シュッ and speed
+  lines when it enlarges, a squash and two puffs when it lands; `placed(x, y)` (page coordinates): a ring, a puff,
+  ポン. Its content (the map, its controls) is the page's, slotted.
 
 ## Upstream changes come in by hand
 

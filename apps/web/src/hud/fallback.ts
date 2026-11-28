@@ -545,6 +545,14 @@ class FallbackCard extends FallbackButton {
 /** The compass: a button named by its `label`, turned by the page's `--rose` (styles.css, "Fallbacks"). */
 class FallbackCompass extends FallbackButton {}
 
+/** The map's frame: its content is the app's; it places nothing (styles.css draws it). */
+class FallbackMap extends HTMLElement {
+  connectedCallback() {
+    this.dataset.fallback = '';
+  }
+  placed() {}
+}
+
 /** The phone's sheet: its size is the page's CSS, without the spring (styles.css, "Fallbacks"). */
 class FallbackSheet extends HTMLElement {
   connectedCallback() {
@@ -569,6 +577,7 @@ export const FALLBACKS: Record<string, CustomElementConstructor> = {
   'sakuga-card': FallbackCard,
   'sakuga-sheet': FallbackSheet,
   'sakuga-compass': FallbackCompass,
+  'sakuga-map': FallbackMap,
 };
 
 /** Defines a plain stand-in for every HUD tag still undefined; returns the tags it defined. */

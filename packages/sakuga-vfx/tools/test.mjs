@@ -34,7 +34,7 @@ const check = (name, ok, got) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' 
 
 check('all eleven elements are defined', (await ev(`['button','toggle','slider','checkbox','radio','input','tabs','progress','rating','toast','tooltip'].every((n) => customElements.get('sakuga-' + n))`)));
 check('one shared core', (await ev('window.SakugaFX.version')) === 1);
-check('the nine made here are defined', await ev(`['icon-button','badge','segmented','field','panel','fold','card','sheet','compass'].every((n) => customElements.get('sakuga-' + n))`));
+check('the ten made here are defined', await ev(`['icon-button','badge','segmented','field','panel','fold','card','sheet','compass','map'].every((n) => customElements.get('sakuga-' + n))`));
 { await tap('sakuga-button[data-demo=primary] >>> .btn'); await sleep(1200); check('button: tap fires click and done() lands the check', +(await ev(`${find('sakuga-button[data-demo=primary] >>> .btn')}.style.getPropertyValue('--ok')`)) > 0.5); }
 { await tap('sakuga-toggle >>> .tog'); await sleep(500); check('toggle: tap turns it on', await ev(`document.querySelector('sakuga-toggle').checked`));
   check('toggle: aria-checked follows', (await ev(`${find('sakuga-toggle >>> .tog')}.getAttribute('aria-checked')`)) === 'true'); }
@@ -96,6 +96,11 @@ check('the nine made here are defined', await ev(`['icon-button','badge','segmen
   check('compass: a button named by its label', (await ev(`${disc}.getAttribute('aria-label')`)) === 'Compass: turn the view north-up');
   await tap('sakuga-compass >>> .c'); await sleep(120); const mid = await ev(`${cp}.style.getPropertyValue('--wob')`);
   await sleep(1600); check('compass: pressed, the needle swings in to north and rests', mid !== '' && (await ev(`${cp}.style.getPropertyValue('--wob')`)) === '' && (await ev(`${cp}.style.getPropertyValue('--rose')`)) === '0deg', mid); }
+// Made here (my-home, HUD v2 #202): the map's frame.
+{ const mp = `document.querySelector('sakuga-map')`, h = async () => Math.round(await ev(`${mp}.getBoundingClientRect().height`));
+  const small = await h(); await tap('sakuga-map > button'); await sleep(120); const mid = await ev(`${mp}.style.transform`);
+  await sleep(1400); check('map: pressed, it springs large and rests at its size', mid !== '' && (await ev(`${mp}.style.transform`)) === '' && (await h()) === 220, `${small} -> ${await h()}, ${mid}`);
+  await tap('sakuga-map > button'); await sleep(1400); check('map: pressed again, small again', (await h()) === small); }
 { const sh = `document.querySelector('sakuga-sheet')`;
   await tap('[data-demo=sheet-full] >>> .btn'); await sleep(250); const mid = await ev(`${sh}.style.height`);
   await sleep(1200); check('sheet: a new snap springs, then rests at the page\'s size', mid !== '' && (await ev(`${sh}.style.height`)) === '' && (await ev(`Math.round(${sh}.getBoundingClientRect().height)`)) === 240, mid);

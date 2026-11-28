@@ -369,6 +369,37 @@ body {
   right: calc(1rem + env(safe-area-inset-right, 0px));
 }
 
+/* The floor overview's entry, under the compass (HUD v2 #202). */
+.map-entry {
+  position: absolute;
+  top: calc(6rem + env(safe-area-inset-top, 0px));
+  right: calc(2.1875rem + env(safe-area-inset-right, 0px));
+  z-index: 10;
+}
+
+.viewer.mobile .map-entry {
+  top: calc(0.75rem + 3.75rem + 0.5rem);
+  right: calc(0.75rem + 0.8125rem);
+}
+
+/* Orbit's floor overview: the minimap's frame, large; at the right on a desktop, in the sheet's space on a phone. */
+.orbit-map-slot {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  pointer-events: none;
+}
+
+.viewer:not(.mobile) .orbit-map-slot .walk-map-frame {
+  top: 8.5rem;
+  right: 1rem;
+  bottom: auto;
+}
+
+.viewer.mobile .orbit-map-slot {
+  z-index: 21;
+}
+
 /* Room names drawn over the 3D scene, moved by RoomLabelTracker; they never take pointer events.
    Below the stage tools and the walk controls. */
 .room-labels {
@@ -967,31 +998,45 @@ body {
   display: contents;
 }
 
-.walk-hud .walk-map {
+/*
+ * The minimap's frame (sakuga-map, §5.8, HUD v2 #202): its place and size, small and large; the element draws the
+ * paper and springs between the two. Its content (the small button, the large map) fills it.
+ */
+.walk-map-frame {
   position: absolute;
   right: calc(1.25rem + env(safe-area-inset-right, 0px));
   bottom: calc(7.75rem + env(safe-area-inset-bottom, 0px));
+  z-index: 1;
   width: 10rem;
   height: 10rem;
-  box-sizing: border-box;
-  padding: 0;
-  overflow: hidden;
-  border: var(--hud-line-compact);
-  border-radius: var(--hud-r-compact);
-  background: var(--sk-card);
-  box-shadow: var(--hud-sh-compact);
-  color: var(--sk-ink);
-  cursor: zoom-in;
   pointer-events: auto;
 }
 
+.walk-map-frame[large] {
+  width: min(26rem, calc(100% - 2.5rem));
+  height: min(30rem, calc(100% - 14rem));
+}
+
+.walk-map {
+  display: block;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--sk-ink);
+  cursor: zoom-in;
+}
+
 /* The small map is a button: its room names keep the body type, not a label's 800 italic. */
-.walk-hud .walk-map {
+.walk-hud .walk-map,
+.walk-map {
   font-style: normal;
   font-weight: 500;
 }
 
-.viewer.mobile .walk-hud .walk-map {
+.viewer.mobile .walk-map-frame:not([large]) {
   width: 7rem;
   height: 7rem;
 }
@@ -1003,21 +1048,11 @@ body {
 }
 
 .walk-map-large {
-  position: absolute;
-  right: calc(1.25rem + env(safe-area-inset-right, 0px));
-  bottom: calc(7.75rem + env(safe-area-inset-bottom, 0px));
-  z-index: 1;
   display: flex;
   box-sizing: border-box;
   flex-direction: column;
-  width: min(26rem, calc(100% - 2.5rem));
-  height: min(30rem, calc(100% - 14rem));
+  height: 100%;
   padding: 0.5rem 0.75rem;
-  border: var(--hud-line);
-  border-radius: var(--sk-r);
-  background: var(--sk-card);
-  box-shadow: var(--sk-sh);
-  pointer-events: auto;
 }
 
 .walk-map-head {
@@ -1050,7 +1085,8 @@ body {
   cursor: pointer;
 }
 
-.viewer.mobile .walk-map-large {
+/* On a phone the large map is in the sheet's space: at the foot, the width of the screen (#202). */
+.viewer.mobile .walk-map-frame[large] {
   right: 0;
   bottom: 0;
   left: 0;
@@ -1058,14 +1094,17 @@ body {
   max-width: 30rem;
   /* Below the bar, like the calibration sheet. */
   height: min(75%, calc(100% - 16.5rem));
-  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
   border-bottom: 0;
   border-radius: var(--sk-r) var(--sk-r) 0 0;
   box-shadow: none;
 }
 
+.viewer.mobile .walk-map-large {
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+}
+
 /* Held across, the bar is one row: the map takes the height below it. */
-.viewer.mobile.landscape .walk-map-large {
+.viewer.mobile.landscape .walk-map-frame[large] {
   height: calc(100% - 4.75rem - env(safe-area-inset-top, 0px));
 }
 
@@ -1853,8 +1892,8 @@ body {
 /* The one open surface, at the right above the actions; the column itself takes no input. */
 .hud-surface {
   position: absolute;
-  /* Below the orientation area at the upper right (#202). */
-  top: 6.5rem;
+  /* Below the orientation area at the upper right: the compass and the map entry (#202). */
+  top: 8.5rem;
   right: 1rem;
   bottom: 4.5rem;
   z-index: 10;
@@ -2404,6 +2443,15 @@ sakuga-icon-button[data-fallback][appearance='clear'][tone='light'] {
 }
 
 /* The containers' stand-ins: a fold's summary is its button, its body gone while closed; the sheet slides. */
+sakuga-map[data-fallback] {
+  box-sizing: border-box;
+  overflow: hidden;
+  border: var(--hud-line-compact);
+  border-radius: var(--hud-r-compact);
+  background: var(--sk-card);
+  box-shadow: var(--hud-sh-compact);
+}
+
 sakuga-compass[data-fallback]::before {
   content: 'N';
   color: var(--sk-acc);

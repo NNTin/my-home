@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sakuga Map</title>
+<style>
+  :root { --text: #1d1a4a; --mute: #8580b0; }
+  html { overflow-x: clip; }
+  body { margin: 0; font: 15px/1.45 -apple-system, "Helvetica Neue", "Segoe UI", sans-serif; color: var(--text); background: #fff; overflow-x: clip; }
+  main { width: min(640px, 100vw - 32px); margin: 0 auto; padding: 32px 0 60px; }
+  h1 { margin: 0; font: italic 800 26px/1.1 "Avenir Next", "Nunito", -apple-system, sans-serif; }
+  .sub { margin: 4px 0 16px; color: var(--mute); }
+  .view { position: relative; height: 420px; overflow: hidden; border-radius: 14px; background: linear-gradient(#dcebf7, #f6f3ea); }
+  sakuga-map { position: absolute; right: 16px; bottom: 16px; width: 120px; height: 120px; }
+  sakuga-map[large] { width: min(360px, calc(100% - 32px)); height: 320px; }
+  sakuga-map svg { display: block; width: 100%; height: 100%; }
+  .row { display: flex; gap: 8px; margin: 8px 0; }
+  .row button { font: inherit; padding: 4px 10px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Map</h1>
+  <p class="sub">The frame of a map: small in a corner, large over the view; the map is the page's. Made for my-home (#168 §5.8, HUD v2 #202), not from upstream.</p>
+  <div class="row"><button id="big" type="button">Enlarge</button><button id="small" type="button">Shrink</button><button id="place" type="button">Place</button></div>
+  <div class="view">
+    <sakuga-map id="m"><svg viewBox="0 0 100 100" aria-hidden="true"><rect x="10" y="15" width="80" height="70" fill="#ecebff" stroke="#1d1a4a"/><rect x="14" y="19" width="34" height="30" fill="#fff" stroke="#b8b3ff"/><rect x="52" y="19" width="34" height="62" fill="#fff" stroke="#b8b3ff"/><circle cx="34" cy="62" r="4" fill="#ff5fa8"/></svg></sakuga-map>
+  </div>
+</main>
+<script src="../map/map.js"></script>
+<script>
+const m = document.getElementById('m');
+document.getElementById('big').onclick = () => m.toggleAttribute('large', true);
+document.getElementById('small').onclick = () => m.toggleAttribute('large', false);
+document.getElementById('place').onclick = () => { const r = m.getBoundingClientRect(); m.placed(r.left + r.width * 0.34 + scrollX, r.top + r.height * 0.62 + scrollY); };
+</script>
+</body>
+</html>

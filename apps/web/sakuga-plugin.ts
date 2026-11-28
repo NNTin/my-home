@@ -37,6 +37,7 @@ export const HUD_ELEMENTS = [
   'card',
   'sheet',
   'compass',
+  'map',
 ] as const;
 
 const CORE_START = '// >>> sakuga core';
