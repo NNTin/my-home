@@ -106,8 +106,8 @@ printf '| View | Result | Detail |\n| --- | --- | --- |\n| default | identical |
 run 'abc abc' visual-diff abc
 check 'two identical shoots pass, orbit-180 may differ' test "$code" -eq 0
 check 'the summary holds the table' grep -q '^| default | identical' "$work/summary"
-check 'the time of each view is named after its shoot' \
-  bash -c 'grep -q "^| first/default | 30.0 |" "$1" && grep -q "^| second/default | 30.0 |" "$1"' _ "$work/summary"
+both_shoots_timed() { grep -q '^| first/default | 30.0 |' "$1" && grep -q '^| second/default | 30.0 |' "$1"; }
+check 'the time of each view is named after its shoot' both_shoots_timed "$work/summary"
 
 printf '| View | Result | Detail |\n| --- | --- | --- |\n| default | DIFFERS | 3 pixels |\n| orbit-180 | identical | sha256 2 |\n' >"$work/table.md"
 run 'abc abc' visual-diff abc
