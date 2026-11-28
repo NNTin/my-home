@@ -87,9 +87,8 @@ describe('picking a window, door or gate', () => {
     expect(lastScene!.furniture.some((f) => f.selected)).toBe(false);
     // Its label at the edge opens the inspector (HUD v2 #201).
     fireEvent.click(screen.getByRole('button', { name: 'Living room door: details' }));
-    expect(panel().getByLabelText('Selected piece')).toHaveTextContent(
-      'Living room door (Interior door)',
-    );
+    expect(panel().getByRole('heading', { name: 'Living room door' })).toBeInTheDocument();
+    expect(panel().getByLabelText('Selected piece')).toHaveTextContent('Interior door');
     expect(lastScene!.pieces?.highlightId).toBe('souterrain-living-door');
     // Clicking a wall in front of it, or empty space, puts it away.
     act(() => lastScene!.pieces!.onSelectPiece(undefined));

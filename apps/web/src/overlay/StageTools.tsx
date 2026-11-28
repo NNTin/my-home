@@ -46,6 +46,7 @@ export function StageTools({
   toolsOpen,
   onTools,
   tools,
+  tone,
 }: {
   status: StageStatus;
   /** Undefined while the camera is not the orbit camera ("view from here"). */
@@ -54,6 +55,7 @@ export function StageTools({
   toolsOpen: boolean;
   onTools(): void;
   tools: ReactNode;
+  tone: 'dark' | 'light';
 }) {
   return (
     <div className="stage-tools">
@@ -62,13 +64,22 @@ export function StageTools({
       <SkIconButton
         className="hud-tools"
         size="compact"
-        icon="more"
+        icon="tools"
+        appearance="clear"
+        tone={tone}
         label="Tools"
         pressed={toolsOpen}
         onClick={onTools}
       />
       {onResetView && (
-        <SkButton size="compact" variant="secondary" className="reset-view" onClick={onResetView}>
+        <SkButton
+          size="compact"
+          variant="secondary"
+          appearance="clear"
+          tone={tone}
+          className="reset-view"
+          onClick={onResetView}
+        >
           <HudIcon name="reset" /> Reset view
         </SkButton>
       )}

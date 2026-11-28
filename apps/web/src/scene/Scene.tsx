@@ -481,7 +481,12 @@ export function Scene({
           </div>
         </div>
       )}
-      <CompassRose roseRef={roseRef} onNorthUp={() => northUpRef.current?.()} compact={touch} />
+      <CompassRose
+        roseRef={roseRef}
+        onNorthUp={() => northUpRef.current?.()}
+        compact={touch}
+        clear={!walk}
+      />
       {hudMeasure && (
         <Suspense fallback={null}>
           <HudMeasurePage walking={walk?.view === 'first'} />

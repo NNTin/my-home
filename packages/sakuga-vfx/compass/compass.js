@@ -19,7 +19,13 @@ class SakugaCompass extends fx.Base {
     .rose { position: absolute; inset: 0; transform: rotate(calc(var(--rose) + var(--wob, 0deg))); }
     .needle { position: absolute; top: 50%; left: 50%; width: 30%; height: 64%; transform: translate(-50%, -50%); overflow: visible; }
     .l { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(var(--a)) translateY(calc(-1 * var(--r))) rotate(calc(-1 * (var(--a) + var(--rose) + var(--wob, 0deg)))); }
-    .l.n { color: var(--sk-acc); }`;
+    .l.n { color: var(--sk-acc); }
+    :host([appearance=clear]) { --r: 17px; width: 44px; height: 44px; }
+    :host([appearance=clear]) .c { border: 0; background: transparent; box-shadow: none; font-size: 11px; }
+    :host([appearance=clear]) .c::before { content: ''; position: absolute; inset: 0; transform: var(--sk-unsquash, none); }
+    :host([appearance=clear]) .c:focus-visible { outline: 2px solid var(--sk-acc); box-shadow: 0 0 0 2px var(--sk-card); }
+    :host([appearance=clear]) .l:not(.n) { display: none; }
+    :host([appearance=clear]) .l.n { color: var(--sk-compass-label, var(--sk-ink)); -webkit-text-stroke: 2.5px var(--sk-compass-edge, var(--sk-card)); paint-order: stroke fill; }`;
   render() {
     const l = (t, a) => `<span class="l${t === 'N' ? ' n' : ''}" style="--a:${a}deg" aria-hidden="true">${t}</span>`;
     // the needle: north half pink, south half paper, each with the ink line

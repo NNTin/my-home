@@ -280,6 +280,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   );
   // The phone's Tools menu, over the stage tools.
   const [phoneTools, setPhoneTools] = useState(false);
+  const [levelOpen, setLevelOpen] = useState(false);
   // `?` asked for the keys: Tools opens with the help unfolded (#204).
   const [helpAsked, setHelpAsked] = useState(0);
   // The phone's floor overview (HUD v2 #202); the desktop's is the surface `map`.
@@ -299,6 +300,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
       : 'photos'
     : plainPanel;
   const showPanel = (id: PanelId) => {
+    setLevelOpen(false);
     if (id === 'view' || id === 'furniture') {
       closePhotos();
       setPlainPanel(id);
@@ -518,7 +520,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
       selectedPieceId !== undefined ||
       selectedRoomId !== undefined;
     if (editing && !wasEditing) setSurface('furniture');
-    else if (!editing && !any && surface === 'furniture') setSurface(undefined);
+    else if (!editing && !any && (surface === 'furniture' || surface === 'inspector'))
+      setSurface(undefined);
   }
   const [highlight, setHighlight] = useState<string>();
   useEffect(() => {
@@ -564,6 +567,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     setMeasured({ points: NO_MEASUREMENT, missed: false });
   }
   const startMeasure = () => {
+    setLevelOpen(false);
     if (mobile) setPhoneTools(false);
     else {
       closePhotos();
@@ -855,6 +859,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
       ? roomShown
       : furniture.some((f) => f.id === editor.selectedId);
   const labelled = subjectShown ? (pieceInfo ?? roomInfo ?? selected) : undefined;
+  if (surface === 'inspector' && !labelled) setSurface(undefined);
 
   // Needs attention, as where-used (`/uses`) says: an unknown type, a level or room gone, or
   // parameters that are ignored.
@@ -910,6 +915,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
       leaveView();
     },
     onWalk: () => {
+      setLevelOpen(false);
       setRendering(false);
       setWalkView('first');
     },
@@ -918,7 +924,17 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   };
   // The desktop's open surface: the photos, or Views, Tools or the furniture panel (HUD v2 #200).
   const shown: Surface | 'photos' | undefined = photosOpen ? 'photos' : surface;
+  const toggleLevel = () => {
+    if (!levelOpen) {
+      setPhoneTools(false);
+      setPhoneMap(false);
+      if (!mobile && (surface === 'views' || surface === 'tools' || surface === 'map'))
+        setSurface(undefined);
+    }
+    setLevelOpen(!levelOpen);
+  };
   const toggleSurface = (next: Surface) => {
+    setLevelOpen(false);
     // Pressed again it closes; Tools pressed over the photos (opened from it) goes back to its menu.
     closePhotos();
     setSurface(shown === next ? undefined : next);
@@ -935,7 +951,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
         ? '.hud-views'
         : shown === 'map'
           ? '.map-entry'
-          : shown === 'furniture'
+          : shown === 'furniture' || shown === 'inspector'
             ? document.querySelector('.selection-label')
               ? '.selection-label'
               : '.hud-bottom-right .edit-toggle'
@@ -949,6 +965,13 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     }
     document.querySelector<HTMLElement>(trigger)?.focus();
   };
+  const compactInspector =
+    !!labelled && (mobile ? !editing && panel === 'furniture' : shown === 'inspector');
+  const closeInspector = () => {
+    if (!mobile) return closeSurface();
+    setSnap('collapsed');
+    document.querySelector<HTMLElement>('.piece-toolbar .item-toolbar-name')?.focus();
+  };
   const run = (id: ActionId): boolean => {
     const editingItem = editing && selectedItem !== undefined;
     switch (id) {
@@ -958,7 +981,13 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
           '.walk-map-large [aria-label="Close the map"]',
         );
         if (bigMap) return (bigMap.click(), true);
+        if (levelOpen) {
+          setLevelOpen(false);
+          document.querySelector<HTMLElement>('.hud-level-trigger')?.focus();
+          return true;
+        }
         if (mobile ? phoneTools || phoneMap : shown) return (closeSurface(), true);
+        if (mobile && compactInspector && snap !== 'collapsed') return (closeInspector(), true);
         if (rendering) return false;
         if (measuring) return (stopMeasure(), true);
         if (
@@ -975,6 +1004,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
         return false;
       }
       case 'help':
+        setLevelOpen(false);
         setHelpAsked((n) => n + 1);
         if (mobile) setPhoneTools(true);
         else {
@@ -995,8 +1025,10 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
           );
           return map ? (map.click(), true) : false;
         }
-        if (mobile) setPhoneMap((open) => !open);
-        else toggleSurface('map');
+        if (mobile) {
+          setLevelOpen(false);
+          setPhoneMap((open) => !open);
+        } else toggleSurface('map');
         return true;
       }
       case 'north': {
@@ -1115,6 +1147,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   const furniturePanel = (
     <FurniturePanel
       editing={editing}
+      onCloseInspector={compactInspector ? closeInspector : undefined}
+      onOpenFurniture={compactInspector && editing ? () => setSurface('furniture') : undefined}
       loading={placements.loading}
       error={placements.error}
       sync={placements.syncState}
@@ -1146,6 +1180,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   const backdrop = chosenBackdrop ?? (presented ? views?.VIEW_BACKDROP : undefined);
   /** The backdrop on screen: the one chosen, or the rig's own. */
   const shownBackdrop = backdrop ?? rigFor({ kind: 'free' }).backdrop;
+  const hudTone = shownBackdrop === 'studio-dark' ? 'light' : 'dark';
   const viewsControl = views && (
     <views.ViewsControl
       scene={scene}
@@ -1203,8 +1238,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   // The 3D view ends where the sheet begins. A sheet opened all the way lies over the view
   // instead, so the canvas is not squeezed to nothing.
   const sheetVars = sheetShown && {
-    '--sheet-size': sheetSize(snap, side),
-    '--stage-inset': sheetSize(snap === 'full' ? 'half' : snap, side),
+    '--sheet-size': sheetSize(snap, side, compactInspector),
+    '--stage-inset': sheetSize(snap === 'full' ? 'half' : snap, side, compactInspector),
   };
 
   return (
@@ -1217,6 +1252,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
       ]
         .filter(Boolean)
         .join(' ')}
+      data-hud-tone={hudTone}
       style={sheetVars ? (sheetVars as CSSProperties) : undefined}
     >
       {sheetShown && (
@@ -1225,6 +1261,10 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
           visibility={chosenVisibility}
           onChange={controls.onChange}
           onWalk={controls.onWalk}
+          levelOpen={levelOpen}
+          onLevelToggle={toggleLevel}
+          onLevelDismiss={() => setLevelOpen(false)}
+          tone={hudTone}
         />
       )}
       <div className="viewer-main">
@@ -1344,7 +1384,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
               className="map-entry"
               size="compact"
               appearance="clear"
-              backing
+              tone={hudTone}
               icon="map"
               label="Floor overview"
               title={`Floor overview${hint('map')}`}
@@ -1371,6 +1411,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
                 toolsOpen={phoneTools}
                 onTools={() => setPhoneTools((open) => !open)}
                 tools={toolsMenu}
+                tone={hudTone}
               />
               <Hints side={side} />
             </>
@@ -1425,6 +1466,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
               snap={snap}
               onSnap={setSnap}
               side={side}
+              compact={compactInspector}
             >
               {panel === 'view' ? (
                 <ViewPanel
@@ -1448,8 +1490,9 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
               {labelled && (
                 <SelectionLabel
                   name={labelled.name}
-                  open={shown === 'furniture'}
-                  onToggle={() => toggleSurface('furniture')}
+                  open={shown === 'inspector'}
+                  onToggle={() => toggleSurface('inspector')}
+                  tone={hudTone}
                 />
               )}
               <HudCorners
@@ -1460,10 +1503,16 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
                 surface={shown}
                 onSurface={toggleSurface}
                 status={stageStatus}
+                levelOpen={levelOpen}
+                onLevelToggle={toggleLevel}
+                onLevelDismiss={() => setLevelOpen(false)}
+                tone={hudTone}
               />
-              {/* The one open surface, at the right (§ Primary): each is a paper panel of its own. */}
+              {/* The shared surface sits beside the action or selection that opened it. */}
               {shown && shown !== 'map' && (
-                <div className="hud-surface">
+                <div
+                  className={`hud-surface hud-surface--${compactInspector ? 'inspector' : shown}`}
+                >
                   {shown === 'photos' ? (
                     photosPanel
                   ) : shown === 'views' ? (

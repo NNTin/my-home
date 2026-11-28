@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { openLevelPicker } from './test/screen';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import type { SceneProps } from './scene/Scene';
@@ -31,12 +32,10 @@ async function renderApp() {
 }
 
 /** Cuts away the upper levels, so furniture is added to the souterrain. */
-const showSouterrain = () =>
-  fireEvent.click(
-    within(screen.getByRole('radiogroup', { name: 'Show up to level' })).getByLabelText(
-      'Souterrain',
-    ),
-  );
+const showSouterrain = () => {
+  fireEvent.click(openLevelPicker().getByLabelText('Souterrain'));
+  fireEvent.click(screen.getByRole('button', { name: /^Level: / }));
+};
 
 /** Runs scene handlers one render at a time, as real pointer events would. */
 const scene = (...steps: ((h: SceneProps['handlers']) => void)[]) => {

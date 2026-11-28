@@ -9,11 +9,13 @@ export function SelectionLabel({
   name,
   open,
   onToggle,
+  tone,
 }: {
   name: string;
   /** The inspector is open. */
   open: boolean;
   onToggle(): void;
+  tone: 'dark' | 'light';
 }) {
   return (
     <div className="hud-corner hud-bottom-left">
@@ -22,6 +24,7 @@ export function SelectionLabel({
         size="compact"
         appearance="clear"
         backing
+        tone={tone}
         pressed={open}
         aria-label={`${name}: details`}
         onClick={onToggle}

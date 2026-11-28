@@ -5,7 +5,7 @@ import { enterEditMode } from './test/editMode';
 import type { SceneProps } from './scene/Scene';
 import { fakeApi, homeSummary } from './test/fakeApi';
 import { mockHome } from './test/fixtures';
-import { shownScene, stubScreen } from './test/screen';
+import { openLevelPicker, shownScene, stubScreen } from './test/screen';
 import { WALK_SESSION_KEY } from './walk/walkSession';
 
 // jsdom has no WebGL, so the R3F canvas is replaced with a stub that exposes what it would draw.
@@ -81,8 +81,11 @@ describe('App', () => {
     expect(screen.getByText('Mock home')).toBeInTheDocument();
     expect(levelsOf()).toEqual(new Set(['souterrain']));
     expect(shown()?.roofPlanes).toEqual([]);
-    const cutaway = within(screen.getByRole('radiogroup', { name: 'Show up to level' }));
+    const cutaway = openLevelPicker();
     expect(cutaway.getByLabelText('Souterrain')).toBeChecked();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('radiogroup', { name: 'Show up to level' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Level: Souterrain' })).toHaveFocus();
     await views();
     const levels = within(screen.getByRole('group', { name: 'Levels' }));
     expect(levels.getByRole('checkbox', { name: 'Souterrain' })).toBeChecked();
@@ -100,7 +103,8 @@ describe('App', () => {
   it('cuts away the upper levels to look into the souterrain', async () => {
     stubApi();
     render(<App />);
-    const cutaway = within(await screen.findByRole('radiogroup', { name: 'Show up to level' }));
+    await screen.findByRole('button', { name: /^Level: / });
+    const cutaway = openLevelPicker();
 
     fireEvent.click(cutaway.getByLabelText('Souterrain'));
     expect(levelsOf()).toEqual(new Set(['souterrain']));
@@ -113,7 +117,8 @@ describe('App', () => {
     stubApi();
     enterEditMode();
     render(<App />);
-    const cutaway = within(await screen.findByRole('radiogroup', { name: 'Show up to level' }));
+    await screen.findByRole('button', { name: /^Level: / });
+    const cutaway = openLevelPicker();
     fireEvent.click(cutaway.getByLabelText('Roof'));
     expect(shown()?.roofPlanes).toHaveLength(2);
     expect(levelsOf()).toEqual(new Set(['souterrain', 'ground-floor', 'first-floor']));
@@ -209,7 +214,8 @@ describe('App', () => {
     it('returns to the viewer as it was on exit', async () => {
       stubApi();
       render(<App />);
-      const cutaway = within(await screen.findByRole('radiogroup', { name: 'Show up to level' }));
+      await screen.findByRole('button', { name: /^Level: / });
+      const cutaway = openLevelPicker();
       fireEvent.click(cutaway.getByLabelText('Ground floor'));
       fireEvent.click(screen.getByRole('button', { name: /Walk and take photos/ }));
       fireEvent.click(screen.getByRole('button', { name: /Exit/ }));
@@ -349,7 +355,9 @@ describe('App', () => {
     // Tools replaces Views: one surface at a time.
     await tools();
     expect(screen.queryByRole('region', { name: 'View controls' })).toBeNull();
-    expect(screen.getByRole('region', { name: 'Tools' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('region', { name: 'Tools' }).closest('.hud-surface--tools'),
+    ).not.toBeNull();
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.queryByRole('region', { name: 'Tools' })).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Tools' }));
@@ -472,6 +480,14 @@ describe('App', () => {
     act(() => lastScene!.pieces!.onSelectRoom!([room.labelAt[0], room.y, room.labelAt[2]]));
     key('Escape');
     expect(screen.queryByRole('region', { name: 'Tools' })).toBeNull();
+    expect(lastScene!.roomOutline).toBeDefined();
+    const details = screen.getByRole('button', { name: `${room.name}: details` });
+    fireEvent.click(details);
+    const inspector = screen.getByRole('region', { name: 'Furniture' });
+    expect(inspector.closest('.hud-surface--inspector')).not.toBeNull();
+    expect(within(inspector).getByRole('button', { name: 'Focus room' })).toBeInTheDocument();
+    fireEvent.click(within(inspector).getByRole('button', { name: 'Close inspector' }));
+    expect(details).toHaveFocus();
     expect(lastScene!.roomOutline).toBeDefined();
     key('Escape');
     expect(lastScene!.roomOutline).toBeUndefined();

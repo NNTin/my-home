@@ -200,7 +200,8 @@ Made here with the workflow above, in `NAMES`, each with a README and an `index.
 - `compass` (HUD v2 #202 1/3, §5.7): the page turns it with `--rose` on the host (read in CSS only); a press: the disc
   squashes, the needle swings in from the old turn (`--wob`, set at the press so no frame shows north early) and lands
   with a ring, two wedges at N and カチッ the first time it crosses north; `poor`: a dashed ring; `size="compact"`
-  (60 px). Its method is `named()`, not `label()`: React 19 sets `label={…}` as a property and would overwrite it.
+  (60 px); `appearance="clear"` shows the needle and north mark in a 44 px target for Orbit. Its method is
+  `named()`, not `label()`: React 19 sets `label={…}` as a property and would overwrite it.
 - `map` (HUD v2 #202 2/3, §5.8): the frame of a map; the page's CSS gives its box small and with `large`; a change of
   `large` springs the frame from its box on screen to the new one (scale anchored at the lower right), シュッ and speed
   lines when it enlarges, a squash and two puffs when it lands; `placed(x, y)` (page coordinates): a ring, a puff,

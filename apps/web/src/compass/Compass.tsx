@@ -15,11 +15,13 @@ export function CompassRose({
   roseRef,
   onNorthUp,
   compact = false,
+  clear = false,
 }: {
   roseRef: RefObject<HTMLElement | null>;
   onNorthUp(): void;
   /** A phone's: 60 px, the compact line. */
   compact?: boolean;
+  clear?: boolean;
 }) {
   // Its key on its hint, as it is now (#205).
   useBindings();
@@ -44,6 +46,7 @@ export function CompassRose({
     ref: setHost,
     className: 'compass',
     size: compact ? 'compact' : undefined,
+    appearance: clear ? 'clear' : undefined,
     label: 'Compass: turn the view north-up',
     title: `Turn the view north-up${hint('north')}`,
   });
