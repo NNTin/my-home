@@ -10,7 +10,7 @@ import {
   type Mesh,
   type Object3D,
 } from 'three';
-import { projectLabel } from '../scene/RoomLabels';
+import { projectLabel } from '../geom/projectLabel';
 import type { Measurement, Point } from './measure';
 
 /** A press that moved further than this many pixels turned the view: not a pick. */

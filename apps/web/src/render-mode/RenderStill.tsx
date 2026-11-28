@@ -4,7 +4,7 @@ import { download } from '../views/exportImage';
 import { imageName } from '../views/named';
 import { NO_PROGRESS, Still, type StillProgress } from './still';
 import { SAMPLE_TARGET } from './tracer';
-import type { TraceInputs } from './traceScene';
+import type { TraceInputs } from '../views/traceInputs';
 import './render-mode.css';
 import { SkButton } from '../hud/SkButton';
 

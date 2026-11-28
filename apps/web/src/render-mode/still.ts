@@ -14,9 +14,9 @@ import {
   traceFinishes,
   traceMeshes,
   whenTexturesArrived,
-  type TraceInputs,
   type TraceScene,
 } from './traceScene';
+import type { TraceInputs } from '../views/traceInputs';
 
 /**
  * One still of render mode (docs/design/realistic-render.md §9): the tracer in a canvas of its

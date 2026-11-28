@@ -9,7 +9,8 @@ import {
   type BufferGeometry,
 } from 'three';
 import { describe, expect, it } from 'vitest';
-import { capGeometry, clipGeometry, sectionLoops, type CutPlane } from './cut';
+import { capGeometry, clipGeometry, sectionLoops } from './cut';
+import type { CutPlane } from '../views/traceInputs';
 
 /** Keeps x >= 0.25: a section that looks along +x from the left. */
 const PLANE: CutPlane = { normal: [1, 0, 0], constant: -0.25 };

@@ -38,8 +38,8 @@ import {
   traceFinishes,
   traceMeshes,
   whenTexturesArrived,
-  type TraceInputs,
 } from './traceScene';
+import type { TraceInputs } from '../views/traceInputs';
 
 /**
  * Runs the decision gate (`measure.ts`): traces the three fixed views one after the other, each

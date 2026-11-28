@@ -71,7 +71,7 @@ faces (`WallFace` with `part: 'top'`, items `<wall id>/top-<n>`).
 | The views: URLs, cameras, what is shown            | `apps/web/src/views/named.ts`                                |
 | The Views control                                  | `apps/web/src/views/ViewsControl.tsx`                        |
 | The ground, the depth range of a far camera        | `apps/web/src/views/Stage.tsx`                               |
-| The section's plane, held by every material        | `apps/web/src/views/planes.ts` (main chunk)                  |
+| The section's plane, held by every material        | `apps/web/src/finishes/planes.ts` (main chunk)               |
 | The cut and its caps                               | `apps/web/src/views/SectionCut.tsx`, `views/caps.ts`         |
 | The image export                                   | `apps/web/src/views/exportImage.ts`, `views/ImageExport.tsx` |
 | The lazy chunk `render-views` (all of the above)   | `apps/web/src/views/render-views.ts`                         |

@@ -1,7 +1,8 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, type RefObject } from 'react';
-import { Vector3, type Camera } from 'three';
+import { Vector3 } from 'three';
 import type { RoomLabel } from '../builder/visibility';
+import { projectLabel } from '../geom/projectLabel';
 
 /**
  * Room names are plain DOM over the canvas, placed from inside it. They are not drei `Html`: that
@@ -9,19 +10,6 @@ import type { RoomLabel } from '../builder/visibility';
  * React cannot finish cleanly (a `removeChild` NotFoundError when the labels change as walk mode
  * is left, see docs/walking.md).
  */
-
-/** Where a point in the scene falls on a view of `width` x `height` pixels, if it is in front of the camera. */
-export function projectLabel(
-  at: readonly [number, number, number],
-  camera: Camera,
-  width: number,
-  height: number,
-  out = new Vector3(),
-): { x: number; y: number } | undefined {
-  out.set(at[0], at[1], at[2]).project(camera);
-  if (out.z > 1) return undefined;
-  return { x: (out.x * 0.5 + 0.5) * width, y: (-out.y * 0.5 + 0.5) * height };
-}
 
 /** Outside the canvas: one element per room name, positioned by `RoomLabelTracker`. */
 export function RoomLabels({

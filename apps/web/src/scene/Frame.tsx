@@ -10,7 +10,7 @@ import { SceneLights } from '../lighting/sceneLights';
 import type { FrameGovernor, Tier } from '../quality/governor';
 import { FrameOutput, gpuIdle } from './output';
 import { FrameContext as Context, type FrameControl } from './frameControl';
-import { casterBounds } from './sunShadow';
+import { casterBounds } from '../lighting/sunShadow';
 import { loadingProgress } from '../loading/loading';
 import type { FinishTextures } from '../finishes/textures';
 

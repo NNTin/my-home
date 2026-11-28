@@ -1,5 +1,6 @@
 import { BufferAttribute, BufferGeometry, ShapeUtils, Vector2 } from 'three';
 import type { Vec3 } from '../geom/types';
+import type { CutPlane } from '../views/traceInputs';
 
 /**
  * The cut of a section in render mode (docs/design/realistic-render.md §9): a real cut of the
@@ -9,12 +10,6 @@ import type { Vec3 } from '../geom/types';
  * solid that the plane goes through is closed again with a flat cap, as the viewer's stencil caps
  * close it on screen (§7.2).
  */
-
-/** `normal · p + constant = 0`; what has `normal · p + constant >= 0` is kept (`sectionPlane`). */
-export interface CutPlane {
-  normal: Vec3;
-  constant: number;
-}
 
 function distances(geometry: BufferGeometry, { normal: [nx, ny, nz], constant }: CutPlane) {
   const position = geometry.getAttribute('position');
