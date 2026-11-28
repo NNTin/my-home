@@ -5,6 +5,7 @@ import { HudIcon } from '../hud/HudIcon';
 import { SkButton } from '../hud/SkButton';
 import { SkIconButton } from '../hud/SkIconButton';
 import { LevelControl } from './LevelControl';
+import { StatusBadge, type StageStatus } from './StageTools';
 
 /** What the desktop's one shared surface shows (Photos is its own: the photos panel). */
 export type Surface = 'views' | 'tools' | 'furniture' | 'map';
@@ -21,6 +22,7 @@ export function HudCorners({
   onWalk,
   surface,
   onSurface,
+  status,
 }: {
   scene: HomeScene;
   visibility: Visibility;
@@ -29,6 +31,8 @@ export function HudCorners({
   /** The open surface, if it is one of these. */
   surface: Surface | 'photos' | undefined;
   onSurface(surface: 'views' | 'tools'): void;
+  /** Loading and saving: the status badge beside the actions, as on a phone (#203). */
+  status: StageStatus;
 }) {
   return (
     <>
@@ -50,6 +54,7 @@ export function HudCorners({
         role="toolbar"
         aria-label="Views, Edit and Tools"
       >
+        <StatusBadge status={status} />
         <SkIconButton
           className="hud-views"
           size="compact"

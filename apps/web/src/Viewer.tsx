@@ -952,9 +952,18 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
       />
     </div>
   );
+  // Loading and saving, for the phone's stage tools, the desktop's corner and Tools (#203).
+  const stageStatus = {
+    loading: placements.loading,
+    save: placements.syncState.status,
+    edited: editor.revision > 0,
+    photosError: photos.error,
+  };
   const toolsMenu = (
     <ToolsMenu
       {...controls}
+      status={stageStatus}
+      touch={mobile}
       className={mobile ? 'tools-popover' : undefined}
       // On a phone, the photos are open while the sheet shows them.
       photosOpen={mobile ? panel === 'photos' && snap !== 'collapsed' : photosOpen}
@@ -1230,12 +1239,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
           {sheetShown && (
             <>
               <StageTools
-                status={{
-                  loading: placements.loading,
-                  save: placements.syncState.status,
-                  edited: editor.revision > 0,
-                  photosError: photos.error,
-                }}
+                status={stageStatus}
                 onResetView={viewed ? undefined : closeView}
                 toolsOpen={phoneTools}
                 onTools={() => setPhoneTools((open) => !open)}
@@ -1328,6 +1332,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
                 onWalk={controls.onWalk}
                 surface={shown}
                 onSurface={toggleSurface}
+                status={stageStatus}
               />
               {/* The one open surface, at the right (§ Primary): each is a paper panel of its own. */}
               {shown && shown !== 'map' && (

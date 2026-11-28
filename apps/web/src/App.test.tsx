@@ -372,6 +372,24 @@ describe('App', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Floor overview' }));
   });
 
+  it('has help, Effects and the diagnostics in Tools (HUD v2 #203)', async () => {
+    stubApi();
+    render(<App />);
+    await tools();
+    const menu = within(screen.getByRole('region', { name: 'Tools' }));
+    expect(menu.getByRole('switch', { name: 'Effects' })).toBeChecked();
+    expect(menu.getByRole('group', { name: 'Gestures and keys' })).toHaveTextContent('Wheel');
+    // Status in words, as well as the badge's look.
+    expect(menu.getByRole('status')).toHaveTextContent(/saved|Loading/);
+    const perf = menu.getByRole('switch', { name: 'Performance readout' });
+    expect(perf).not.toBeChecked();
+    fireEvent.click(perf);
+    expect(perf).toBeChecked();
+    expect(new URLSearchParams(window.location.search).get('perf')).toBe('1');
+    fireEvent.click(perf);
+    expect(window.location.search).not.toContain('perf');
+  });
+
   describe('pages', () => {
     it('shows the viewer on / with the title of the app', async () => {
       stubApi();
