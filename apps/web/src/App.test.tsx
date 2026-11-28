@@ -359,6 +359,19 @@ describe('App', () => {
     expect(screen.queryByRole('region', { name: 'View controls' })).toBeNull();
   });
 
+  it('opens the floor overview from the orientation corner, one surface at a time (HUD v2 #202)', async () => {
+    stubApi();
+    render(<App />);
+    await views();
+    fireEvent.click(screen.getByRole('button', { name: 'Floor overview' }));
+    expect(screen.getByRole('region', { name: 'Floor overview' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'View controls' })).toBeNull();
+    expect(lastScene?.walk).toBeUndefined();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('region', { name: 'Floor overview' })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Floor overview' }));
+  });
+
   describe('pages', () => {
     it('shows the viewer on / with the title of the app', async () => {
       stubApi();

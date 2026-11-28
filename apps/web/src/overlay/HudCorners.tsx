@@ -7,7 +7,7 @@ import { SkIconButton } from '../hud/SkIconButton';
 import { LevelControl } from './LevelControl';
 
 /** What the desktop's one shared surface shows (Photos is its own: the photos panel). */
-export type Surface = 'views' | 'tools' | 'furniture';
+export type Surface = 'views' | 'tools' | 'furniture' | 'map';
 
 /**
  * The desktop's resting HUD (HUD v2 #200, docs/design/hud-v2/layers.md § Primary): the mode, Walk and the level

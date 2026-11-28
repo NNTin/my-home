@@ -31,7 +31,11 @@ export function CompassRose({
     if (!host) return;
     const click = () => latest.current();
     host.addEventListener('click', click);
-    return () => host.removeEventListener('click', click);
+    return () => {
+      host.removeEventListener('click', click);
+      // Unmounted: the scene no longer turns an element that is gone.
+      if (roseRef.current === host) roseRef.current = null;
+    };
   }, [host, roseRef]);
   return createElement('sakuga-compass', {
     ref: setHost,

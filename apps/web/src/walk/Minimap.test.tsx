@@ -220,3 +220,30 @@ describe('Minimap', () => {
     expect(figureMark().dataset).toMatchObject({ x: at.x.toFixed(2), z: at.z.toFixed(2) });
   });
 });
+
+describe("Orbit's floor overview (HUD v2 #202)", () => {
+  it('shows the level from above, north up, with no figure; closing hands back', () => {
+    const onClose = vi.fn();
+    render(
+      <Minimap
+        overview={{ levelId: 'souterrain', onClose }}
+        levels={levels}
+        groundLevelId="souterrain"
+        northBearing={20}
+        roomId={undefined}
+        requests={[]}
+        photos={[]}
+      />,
+    );
+    expect(screen.getByRole('region', { name: 'Floor overview' })).toBeInTheDocument();
+    // No figure, no heading-up, no Move: it never touches the walk.
+    expect(document.querySelector('.map-figure')).toBeNull();
+    expect(screen.queryByRole('radiogroup', { name: 'Map orientation' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Move/ })).toBeNull();
+    expect(document.querySelector('.walk-map-svg')).toHaveAttribute('data-rotation', '-20.0');
+    // In its frame, large.
+    expect(document.querySelector('sakuga-map')).toHaveAttribute('large');
+    fireEvent.click(screen.getByRole('button', { name: 'Close the map' }));
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+});

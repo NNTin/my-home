@@ -1,4 +1,6 @@
-import { useMemo, useState, type MouseEvent } from 'react';
+import { useMemo, useState, type MouseEvent, type ReactNode } from 'react';
+import { mapPlaced, SkMap } from '../hud/SkMap';
+import { useHost } from '../hud/useElement';
 import type { Vec2 } from '../builder/buildHome';
 import type { Figure } from './figure';
 import { facing } from './figure';
@@ -25,7 +27,13 @@ export interface MapSpot {
 }
 
 interface Props {
-  figure: Figure;
+  /** The walking figure; none in Orbit's floor overview. */
+  figure?: Figure | undefined;
+  /**
+   * Orbit's floor overview (HUD v2 #202): this level, large, north up, no figure; closing calls `onClose`. It
+   * never moves the walking pose.
+   */
+  overview?: { levelId: string; onClose(): void } | undefined;
   levels: ReadonlyMap<string, MinimapLevel>;
   /** The level shown while the figure is outdoors. */
   groundLevelId: string | undefined;
@@ -89,6 +97,7 @@ function cone(figure: Figure, length: number): string {
  */
 export function Minimap({
   figure,
+  overview,
   levels,
   groundLevelId,
   northBearing,
@@ -103,10 +112,12 @@ export function Minimap({
     storeSettings(value);
     setSettings(value);
   };
-  const [large, setLarge] = useState(false);
+  const [enlarged, setLarge] = useState(false);
+  const large = overview !== undefined || enlarged;
   const [placing, setPlacing] = useState(false);
   const [refused, setRefused] = useState(false);
-  const levelId = figure.levelId ?? groundLevelId;
+  const [frame, setFrame] = useHost<HTMLElement>();
+  const levelId = overview?.levelId ?? figure?.levelId ?? groundLevelId;
   const level = levelId === undefined ? undefined : levels.get(levelId);
 
   /**
@@ -114,11 +125,18 @@ export function Minimap({
    * it under the finger as the phone (Sensor mode) or the figure turns.
    */
   const [frozen, setFrozen] = useState<number>();
-  const rotation = frozen ?? mapRotation(settings.orientation, figure.yaw, northBearing);
+  // The overview has no figure to head with: north up.
+  const rotation =
+    frozen ??
+    (figure
+      ? mapRotation(settings.orientation, figure.yaw, northBearing)
+      : mapRotation('north', 0, northBearing));
+  // Where the small map is centred: the figure, when there is one.
+  const [fx, fz] = [figure?.x, figure?.z];
   const view: MapView | undefined = useMemo(() => {
     if (!level) return undefined;
-    if (!large) {
-      return { center: [figure.x, figure.z], scale: MAP_SIZE / SMALL_SPAN, rotation };
+    if (!large && fx !== undefined && fz !== undefined) {
+      return { center: [fx, fz], scale: MAP_SIZE / SMALL_SPAN, rotation };
     }
     // The whole level, turned any way, fits.
     const { min, max } = level.bounds;
@@ -128,7 +146,7 @@ export function Minimap({
       scale: MAP_SIZE / diagonal,
       rotation,
     };
-  }, [level, large, figure.x, figure.z, rotation]);
+  }, [level, large, fx, fz, rotation]);
 
   // The plan does not change while walking: its paths are built once per level.
   const shapes = useMemo(
@@ -220,10 +238,12 @@ export function Minimap({
             r={(large ? 1.6 : 3) * metre}
           />
         ))}
-        <g className="map-figure" data-x={figure.x.toFixed(2)} data-z={figure.z.toFixed(2)}>
-          <path className="map-cone" d={cone(figure, (large ? 9 : 22) * metre)} />
-          <circle cx={figure.x} cy={figure.z} r={(large ? 1.8 : 4) * metre} />
-        </g>
+        {figure && (
+          <g className="map-figure" data-x={figure.x.toFixed(2)} data-z={figure.z.toFixed(2)}>
+            <path className="map-cone" d={cone(figure, (large ? 9 : 22) * metre)} />
+            <circle cx={figure.x} cy={figure.z} r={(large ? 1.8 : 4) * metre} />
+          </g>
+        )}
       </g>
       <g className="map-north" transform={`translate(${MAP_SIZE / 2 - 11} ${-MAP_SIZE / 2 + 11})`}>
         <path d="M0 -6L3 3L0 1L-3 3Z" transform={`rotate(${northAngle.toFixed(1)})`} />
@@ -239,9 +259,15 @@ export function Minimap({
     </svg>
   );
 
-  const label = `Map of ${level.name}${where ? `, in ${where}` : ''}`;
+  const label = `${overview ? 'Floor overview' : 'Map'} of ${level.name}${where ? `, in ${where}` : ''}`;
+  // The frame (sakuga-map, §5.8): small in its corner, large over the view; it springs between the two.
+  const framed = (content: ReactNode) => (
+    <SkMap className="walk-map-frame" large={large} hostRef={setFrame}>
+      {content}
+    </SkMap>
+  );
   if (!large) {
-    return (
+    return framed(
       <button
         type="button"
         className="walk-map"
@@ -249,11 +275,12 @@ export function Minimap({
         onClick={() => setLarge(true)}
       >
         {map}
-      </button>
+      </button>,
     );
   }
 
   const shrink = () => {
+    if (overview) return overview.onClose();
     setLarge(false);
     setPlacing(false);
     setFrozen(undefined);
@@ -263,43 +290,48 @@ export function Minimap({
     if (!placing || !onPlace) return shrink();
     const at = screenToMap(e.currentTarget.getBoundingClientRect(), e.clientX, e.clientY);
     const point = at && fromMap(view, at);
-    if (point && onPlace(point, level.levelId)) shrink();
-    else setRefused(true);
+    if (point && onPlace(point, level.levelId)) {
+      // ポン where the figure was put, as the map goes back to its corner.
+      mapPlaced(frame, e.pageX, e.pageY);
+      shrink();
+    } else setRefused(true);
   };
-  return (
+  return framed(
     <section
       className="walk-map-large"
-      aria-label="Map"
+      aria-label={overview ? 'Floor overview' : 'Map'}
       onKeyDown={(e) => {
         if (e.key === 'Escape') shrink();
       }}
     >
       <div className="walk-map-head">
         <strong>{level.name}</strong>
-        <div className="segmented" role="radiogroup" aria-label="Map orientation">
-          {(
-            [
-              ['heading', '⬆ Heading'],
-              ['north', 'N North'],
-            ] as const
-          ).map(([orientation, text]) => (
-            <button
-              key={orientation}
-              type="button"
-              role="radio"
-              aria-checked={settings.orientation === orientation}
-              onClick={() => {
-                change({ orientation });
-                // Picking a spot: turn once to the chosen orientation, then stand still again.
-                if (frozen !== undefined) {
-                  setFrozen(mapRotation(orientation, figure.yaw, northBearing));
-                }
-              }}
-            >
-              {text}
-            </button>
-          ))}
-        </div>
+        {!overview && (
+          <div className="segmented" role="radiogroup" aria-label="Map orientation">
+            {(
+              [
+                ['heading', '⬆ Heading'],
+                ['north', 'N North'],
+              ] as const
+            ).map(([orientation, text]) => (
+              <button
+                key={orientation}
+                type="button"
+                role="radio"
+                aria-checked={settings.orientation === orientation}
+                onClick={() => {
+                  change({ orientation });
+                  // Picking a spot: turn once to the chosen orientation, then stand still again.
+                  if (frozen !== undefined) {
+                    setFrozen(mapRotation(orientation, figure?.yaw ?? 0, northBearing));
+                  }
+                }}
+              >
+                {text}
+              </button>
+            ))}
+          </div>
+        )}
         <button
           type="button"
           aria-pressed={settings.photos}
@@ -332,7 +364,9 @@ export function Minimap({
           ? 'The figure cannot stand there: tap a free spot on a floor.'
           : placing
             ? 'Tap the spot to put the figure there.'
-            : 'Tap the map to make it small again.'}
+            : overview
+              ? 'The level from above, north up. Tap the map to close it.'
+              : 'Tap the map to make it small again.'}
       </p>
       <div
         className="walk-map-area"
@@ -342,6 +376,6 @@ export function Minimap({
       >
         {map}
       </div>
-    </section>
+    </section>,
   );
 }

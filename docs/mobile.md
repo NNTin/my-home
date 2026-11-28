@@ -38,6 +38,8 @@ photo requests; pressed again while the photos show, it closes the sheet) and **
 ## The desktop
 
 The compass is at the upper right (the orientation area, HUD v2 #202), as on a phone; the surfaces open below it.
+Under the compass, **Floor overview** opens the level in view from above, north up (the walking figure is never
+moved): on a desktop as the open surface, on a phone at the foot of the view above the tab bar.
 
 Full-bleed at rest: the mode, **Walk** and the level switcher at the upper left; **Views**, **Edit** and **Tools**
 at the lower right, clear controls on the scene (`HudCorners.tsx`). The corners take no input themselves, so drags,

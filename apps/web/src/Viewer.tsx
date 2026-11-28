@@ -61,6 +61,8 @@ import { EditBadge } from './editMode/EditToggle';
 import { useEditMode } from './editMode/editMode';
 import { HudCorners, type Surface } from './overlay/HudCorners';
 import { SelectionLabel } from './overlay/SelectionLabel';
+import { SkIconButton } from './hud/SkIconButton';
+import { Minimap } from './walk/Minimap';
 import { openingSides, roomFloorAt, roomFocus } from './placements/rooms';
 import {
   FurniturePanel,
@@ -274,6 +276,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   );
   // The phone's Tools menu, over the stage tools.
   const [phoneTools, setPhoneTools] = useState(false);
+  // The phone's floor overview (HUD v2 #202); the desktop's is the surface `map`.
+  const [phoneMap, setPhoneMap] = useState(false);
   const [photoFilters, setPhotoFilters] = useState(NO_FILTERS);
   const [photoId, setPhotoId] = useState<string>();
   const [viewingPhoto, setViewingPhoto] = useState(false);
@@ -908,11 +912,13 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
         ? '.stage-tools .hud-tools'
         : shown === 'views'
           ? '.hud-views'
-          : shown === 'furniture'
-            ? document.querySelector('.selection-label')
-              ? '.selection-label'
-              : '.hud-bottom-right .edit-toggle'
-            : '.hud-tools';
+          : shown === 'map'
+            ? '.map-entry'
+            : shown === 'furniture'
+              ? document.querySelector('.selection-label')
+                ? '.selection-label'
+                : '.hud-bottom-right .edit-toggle'
+              : '.hud-tools';
       if (mobile) setPhoneTools(false);
       else {
         closePhotos();
@@ -926,6 +932,26 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     window.addEventListener('keydown', listener);
     return () => window.removeEventListener('keydown', listener);
   }, []);
+  // Orbit's floor overview (HUD v2 #202): the level in view from above, north up; it never moves the walking figure.
+  const overviewOpen = mobile ? phoneMap : shown === 'map';
+  const closeOverview = () => {
+    if (mobile) setPhoneMap(false);
+    else setSurface(undefined);
+    document.querySelector<HTMLElement>('.map-entry')?.focus();
+  };
+  const overviewMap = overviewOpen && level && mapLevels.has(level.id) && (
+    <div className="orbit-map-slot">
+      <Minimap
+        overview={{ levelId: level.id, onClose: closeOverview }}
+        levels={mapLevels}
+        groundLevelId={ground}
+        northBearing={northBearing}
+        roomId={undefined}
+        requests={[]}
+        photos={mapPhotos}
+      />
+    </div>
+  );
   const toolsMenu = (
     <ToolsMenu
       {...controls}
@@ -1178,6 +1204,21 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
             />
           )}
           {!walking && <EditBadge />}
+          {!walking && (
+            <SkIconButton
+              className="map-entry"
+              size="compact"
+              appearance="clear"
+              backing
+              icon="map"
+              label="Floor overview"
+              pressed={overviewOpen}
+              onClick={() =>
+                mobile ? (phoneMap ? closeOverview() : setPhoneMap(true)) : toggleSurface('map')
+              }
+            />
+          )}
+          {!walking && overviewMap}
           {viewed && overlay.on && (
             <img
               className="photo-overlay"
@@ -1289,7 +1330,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
                 onSurface={toggleSurface}
               />
               {/* The one open surface, at the right (§ Primary): each is a paper panel of its own. */}
-              {shown && (
+              {shown && shown !== 'map' && (
                 <div className="hud-surface">
                   {shown === 'photos' ? (
                     photosPanel
