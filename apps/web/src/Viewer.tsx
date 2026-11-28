@@ -55,7 +55,7 @@ import {
   type EditorSettings,
 } from './editor/operations';
 import { roomAt } from './editor/placement';
-import { shortcutFor } from './editor/shortcuts';
+import { actionFor, chordOf, keptByTarget, type ActionId } from './keys/actions';
 import { rotationFromDrag } from './editor/snapping';
 import { EditBadge } from './editMode/EditToggle';
 import { useEditMode } from './editMode/editMode';
@@ -276,6 +276,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   );
   // The phone's Tools menu, over the stage tools.
   const [phoneTools, setPhoneTools] = useState(false);
+  // `?` asked for the keys: Tools opens with the help unfolded (#204).
+  const [helpAsked, setHelpAsked] = useState(0);
   // The phone's floor overview (HUD v2 #202); the desktop's is the surface `map`.
   const [phoneMap, setPhoneMap] = useState(false);
   const [photoFilters, setPhotoFilters] = useState(NO_FILTERS);
@@ -729,32 +731,6 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     },
   };
 
-  // Keyboard shortcuts (see editor/shortcuts.ts).
-  const onKey = (e: KeyboardEvent) => {
-    // While walking the keys steer the figure; the furniture editor is put away. In view mode
-    // only deselecting works.
-    const action = walking ? undefined : shortcutFor(e);
-    if (!action || (!editing && action !== 'deselect')) return;
-    if (action === 'undo' || action === 'redo' || action === 'duplicate') e.preventDefault();
-    if (action === 'undo') dispatch({ type: 'undo' });
-    else if (action === 'redo') dispatch({ type: 'redo' });
-    else if (action === 'deselect') {
-      setSelectedPieceId(undefined);
-      setSelectedRoomId(undefined);
-      dispatch({ type: 'select' });
-    } else if (action === 'rotate') commands.rotate(1);
-    else if (action === 'rotate-back') commands.rotate(-1);
-    else if (action === 'duplicate') commands.duplicate();
-    else if (action === 'delete') {
-      if (selectedItem) e.preventDefault();
-      commands.remove();
-    }
-  };
-  useEffect(() => {
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  });
-
   const selected: SelectedInfo | undefined = selectedItem && {
     name: nameOf(selectedItem),
     typeName: typeNameOf(selectedItem),
@@ -901,34 +877,116 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
     closePhotos();
     setSurface(shown === next ? undefined : next);
   };
-  // Escape closes the open surface (the phone's Tools menu) and gives the focus back to what opened it. One
-  // listener for the viewer's life, calling the latest: Escape also deselects, and that re-render must not take
-  // this listener off the window in the middle of the same event.
-  const onEscape = useRef<(e: KeyboardEvent) => void>(undefined);
-  useEffect(() => {
-    onEscape.current = (e) => {
-      if (e.key !== 'Escape' || (mobile ? !phoneTools : !shown)) return;
-      const trigger = mobile
-        ? '.stage-tools .hud-tools'
-        : shown === 'views'
-          ? '.hud-views'
-          : shown === 'map'
-            ? '.map-entry'
-            : shown === 'furniture'
-              ? document.querySelector('.selection-label')
-                ? '.selection-label'
-                : '.hud-bottom-right .edit-toggle'
-              : '.hud-tools';
-      if (mobile) setPhoneTools(false);
-      else {
-        closePhotos();
-        setSurface(undefined);
+  // The viewer's keys (HUD v2 #204, docs/design/hud-v2/hotkeys.md): one action list (keys/actions.ts), each action run
+  // as its visible control runs it, a key consumed only by an action that is available. One listener for the viewer's
+  // life calling the latest: an action's re-render must not take it off the window in the middle of the same event.
+  const closeSurface = () => {
+    const trigger = mobile
+      ? phoneMap
+        ? '.map-entry'
+        : '.stage-tools .hud-tools'
+      : shown === 'views'
+        ? '.hud-views'
+        : shown === 'map'
+          ? '.map-entry'
+          : shown === 'furniture'
+            ? document.querySelector('.selection-label')
+              ? '.selection-label'
+              : '.hud-bottom-right .edit-toggle'
+            : '.hud-tools';
+    if (mobile) {
+      setPhoneTools(false);
+      setPhoneMap(false);
+    } else {
+      closePhotos();
+      setSurface(undefined);
+    }
+    document.querySelector<HTMLElement>(trigger)?.focus();
+  };
+  const run = (id: ActionId): boolean => {
+    const editingItem = editing && selectedItem !== undefined;
+    switch (id) {
+      case 'escape': {
+        // One layer per press: an open surface, then a task (render mode has its own), then the selection, then Walk.
+        const bigMap = document.querySelector<HTMLElement>(
+          '.walk-map-large [aria-label="Close the map"]',
+        );
+        if (bigMap) return (bigMap.click(), true);
+        if (mobile ? phoneTools || phoneMap : shown) return (closeSurface(), true);
+        if (rendering) return false;
+        if (
+          editor.selectedId !== undefined ||
+          selectedPieceId !== undefined ||
+          selectedRoomId !== undefined
+        ) {
+          setSelectedPieceId(undefined);
+          setSelectedRoomId(undefined);
+          dispatch({ type: 'select' });
+          return true;
+        }
+        if (walking) return (leaveWalk(), true);
+        return false;
       }
-      document.querySelector<HTMLElement>(trigger)?.focus();
+      case 'help':
+        setHelpAsked((n) => n + 1);
+        if (mobile) setPhoneTools(true);
+        else {
+          closePhotos();
+          setSurface('tools');
+        }
+        return true;
+      case 'views':
+        if (mobile) {
+          showPanel('view');
+          if (snap === 'collapsed') setSnap('half');
+        } else toggleSurface('views');
+        return true;
+      case 'map': {
+        if (walking) {
+          const map = document.querySelector<HTMLElement>(
+            '.walk-map-large [aria-label="Close the map"], .walk-map',
+          );
+          return map ? (map.click(), true) : false;
+        }
+        if (mobile) setPhoneMap((open) => !open);
+        else toggleSurface('map');
+        return true;
+      }
+      case 'north': {
+        const compass = document.querySelector<HTMLElement>('.compass');
+        return compass ? (compass.click(), true) : false;
+      }
+      case 'walk':
+        controls.onWalk();
+        return true;
+      case 'rotate':
+        return editingItem && (commands.rotate(1), true);
+      case 'rotate-back':
+        return editingItem && (commands.rotate(-1), true);
+      case 'duplicate':
+        return editingItem && (commands.duplicate(), true);
+      case 'delete':
+        return editingItem && (commands.remove(), true);
+      case 'undo':
+        return editing && canUndo(editor) && (dispatch({ type: 'undo' }), true);
+      case 'redo':
+        return editing && canRedo(editor) && (dispatch({ type: 'redo' }), true);
+      default:
+        return false;
+    }
+  };
+  const onKey = useRef<(e: KeyboardEvent) => void>(undefined);
+  useEffect(() => {
+    onKey.current = (e) => {
+      // A field, editable text, composition or a key the focused control took keep their keys.
+      if (keptByTarget(e)) return;
+      const chord = chordOf(e);
+      const action = chord && actionFor(chord, walking ? 'walk' : editing ? 'edit' : 'orbit');
+      if (action && run(action.id)) e.preventDefault();
     };
   });
   useEffect(() => {
-    const listener = (e: KeyboardEvent) => onEscape.current?.(e);
+    const listener = (e: KeyboardEvent) => onKey.current?.(e);
     window.addEventListener('keydown', listener);
     return () => window.removeEventListener('keydown', listener);
   }, []);
@@ -964,6 +1022,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
       {...controls}
       status={stageStatus}
       touch={mobile}
+      helpAsked={helpAsked}
       className={mobile ? 'tools-popover' : undefined}
       // On a phone, the photos are open while the sheet shows them.
       photosOpen={mobile ? panel === 'photos' && snap !== 'collapsed' : photosOpen}

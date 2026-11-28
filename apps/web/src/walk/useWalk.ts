@@ -18,6 +18,7 @@ import {
   type WalkInput,
 } from './figure';
 import { easeAngle, type FollowTarget } from './orientation';
+import { holdKeys } from '../keys/actions';
 import type { WalkWorld } from './world';
 
 export interface Walk {
@@ -63,18 +64,12 @@ export function useFigure(walk: Pick<Walk, 'published' | 'subscribe'>): Figure {
 const MAX_FRAME_SECONDS = 0.25;
 /** How often the React copy of the figure is refreshed while it moves. */
 const PUBLISH_INTERVAL_MS = 100;
-const WALK_KEYS = new Set([
-  'w',
-  'a',
-  's',
-  'd',
-  'q',
-  'e',
-  'arrowup',
-  'arrowdown',
-  'arrowleft',
-  'arrowright',
-]);
+/** The held movement keys, from the one action list (keys/actions.ts, HUD v2 #204). */
+const WALK_KEYS = new Set(
+  (['forward', 'back', 'strafe-left', 'strafe-right', 'turn-left', 'turn-right'] as const).flatMap(
+    holdKeys,
+  ),
+);
 
 const isTyping = (target: EventTarget | null) =>
   target instanceof HTMLElement &&
@@ -152,7 +147,8 @@ export function useWalk(world: WalkWorld, start: Figure, active: boolean): Walk 
 
     const down = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
-      if (!WALK_KEYS.has(key) || e.ctrlKey || e.metaKey || e.altKey || isTyping(e.target)) return;
+      if (!WALK_KEYS.has(key) || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
+      if (isTyping(e.composedPath?.()[0] ?? e.target)) return;
       keys.current.add(key);
       tapped.current.add(key);
       // Arrow keys would scroll the page or move a focused radio button.
@@ -163,14 +159,21 @@ export function useWalk(world: WalkWorld, start: Figure, active: boolean): Walk 
       keys.current.clear();
       pad.current = NO_INPUT;
     };
+    // Held input lets go when the page is hidden, the window loses the focus, or a field takes the keys (#204).
+    const hidden = () => document.hidden && release();
+    const field = (e: FocusEvent) => isTyping(e.target) && release();
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
     window.addEventListener('blur', release);
+    window.addEventListener('focusin', field);
+    document.addEventListener('visibilitychange', hidden);
     return () => {
       cancelAnimationFrame(frame);
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
       window.removeEventListener('blur', release);
+      window.removeEventListener('focusin', field);
+      document.removeEventListener('visibilitychange', hidden);
       release();
     };
   }, [active]);

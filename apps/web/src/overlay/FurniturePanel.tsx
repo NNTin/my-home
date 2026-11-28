@@ -290,7 +290,7 @@ export function FurniturePanel(props: Props) {
                   <button type="button" onClick={() => props.onRotate(-1)} title="Shift+R">
                     Rotate ⟳
                   </button>
-                  <button type="button" onClick={props.onDuplicate} title="Ctrl+D">
+                  <button type="button" onClick={props.onDuplicate} title="Shift+D">
                     Duplicate
                   </button>
                   <button type="button" onClick={props.onDelete} title="Delete">

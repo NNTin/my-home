@@ -158,7 +158,10 @@ describe('furniture editor', () => {
     key('r');
     expect(furniture()[0]!.rotationY).toBeCloseTo(Math.PI / 2);
     await waitSaved();
-    key('d', { ctrlKey: true });
+    // Ctrl+D is the browser's (a bookmark): it duplicates nothing and is not taken. Shift+D duplicates (#204).
+    expect(fireEvent.keyDown(window, { key: 'd', ctrlKey: true })).toBe(true);
+    expect(furniture()).toHaveLength(1);
+    key('D', { shiftKey: true });
     expect(furniture()).toHaveLength(2);
     expect(furniture().some((f) => f.colliding)).toBe(false);
     await waitSaved();
