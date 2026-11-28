@@ -193,7 +193,9 @@ export function FurniturePanel(props: Props) {
   const selection = selected ? (
     <div className="selection" aria-label="Selected item">
       <p>
-        {!compact && (
+        {compact ? (
+          selected.typeName !== selected.name && `${selected.typeName} `
+        ) : (
           <>
             <strong>{selected.name}</strong> ({selected.typeName}){' '}
           </>
