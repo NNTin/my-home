@@ -197,7 +197,7 @@ export function UsePhotos({
       <SkButton
         size="compact"
         variant="secondary"
-        pressed={picking}
+        expanded={picking}
         onClick={() => setPicking((p) => !p)}
       >
         Link a photo…

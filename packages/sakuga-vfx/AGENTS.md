@@ -148,7 +148,8 @@ none)`, and `BASE_CSS`'s `:host` resets the variable so it never reaches another
 - `slider`: its シュッ throttle reads `fx.now`.
 - `button` (PR 3): `size="compact"` (13 px, the compact line, radius and shadow, `--sk-fx-scale: .7`, a 44 px hit area
   as `.btn::before` inside the shadow root), `href` (renders an `<a>`, no `href` while disabled), `pressed`
-  (`aria-pressed`, `.on`: an ink fill). `sync()` applies the attributes without effects; a disabled link carries
+  (`aria-pressed`, `.on`: an ink fill), `expanded` (#168 PR 7/3: a disclosure, `aria-expanded` only; the section it
+  opens shows the state). `sync()` applies the attributes without effects; a disabled link carries
   `disabled` as a plain property so `squashy()` and the effects skip it.
 - `toggle` (PR 4): `size="compact"` (the drawing at 0.6, a 44 px hit area), frames from URLs
   (`SakugaToggle.frames = { rest, all }`, `warm()`; never all of them while calm), the flip drawn on the page's

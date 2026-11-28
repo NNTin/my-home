@@ -13,6 +13,14 @@ import {
   type MinimapLevel,
   type MinimapOrientation,
 } from './minimap';
+import { SkButton } from '../hud/SkButton';
+import { SkSegmented } from '../hud/SkSegmented';
+
+/** Heading-up or north-up (§4.5: a sakuga-segmented). */
+const ORIENTATIONS = [
+  { value: 'heading', label: '⬆ Heading', name: 'Heading up' },
+  { value: 'north', label: 'N North', name: 'North up' },
+] as const;
 
 /** A spot to show on the map: a photo request's target or a photo's camera. */
 export interface MapSpot {
@@ -311,44 +319,35 @@ export function Minimap({
       <div className="walk-map-head">
         <strong>{level.name}</strong>
         {!overview && (
-          <div className="segmented" role="radiogroup" aria-label="Map orientation">
-            {(
-              [
-                ['heading', '⬆ Heading'],
-                ['north', 'N North'],
-              ] as const
-            ).map(([orientation, text]) => (
-              <button
-                key={orientation}
-                type="button"
-                role="radio"
-                aria-checked={settings.orientation === orientation}
-                onClick={() => {
-                  change({ orientation });
-                  // Picking a spot: turn once to the chosen orientation, then stand still again.
-                  if (frozen !== undefined) {
-                    setFrozen(mapRotation(orientation, figure?.yaw ?? 0, northBearing));
-                  }
-                }}
-              >
-                {text}
-              </button>
-            ))}
-          </div>
+          <SkSegmented
+            label="Map orientation"
+            size="compact"
+            options={ORIENTATIONS}
+            value={settings.orientation}
+            onChange={(orientation) => {
+              change({ orientation });
+              // Picking a spot: turn once to the chosen orientation, then stand still again.
+              if (frozen !== undefined) {
+                setFrozen(mapRotation(orientation, figure?.yaw ?? 0, northBearing));
+              }
+            }}
+          />
         )}
-        <button
-          type="button"
-          aria-pressed={settings.photos}
+        <SkButton
+          size="compact"
+          variant="secondary"
+          pressed={settings.photos}
           aria-label="Photos on the map"
           title="Show the cameras of the photos of this level"
           onClick={() => change({ photos: !settings.photos })}
         >
           📷
-        </button>
+        </SkButton>
         {onPlace && (
-          <button
-            type="button"
-            aria-pressed={placing}
+          <SkButton
+            size="compact"
+            variant="secondary"
+            pressed={placing}
             title="Tap a spot on the map to put the figure there"
             onClick={() => {
               setPlacing(!placing);
@@ -357,11 +356,11 @@ export function Minimap({
             }}
           >
             📍 Move
-          </button>
+          </SkButton>
         )}
-        <button type="button" className="primary" aria-label="Close the map" onClick={shrink}>
+        <SkButton size="compact" aria-label="Close the map" onClick={shrink}>
           ✕
-        </button>
+        </SkButton>
       </div>
       <p className="hint" role="status">
         {refused

@@ -42,7 +42,7 @@ class Plain extends HTMLElement {
 }
 
 class FallbackButton extends Plain {
-  static override observedAttributes = ['disabled', 'label', 'pressed', 'href'];
+  static override observedAttributes = ['disabled', 'label', 'pressed', 'expanded', 'href'];
   override role_ = 'button';
   get pressed() {
     const p = this.getAttribute('pressed');
@@ -76,6 +76,10 @@ class FallbackButton extends Plain {
     const pressed = this.getAttribute('pressed');
     if (pressed !== null) this.setAttribute('aria-pressed', String(pressed !== 'false'));
     else this.removeAttribute('aria-pressed');
+    // A disclosure: aria-expanded, as the element (#168 PR 7/3).
+    const expanded = this.getAttribute('expanded');
+    if (expanded !== null) this.setAttribute('aria-expanded', String(expanded !== 'false'));
+    else this.removeAttribute('aria-expanded');
   }
   done() {}
   impact() {}

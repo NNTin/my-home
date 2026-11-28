@@ -1,12 +1,5 @@
 import type { PhotoRequest, PhotoSensors } from '@my-home/shared';
-import {
-  createElement,
-  useEffect,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type PointerEvent,
-} from 'react';
+import { createElement, useEffect, useRef, useState, type PointerEvent } from 'react';
 import type { PhotosApi } from '../api';
 import { activeRequest, openRequests } from '../photos/requests';
 import { CameraView, hasInPageCamera } from './CameraView';
@@ -23,6 +16,16 @@ import { compassStatusText, storedCameraMode, useCompass, type CameraMode } from
 import { useFigure, type Walk } from './useWalk';
 import { saveWalkSession, type WalkSession } from './walkSession';
 import { yawTowards } from './world';
+import { SkButton } from '../hud/SkButton';
+import { SkField } from '../hud/SkField';
+import { SkIconButton } from '../hud/SkIconButton';
+import { SkSegmented } from '../hud/SkSegmented';
+
+/** Sensors or Manual (§4.5: a sakuga-segmented); plain words, which the element measures before an emoji's font. */
+const CAMERA_MODES = [
+  { value: 'sensors', label: 'Sensors' },
+  { value: 'manual', label: 'Manual' },
+] as const;
 
 /** A photo just taken with the phone's camera app: its focal length is this phone's. */
 const CAMERA_APP: CameraHints = { source: 'camera-app' };
@@ -290,16 +293,6 @@ export function WalkHud({
     compass.setMode(mode);
     if (mode === 'manual') setCalibrating(false);
   };
-  // A radio group moves with the arrow keys and has one tab stop.
-  const modeKey = (e: KeyboardEvent<HTMLDivElement>) => {
-    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
-    if (step === undefined) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const mode: CameraMode = sensorMode ? 'manual' : 'sensors';
-    chooseMode(mode);
-    e.currentTarget.querySelector<HTMLButtonElement>(`[data-mode="${mode}"]`)?.focus();
-  };
   const accuracy = accuracyLabel(compass.accuracy);
   const offset = `${compass.calibration > 0 ? '+' : ''}${compass.calibration}°`;
   const statusText = compassStatusText(compass);
@@ -377,45 +370,43 @@ export function WalkHud({
       )}
 
       <div className="walk-bar">
-        <button type="button" onClick={onExit}>
+        <SkButton size="compact" variant="secondary" onClick={onExit}>
           ✕ Exit
-        </button>
+        </SkButton>
         <span className="walk-where" role="status" aria-label="Figure location">
           {where}
         </span>
-        <button
-          type="button"
-          aria-pressed={view === 'first'}
+        <SkButton
+          size="compact"
+          variant="secondary"
+          pressed={view === 'first'}
           onClick={() => onView(view === 'first' ? 'third' : 'first')}
         >
           {view === 'first' ? 'Overview' : 'First person'}
-        </button>
+        </SkButton>
         {sensors && compass.supported && (
           <div
-            className="segmented walk-mode"
-            role="radiogroup"
-            aria-label="Camera mode"
-            onKeyDown={modeKey}
+            className="walk-mode-pick"
+            onClick={(e) => {
+              // A tap on the mode already shown is passed on too (chooseMode): the owner's choice wins over a quiet
+              // permission answer still on its way. The element only says a change: its click names the option.
+              const picked = e.nativeEvent
+                .composedPath()
+                .find(
+                  (t): t is HTMLElement =>
+                    t instanceof HTMLElement && t.dataset.value !== undefined,
+                )?.dataset.value;
+              if (picked === compass.mode) chooseMode(picked);
+            }}
           >
-            {(
-              [
-                ['sensors', '📱 Sensors', 'The phone turns and tilts the view; touch only walks'],
-                ['manual', '✋ Manual', 'Turn and tilt by hand; the motion sensors are off'],
-              ] as const
-            ).map(([mode, label, title]) => (
-              <button
-                key={mode}
-                type="button"
-                role="radio"
-                data-mode={mode}
-                aria-checked={compass.mode === mode}
-                tabIndex={compass.mode === mode ? 0 : -1}
-                title={title}
-                onClick={() => chooseMode(mode)}
-              >
-                {label}
-              </button>
-            ))}
+            <SkSegmented
+              className="walk-mode"
+              label="Camera mode"
+              size="compact"
+              options={CAMERA_MODES}
+              value={compass.mode}
+              onChange={chooseMode}
+            />
           </div>
         )}
         <span className="walk-compass" role="status" aria-label="View tilt">
@@ -438,19 +429,25 @@ export function WalkHud({
                     : '…'}
               {compass.calibration !== 0 && ` · offset ${offset}`}
             </span>
-            <button
-              type="button"
-              aria-expanded={calibrating}
+            <SkButton
+              size="compact"
+              variant="secondary"
+              expanded={calibrating}
               onClick={() => setCalibrating(!calibrating)}
             >
               Calibrate
-            </button>
+            </SkButton>
           </>
         )}
         {open.length > 0 && (
-          <button type="button" aria-expanded={listed} onClick={() => setListed(!listed)}>
+          <SkButton
+            size="compact"
+            variant="secondary"
+            expanded={listed}
+            onClick={() => setListed(!listed)}
+          >
             Requests ({open.length})
-          </button>
+          </SkButton>
         )}
         {statusText && (
           <p className="walk-notice" role="alert">
@@ -466,68 +463,75 @@ export function WalkHud({
           {/* Always in reach, whatever the rest of the sheet scrolls to. */}
           <div className="walk-calibrate-head">
             <strong>Offset {offset}</strong>
-            <button
-              type="button"
+            <SkButton
+              size="compact"
+              variant="secondary"
               onClick={compass.resetCalibration}
               disabled={compass.calibration === 0}
             >
               Reset
-            </button>
-            <button type="button" className="primary" onClick={() => setCalibrating(false)}>
+            </SkButton>
+            <SkButton size="compact" onClick={() => setCalibrating(false)}>
               Done
-            </button>
+            </SkButton>
           </div>
           <p className="hint">
             Point the phone at one of these and tap it: the view turns to match what you see.
           </p>
           <div className="capture-actions">
             {(calibrationTargets?.(figure) ?? []).slice(0, 6).map((target) => (
-              <button
+              <SkButton
+                size="compact"
+                variant="secondary"
                 key={target.id}
-                type="button"
                 disabled={!following}
                 onClick={() =>
                   compass.calibrateTo(yawTowards([target.x - figure.x, target.z - figure.z]))
                 }
               >
                 {target.label}
-              </button>
+              </SkButton>
             ))}
           </div>
           <label className="walk-declination">
             Magnetic declination (° east){' '}
-            <input
-              type="number"
-              step="0.1"
-              min={-180}
-              max={180}
-              value={declinationText}
-              onChange={(e) => {
-                setDeclinationText(e.target.value);
-                setDeclinationSaved(undefined);
-              }}
-            />
+            <SkField size="compact">
+              <input
+                type="number"
+                step="0.1"
+                min={-180}
+                max={180}
+                value={declinationText}
+                onChange={(e) => {
+                  setDeclinationText(e.target.value);
+                  setDeclinationSaved(undefined);
+                }}
+              />
+            </SkField>
           </label>{' '}
           <label className="walk-declination">
             Where it is from{' '}
-            <select
-              value={declinationSource}
-              onChange={(e) => {
-                setDeclinationSource(e.target.value as DeclinationSource);
-                setDeclinationSaved(undefined);
-              }}
-            >
-              <option value="geodata">a declination chart or model</option>
-              <option value="measured">measured on site</option>
-            </select>
+            <SkField size="compact">
+              <select
+                value={declinationSource}
+                onChange={(e) => {
+                  setDeclinationSource(e.target.value as DeclinationSource);
+                  setDeclinationSaved(undefined);
+                }}
+              >
+                <option value="geodata">a declination chart or model</option>
+                <option value="measured">measured on site</option>
+              </select>
+            </SkField>
           </label>{' '}
-          <button
-            type="button"
+          <SkButton
+            size="compact"
+            variant="secondary"
             onClick={() => void saveDeclination()}
             disabled={declinationSaved === 'saving' || declinationSaved === 'saved'}
           >
             Save
-          </button>
+          </SkButton>
           <p className="hint" role="status">
             {declinationSaved === 'saved' && 'Declination saved for this home.'}
             {declinationSaved === 'failed' && 'Could not save the declination (-180 to 180).'}
@@ -546,8 +550,9 @@ export function WalkHud({
               <p className="hint">{r.roomName ?? r.roomId ?? 'Anywhere'}</p>
               <div className="capture-actions">
                 {r.position && onGoTo && (
-                  <button
-                    type="button"
+                  <SkButton
+                    size="compact"
+                    variant="secondary"
                     onClick={() => {
                       onGoTo(r);
                       choose(r.id);
@@ -555,15 +560,16 @@ export function WalkHud({
                     }}
                   >
                     Go there
-                  </button>
+                  </SkButton>
                 )}
-                <button
-                  type="button"
-                  aria-pressed={chosenId === r.id}
+                <SkButton
+                  size="compact"
+                  variant="secondary"
+                  pressed={chosenId === r.id}
                   onClick={() => choose(chosenId === r.id ? undefined : r.id)}
                 >
                   {chosenId === r.id ? 'Answering this' : 'Answer this'}
-                </button>
+                </SkButton>
               </div>
             </li>
           ))}
@@ -608,9 +614,9 @@ export function WalkHud({
             arrive. You are back where you took it: please take it again.
             {inPage && ' The 📷 button now uses the camera inside this page, which avoids this.'}
           </p>
-          <button type="button" onClick={() => setNotice(false)}>
+          <SkButton size="compact" variant="secondary" onClick={() => setNotice(false)}>
             OK
-          </button>
+          </SkButton>
         </div>
       )}
       {viewfinder && !file && (
@@ -661,12 +667,20 @@ export function WalkHud({
           {/* Sensor mode: the phone tilts the view, so there is nothing to tilt by hand. */}
           {!sensorMode && (
             <div className="walk-tilt" role="group" aria-label="Look up and down">
-              <button type="button" aria-label="Look up" onClick={() => onLook(0, TILT_STEP)}>
-                ▲
-              </button>
-              <button type="button" aria-label="Look down" onClick={() => onLook(0, -TILT_STEP)}>
-                ▼
-              </button>
+              <SkIconButton
+                size="compact"
+                icon="up"
+                dir="up"
+                label="Look up"
+                onClick={() => onLook(0, TILT_STEP)}
+              />
+              <SkIconButton
+                size="compact"
+                icon="down"
+                dir="down"
+                label="Look down"
+                onClick={() => onLook(0, -TILT_STEP)}
+              />
             </div>
           )}
           {inPage ? (

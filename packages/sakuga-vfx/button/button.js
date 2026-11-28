@@ -6,14 +6,15 @@
 // One file, no dependencies. Load it with a script tag and use <sakuga-button>Confirm</sakuga-button>.
 // It fires an ordinary click. With type="submit" inside a form, it submits the form.
 // Made here (my-home, #168): size="compact" (smaller, its effects at 0.7, a 44 px hit area), href (a real link) and pressed
-// (a toggle button: aria-pressed and an ink fill); label names it when the visible text is shorter than its name.
+// (a toggle button: aria-pressed and an ink fill), expanded (a disclosure: aria-expanded, no look of its own); label names it
+// when the visible text is shorter than its name.
 (() => {
 function component(fx) {
 const { rnd, later, at, esc, squashy, Spring, ticks, wob, lines, burst, shards, puff, sfx, donut, kira } = fx;
 
 class SakugaButton extends fx.Base {
   static delegates = true;
-  static observedAttributes = ['disabled', 'pressed', 'href', 'label'];
+  static observedAttributes = ['disabled', 'pressed', 'expanded', 'href', 'label'];
   static css = `
     .btn { position: relative; padding: 14px 30px; border: var(--sk-bw) solid var(--sk-btn-line); border-radius: var(--sk-r); background: var(--sk-card); color: var(--sk-ink); font: italic 800 19px/1.1 "Avenir Next", "Nunito", -apple-system, "Segoe UI", system-ui, sans-serif; letter-spacing: -.01em; box-shadow: var(--sk-btn-sh); cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: manipulation; will-change: transform; }
     .btn.alt { border-color: var(--sk-alt-line); box-shadow: var(--sk-alt-sh); }
@@ -53,6 +54,9 @@ class SakugaButton extends fx.Base {
     b.disabled = this.disabled;   // on a link, a plain property: squashy() and the effects read it
     if (this.hasAttribute('pressed')) b.setAttribute('aria-pressed', String(this.pressed)); else b.removeAttribute('aria-pressed');
     b.classList.toggle('on', this.pressed);
+    // expanded="true"/"false": a disclosure (it opens a section): aria-expanded, no look of its own (the section shows it)
+    const x = this.getAttribute('expanded');
+    if (x === null) b.removeAttribute('aria-expanded'); else b.setAttribute('aria-expanded', String(x !== 'false'));
   }
 
   render() {

@@ -12,6 +12,7 @@ import { SkFold } from './SkFold';
 import { SkIconButton } from './SkIconButton';
 import { SkInput } from './SkInput';
 import { SkPanel } from './SkPanel';
+import { SkSegmented } from './SkSegmented';
 import { SkSlider } from './SkSlider';
 import { SkTabs } from './SkTabs';
 import { SkNotice, SkToast, type SkToastHandle } from './SkToast';
@@ -350,5 +351,46 @@ describe('the containers (HUD v2, #200)', () => {
     expect(armchair).toHaveAttribute('aria-pressed', 'false');
     fireEvent.click(armchair);
     expect(onClick).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('SkSegmented: the app owns the choice (#168 PR 7/3)', () => {
+  it('goes back to the app’s value when the app does not take a pick', async () => {
+    const onChange = vi.fn();
+    render(
+      <SkSegmented
+        label="Camera mode"
+        options={[
+          { value: 'sensors', label: 'Sensors' },
+          { value: 'manual', label: 'Manual' },
+        ]}
+        value="manual"
+        onChange={onChange}
+      />,
+    );
+    fireEvent.click(screen.getByRole('radio', { name: 'Sensors' }));
+    expect(onChange).toHaveBeenCalledWith('sensors');
+    // The app kept Manual (a permission refused): the switch shows it again.
+    await act(() => new Promise((r) => setTimeout(r, 0)));
+    expect(screen.getByRole('radio', { name: 'Manual' })).toHaveAttribute('aria-checked', 'true');
+  });
+});
+
+describe('SkButton as a disclosure (#168 PR 7/3)', () => {
+  it('says aria-expanded, not aria-pressed', () => {
+    const { rerender } = render(
+      <SkButton expanded={false} onClick={() => {}}>
+        More
+      </SkButton>,
+    );
+    const button = screen.getByRole('button', { name: 'More' });
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+    expect(button).not.toHaveAttribute('aria-pressed');
+    rerender(
+      <SkButton expanded onClick={() => {}}>
+        More
+      </SkButton>,
+    );
+    expect(button).toHaveAttribute('aria-expanded', 'true');
   });
 });
