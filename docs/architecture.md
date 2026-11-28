@@ -94,7 +94,8 @@ And for the production files of `src` (test files are held to rules 1 to 3 only:
 5. **It imports only lower layers.** `import type` and `export … from` count.
 6. **`import()` only of a lazy entry**, and `typeof import()` likewise.
 7. **No static import of a lazy entry, and none from a folder that is not lazy into a lazy one.** It would put
-   the chunk into the main one. `import type` is allowed where the layers allow it.
+   the chunk into the main one. `import type` is allowed where the layers allow it: the whole
+   declaration, since `import { type A }` keeps the import itself (`verbatimModuleSyntax`).
 
 `import-layers/no-cycle`:
 

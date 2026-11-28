@@ -136,6 +136,14 @@ const BROKEN = [
     expect: [['apps/web/src/main.tsx', ORDER, 'lazyFolder']],
   },
   {
+    name: 'a type named inside the braces: the import itself stays (verbatimModuleSyntax)',
+    files: {
+      'apps/web/src/main.tsx':
+        "import { type PageProps } from './page/types';\nexport const props: PageProps = { n: 1 };",
+    },
+    expect: [['apps/web/src/main.tsx', ORDER, 'lazyFolder']],
+  },
+  {
     name: 'a relative import that leaves its package',
     files: {
       'apps/web/src/mid/b.ts': "export { config as b } from '../../../api/src/core/config';",

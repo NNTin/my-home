@@ -174,11 +174,10 @@ export function importLayers({ repo, packages, sharedEntries, testData }) {
           });
       };
 
-      const typeOnly = (node) =>
-        node.importKind === 'type' ||
-        node.exportKind === 'type' ||
-        (node.specifiers?.length > 0 &&
-          node.specifiers.every((s) => s.importKind === 'type' || s.exportKind === 'type'));
+      // Only `import type …` and `export type …` are erased. With `verbatimModuleSyntax`
+      // (tsconfig.base.json), `import { type A } from './a'` stays as `import './a'`: the module
+      // is loaded, so it is an import of code.
+      const typeOnly = (node) => node.importKind === 'type' || node.exportKind === 'type';
 
       return {
         Program(node) {
