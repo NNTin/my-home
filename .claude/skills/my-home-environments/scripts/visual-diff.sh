@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# visual-diff.sh <staging|production> shoot --out DIR [--only VIEW]...
+# visual-diff.sh <staging|production> shoot --out DIR [--only VIEW]... [--shard I/N]
 # visual-diff.sh compare DIR_A DIR_B
 #
 # Pixel-exact visual regression of the 3D view, read-only. `shoot` takes canvas-only screenshots
 # (screenshot.sh --canvas) of a fixed set of views and writes DIR/<view>.png plus DIR/manifest.json (deployed
-# commit, view arguments). `--only` shoots just the named views. Desktop 1440x900: default, the cutaway to each
+# commit, view arguments). `--only` shoots just the named views, `--shard I/N` one shard of them (parts.mjs). Desktop 1440x900: default, the cutaway to each
 # level, the default view orbited 180 degrees, a steep view; phone 390x844: default. Those pin ?quality=fast.
 # The tiers (docs/design/realistic-render.md §11.3): default-beautiful (desktop) and phone-auto (the refined
 # frame). The named views (§7.1), each in fast and in beautiful: cutaway-fast and cutaway-beautiful
@@ -83,12 +83,13 @@ deployed_commit() {
 }
 
 shoot() {
-  local out='' only=()
+  local out='' only=() shard=''
   while [[ $# -gt 0 ]]; do
     [[ $# -ge 2 ]] || usage
     case "$1" in
       --out) out=$2 ;;
       --only) only+=("$2") ;;
+      --shard) shard=$2 ;;
       *) usage ;;
     esac
     shift 2
@@ -103,6 +104,14 @@ shoot() {
     done
   else
     mapfile -t selected < <(views)
+  fi
+  if [[ -n $shard ]]; then
+    # Balanced by the measured time of each view (shard-weights.json); every view is in one shard.
+    local all=${#selected[@]}
+    mapfile -t selected < <(node "$script_dir/parts.mjs" shard visual-diff "$shard" "${selected[@]}") ||
+      die "--shard must be I/N with 1 <= I <= N"
+    [[ ${#selected[@]} -gt 0 ]] || die "shard $shard has no view"
+    echo "shard  visual-diff $shard: ${#selected[@]} of $all parts: $(IFS=,; echo "${selected[*]}" | sed 's/,/, /g')"
   fi
 
   local before after manifest='[]' log

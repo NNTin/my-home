@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# mobile-smoke.sh <staging|production> [--out file.png] [--home ID]
+# mobile-smoke.sh <staging|production> [--out file.png] [--home ID] [--shard I/N]
 #
 # Smoke test of the phone layout (390x844 and 844x390, touch) in headless Chromium: the top bar and the
 # collapsed sheet leave the 3D view free, a tap opens and closes each panel, the level switcher cuts the
@@ -12,25 +12,27 @@
 # Read-only: every placement write is answered inside the browser (as the api would), every other write
 # (photos, photo requests, settings, the home) is refused there. Uses the Playwright set-up of
 # screenshot.sh. --home picks a home by id (default: the first one).
+# --shard I/N runs one of CI's shards of its parts (parts.mjs, shard-weights.json); all of them without.
 set -euo pipefail
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=lib.sh
 source "$script_dir/lib.sh"
 
 usage() {
-  sed -n '2,14s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,15s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 
 [[ $# -ge 1 ]] || usage
 resolve_env "$1"
 shift
-out='' home=''
+out='' home='' shard=''
 while [[ $# -gt 0 ]]; do
   [[ $# -ge 2 ]] || usage
   case "$1" in
     --out) out=$2 ;;
     --home) home=$2 ;;
+    --shard) shard=$2 ;;
     *) usage ;;
   esac
   shift 2
@@ -38,6 +40,7 @@ done
 out=${out:-${TMPDIR:-/tmp}/my-home-$SITE_ENV-mobile-$(date +%Y%m%d-%H%M%S).png}
 [[ $out == /* ]] || out="$PWD/$out"
 [[ $out == *.png ]] || die "--out must end in .png"
+[[ -z $shard || $shard =~ ^[0-9]+/[0-9]+$ ]] || die "--shard must be I/N, e.g. 2/4"
 
 # Installs the pinned Playwright and Chromium if they are missing.
 "$script_dir/screenshot.sh" --check >/dev/null
@@ -46,4 +49,4 @@ node_cmd=(node)
 command -v ao-heavy >/dev/null 2>&1 && [[ ${AO_HEAVY_ACTIVE:-} != 1 ]] && node_cmd=(ao-heavy node)
 # The run takes longer than a token is promised to live by default: ask for one that lasts.
 SITE_TOKEN_MIN_TTL=${SITE_TOKEN_MIN_TTL:-2700} \
-  "$script_dir/with-site-token.sh" "$SITE_ENV" -- "${node_cmd[@]}" "$script_dir/mobile-smoke.mjs" "$out" ${home:+"$home"}
+  SMOKE_SHARD=$shard "$script_dir/with-site-token.sh" "$SITE_ENV" -- "${node_cmd[@]}" "$script_dir/mobile-smoke.mjs" "$out" ${home:+"$home"}

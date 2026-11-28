@@ -21,6 +21,9 @@ STUB
 # A smoke prints its checks and exits as $STUB_SMOKE_EXIT says.
 cat >"$work/smoke" <<'STUB'
 #!/usr/bin/env bash
+echo "$*" >"$STUB_DIR/args"
+[[ $* != *--shard* ]] || echo "shard  mobile ${*: -1}: 2 of 7 parts: layout, views-phone"
+[[ -z ${CHECK_NAMES:-} ]] || printf 'ok\tthe view is on screen\n' >>"$CHECK_NAMES"
 echo "ok    the view is on screen"
 echo "ok    nothing is drawn while idle"
 echo "time  layout 12.5 s"
@@ -31,6 +34,7 @@ STUB
 cat >"$work/visual-diff.sh" <<'STUB'
 #!/usr/bin/env bash
 if [[ $1 != compare ]]; then
+  echo "$*" >>"$STUB_DIR/shoots"
   echo "time  default 30.0 s"
   exit 0
 fi
@@ -70,7 +74,7 @@ check() {
 run() {
   local commits=$1
   shift
-  rm -f "$work/calls" "$work/seed-calls" "$work/summary"
+  rm -f "$work/calls" "$work/seed-calls" "$work/summary" "$work/args" "$work/shoots"
   code=0
   STUB_COMMITS=$commits GITHUB_STEP_SUMMARY="$work/summary" \
     "$scripts/staging-checks.sh" "$@" --out "$work/shots" >"$work/out" 2>&1 || code=$?
@@ -123,6 +127,38 @@ check 'a smoke does not read the seed' test ! -e "$work/seed-calls"
 : >"$work/table.md"
 run 'abc abc' visual-diff abc
 check 'a comparison without a table fails' test "$code" -eq 1
+
+# Shards: the same check on part of the parts, counted and summed up apart.
+run 'abc abc' mobile abc --shard 2/4
+check 'a shard passes on the commit' test "$code" -eq 0
+check 'the smoke runs that shard' grep -q -- '--shard 2/4' "$work/args"
+check 'the summary names the check and the shard' grep -q '^### mobile 2/4 on staging at abc: passed' "$work/summary"
+check 'and what the shard ran' grep -q '^Shard: mobile 2/4: 2 of 7 parts: layout, views-phone' "$work/summary"
+check 'its time is named after the shard' grep -q '^| mobile/2/4 | ' "$work/summary"
+check 'the names of its checks are kept' grep -q $'^ok\tthe view is on screen$' "$work/shots/mobile.names"
+run 'abc abc' mobile abc
+unsharded() { ! grep -q -- --shard "$1"; }
+check 'without a shard the smoke runs everything' unsharded "$work/args"
+check 'and the summary names the check alone' grep -q '^### mobile on staging at abc: passed' "$work/summary"
+run 'abc new' catalog abc --shard 1/2
+check 'a shard during a deploy: not counted (exit 6)' test "$code" -eq 6
+check 'its summary names the shard' grep -q '^### catalog 1/2 on staging: not counted' "$work/summary"
+printf '| View | Result | Detail |\n| --- | --- | --- |\n| steep | identical | sha256 1 |\n' >"$work/table.md"
+run 'abc abc' visual-diff abc --shard 3/4
+check 'a visual-diff shard passes' test "$code" -eq 0
+both_shoots_sharded() { [[ $(grep -c -- '--shard 3/4' "$1") -eq 2 ]]; }
+check 'both shoots of a visual-diff shard take the same shard' both_shoots_sharded "$work/shoots"
+STUB_SEEDS='before moved' run 'abc abc' visual-diff abc --shard 3/4
+check 'its data edited meanwhile: not counted (exit 6)' test "$code" -eq 6
+check 'that summary names the shard' grep -q '^### visual-diff 3/4 on staging: not counted' "$work/summary"
+for bad in 0/4 5/4 2 a/b; do
+  code=0
+  "$scripts/staging-checks.sh" mobile abc --shard "$bad" >/dev/null 2>&1 || code=$?
+  check "the shard '$bad' is a usage error" test "$code" -eq 1
+done
+code=0
+"$scripts/staging-checks.sh" walk abc --shard 1/2 >/dev/null 2>&1 || code=$?
+check 'walk is not sharded' test "$code" -eq 1
 
 code=0
 "$scripts/staging-checks.sh" gallery abc >/dev/null 2>&1 || code=$?

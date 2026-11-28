@@ -446,6 +446,9 @@ jobs:
     # They need the nntin-bot GitHub token to pass staging's SSO (secret NNTIN_BOT_TOKEN); without it they are
     # skipped with a warning. Staging is shared: a check counts only if staging ran this commit before and
     # after it, and fails with "another deploy came first" otherwise (run the job again).
+    # The long checks run in shards (#237): each runs part of the check's parts, balanced by their measured time
+    # (scripts/parts.mjs, shard-weights.json); every part is in exactly one shard. staging-checks-result sums up.
+    name: staging-checks (${{ matrix.check }}${{ matrix.shard && format(' {0}', matrix.shard) || '' }})
     needs: [publish, deploy]
     if: needs.publish.outputs.channel == 'staging'
     runs-on: ubuntu-latest
@@ -453,7 +456,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        check: [walk, mobile, catalog, visual-diff]
+        include:
+          - check: walk
+          - { check: mobile, shard: 1/4 }
+          - { check: mobile, shard: 2/4 }
+          - { check: mobile, shard: 3/4 }
+          - { check: mobile, shard: 4/4 }
+          - { check: catalog, shard: 1/2 }
+          - { check: catalog, shard: 2/2 }
+          - { check: visual-diff, shard: 1/4 }
+          - { check: visual-diff, shard: 2/4 }
+          - { check: visual-diff, shard: 3/4 }
+          - { check: visual-diff, shard: 4/4 }
     env:
       REVISION: ${{ needs.publish.outputs.revision }}
       SCRIPTS: .claude/skills/my-home-environments/scripts
@@ -462,12 +476,15 @@ jobs:
         id: token
         env:
           NNTIN_BOT_TOKEN: ${{ secrets.NNTIN_BOT_TOKEN }}
+          SHARD: ${{ matrix.shard }}
         run: |
+          # The shard in an artifact's name: 2/4 is 2-of-4.
+          echo "part=${SHARD/\//-of-}" >> "$GITHUB_OUTPUT"
           if [ -n "$NNTIN_BOT_TOKEN" ]; then
             echo "present=true" >> "$GITHUB_OUTPUT"
           else
             echo "::warning::The secret NNTIN_BOT_TOKEN is not set: the checks on staging were skipped (docs/deployment.md § Checks on staging)."
-            echo "### ${{ matrix.check }} on staging: skipped, the secret NNTIN_BOT_TOKEN is not set" >> "$GITHUB_STEP_SUMMARY"
+            echo "### ${{ matrix.check }}${{ matrix.shard && format(' {0}', matrix.shard) || '' }} on staging: skipped, the secret NNTIN_BOT_TOKEN is not set" >> "$GITHUB_STEP_SUMMARY"
           fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: steps.token.outputs.present == 'true'
@@ -486,19 +503,58 @@ jobs:
             (cd "$HOME/.cache/my-home-environments/playwright" && node_modules/.bin/playwright install-deps chromium)
             "$SCRIPTS/screenshot.sh" --check
           fi
-      - name: ${{ matrix.check }} on staging
+      - name: ${{ matrix.check }}${{ matrix.shard && format(' {0}', matrix.shard) || '' }} on staging
         if: steps.token.outputs.present == 'true'
         env:
           GH_TOKEN: ${{ secrets.NNTIN_BOT_TOKEN }}
-        run: '"$SCRIPTS/staging-checks.sh" "${{ matrix.check }}" "$REVISION" --out staging-checks'
-      # Canvas shots of the model only (no UI, no photo): the two shoots and their differences.
+          SHARD: ${{ matrix.shard }}
+        run: '"$SCRIPTS/staging-checks.sh" "${{ matrix.check }}" "$REVISION" --out staging-checks ${SHARD:+--shard "$SHARD"}'
+      # Canvas shots of the model only (no UI, no photo): the two shoots and their differences. One part per shard;
+      # staging-checks-result merges them into visual-diff-<commit>.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always() && steps.token.outputs.present == 'true' && matrix.check == 'visual-diff'
         with:
-          name: visual-diff-${{ needs.publish.outputs.revision }}
+          name: visual-diff-${{ needs.publish.outputs.revision }}-shard-${{ steps.token.outputs.part }}
           path: |
             staging-checks/first
             staging-checks/second
             staging-checks/compare.md
           if-no-files-found: ignore
           retention-days: 14
+
+  staging-checks-result:
+    # One result for the browser checks: fails if any shard failed, was cancelled or skipped though staging was
+    # deployed; lists every staging-checks job. Merges the visual diff's shards into visual-diff-<commit>.
+    needs: [publish, deploy, staging-checks]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: .claude/skills/my-home-environments/scripts
+      - name: Merge the visual diff's shards
+        if: >-
+          needs.publish.outputs.channel == 'staging' && needs.staging-checks.result != 'skipped'
+          && needs.staging-checks.result != 'cancelled'
+        uses: actions/upload-artifact/merge@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: visual-diff-${{ needs.publish.outputs.revision }}
+          pattern: visual-diff-${{ needs.publish.outputs.revision }}-shard-*-of-*
+          separate-directories: true
+          delete-merged: true
+          retention-days: 14
+      - name: The staging checks' result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+          CHANNEL: ${{ needs.publish.outputs.channel }}
+          PUBLISH: ${{ needs.publish.result }}
+          DEPLOY: ${{ needs.deploy.result }}
+          CHECKS: ${{ needs.staging-checks.result }}
+          FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+          TOKEN_SET: ${{ secrets.NNTIN_BOT_TOKEN != '' }}
+        run: .claude/skills/my-home-environments/scripts/staging-checks-result.sh

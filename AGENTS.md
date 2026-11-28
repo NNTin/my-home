@@ -108,7 +108,8 @@ src/catalog/shapes.test.ts -u`, the flag **last**. `-u` takes the word after it:
 - **Not locally:** the whole `pnpm test`, `pnpm build` with `pnpm check:bundle`, real Postgres, Docker, and
   anything with a browser (the smokes, `visual-diff`, screenshots in bulk). CI runs all of them on every push:
   `check`, `test-postgres`, `docker`, `chart`, then `publish`, `deploy` and, on staging, `staging-checks`
-  (`walk`, `mobile`, `catalog`, `visual-diff`; `docs/deployment.md` § Checks on staging).
+  (`walk`, and `mobile`, `catalog`, `visual-diff` in shards; then `staging-checks-result`, the one result;
+  `docs/deployment.md` § Checks on staging).
 - **Read CI instead of repeating it:** `gh pr checks <n>`, `gh run view <run-id>` (the summary has each staging
   check's result), `gh run view --job <job-id> --log-failed`, `gh run download <run-id> -n visual-diff-<sha>`.
   Put what CI found in the pull request; do not run the same thing again here to "confirm".
