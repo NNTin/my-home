@@ -69,7 +69,7 @@ $S/site-curl.sh staging /api/homes                       # GET, body on stdout
 $S/screenshot.sh staging --path '/?focus=souterrain-kitchen-window&hints=off'   # frame a use
 $S/env-status.sh all                                     # health, auth, deployed commit vs GitHub
 $S/screenshot.sh staging --out /tmp/staging.png          # render the 3D viewer in headless Chromium
-$S/screenshot.sh staging --click 'label:has-text("Souterrain")' --drag -300,0   # interact first
+$S/screenshot.sh staging --click-if-present .hud-level-trigger --click 'role=radio[name="Souterrain"s]' --drag -300,0
 $S/screenshot.sh staging --viewport 390x844 --path '/?walk=first' --pad 0,-44,2000   # walk, then shoot
 $S/screenshot.sh staging --viewport 390x844 --touch --path '/?panel=furniture'   # phone layout, a panel open
 $S/screenshot.sh staging --canvas --out /tmp/view.png   # the 3D canvas only, no UI text

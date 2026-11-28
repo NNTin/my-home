@@ -17,6 +17,7 @@
 # --canvas shoots only the 3D canvas: every other element is hidden and the shot is clipped to the canvas, so UI
 # text (photo count, room names, panels) is left out; after a --drag page time is paused and advanced by a fixed
 # amount, so the shot does not depend on the frame rate. visual-diff.sh uses it.
+# --click-if-present skips a selector that is not visible, for controls introduced after an older deploy.
 # The site token is attached only to requests for the environment's own host and is never printed.
 # --check installs Playwright if missing and reports its version, the Chromium path and a headless launch.
 set -euo pipefail
@@ -88,7 +89,11 @@ while [[ $# -gt 0 ]]; do
     --out) out=$2 ;;
     --wait) wait_ms=$2 ;;
     --viewport) viewport=$2 ;;
-    --click) actions=$(jq -c --arg s "$2" '. + [{click: $s}]' <<<"$actions") ;;
+    --click | --click-if-present)
+      click_key=click
+      [[ $1 != --click-if-present ]] || click_key=clickIfPresent
+      actions=$(jq -c --arg key "$click_key" --arg s "$2" '. + [{($key): $s}]' <<<"$actions")
+      ;;
     --drag)
       [[ $2 =~ ^-?[0-9]+,-?[0-9]+$ ]] || die "--drag must be DX,DY in pixels, e.g. -300,0"
       actions=$(jq -c --arg d "$2" '. + [{drag: ($d | split(",") | map(tonumber))}]' <<<"$actions")
