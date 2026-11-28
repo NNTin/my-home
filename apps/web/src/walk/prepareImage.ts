@@ -1,4 +1,4 @@
-import { DEFAULT_FOCAL_LENGTH_35MM, horizontalFov } from './figure';
+import { DEFAULT_FOCAL_LENGTH_35MM, horizontalFov } from '../photos/fieldOfView';
 
 /** Longest edge of a photo sent to the api, which stores at most this much anyway. */
 export const MAX_UPLOAD_EDGE = 2560;

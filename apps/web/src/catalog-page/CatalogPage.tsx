@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { SkButton } from '../hud/SkButton';
 import { SkCard } from '../hud/SkCard';
 import { SkInput } from '../hud/SkInput';
-import { useLayoutMode } from '../overlay/useLayoutMode';
+import { useLayoutMode } from '../hud/useLayoutMode';
 import { href, keptQuery, useDocumentTitle, useRestoredScroll } from '../routing';
 import './catalog.css';
 import { FinishesSection, listedFinishes } from './Finishes';

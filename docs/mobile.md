@@ -6,7 +6,7 @@ most, and one **sheet** with the panels. A desktop screen rests on its corners a
 
 ## When the phone layout is used
 
-`useLayoutMode()` ([`apps/web/src/overlay/useLayoutMode.ts`](../apps/web/src/overlay/useLayoutMode.ts)) follows
+`useLayoutMode()` ([`apps/web/src/hud/useLayoutMode.ts`](../apps/web/src/hud/useLayoutMode.ts)) follows
 two media queries:
 
 | Layout      | When                                                                  | Sheet                  |
@@ -238,7 +238,7 @@ inside the middle 80 %).
 
 | Part                                   | Where                                                                                |
 | -------------------------------------- | ------------------------------------------------------------------------------------ |
-| Which layout, media queries            | `apps/web/src/overlay/useLayoutMode.ts`                                              |
+| Which layout, media queries            | `apps/web/src/hud/useLayoutMode.ts`                                                  |
 | Sheet: tabs, sizes, dragging           | `apps/web/src/overlay/Sheet.tsx`                                                     |
 | Top bar and level switcher             | `apps/web/src/overlay/TopBar.tsx`, `apps/web/src/overlay/LevelControl.tsx`           |
 | Tools menu                             | `apps/web/src/overlay/ToolsMenu.tsx`                                                 |

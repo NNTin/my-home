@@ -1,6 +1,6 @@
 import { poseDirection, type Photo, type PhotoPose } from '@my-home/shared';
 import type { Vec3 } from '../geom/types';
-import { DEFAULT_FOCAL_LENGTH_35MM, horizontalFov } from '../walk/figure';
+import { DEFAULT_FOCAL_LENGTH_35MM, horizontalFov } from './fieldOfView';
 
 /**
  * Camera maths for showing photos in the 3D view: the view cone of a photo's pose, and the

@@ -2,7 +2,7 @@ import { act, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 import type { HomeScene } from '../builder/buildHome';
 import { visibleScene, type Visibility } from '../builder/visibility';
-import { LANDSCAPE_QUERY, MOBILE_QUERY, type LayoutMode } from '../overlay/useLayoutMode';
+import { LANDSCAPE_QUERY, MOBILE_QUERY, type LayoutMode } from '../hud/useLayoutMode';
 
 /**
  * jsdom has no `matchMedia` (the app then uses the desktop layout). This stubs it so the media

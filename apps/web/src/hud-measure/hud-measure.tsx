@@ -2,9 +2,9 @@ import { LiveResponse } from '@my-home/shared';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useState } from 'react';
 import { Vector3 } from 'three';
-import type { FrameGovernor } from '../../quality/governor';
-import { shortUserAgent } from '../../quality/perfReport';
-import { sakuga, type SakugaApi } from '../sakuga';
+import type { FrameGovernor } from '../quality/governor';
+import { shortUserAgent } from '../quality/perfReport';
+import { sakuga, type SakugaApi } from '../hud/sakuga';
 import { hudReport, type HudContext, type Rest, type Run, type RunKind } from './report';
 import './hud-measure.css';
 

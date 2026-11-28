@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiRequestError, photosApi } from './api';
+import { ApiRequestError, photosApi } from './index';
 
 const stored = {
   id: 'photo-1',
