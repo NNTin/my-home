@@ -777,7 +777,8 @@ sequenceDiagram
 
 - **`sakuga-hud`: 50 kB** gzipped (the estimate of 40 kB and a quarter of room for the elements' frame-by-frame
   rounds). `check:bundle` already measures every classic script in `index.html` against `first`.
-- **The main chunk** keeps its `maxGrowthGzipBytes` (50 kB over `d4df5df`). On `91b4dca` it is 459.0 kB, +38.4 kB:
+- **The main chunk** keeps its `maxGrowthGzipBytes` (50 kB over `d4df5df`; 60 kB since HUD v2 #205, decided in advance
+  for HUD v2, `docs/design/hud-v2/visual-design.md` V55). On `91b4dca` it is 459.0 kB, +38.4 kB:
   11.6 kB are left, and the wrappers and the fallback are about 4 kB. If a family's PR finds the limit in reach,
   it asks the owner for a new baseline with the numbers, and does not move code out of the main chunk to make
   room.

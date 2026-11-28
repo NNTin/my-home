@@ -33,8 +33,8 @@ At the foot of the 3D view, within thumb reach: **Edit**, the painted switch tha
 view** and the status chip. **Tools** opens a menu above them with what left the top bar in HUD v2 (#200): the home
 (its name, or a selector when there are several), **Photos (n)** (opens the gallery in the sheet, says the open
 photo requests; pressed again while the photos show, it closes the sheet) and **Catalogue** (a link, keeping
-`?home=`). Below them (HUD v2 #203): the status in words, **Effects**, **Gestures and keys** (folded: this device's
-gestures and the keyboard's keys) and **Diagnostics** (the performance readout, the measuring pages). A choice closes the menu; Escape or Tools again closes it and gives the focus back to Tools.
+`?home=`). Below them (HUD v2 #203): the status in words, **Effects**, **Gestures** (folded: this device's gestures),
+**Keyboard shortcuts** (folded: every action's keys, to change, clear or reset; #205) and **Diagnostics** (the performance readout, the measuring pages). A choice closes the menu; Escape or Tools again closes it and gives the focus back to Tools.
 
 ## The desktop
 

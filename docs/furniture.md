@@ -159,7 +159,7 @@ float next to it, and a long press on an item opens the panel.
 
 The keys come from the viewer's one action list (HUD v2 #204, `apps/web/src/keys/actions.ts`, `docs/design/hud-v2/hotkeys.md`):
 `Ctrl+D` is left to the browser (a bookmark); `Backspace` deletes too (a Mac laptop has no forward `Delete`). Tools →
-Gestures and keys lists them all; `?` opens it.
+Keyboard shortcuts lists them all and changes them (#205); `?` opens it. The table gives the defaults.
 
 (`Cmd` instead of `Ctrl` on macOS.) Moves are constrained and snapped in this order:
 

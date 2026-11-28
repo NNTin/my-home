@@ -205,31 +205,32 @@ export function chordOf(
   return parts.join('+');
 }
 
-/** Whether `chord` (a key press's) is one of an action's: `Mod` and Ctrl stand for each other off a Mac. */
-export function matches(action: Action, chord: string): boolean {
+/** A chord as the list writes it (`Shift+W`), as a key press reads (`Shift+w`). */
+export const normalizeChord = (k: string) =>
+  k
+    .replace(/\+([A-Z])$/, (_, c: string) => `+${c.toLowerCase()}`)
+    .replace(/^([A-Z])$/, (c) => c.toLowerCase());
+
+/** Whether `chord` (a key press's) is one of `keys`: `Mod` and Ctrl stand for each other off a Mac. */
+export function matchesKeys(keys: readonly string[], chord: string): boolean {
   // Off a Mac, Mod is Ctrl: both sides are read that way (Ctrl+Y and Mod+Z alike).
   const plain = (c: string) => (isMac() ? c : c.replace(/^Mod\+/, 'Ctrl+'));
-  return action.keys.some((k) => {
-    const key = k
-      .replace(/\+([A-Z])$/, (_, c: string) => `+${c.toLowerCase()}`)
-      .replace(/^([A-Z])$/, (c) => c.toLowerCase());
-    return plain(key) === plain(chord);
-  });
+  return keys.some((k) => plain(normalizeChord(k)) === plain(chord));
 }
 
-/** The action of a key press in a mode, if one is bound to it there. */
-export function actionFor(chord: string, context: Exclude<Context, 'viewer'>): Action | undefined {
+/** The action of a key press in a mode, if one is bound to it there (`keysOf`: the bindings that apply, keys/bindings). */
+export function actionFor(
+  chord: string,
+  context: Exclude<Context, 'viewer'>,
+  keysOf: (action: Action) => readonly string[] = (a) => a.keys,
+): Action | undefined {
   return ACTIONS.find(
     (a) =>
       a.kind === 'press' &&
       (a.contexts.includes('viewer') || a.contexts.includes(context)) &&
-      matches(a, chord),
+      matchesKeys(keysOf(a), chord),
   );
 }
-
-/** The held keys' names (`w`, `arrowup`), for the walk's own movement. */
-export const holdKeys = (id: ActionId): string[] =>
-  ACTIONS.find((a) => a.id === id)!.keys.map((k) => k.toLowerCase());
 
 /**
  * Keys a viewer shortcut must leave alone: typing in a field (also a field inside a Sakuga element's shadow root),
