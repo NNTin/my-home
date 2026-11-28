@@ -2228,6 +2228,12 @@ body:has(.page) {
   }
 }
 
+/* The readout lets touches through to the view; its buttons take theirs (the old native rule said so, #168 PR 7/4). */
+.perf-readout sakuga-button {
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
 .perf-head {
   display: flex;
   gap: 0.4rem;
