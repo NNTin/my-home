@@ -144,9 +144,19 @@ browser checks against it, one runner each, in headless Chromium:
 | `visual-diff` | `visual-diff.sh staging shoot`, twice, and `compare` | every view is byte-identical in both shoots (`orbit-180`, a drag view, may differ)                                        |
 
 - Each is `staging-checks.sh <check> <commit>` of the `my-home-environments` skill. All are read-only.
+- **Shards:** `mobile` (4), `catalog` (2) and `visual-diff` (4) run in shards, one runner each, so the run is as
+  long as its longest shard: `staging-checks (mobile 2/4)` runs part of the check's parts with `--shard 2/4`.
+  `parts.mjs` splits them by their measured seconds (`shard-weights.json`, refreshed from a run's "Time per part"
+  tables); every part is in exactly one shard, and a `visual-diff` shard shoots its views twice on the same
+  runner. Each shard reads the commit before and after it (and `visual-diff`'s the seed export), on its own.
+- **One result:** the job `staging-checks-result` needs every shard and fails if one failed, was cancelled or
+  was skipped though staging was deployed; its summary lists every shard with its conclusion. It says "not run"
+  for a push to `main` or a fork's pull request, and "skipped" without the secret, never "passed".
 - **Results:** the run's summary page has a section per check (the smoke's failed checks, or the comparison
-  table); the full output is the job's log. `visual-diff` uploads its two sets of canvas shots and the table
-  as the artifact `visual-diff-<commit>` (kept 14 days): renders of the model only, no UI and no photo. The
+  table, the shard's parts and the time of each part); the full output is the job's log. `visual-diff` uploads
+  its two sets of canvas shots and the table as the artifact `visual-diff-<commit>` (kept 14 days), one folder
+  per shard (`visual-diff-<commit>-shard-2-of-4/first`, `/second`, `/compare.md`): renders of the model only, no
+  UI and no photo. The
   screenshots of the smokes are not uploaded: a piece page can show a photo.
 - **Staging is shared and the latest deploy wins.** A check counts only if staging ran the commit before and
   after it. If another deploy came first, the job fails and says so: run it again once the commit is deployed
@@ -166,7 +176,8 @@ browser checks against it, one runner each, in headless Chromium:
 Staging is behind SSO. The checks pass it as agents do: a GitHub token of the **nntin-bot** account is exchanged
 at `POST /agent-auth/token` for a site token (the skill's `site-curl.sh`). CI needs that GitHub token as the
 repository secret `NNTIN_BOT_TOKEN`; the workflow's own `GITHUB_TOKEN` belongs to another account and is
-refused. Without the secret the four jobs pass with a warning and check nothing.
+refused. Without the secret every staging-checks job passes with a warning and checks nothing, and
+`staging-checks-result` says "skipped".
 
 To set it (the owner, once, and again when the token expires):
 

@@ -31,14 +31,15 @@ The scripts below do all of this. Dependencies: `bash`, `curl`, `jq`, `gh`. Run 
 
 **A pull request's browser checks run in CI.** After the deploy to staging, the job `staging-checks` runs
 `walk-smoke.sh`, `mobile-smoke.sh`, `catalog-smoke.sh` and `visual-diff.sh` (shot twice) through `staging-checks.sh`
-(`docs/deployment.md` § Checks on staging). Do not run these four from your own machine to verify a pull
-request: read the job instead.
+(`docs/deployment.md` § Checks on staging). `mobile`, `catalog` and `visual-diff` run in shards, one job each
+(`staging-checks (mobile 2/4)`); `staging-checks-result` is the one result. Do not run these four from your own
+machine to verify a pull request: read the job instead.
 
 ```sh
-gh pr checks <n> --repo NNTin/my-home                      # staging-checks (walk), (mobile), (catalog), (visual-diff)
+gh pr checks <n> --repo NNTin/my-home                      # staging-checks (walk), (mobile 1/4) … (visual-diff 4/4), staging-checks-result
 gh run view <run-id> --repo NNTin/my-home                  # the summary: failed checks, the comparison table
 gh run view <run-id> --repo NNTin/my-home --log --job <job-id> | grep -E '^.*(FAIL|skip) '   # one job's output
-gh run download <run-id> --repo NNTin/my-home -n visual-diff-<full commit sha> --dir /tmp/vd   # the canvas shots
+gh run download <run-id> --repo NNTin/my-home -n visual-diff-<full commit sha> --dir /tmp/vd   # the canvas shots, a folder per shard
 gh run rerun <run-id> --repo NNTin/my-home --failed        # after "another deploy came first"
 ```
 
@@ -224,11 +225,13 @@ $S/seed.sh staging diff                                # drift between git's see
   walk control folded or open, and its Copy answers a tap; nothing may log an error. Read-only. Playwright (pinned) is installed outside the repository in
   `${XDG_CACHE_HOME:-$HOME/.cache}/my-home-environments/playwright`, Chromium in `~/.cache/ms-playwright`;
   `screenshot.sh --check` installs them if missing and verifies a headless launch.
-- `staging-checks.sh <walk|mobile|catalog|visual-diff> <commit> [--out DIR]`: what CI's `staging-checks` job runs. One
-  check, counted only if staging ran `<commit>` (full sha) before and after it (exit 6 otherwise). `visual-diff`
+- `staging-checks.sh <walk|mobile|catalog|visual-diff> <commit> [--out DIR] [--shard I/N]`: what CI's `staging-checks`
+  job runs. One check, or one shard of it (`--shard`; the scripts take it too: `parts.mjs` splits the parts, balanced
+  by their measured seconds in `shard-weights.json`, every part in exactly one shard), counted only if staging ran `<commit>` (full sha) before and after it (exit 6 otherwise). `visual-diff`
   shoots every view twice and fails if any but `orbit-180` differs; it is not counted either when the seed
-  export of staging changed between the shoots. Appends a Markdown result to
-  `GITHUB_STEP_SUMMARY` when set.
+  export of staging changed between the shoots. Appends a Markdown result (with the shard's parts and the time
+  of each part) to `GITHUB_STEP_SUMMARY` when set. `staging-checks-result.sh` is the last job's: every shard passed,
+  or why nothing was checked.
 - `raise-env-issue.sh [--dry-run] [--force] <env> <summary> [details-file]`: refuses (exit 3) unless
   `env-status.sh` reports BROKEN; then comments on the open `environment`-labelled issue titled
   `[env] <env>: ...`, or creates one (and the label). `--force` is for a human override only.

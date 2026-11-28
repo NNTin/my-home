@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# staging-checks.sh <walk|mobile|catalog|visual-diff> <commit> [--out DIR]
+# staging-checks.sh <walk|mobile|catalog|visual-diff> <commit> [--out DIR] [--shard I/N]
 #
 # One of the browser checks of a pull request on staging, as CI runs them after the deploy (the `staging-checks`
 # job of .github/workflows/ci.yml). Read-only. Staging is shared and the latest deploy wins, so the check only
@@ -11,8 +11,10 @@
 #   visual-diff  visual-diff.sh shoot, twice, and compare: every view must come out byte-identical both times,
 #                except orbit-180 (a drag view whose camera angle is known to vary now and then). It counts only
 #                if the placements, overrides and notes on staging (the seed export) stayed the same meanwhile
-# The canvas shots and the smoke's screenshot go to DIR (default: a new temp directory); with GITHUB_STEP_SUMMARY
-# set, the result is appended to it as Markdown.
+# --shard I/N runs one shard of mobile, catalog or visual-diff (parts.mjs balances them by shard-weights.json; each
+# part is in exactly one shard), with its own reads of the commit and the data before and after.
+# The canvas shots and the smoke's screenshot go to DIR (default: a new temp directory), and the result and name
+# of every check to DIR/<check>.names; with GITHUB_STEP_SUMMARY set, the result is appended to it as Markdown.
 # Exit 0 passed, 1 the check failed or a tool is missing, 6 not counted: staging ran another commit before or
 # after, or its data was edited during a visual-diff.
 set -euo pipefail
@@ -21,23 +23,37 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$script_dir/lib.sh"
 
 usage() {
-  sed -n '2,17s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,20s/^# \{0,1\}//p' "$0" >&2
   exit 1
 }
 
 [[ $# -ge 2 ]] || usage
 check=$1 commit=$2
 shift 2
-out=''
+out='' shard=''
 while [[ $# -gt 0 ]]; do
-  [[ $# -ge 2 && $1 == --out ]] || usage
-  out=$2
+  [[ $# -ge 2 ]] || usage
+  case "$1" in
+    --out) out=$2 ;;
+    --shard) shard=$2 ;;
+    *) usage ;;
+  esac
   shift 2
 done
 case "$check" in
   walk | mobile | catalog | visual-diff) ;;
   *) usage ;;
 esac
+if [[ -n $shard ]]; then
+  [[ $check != walk ]] || die "walk is not sharded"
+  if ! [[ $shard =~ ^([0-9]+)/([0-9]+)$ ]] || ((BASH_REMATCH[1] < 1 || BASH_REMATCH[1] > BASH_REMATCH[2])); then
+    die "--shard must be I/N with 1 <= I <= N, e.g. 2/4"
+  fi
+fi
+# The check's name in the summary: with its shard.
+name=$check${shard:+ $shard}
+shard_args=()
+[[ -z $shard ]] || shard_args=(--shard "$shard")
 require_tools jq node
 out=${out:-$(mktemp -d)}
 mkdir -p "$out"
@@ -62,7 +78,7 @@ same_commit() {
   now=$(deployed) || now=
   [[ $now == "$commit" ]] && return 0
   printf '### %s on staging: not counted\n\nStaging ran %s %s the check, not %s: another deploy came first. Run the job again once this commit is deployed.\n' \
-    "$check" "${now:-an unknown commit}" "$1" "$commit" | summary
+    "$name" "${now:-an unknown commit}" "$1" "$commit" | summary
   warn "staging runs ${now:-unknown} $1 the check, not $commit: another deploy came first, run it again"
   exit 6
 }
@@ -79,7 +95,7 @@ same_data() {
   now=$(data_mark) || now=
   [[ -n $now && $now == "$1" ]] && return 0
   printf '### %s on staging: not counted\n\nThe placements, overrides or notes on staging were changed while the views were shot (someone edited them there), so the two shoots show different data. Run the job again.\n' \
-    "$check" | summary
+    "$name" | summary
   warn "the placements, overrides or notes on staging changed during the check: not counted, run it again"
   exit 6
 }
@@ -90,21 +106,24 @@ if [[ $check == visual-diff ]]; then
   mark=$(data_mark) || die "could not read the seed of staging"
 fi
 log="$out/$check.log"
+# Every check's result and name (parts.mjs recordCheck): shards together must name the same checks as one run.
+export CHECK_NAMES="$out/$check.names"
+: >"$CHECK_NAMES"
 status=0
 started=$(date +%s.%N)
 case "$check" in
   walk) "$checks_dir/walk-smoke.sh" staging --out "$out/walk.png" >"$log" 2>&1 || status=$? ;;
-  mobile) "$checks_dir/mobile-smoke.sh" staging --out "$out/mobile.png" >"$log" 2>&1 || status=$? ;;
+  mobile) "$checks_dir/mobile-smoke.sh" staging --out "$out/mobile.png" "${shard_args[@]}" >"$log" 2>&1 || status=$? ;;
   catalog)
     # Every piece page is opened twice (desktop and phone): the site token must outlive that.
     SITE_TOKEN_MIN_TTL=${SITE_TOKEN_MIN_TTL:-2700} \
-      "$checks_dir/catalog-smoke.sh" staging --out "$out/catalog.png" >"$log" 2>&1 || status=$?
+      "$checks_dir/catalog-smoke.sh" staging --out "$out/catalog.png" "${shard_args[@]}" >"$log" 2>&1 || status=$?
     ;;
   visual-diff)
     # The time lines of each shoot are named after it.
     {
-      "$checks_dir/visual-diff.sh" staging shoot --out "$out/first" | sed 's|^time  |time  first/|' &&
-        "$checks_dir/visual-diff.sh" staging shoot --out "$out/second" | sed 's|^time  |time  second/|'
+      "$checks_dir/visual-diff.sh" staging shoot --out "$out/first" "${shard_args[@]}" | sed 's|^time  |time  first/|' &&
+        "$checks_dir/visual-diff.sh" staging shoot --out "$out/second" "${shard_args[@]}" | sed 's|^time  |time  second/|'
     } >"$log" 2>&1 || status=$?
     if [[ $status -eq 0 ]]; then
       # compare exits 5 when views differ: which ones decides.
@@ -115,7 +134,7 @@ case "$check" in
     fi
     ;;
 esac
-awk -v a="$started" -v b="$(date +%s.%N)" -v c="$check" 'BEGIN { printf "time  %s %.1f s\n", c, b - a }' >>"$log"
+awk -v a="$started" -v b="$(date +%s.%N)" -v c="$check${shard:+/$shard}" 'BEGIN { printf "time  %s %.1f s\n", c, b - a }' >>"$log"
 cat "$log"
 same_commit after
 [[ -z $mark ]] || same_data "$mark"
@@ -123,7 +142,9 @@ same_commit after
 verdict=passed
 [[ $status -eq 0 ]] || verdict=FAILED
 {
-  printf '### %s on staging at %s: %s\n\n' "$check" "${commit:0:7}" "$verdict"
+  printf '### %s on staging at %s: %s\n\n' "$name" "${commit:0:7}" "$verdict"
+  # What the shard ran: a shard that is missing, or ran nothing, shows here.
+  grep -m1 '^shard  ' "$log" | sed 's/^shard  /Shard: /; s/$/\n/' || true
   if [[ $check == visual-diff && -s $out/compare.md ]]; then
     printf 'Two shoots of every view, compared (orbit-180 may differ):\n\n'
     cat "$out/compare.md"

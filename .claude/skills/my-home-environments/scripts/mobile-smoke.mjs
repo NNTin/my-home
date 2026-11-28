@@ -8,14 +8,15 @@
 // nothing when switched off and on, and "Save image" downloads a PNG of twice the canvas size. Then render
 // mode: "Render" is offered on a desktop only, its chunk is not asked for before the press, and a browser
 // without a graphics card for WebGPU (this one) gets the sentence and keeps its view.
-// Read-only: nothing is written to the environment. MOBILE_SMOKE_ONLY=views runs the named views alone.
+// Read-only: nothing is written to the environment. MOBILE_SMOKE_ONLY=views runs the named views alone,
+// SMOKE_SHARD=i/n one of CI's shards of the parts (PARTS, parts.mjs).
 // Playwright is loaded from MY_HOME_PLAYWRIGHT_DIR.
 /* global document, window, WebGL2RenderingContext */
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { answeredInfrastructure } from './infrastructure.mjs';
-import { stopwatch } from './parts.mjs';
+import { recordCheck, selectParts, stopwatch } from './parts.mjs';
 import { loadingScreenGone, missedTouches, SCENE } from './scene.mjs';
 
 const require = createRequire(path.join(process.env.MY_HOME_PLAYWRIGHT_DIR, 'package.json'));
@@ -31,6 +32,7 @@ const redact = (text) => {
 const failures = [];
 const check = (name, ok, detail = '') => {
   console.log(`${ok ? 'ok   ' : 'FAIL '} ${name}${detail ? `: ${detail}` : ''}`);
+  recordCheck(name, ok);
   if (!ok) failures.push(name);
 };
 
@@ -55,6 +57,12 @@ const DRAW_CALLS = { phone: [250, 350], desktop: [350, 500] };
 /** The lamp pool and the lights that cast shadows (the sun, and 4 lamps on a desktop). */
 const LAMPS = { phone: [6, 1], desktop: [12, 5] };
 const QUALITIES = ['fast', 'auto', 'beautiful'];
+const DEVICES = ['phone', 'desktop'];
+/** The parts, in their order; a shard (SMOKE_SHARD=i/n, parts.mjs) runs some of them. */
+const PARTS = [
+  'layout',
+  ...DEVICES.flatMap((device) => [`frames-${device}`, `textures-${device}`, `views-${device}`]),
+];
 
 /** Counts what a page draws with WebGL, to tell a view at rest from one that keeps rendering. */
 function countDraws() {
@@ -902,11 +910,33 @@ async function smoke(out, homeId) {
   const active = () => [...fake.values()].filter((p) => p.removedAt === null);
   const target = homeId ? `/?home=${encodeURIComponent(homeId)}` : '/';
   const lap = stopwatch();
+  const parts = selectParts('mobile', PARTS);
+  /** The frame loop (budgets and rest), the textures and the named views, on a phone and on a desktop. */
+  const deviceChecks = async () => {
+    for (const device of DEVICES) {
+      if (parts.has(`frames-${device}`)) {
+        await frameChecks(browser, { device, base, host, homeId });
+        lap(`frames-${device}`);
+      }
+      if (parts.has(`textures-${device}`)) {
+        await textureChecks(browser, { device, base, host, homeId });
+        lap(`textures-${device}`);
+      }
+      if (parts.has(`views-${device}`)) {
+        await viewChecks(browser, { device, base, host, homeId });
+        lap(`views-${device}`);
+      }
+    }
+  };
   try {
     // MOBILE_SMOKE_ONLY=views: the named views alone, a few minutes instead of the whole run.
     if (process.env.MOBILE_SMOKE_ONLY === 'views') {
       for (const device of ['phone', 'desktop'])
         await viewChecks(browser, { device, base, host, homeId });
+      return;
+    }
+    if (!parts.has('layout')) {
+      await deviceChecks();
       return;
     }
     // A phone held upright, with a touch screen.
@@ -1549,15 +1579,7 @@ async function smoke(out, homeId) {
     await context.close();
     lap('layout');
 
-    // The frame loop: budgets and rest, on a phone and on a desktop.
-    for (const device of ['phone', 'desktop']) {
-      await frameChecks(browser, { device, base, host, homeId });
-      lap(`frames-${device}`);
-      await textureChecks(browser, { device, base, host, homeId });
-      lap(`textures-${device}`);
-      await viewChecks(browser, { device, base, host, homeId });
-      lap(`views-${device}`);
-    }
+    await deviceChecks();
   } finally {
     await browser.close();
   }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# catalog-smoke.sh <staging|production> [--out file.png] [--home ID]
+# catalog-smoke.sh <staging|production> [--out file.png] [--home ID] [--shard I/N]
 #
 # Smoke test of the catalogue pages in headless Chromium, at 1440x900 and at 390x844 with touch (and
 # 844x390 for sideways scrolling): the top-bar or control-panel entry opens /catalog, both kinds are
@@ -18,25 +18,27 @@
 # <out>-<family>-<variant>.png of each #62 type (desktop). Exit 0 when every check passes. Every write
 # is refused or answered inside the browser. Uses the Playwright set-up of screenshot.sh. --home picks a
 # home by id (?home=).
+# --shard I/N runs one of CI's shards of its parts (parts.mjs, shard-weights.json); all of them without.
 set -euo pipefail
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=lib.sh
 source "$script_dir/lib.sh"
 
 usage() {
-  sed -n '2,20s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,21s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 
 [[ $# -ge 1 ]] || usage
 resolve_env "$1"
 shift
-out='' home=''
+out='' home='' shard=''
 while [[ $# -gt 0 ]]; do
   [[ $# -ge 2 ]] || usage
   case "$1" in
     --out) out=$2 ;;
     --home) home=$2 ;;
+    --shard) shard=$2 ;;
     *) usage ;;
   esac
   shift 2
@@ -44,10 +46,11 @@ done
 out=${out:-${TMPDIR:-/tmp}/my-home-$SITE_ENV-catalog-$(date +%Y%m%d-%H%M%S).png}
 [[ $out == /* ]] || out="$PWD/$out"
 [[ $out == *.png ]] || die "--out must end in .png"
+[[ -z $shard || $shard =~ ^[0-9]+/[0-9]+$ ]] || die "--shard must be I/N, e.g. 2/4"
 
 # Installs the pinned Playwright and Chromium if they are missing.
 "$script_dir/screenshot.sh" --check >/dev/null
 export MY_HOME_PLAYWRIGHT_DIR=${MY_HOME_PLAYWRIGHT_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/my-home-environments/playwright}
 node_cmd=(node)
 command -v ao-heavy >/dev/null 2>&1 && [[ ${AO_HEAVY_ACTIVE:-} != 1 ]] && node_cmd=(ao-heavy node)
-"$script_dir/with-site-token.sh" "$SITE_ENV" -- "${node_cmd[@]}" "$script_dir/catalog-smoke.mjs" "$out" ${home:+"$home"}
+SMOKE_SHARD=$shard "$script_dir/with-site-token.sh" "$SITE_ENV" -- "${node_cmd[@]}" "$script_dir/catalog-smoke.mjs" "$out" ${home:+"$home"}
