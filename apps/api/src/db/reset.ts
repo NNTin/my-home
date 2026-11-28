@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import type { Db } from './client';
+import type { Db } from './types';
 
 /**
  * Drops every table and the migration journal, leaving an empty `public` schema. Used by

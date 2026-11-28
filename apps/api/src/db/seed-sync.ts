@@ -19,7 +19,7 @@ import {
   type UseState,
 } from '@my-home/shared';
 import { and, asc, eq, isNull } from 'drizzle-orm';
-import type { Db } from './client';
+import type { Db } from './types';
 import { recordHistory, sameJson, type HistoryActor, type Tx } from './history';
 import { overrideState } from './opening-overrides';
 import { placementState } from './placements';

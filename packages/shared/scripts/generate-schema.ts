@@ -1,6 +1,6 @@
 import { writeFile } from 'node:fs/promises';
 import { format, resolveConfig } from 'prettier';
-import { homeModelJsonSchema } from '../src/home-model';
+import { homeModelJsonSchema } from '../src/model/home-model';
 
 // Writes the JSON Schema for home files; `$schema` in data/homes/*.json points here.
 const target = new URL('../schema/home-model.schema.json', import.meta.url);

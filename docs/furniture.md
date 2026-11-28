@@ -180,7 +180,7 @@ stands on the floor; doorways do not. A raised piece bumps into the wall pieces 
 
 A placement is fixed to the **floor**, a **wall** or the **ceiling** (`mounting`), at an `elevation`: the height of
 its bottom above the level's floor. A new one gets its type's (`mountingsFor`, `defaultElevation` in
-`packages/shared/src/catalog/mounting.ts`): a wall cabinet hangs on a wall at 1.33 m, the microwave stands on
+`packages/shared/src/model/mounting.ts`): a wall cabinet hangs on a wall at 1.33 m, the microwave stands on
 the floor at 0.90 m (on the worktop), a downlight hangs under the ceiling. A ceiling piece only hangs under a
 ceiling; every other piece may stand on the floor or hang on a wall.
 

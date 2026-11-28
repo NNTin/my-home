@@ -1,4 +1,4 @@
-import { loadConfig } from './config';
+import { loadConfig } from './core/config';
 import { createDatabase } from './db/client';
 
 const database = createDatabase(loadConfig(), { error: (obj, msg) => console.error(msg, obj) });

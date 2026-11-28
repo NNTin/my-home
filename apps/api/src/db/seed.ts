@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { describeIssues, formatIssues, HomeModel } from '@my-home/shared';
 import { defaultHomeFile, defaultSeedFiles } from '../paths';
-import type { Db } from './client';
+import type { Db } from './types';
 import { homeStore } from './homes';
 
 /** Reads and validates a home file; throws with path-based messages when it is invalid. */

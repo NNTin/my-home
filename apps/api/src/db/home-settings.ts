@@ -1,6 +1,6 @@
 import type { HomeModel, HomeSettings, UseState } from '@my-home/shared';
 import { eq } from 'drizzle-orm';
-import type { Db } from './client';
+import type { Db } from './types';
 import { recordHistory, sameJson, type HistoryActor, type Tx } from './history';
 import { conflict, notFound } from './placements';
 import { homes } from './schema';

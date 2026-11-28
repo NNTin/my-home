@@ -13,9 +13,9 @@ import {
 } from '@my-home/shared';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { resolveActor } from '../actor';
-import type { Config } from '../config';
-import type { Db } from '../db/client';
+import { resolveActor } from '../core/actor';
+import type { Config } from '../core/config';
+import type { Db } from '../db/types';
 import { useStore } from '../db/uses';
 
 /** Who am I (the recorded actor), where-used, and the history of a use with its undo. */

@@ -1,4 +1,4 @@
-import { loadConfig } from './config';
+import { loadConfig } from './core/config';
 import { createDatabase } from './db/client';
 import { runRelease } from './db/release';
 

@@ -1,4 +1,4 @@
-import { loadConfig } from './config';
+import { loadConfig } from './core/config';
 import { createDatabase } from './db/client';
 import { resetDatabase } from './db/reset';
 import { seedHomes } from './db/seed';

@@ -3,17 +3,16 @@ import { PGlite } from '@electric-sql/pglite';
 import { sql } from 'drizzle-orm';
 import { drizzle as drizzlePg } from 'drizzle-orm/node-postgres';
 import { migrate as migratePg } from 'drizzle-orm/node-postgres/migrator';
-import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 import { drizzle as drizzlePglite } from 'drizzle-orm/pglite';
 import { migrate as migratePglite } from 'drizzle-orm/pglite/migrator';
 import pg from 'pg';
-import type { Config } from '../config';
+import type { Config } from '../core/config';
 import { migrationsFolder } from '../paths';
 import { migrateMedia } from './media-migrate';
 import { migrateUserdata } from './userdata-migrate';
 import * as schema from './schema';
+import type { Db } from './types';
 
-export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
 export type DbDriver = 'pglite' | 'postgres';
 
 /** The subset of a pino logger the database layer needs. */

@@ -1,16 +1,9 @@
 import { z } from 'zod';
-import {
-  basicOverridesSchema,
-  catalog,
-  isPlacedKind,
-  mountingIssue,
-  outdoorRoomIssue,
-  ParamValues,
-  TypeId,
-} from './catalog';
-import { openingFitIssues } from './catalog/fit';
-import { effectiveParams } from './catalog/effective';
-import { modelUses } from './catalog/uses';
+import { basicOverridesSchema, catalog, isPlacedKind, ParamValues, TypeId } from '../catalog';
+import { mountingIssue, outdoorRoomIssue } from './mounting';
+import { openingFitIssues } from './fit';
+import { effectiveParams } from '../catalog/effective';
+import { modelUses } from './uses';
 import { Id, type HomeModel } from './home-model';
 import { Subject } from './subjects';
 import { Actor, Elevation, MAX_NOTE_LENGTH, PlacementMounting, PlanPosition } from './userdata';

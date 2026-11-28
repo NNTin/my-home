@@ -20,8 +20,8 @@ import {
   type UseState,
 } from '@my-home/shared';
 import { and, asc, eq, isNull, like, lt } from 'drizzle-orm';
-import { problem } from '../errors';
-import type { Db } from './client';
+import { problem } from '../core/errors';
+import type { Db } from './types';
 import { recordHistory, sameJson, type HistoryActor, type Tx } from './history';
 import { homeStore } from './homes';
 import { history, issuedIds, placements, type PlacementRow } from './userdata-schema';

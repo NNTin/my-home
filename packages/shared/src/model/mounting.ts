@@ -1,8 +1,8 @@
-import { ceilingHeightAt, insideOutline, type HomeModel } from '../home-model';
+import { ceilingHeightAt, insideOutline, type HomeModel } from './home-model';
 import { furnitureSize } from './fit';
-import { formatCm } from './format';
-import type { ParamValues } from './params';
-import { isOutdoorKind, mountingOf, type CatalogType, type Mounting } from './types';
+import { formatCm } from '../catalog/format';
+import type { ParamValues } from '../catalog/params';
+import { isOutdoorKind, mountingOf, type CatalogType, type Mounting } from '../catalog/types';
 
 /**
  * How a placement hangs in its room (#63): on the floor, on a wall (its back against the wall's

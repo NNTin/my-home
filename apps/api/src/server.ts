@@ -1,6 +1,6 @@
 import { pino } from 'pino';
 import { buildApp, loggerOptions } from './app';
-import { loadConfig } from './config';
+import { loadConfig } from './core/config';
 import { createDatabase } from './db/client';
 import { photoStore } from './db/photos';
 import { placementStore } from './db/placements';

@@ -1,4 +1,4 @@
-import type { Config } from '../config';
+import type { Config } from '../core/config';
 import type { Database } from './client';
 import { purgeHome } from './purge';
 import { resetDatabase } from './reset';

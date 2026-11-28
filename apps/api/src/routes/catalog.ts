@@ -1,7 +1,7 @@
 import { ApiError, catalog, CatalogUsageResponse, ListCatalogTypesResponse } from '@my-home/shared';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
-import type { Config } from '../config';
-import type { Db } from '../db/client';
+import type { Config } from '../core/config';
+import type { Db } from '../db/types';
 import { useStore } from '../db/uses';
 
 /** The piece catalogue (shared definitions) and how often each type is used. */

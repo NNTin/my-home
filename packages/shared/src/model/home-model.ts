@@ -1,9 +1,10 @@
 import { z } from 'zod';
-import { catalog } from './catalog/catalog';
-import { TypeId } from './catalog/ids';
-import type { CatalogType } from './catalog/types';
-import { finishes } from './finishes/library';
-import { FinishId, type FinishSurface } from './finishes/types';
+import { catalog } from '../catalog/catalog';
+import { TypeId } from '../catalog/ids';
+import { OpeningType } from '../catalog/opening-type';
+import type { CatalogType } from '../catalog/types';
+import { finishes } from '../finishes/library';
+import { FinishId, type FinishSurface } from '../finishes/types';
 
 /**
  * The home model: the single source of truth for the building.
@@ -336,10 +337,6 @@ export const Wall = z.strictObject({
   height: PositiveDimension,
 });
 export type Wall = z.infer<typeof Wall>;
-
-/** `door` is drawn open, `french-door` glazed to the floor, `garage-door` closed. */
-export const OpeningType = z.enum(['door', 'window', 'french-door', 'garage-door']);
-export type OpeningType = z.infer<typeof OpeningType>;
 
 export const Opening = z.strictObject({
   id: Id,

@@ -1,6 +1,6 @@
 import { HomeModel, HOME_SCHEMA_VERSION, type HomeSummary } from '@my-home/shared';
 import { asc, eq } from 'drizzle-orm';
-import type { Db } from './client';
+import type { Db } from './types';
 import { homes, type HomeRow } from './schema';
 
 const toSummary = (

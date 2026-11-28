@@ -1,5 +1,5 @@
-import { type HomeModel, openingTouchesRoom, wallLength } from '../home-model';
-import type { TypeId } from './ids';
+import { type HomeModel, openingTouchesRoom, wallLength } from './home-model';
+import type { TypeId } from '../catalog/ids';
 
 /** A use of a catalogue type that lives in the home model (git), not in the database. */
 export interface ModelUse {

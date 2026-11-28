@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { HexColor } from './ids';
+import { HexColor } from '../finishes/color';
 import type { ParamSpec, ParamValues } from './params';
 import type { CatalogType } from './types';
 

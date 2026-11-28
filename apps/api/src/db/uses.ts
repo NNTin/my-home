@@ -17,7 +17,7 @@ import {
   type UseState,
 } from '@my-home/shared';
 import { and, count, eq, isNull } from 'drizzle-orm';
-import type { Db } from './client';
+import type { Db } from './types';
 import {
   conflictText,
   listHistoryRows,

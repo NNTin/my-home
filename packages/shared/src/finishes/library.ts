@@ -1,4 +1,4 @@
-import { HexColor } from '../catalog/ids';
+import { HexColor } from './color';
 import { exterior } from './definitions/exterior';
 import { floors } from './definitions/floors';
 import { ground } from './definitions/ground';

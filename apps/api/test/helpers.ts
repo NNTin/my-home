@@ -1,7 +1,7 @@
 import { pino } from 'pino';
 import sharp from 'sharp';
 import { buildApp } from '../src/app';
-import { loadConfig } from '../src/config';
+import { loadConfig } from '../src/core/config';
 import { createDatabase } from '../src/db/client';
 import { photoRequests, photos } from '../src/db/media-schema';
 import { homes } from '../src/db/schema';

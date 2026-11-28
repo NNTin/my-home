@@ -8,7 +8,8 @@ import { gates } from './definitions/gates';
 import { kitchen } from './definitions/kitchen';
 import { windows } from './definitions/windows';
 import { partFinishProblem } from '../finishes/library';
-import { HexColor, TypeId } from './ids';
+import { TypeId } from './ids';
+import { HexColor } from '../finishes/color';
 import type { ParamSpec } from './params';
 import { isPlacedKind, type CatalogType } from './types';
 

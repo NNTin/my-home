@@ -1,5 +1,5 @@
 import { count, eq } from 'drizzle-orm';
-import type { Db } from './client';
+import type { Db } from './types';
 import { photoRequests, photos } from './media-schema';
 import { homes } from './schema';
 import {

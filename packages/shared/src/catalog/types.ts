@@ -1,4 +1,4 @@
-import type { OpeningType } from '../home-model';
+import type { OpeningType } from './opening-type';
 import type { CatalogKind, TypeId } from './ids';
 import type { ParamSpec } from './params';
 

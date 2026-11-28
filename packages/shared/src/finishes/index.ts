@@ -1,4 +1,4 @@
-export * from './defaults';
+export * from './color';
 export * from './library';
 export * from './manifest';
 export * from './textures';

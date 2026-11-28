@@ -3,7 +3,7 @@
 The piece catalogue (`packages/shared/src/catalog/`) defines **types**: a casement window, a bed. A **use** is one
 piece in a home. This page is about the uses people change on a deployed environment, and how those changes are
 stored, recorded and undone. The api is in `apps/api/src/routes/{catalog,uses,placements,opening-overrides}.ts`,
-the shapes in `packages/shared/src/userdata.ts`, and the agents' script is `uses.sh` (skill
+the shapes in `packages/shared/src/model/userdata.ts`, and the agents' script is `uses.sh` (skill
 `my-home-environments`).
 
 ## What lives where
@@ -94,7 +94,7 @@ follow-up of #39 adds `userdata` ([deployment.md](deployment.md#databases-and-ba
 ## Actor
 
 Every change records **who** made it: `owner`, `agent` or `system` (the release job and imports; the seed's changes
-are `system` with the name `seed`, or `seed import by <who>` for an import), with the source of that knowledge (`apps/api/src/actor.ts`):
+are `system` with the name `seed`, or `seed import by <who>` for an import), with the source of that knowledge (`apps/api/src/core/actor.ts`):
 
 1. `identity`: on the deployed hosts Traefik's forwardAuth sets `X-Authentik-Username` (and replaces any copy a
    client sent); nginx passes it on to the api. A username listed in `AGENT_USERNAMES` (comma-separated, default
@@ -193,7 +193,7 @@ stays in `issued_ids`. Opening overrides are never purged, and all other history
 
 Free-text notes on a **type** ("all souterrain windows were replaced in 2019") or on a **use** ("the bed-room window
 sticks"). Type notes are environment-wide (`homeId` null); use notes belong to one home. A subject is
-`{ kind: 'type' | 'use', id }` (`packages/shared/src/subjects.ts`), the same as photo subjects (`docs/photos.md`).
+`{ kind: 'type' | 'use', id }` (`packages/shared/src/model/subjects.ts`), the same as photo subjects (`docs/photos.md`).
 
 | Method and path                                  | Body → response                                           |
 | ------------------------------------------------ | --------------------------------------------------------- |

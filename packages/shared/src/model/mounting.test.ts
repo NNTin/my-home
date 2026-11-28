@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { HomeModel } from '../home-model';
-import { catalog } from './catalog';
+import type { HomeModel } from './home-model';
+import { catalog } from '../catalog/catalog';
 import { heightFitIssues, mountHeight, mountingIssue, mountIssues, wallBehind } from './mounting';
 
 const d = (value: number) => ({ value, source: 'mock' as const });

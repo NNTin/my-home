@@ -9,12 +9,12 @@ import {
   seedIssues,
 } from '@my-home/shared';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
-import { resolveActor } from '../actor';
-import type { Config } from '../config';
-import type { Db } from '../db/client';
+import { resolveActor } from '../core/actor';
+import type { Config } from '../core/config';
+import type { Db } from '../db/types';
 import { homeStore } from '../db/homes';
 import { exportSeed, syncSeeds } from '../db/seed-sync';
-import { problem } from '../errors';
+import { problem } from '../core/errors';
 
 /** Every deploy applies git's seed again (docs/deployment.md § The seed comes from git). */
 export const SEED_REPLACED_ON_DEPLOY =

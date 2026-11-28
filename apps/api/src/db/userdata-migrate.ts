@@ -1,5 +1,5 @@
 import { userdataMigrationsFolder } from '../paths';
-import type { Db } from './client';
+import type { Db } from './types';
 import { migrateSchema, readSchemaMigrations, type SchemaMigration } from './schema-migrate';
 import { USERDATA_SCHEMA } from './userdata-schema';
 

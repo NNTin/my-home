@@ -1,7 +1,7 @@
 # Home model
 
 The building is described by one JSON document, the **home model**. Its single source of truth is
-the zod schema `HomeModel` in [`packages/shared/src/home-model.ts`](../packages/shared/src/home-model.ts).
+the zod schema `HomeModel` in [`packages/shared/src/model/home-model.ts`](../packages/shared/src/model/home-model.ts).
 The api validates every write with it and the web app validates every response with it.
 
 - JSON Schema: [`packages/shared/schema/home-model.schema.json`](../packages/shared/schema/home-model.schema.json),
@@ -658,7 +658,7 @@ The viewer shows the first home the api lists; pick another with the home select
 
 ## Changing the schema
 
-1. Edit `packages/shared/src/home-model.ts` (keep every length a `Dimension`).
+1. Edit `packages/shared/src/model/home-model.ts` (keep every length a `Dimension`).
 2. `pnpm schema:generate` and commit the JSON Schema.
 3. Update `data/homes/*.json`. A breaking change bumps `HOME_SCHEMA_VERSION`; stored documents are
    re-validated on read, so old rows need a migration or a re-import. Prefer optional fields with

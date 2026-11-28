@@ -3,11 +3,11 @@ import {
   CatalogKind,
   formatCm,
   formatPercent,
-  MAX_ELEVATION,
   ParamValues,
   TypeId,
   type CatalogType,
-} from './catalog';
+} from '../catalog';
+import { MAX_ELEVATION } from './mounting';
 import { Bearing, Id } from './home-model';
 import { ApiError } from './homes';
 import { Subject, SubjectQuery } from './subjects';
@@ -26,7 +26,7 @@ const Name = z.string().trim().min(1).max(200);
 export const PlanPosition = z.strictObject({ x: z.number(), z: z.number() });
 export type PlanPosition = z.infer<typeof PlanPosition>;
 
-/** What a placement is fixed to (`catalog/mounting.ts`): the floor, a wall or the ceiling. */
+/** What a placement is fixed to (`mounting.ts`): the floor, a wall or the ceiling. */
 export const PlacementMounting = z.enum(['floor', 'wall', 'ceiling']);
 export type PlacementMounting = z.infer<typeof PlacementMounting>;
 
