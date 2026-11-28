@@ -170,7 +170,8 @@ export const ACTIONS: readonly Action[] = [
     group: 'Edit',
     contexts: ['edit'],
     kind: 'press',
-    keys: ['Delete'],
+    // Backspace too: a Mac laptop has no forward Delete (#218 review).
+    keys: ['Delete', 'Backspace'],
   },
   { id: 'undo', name: 'Undo', group: 'Edit', contexts: ['edit'], kind: 'press', keys: ['Mod+Z'] },
   {

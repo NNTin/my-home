@@ -151,14 +151,14 @@ float next to it, and a long press on an item opens the panel.
 | Key                       | Action                                     |
 | ------------------------- | ------------------------------------------ |
 | `R` / `Shift+R`           | rotate by one step (⟲ / ⟳)                 |
-| `Delete`                  | delete the selected item                   |
+| `Delete` / `Backspace`    | delete the selected item                   |
 | `Shift+D`                 | duplicate the selected item                |
 | `Ctrl+Z`                  | undo                                       |
 | `Ctrl+Shift+Z` / `Ctrl+Y` | redo                                       |
 | `Escape`                  | one layer: close what is open, or deselect |
 
 The keys come from the viewer's one action list (HUD v2 #204, `apps/web/src/keys/actions.ts`, `docs/design/hud-v2/hotkeys.md`):
-`Ctrl+D` is left to the browser (a bookmark), and a keyboard with no forward `Delete` uses the panel's Delete. Tools →
+`Ctrl+D` is left to the browser (a bookmark); `Backspace` deletes too (a Mac laptop has no forward `Delete`). Tools →
 Gestures and keys lists them all; `?` opens it.
 
 (`Cmd` instead of `Ctrl` on macOS.) Moves are constrained and snapped in this order:

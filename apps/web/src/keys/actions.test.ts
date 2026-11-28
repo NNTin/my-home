@@ -29,6 +29,10 @@ describe('the viewer’s actions (HUD v2 #204)', () => {
     expect(actionFor('Mod+d', 'edit')).toBeUndefined();
     expect(actionFor('Mod+Shift+z', 'edit')?.id).toBe('redo');
     expect(actionFor('Ctrl+y', 'edit')?.id).toBe('redo');
+    // Delete, or Backspace: a Mac laptop has no forward Delete (#218 review).
+    expect(actionFor('Delete', 'edit')?.id).toBe('delete');
+    expect(actionFor('Backspace', 'edit')?.id).toBe('delete');
+    expect(actionFor('Backspace', 'orbit')).toBeUndefined();
     // Held movement is the walk's own, never a command.
     expect(actionFor('w', 'walk')).toBeUndefined();
   });
