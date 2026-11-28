@@ -10,7 +10,7 @@ import {
   type ShellOptions,
 } from '../builder/drawList';
 import type { Visibility } from '../builder/visibility';
-import { PartsMesh } from '../catalog/PartsMesh';
+import { PartsMesh } from './PartsMesh';
 import type { PartState } from '../catalog/types';
 import { finishMaterials } from '../finishes/materials';
 import { batches } from './batches';

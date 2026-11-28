@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { partShape } from '../../builder/drawList';
 import { boundsOf } from '../../piece-page/Inspector';
 import { BUDGETS } from '../../quality/perfReport';
-import { partBatches } from '../PartsMesh';
+import { partBatches } from '../../scene/PartsMesh';
 import { pieces } from '../registry';
 
 /**

@@ -1,8 +1,8 @@
 import type { ResolvedFinish } from '@my-home/shared';
 import { pointInPolygon } from '../geom/geometry';
-import type { UvFrame } from './buildHome';
+import type { UvFrame } from './types';
 import type { Vec2, Vec3 } from '../geom/types';
-import { EPS } from './plan';
+import { EPS } from '../geom/plan';
 
 /**
  * The faces of a wall (docs/design/realistic-render.md §8.1). A wall is drawn face by face, not

@@ -120,7 +120,7 @@ export default definePiece({
   optionally tilted by `rotationX` (about its own x axis, before the turn: a sloping roof sheet, a leaning
   backrest, `tilted(cylinder(…), Math.PI / 2)` for a log lying on its side), with a colour, a
   `role` (`frame`, `glass`, `body`, …) and optional `material` settings (transparency, metalness,
-  shadows). [`PartsMesh`](../apps/web/src/catalog/PartsMesh.tsx) draws every piece the same way,
+  shadows). [`PartsMesh`](../apps/web/src/scene/PartsMesh.tsx) draws every piece the same way,
   in the order of its parts (keep glass after the frame), and adds the selection and collision
   highlight to furniture.
 - **Shapes**, each with a helper in [`parts.ts`](../apps/web/src/catalog/parts.ts) that works out the part's

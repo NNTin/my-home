@@ -8,7 +8,7 @@ import { cutParts } from '../piece-page/section';
 import { BUDGETS } from '../quality/perfReport';
 import { batches, shapeGeometry } from '../scene/batches';
 import { furniture } from './furniture';
-import { partBatches } from './PartsMesh';
+import { partBatches } from '../scene/PartsMesh';
 import { box, cylinder, extrude, lathe, roundedBox, tilted } from './parts';
 import { pieces } from './registry';
 import type { Part } from './types';

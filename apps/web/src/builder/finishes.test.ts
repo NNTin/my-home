@@ -5,7 +5,7 @@ import mockHomeJson from '../../../../packages/shared/test-fixtures/mock-home.js
 import { pointInPolygon } from '../geom/geometry';
 import { buildHome, type HomeScene, type WallFace } from './buildHome';
 import { PLAN_COLORS, shellItems } from './drawList';
-import { toOutline } from './plan';
+import { toOutline } from '../geom/plan';
 
 // Finishes in the builder and the draw list (docs/design/realistic-render.md §5.4, §5.5): defaults
 // by kind, wall faces by room, UV frames, and "Plan colours".

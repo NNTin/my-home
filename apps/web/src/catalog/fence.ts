@@ -1,6 +1,6 @@
 import type { HomeModel } from '@my-home/shared';
 import type { Box, Vec2, Vec3 } from '../geom/types';
-import { EPS, rotationFor } from './plan';
+import { EPS, rotationFor } from '../geom/plan';
 
 type FenceKind = NonNullable<HomeModel['fences']>[number]['kind'];
 

@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, type RefObject } from 'react';
 import { Vector3 } from 'three';
 import type { Vec3 } from '../geom/types';
-import { PartsMesh } from '../catalog/PartsMesh';
+import { PartsMesh } from '../scene/PartsMesh';
 import { projectLabel } from '../scene/RoomLabels';
 import type { DimensionLine, Part } from '../catalog/types';
 

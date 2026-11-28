@@ -5,7 +5,7 @@ import realHomeJson from '../../../../data/homes/home.json';
 import { pointInPolygon } from '../geom/geometry';
 import { buildHome } from './buildHome';
 import type { Vec2 } from '../geom/types';
-import { toOutline } from './plan';
+import { toOutline } from '../geom/plan';
 
 /** A part's centre on the plan: the opening's rotation about y (three.js), then its position. */
 function planPoint(
