@@ -21,7 +21,8 @@ import {
   type Vector3,
   type WebGLRenderer,
 } from 'three';
-import type { HomeScene, Vec3 } from '../builder/buildHome';
+import type { HomeScene } from '../builder/buildHome';
+import type { Vec3 } from '../geom/types';
 import { groupShown, linearRgb, type PlacementDraw } from '../builder/drawList';
 import type { Visibility } from '../builder/visibility';
 import { useFrameControl } from '../scene/Frame';

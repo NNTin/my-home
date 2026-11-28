@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Vec3 } from '../builder/buildHome';
+import type { Vec3 } from '../geom/types';
 import {
   azimuthOf,
   compassMarkers,

@@ -1,5 +1,6 @@
 import { catalog } from '@my-home/shared';
-import type { Box, HomeScene, Vec3 } from '../builder/buildHome';
+import type { HomeScene } from '../builder/buildHome';
+import type { Box, Vec3 } from '../geom/types';
 import { roofIndex, showUpTo, type Visibility } from '../builder/visibility';
 import { href } from '../routing';
 

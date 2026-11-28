@@ -1,4 +1,4 @@
-import type { Vec2 } from '../../../builder/buildHome';
+import type { Vec2 } from '../../../geom/types';
 import { colorParam, cylinder, extrude, shade } from '../../parts';
 import type { Part } from '../../types';
 import { definePiece } from '../../types';

@@ -1,5 +1,5 @@
 import { formatCm, type ParamValues } from '@my-home/shared';
-import type { Vec2, Vec3 } from '../builder/buildHome';
+import type { Vec2, Vec3 } from '../geom/types';
 import type { DimensionLine, Part, PartMaterial, PartRole } from './types';
 
 /** Building blocks for piece modules. */

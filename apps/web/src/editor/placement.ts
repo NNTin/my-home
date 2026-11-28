@@ -1,6 +1,6 @@
-import type { Vec2 } from '../builder/buildHome';
+import type { Vec2 } from '../geom/types';
 import type { FloorPlan, PlanRoom } from './floorPlan';
-import { add, centroid, pointInPolygon } from './geometry';
+import { add, centroid, pointInPolygon } from '../geom/geometry';
 
 /** Points within this distance (1 cm) of a room edge count as inside it. */
 export const INSIDE_TOLERANCE = 0.01;

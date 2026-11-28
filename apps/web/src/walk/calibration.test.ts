@@ -1,7 +1,7 @@
 import { HomeModel } from '@my-home/shared';
 import { describe, expect, it } from 'vitest';
 import realHomeJson from '../../../../data/homes/home.json';
-import type { Vec2 } from '../builder/buildHome';
+import type { Vec2 } from '../geom/types';
 import { calibrationTargets } from './calibration';
 
 const home = HomeModel.parse(structuredClone(realHomeJson));

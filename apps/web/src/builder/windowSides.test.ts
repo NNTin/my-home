@@ -2,8 +2,9 @@ import { HomeModel } from '@my-home/shared';
 import { describe, expect, it } from 'vitest';
 import mockHomeJson from '../../../../packages/shared/test-fixtures/mock-home.json';
 import realHomeJson from '../../../../data/homes/home.json';
-import { pointInPolygon } from '../editor/geometry';
-import { buildHome, type Vec2 } from './buildHome';
+import { pointInPolygon } from '../geom/geometry';
+import { buildHome } from './buildHome';
+import type { Vec2 } from '../geom/types';
 import { toOutline } from './plan';
 
 /** A part's centre on the plan: the opening's rotation about y (three.js), then its position. */

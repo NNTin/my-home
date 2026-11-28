@@ -1,5 +1,6 @@
 import { resolveFinish, type Chimney, type ResolvedFinish } from '@my-home/shared';
-import type { Box, Gable, ProfileSolid, Vec2, Vec3 } from './buildHome';
+import type { Gable, ProfileSolid } from './buildHome';
+import type { Box, Vec2, Vec3 } from '../geom/types';
 import { EPS } from './plan';
 import type { FaceRun, WallCut, WallEnd } from './wallFaces';
 

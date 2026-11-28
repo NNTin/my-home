@@ -1,6 +1,7 @@
 import { CUT_FINISH, TERRAIN_FINISH } from '@my-home/shared';
 import { Box3, BufferAttribute, BufferGeometry, Matrix4, Vector3 } from 'three';
-import type { HomeScene, Vec3 } from '../builder/buildHome';
+import type { HomeScene } from '../builder/buildHome';
+import type { Vec3 } from '../geom/types';
 import {
   groupKey,
   partItems,

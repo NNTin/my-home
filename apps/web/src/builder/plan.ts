@@ -1,5 +1,5 @@
 import type { Point, Polygon } from '@my-home/shared';
-import type { Vec2 } from './buildHome';
+import type { Vec2 } from '../geom/types';
 
 /** Plan helpers shared by the builder modules. Plan points are `[x, z]`. */
 

@@ -1,5 +1,6 @@
 import { wallLength, type HomeModel, type Point } from '@my-home/shared';
-import type { Box, HomeScene, Vec2 } from '../builder/buildHome';
+import type { HomeScene } from '../builder/buildHome';
+import type { Box, Vec2 } from '../geom/types';
 import { slopeY, solidPoint } from '../builder/buildHome';
 import {
   add,
@@ -11,7 +12,7 @@ import {
   scale,
   segmentRectangle,
   sub,
-} from '../editor/geometry';
+} from '../geom/geometry';
 
 /**
  * Where a figure can walk: pure geometry derived from the home model and its render

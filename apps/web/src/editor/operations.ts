@@ -10,11 +10,11 @@ import {
   type PlacementMounting,
 } from '@my-home/shared';
 import { elevationOfItem, mountingOfItem, withMounting, type EditorItem } from './item';
-import type { Vec2 } from '../builder/buildHome';
+import type { Vec2 } from '../geom/types';
 import { UNKNOWN_SIZE, type FurnitureRegistry, type ResolvedFurniture } from '../catalog/furniture';
 import { findCollisions, type Collision } from './collision';
 import { floorPlan, type FloorPlan } from './floorPlan';
-import { length, normalizeAngle, rectangle, rotate, sub, transform } from './geometry';
+import { length, normalizeAngle, rectangle, rotate, sub, transform } from '../geom/geometry';
 import { constrainMove, isInside, allowedArea, placementPosition, roomAt } from './placement';
 import {
   snapAngle,

@@ -1,4 +1,4 @@
-import type { Vec3 } from '../builder/buildHome';
+import type { Vec3 } from '../geom/types';
 
 /**
  * The light rig (docs/design/realistic-render.md §6.1): plain data that says how a view is lit.

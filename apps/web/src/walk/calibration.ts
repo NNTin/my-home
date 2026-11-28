@@ -1,6 +1,6 @@
 import { wallLength, type HomeModel } from '@my-home/shared';
-import type { Vec2 } from '../builder/buildHome';
-import { distanceToSegment } from '../editor/geometry';
+import type { Vec2 } from '../geom/types';
+import { distanceToSegment } from '../geom/geometry';
 
 /** Something in the model the owner can point the phone at to calibrate the compass. */
 export interface CalibrationTarget {

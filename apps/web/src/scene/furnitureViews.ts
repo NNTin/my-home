@@ -1,4 +1,5 @@
-import { groundAt, type HomeScene, type Vec3 } from '../builder/buildHome';
+import { groundAt, type HomeScene } from '../builder/buildHome';
+import type { Vec3 } from '../geom/types';
 import type { Visibility } from '../builder/visibility';
 import { UNKNOWN_SIZE, unknownParts } from '../catalog/furniture';
 import type { EditorItem } from '../editor/item';

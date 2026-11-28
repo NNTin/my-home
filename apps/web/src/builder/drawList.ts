@@ -6,17 +6,8 @@ import {
   type ResolvedFinish,
 } from '@my-home/shared';
 import type { Part } from '../catalog/types';
-import type {
-  Box,
-  HomeScene,
-  PlaneSlope,
-  Prism,
-  Surface,
-  UvFrame,
-  Vec2,
-  Vec3,
-  WallFace,
-} from './buildHome';
+import type { HomeScene, PlaneSlope, Prism, Surface, UvFrame, WallFace } from './buildHome';
+import type { Box, Vec2, Vec3 } from '../geom/types';
 import { roofIndex, type Visibility } from './visibility';
 
 /**

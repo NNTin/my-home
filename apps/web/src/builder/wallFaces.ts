@@ -1,6 +1,7 @@
 import type { ResolvedFinish } from '@my-home/shared';
-import { pointInPolygon } from '../editor/geometry';
-import type { UvFrame, Vec2, Vec3 } from './buildHome';
+import { pointInPolygon } from '../geom/geometry';
+import type { UvFrame } from './buildHome';
+import type { Vec2, Vec3 } from '../geom/types';
 import { EPS } from './plan';
 
 /**

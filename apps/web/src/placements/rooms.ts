@@ -1,6 +1,7 @@
-import type { HomeScene, OpeningDescriptor, RoomFloorDescriptor, Vec3 } from '../builder/buildHome';
+import type { HomeScene, OpeningDescriptor, RoomFloorDescriptor } from '../builder/buildHome';
+import type { Vec3 } from '../geom/types';
 import { visibleScene, type Visibility } from '../builder/visibility';
-import { pointInPolygon } from '../editor/geometry';
+import { pointInPolygon } from '../geom/geometry';
 
 /** How far above or below a room's floor a click on it may land (its finish, a threshold). */
 const FLOOR_SLACK = 0.25;

@@ -1,4 +1,5 @@
-import type { HomeScene, Vec2, Vec3 } from '../builder/buildHome';
+import type { HomeScene } from '../builder/buildHome';
+import type { Vec2, Vec3 } from '../geom/types';
 import { wholeVisibility, type Visibility } from '../builder/visibility';
 import type { Backdrop, Look, RigView } from '../lighting/rig';
 import type { FrameRequest } from '../placements/focus';

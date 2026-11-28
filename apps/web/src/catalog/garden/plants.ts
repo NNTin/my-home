@@ -1,4 +1,4 @@
-import type { Vec2 } from '../../builder/buildHome';
+import type { Vec2 } from '../../geom/types';
 
 /**
  * A plant as one rounded mass, for `lathe`: widest a third of the way up, closing to a blunt top.

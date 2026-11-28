@@ -19,9 +19,8 @@ import {
   type HomeScene,
   type LevelInfo,
   type RoomFloorDescriptor,
-  type Vec2,
-  type Vec3,
 } from './builder/buildHome';
+import type { Vec2, Vec3 } from './geom/types';
 import { furniture as furnitureTypes, UNKNOWN_SIZE } from './catalog/furniture';
 import { compassMarkers } from './compass/compass';
 import {

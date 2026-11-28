@@ -1,4 +1,4 @@
-import type { Vec2, Vec3 } from '../builder/buildHome';
+import type { Vec2, Vec3 } from '../geom/types';
 
 /**
  * Compass math, without three.js. Bearings are degrees clockwise seen from above, starting at the

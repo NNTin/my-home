@@ -1,5 +1,5 @@
 import type { ParamValues, TypeId } from '@my-home/shared';
-import type { Vec2, Vec3 } from '../builder/buildHome';
+import type { Vec2, Vec3 } from '../geom/types';
 
 /**
  * The contract of a piece module: how one catalogue type (`@my-home/shared` `catalog`) is drawn.

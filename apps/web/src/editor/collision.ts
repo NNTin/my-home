@@ -1,6 +1,6 @@
-import type { Vec2 } from '../builder/buildHome';
+import type { Vec2 } from '../geom/types';
 import { FURNITURE_HEIGHT, type PlanWall } from './floorPlan';
-import { boundsOf, convexOverlap } from './geometry';
+import { boundsOf, convexOverlap } from '../geom/geometry';
 
 /**
  * An item's footprint in plan coordinates, and the heights it takes up above the floor (on the

@@ -1,5 +1,5 @@
 import type { ParamValues } from '@my-home/shared';
-import type { Vec3 } from '../../builder/buildHome';
+import type { Vec3 } from '../../geom/types';
 import { FABRIC, GLASS, LACQUER } from '../cabinet';
 import { box, colorParam, numberParam, shade } from '../parts';
 import type { Part, PieceContext } from '../types';

@@ -1,7 +1,8 @@
 import { HomeModel, type Stair } from '@my-home/shared';
 import { describe, expect, it } from 'vitest';
 import realHomeJson from '../../../../data/homes/home.json';
-import { buildHome, solidPoint, type Vec2 } from './buildHome';
+import { buildHome, solidPoint } from './buildHome';
+import type { Vec2 } from '../geom/types';
 import { shellItems } from './drawList';
 import { buildStair, MAX_RISER, STAIR_DETAIL } from './stair';
 

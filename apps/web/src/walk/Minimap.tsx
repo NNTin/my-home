@@ -1,7 +1,7 @@
 import { useMemo, useState, type MouseEvent, type ReactNode } from 'react';
 import { mapPlaced, SkMap } from '../hud/SkMap';
 import { useHost } from '../hud/useElement';
-import type { Vec2 } from '../builder/buildHome';
+import type { Vec2 } from '../geom/types';
 import type { Figure } from './figure';
 import { facing } from './figure';
 import {

@@ -24,7 +24,7 @@ import { gateParts, gateSpec } from '../catalog/gate/swing';
 import { numberParam } from '../catalog/parts';
 import { pieces } from '../catalog/registry';
 import type { Part } from '../catalog/types';
-import { pointInPolygon } from '../editor/geometry';
+import { pointInPolygon } from '../geom/geometry';
 import { fenceLine, fenceSlats, fenceSpec, type FenceSlat } from './fence';
 import {
   doorReveal,
@@ -38,6 +38,7 @@ import {
   type SkirtingDescriptor,
 } from './shellDetail';
 import { simplify, wallFaceShapes, wallUv, type WallEnd, type WallFaceShape } from './wallFaces';
+import type { Box, Vec2, Vec3 } from '../geom/types';
 import { EPS, rotationFor, toOutline, toVec2 } from './plan';
 import { buildStair, type StairDescriptor } from './stair';
 
@@ -59,16 +60,6 @@ export { buildStair, MAX_RISER, type StairDescriptor } from './stair';
  *
  * World axes follow the model: x east, y up, z south. Plan points are `[x, z]`.
  */
-
-export type Vec3 = [number, number, number];
-export type Vec2 = [number, number];
-
-/** A box: `size` is [length along its local x, height, depth]; rotated about y by `rotationY`. */
-export interface Box {
-  center: Vec3;
-  size: Vec3;
-  rotationY: number;
-}
 
 /**
  * A polygon in a local (x, y) plane, extruded through `depth` along local z (centred on the

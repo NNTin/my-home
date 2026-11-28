@@ -1,7 +1,7 @@
 import { useThree } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
 import { BufferGeometry, Shape, ShapeGeometry, Vector2, Vector3 } from 'three';
-import type { Vec2 } from '../builder/buildHome';
+import type { Vec2 } from '../geom/types';
 
 /**
  * The selected room's outline (HUD v2 #201): its floor in a light primary tint with a violet line around it, just
