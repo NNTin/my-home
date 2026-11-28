@@ -7,6 +7,9 @@ import {
 } from '@my-home/shared';
 import { useId, useState } from 'react';
 import { cmText, lengthInput, normalizeHex, rangeText, withOverride } from './playground';
+import { SkButton } from '../hud/SkButton';
+import { SkField } from '../hud/SkField';
+import { SkSlider } from '../hud/SkSlider';
 
 type Spec<T extends ParamSpec['type']> = Extract<ParamSpec, { type: T }>;
 
@@ -25,29 +28,33 @@ function ColorControl({ spec, value, onChange }: ControlProps<'color', string>) 
     <div className="playground-row">
       <label htmlFor={id}>{spec.label}</label>
       <div className="playground-control">
-        <input
-          id={id}
-          type="color"
-          className="playground-color"
-          value={value}
-          onChange={(e) => onChange(e.target.value.toLowerCase())}
-        />
-        <input
-          type="text"
-          className="playground-field"
-          aria-label={`${spec.label}, hex`}
-          aria-invalid={invalid}
-          aria-describedby={invalid ? `${id}-error` : undefined}
-          autoComplete="off"
-          spellCheck={false}
-          value={draft ?? value}
-          onChange={(e) => {
-            setDraft(e.target.value);
-            const hex = normalizeHex(e.target.value);
-            if (hex) onChange(hex);
-          }}
-          onBlur={() => setDraft(null)}
-        />
+        <SkField size="compact">
+          <input
+            id={id}
+            type="color"
+            className="playground-color"
+            value={value}
+            onChange={(e) => onChange(e.target.value.toLowerCase())}
+          />
+        </SkField>
+        <SkField size="compact" invalid={invalid}>
+          <input
+            type="text"
+            className="playground-field"
+            aria-label={`${spec.label}, hex`}
+            aria-invalid={invalid}
+            aria-describedby={invalid ? `${id}-error` : undefined}
+            autoComplete="off"
+            spellCheck={false}
+            value={draft ?? value}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              const hex = normalizeHex(e.target.value);
+              if (hex) onChange(hex);
+            }}
+            onBlur={() => setDraft(null)}
+          />
+        </SkField>
         <span className="swatch" style={{ background: value }} aria-hidden="true" />
       </div>
       {invalid && (
@@ -69,36 +76,38 @@ function LengthControl({ spec, value, onChange }: ControlProps<'length', number>
     <div className="playground-row">
       <label htmlFor={id}>{spec.label}</label>
       <div className="playground-control">
-        <input
-          type="range"
+        <SkSlider
           className="playground-slider"
-          aria-label={`${spec.label}, slider`}
+          label={`${spec.label}, slider`}
+          unit=" cm"
           min={Math.ceil(spec.min * 100)}
           max={Math.floor(spec.max * 100)}
           step={1}
           value={Math.round(value * 100)}
-          onChange={(e) => {
+          onInput={(v) => {
             setDraft(null);
-            onChange(Number(e.target.value) / 100);
+            onChange(v / 100);
           }}
         />
         <span className="playground-cm">
-          <input
-            id={id}
-            type="text"
-            inputMode="decimal"
-            className="playground-field"
-            aria-invalid={error !== undefined}
-            aria-describedby={`${id}-range${error ? ` ${id}-error` : ''}`}
-            autoComplete="off"
-            value={draft ?? cmText(value)}
-            onChange={(e) => {
-              setDraft(e.target.value);
-              const next = lengthInput(spec, e.target.value);
-              if ('value' in next) onChange(next.value);
-            }}
-            onBlur={() => setDraft(null)}
-          />{' '}
+          <SkField size="compact" invalid={error !== undefined}>
+            <input
+              id={id}
+              type="text"
+              inputMode="decimal"
+              className="playground-field"
+              aria-invalid={error !== undefined}
+              aria-describedby={`${id}-range${error ? ` ${id}-error` : ''}`}
+              autoComplete="off"
+              value={draft ?? cmText(value)}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                const next = lengthInput(spec, e.target.value);
+                if ('value' in next) onChange(next.value);
+              }}
+              onBlur={() => setDraft(null)}
+            />
+          </SkField>{' '}
           cm
         </span>
       </div>
@@ -124,25 +133,27 @@ function CountControl({ spec, value, onChange }: ControlProps<'count', number>) 
         {spec.label}
       </span>
       <div className="playground-control playground-stepper">
-        <button
-          type="button"
+        <SkButton
+          size="compact"
+          variant="secondary"
           aria-label={`Fewer ${what}`}
           disabled={value <= spec.min}
           onClick={() => onChange(Math.max(spec.min, value - 1))}
         >
           −
-        </button>
+        </SkButton>
         <output aria-live="polite" aria-label={spec.label}>
           {value}
         </output>
-        <button
-          type="button"
+        <SkButton
+          size="compact"
+          variant="secondary"
           aria-label={`More ${what}`}
           disabled={value >= spec.max}
           onClick={() => onChange(Math.min(spec.max, value + 1))}
         >
           +
-        </button>
+        </SkButton>
       </div>
       <p className="playground-hint">
         {spec.min}–{spec.max}
@@ -153,26 +164,23 @@ function CountControl({ spec, value, onChange }: ControlProps<'count', number>) 
 
 /** A fraction: a slider from 0 to 100 % in the spec's steps, with the value in %. */
 function FractionControl({ spec, value, onChange }: ControlProps<'fraction', number>) {
-  const id = useId();
   const step = Math.round(spec.step * 100);
   return (
     <div className="playground-row">
-      <label htmlFor={id}>{spec.label}</label>
+      <span className="playground-label" aria-hidden="true">
+        {spec.label}
+      </span>
       <div className="playground-control">
-        <input
-          id={id}
-          type="range"
+        <SkSlider
           className="playground-slider"
+          label={spec.label}
+          unit="%"
           min={0}
           max={100}
           step={step}
           value={Math.round(value * 100)}
-          aria-valuetext={formatPercent(value)}
-          onChange={(e) => onChange(Number(e.target.value) / 100)}
+          onInput={(v) => onChange(v / 100)}
         />
-        <span className="playground-cm" aria-hidden="true">
-          {formatPercent(value)}
-        </span>
       </div>
     </div>
   );
@@ -185,18 +193,20 @@ function ChoiceControl({ spec, value, onChange }: ControlProps<'choice', string>
     <div className="playground-row">
       <label htmlFor={id}>{spec.label}</label>
       <div className="playground-control">
-        <select
-          id={id}
-          className="playground-field"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        >
-          {spec.options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+        <SkField size="compact">
+          <select
+            id={id}
+            className="playground-field"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+          >
+            {spec.options.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </SkField>
       </div>
     </div>
   );
@@ -279,14 +289,15 @@ export function Playground({
           ))}
         </ul>
       )}
-      <button
-        type="button"
-        className="button playground-reset"
+      <SkButton
+        size="compact"
+        variant="secondary"
+        className="playground-reset"
         disabled={Object.keys(overrides).length === 0}
         onClick={() => onChange({})}
       >
         Reset to defaults
-      </button>
+      </SkButton>
     </section>
   );
 }

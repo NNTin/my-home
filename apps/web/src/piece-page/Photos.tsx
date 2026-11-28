@@ -4,6 +4,10 @@ import { photosApi } from '../api';
 import { roomLabel } from '../photos/filters';
 import { href, Link } from '../routing';
 import { photosOfUse, requestsOfUse } from './uses';
+import { SkButton } from '../hud/SkButton';
+import { SkCard } from '../hud/SkCard';
+import { SkCheckbox } from '../hud/SkCheckbox';
+import { SkPanel } from '../hud/SkPanel';
 
 const when = (iso: string) =>
   new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
@@ -24,14 +28,9 @@ function PhotoStrip({
     <ul className="photo-strip" aria-label={label}>
       {photos.map((photo) => (
         <li key={photo.id}>
-          <button
-            type="button"
-            className="thumbnail"
-            title={photoName(photo)}
-            onClick={() => onOpen(photo)}
-          >
+          <SkCard className="thumbnail" label={photoName(photo)} onClick={() => onOpen(photo)}>
             <img src={photosApi.thumbnailUrl(photo.id)} alt={photoName(photo)} loading="lazy" />
-          </button>
+          </SkCard>
         </li>
       ))}
     </ul>
@@ -43,7 +42,8 @@ function PhotoStrip({
  * tags and deleting stay in the viewer's gallery, which "Open in the gallery" leads to.
  */
 export function PhotoViewer({ photo, onClose }: { photo: Photo; onClose(): void }) {
-  const close = useRef<HTMLButtonElement>(null);
+  // The focus goes to Close: the button inside its element.
+  const close = useRef<HTMLSpanElement>(null);
   // The latest `onClose`, so the effect below runs once per open photo, not on every render of
   // the parent (which passes a new function each time).
   const closeRef = useRef(onClose);
@@ -51,7 +51,7 @@ export function PhotoViewer({ photo, onClose }: { photo: Photo; onClose(): void 
     closeRef.current = onClose;
   });
   useEffect(() => {
-    close.current?.focus();
+    close.current?.querySelector<HTMLElement>('sakuga-button, button')?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeRef.current();
     };
@@ -60,12 +60,7 @@ export function PhotoViewer({ photo, onClose }: { photo: Photo; onClose(): void 
   }, [photo.id]);
   const room = roomLabel(photo);
   return (
-    <div
-      className="photo-viewer"
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Photo: ${photoName(photo)}`}
-    >
+    <SkPanel className="photo-viewer" kind="dialog" label={`Photo: ${photoName(photo)}`}>
       <a href={photosApi.imageUrl(photo.id)} target="_blank" rel="noreferrer">
         <img src={photosApi.imageUrl(photo.id)} alt={`Photo taken in ${room.name}`} />
       </a>
@@ -82,17 +77,20 @@ export function PhotoViewer({ photo, onClose }: { photo: Photo; onClose(): void 
         </p>
       )}
       <div className="buttons">
-        <Link
-          className="button"
-          to={href({ page: 'viewer' }, { home: photo.homeId, panel: 'photos' })}
+        <SkButton
+          size="compact"
+          variant="secondary"
+          href={href({ page: 'viewer' }, { home: photo.homeId, panel: 'photos' })}
         >
           Open in the gallery
-        </Link>
-        <button ref={close} type="button" className="button" onClick={onClose}>
-          Close
-        </button>
+        </SkButton>
+        <span ref={close}>
+          <SkButton size="compact" variant="secondary" onClick={onClose}>
+            Close
+          </SkButton>
+        </span>
       </div>
-    </div>
+    </SkPanel>
   );
 }
 
@@ -170,22 +168,22 @@ export function UsePhotos({
         <ul className="photo-strip" aria-label={`Photos of ${use.name}`}>
           {linked.map((photo) => (
             <li key={photo.id}>
-              <button
-                type="button"
+              <SkCard
                 className="thumbnail"
-                title={photoName(photo)}
+                label={photoName(photo)}
                 onClick={() => setViewing(photo)}
               >
                 <img src={photosApi.thumbnailUrl(photo.id)} alt={photoName(photo)} loading="lazy" />
-              </button>
-              <button
-                type="button"
+              </SkCard>
+              <SkButton
+                size="compact"
+                variant="secondary"
                 className="link-button"
                 aria-label={`Unlink ${photoName(photo)}`}
                 onClick={() => void unlink(photo)}
               >
                 Unlink
-              </button>
+              </SkButton>
             </li>
           ))}
         </ul>
@@ -196,25 +194,25 @@ export function UsePhotos({
           {error}
         </p>
       )}
-      <button
-        type="button"
-        className="button"
-        aria-expanded={picking}
+      <SkButton
+        size="compact"
+        variant="secondary"
+        pressed={picking}
         onClick={() => setPicking((p) => !p)}
       >
         Link a photo…
-      </button>
+      </SkButton>
       {picking && (
         <div className="photo-picker" role="group" aria-label="Link a photo">
           {use.roomIds.length > 0 && (
-            <label className="piece-toggle">
-              <input
-                type="checkbox"
-                checked={onlyRoom}
-                onChange={(e) => setOnlyRoom(e.target.checked)}
-              />
+            <SkCheckbox
+              className="piece-toggle"
+              size="compact"
+              checked={onlyRoom}
+              onChange={setOnlyRoom}
+            >
               Only photos in {use.roomIds.map((id) => roomName(id) ?? id).join(' or ')}
-            </label>
+            </SkCheckbox>
           )}
           {candidates.length === 0 ? (
             <p className="piece-note">No other photos{onlyRoom ? ' in this room' : ''}.</p>
@@ -222,15 +220,13 @@ export function UsePhotos({
             <ul className="photo-strip" aria-label="Photos to link">
               {candidates.map((photo) => (
                 <li key={photo.id}>
-                  <button
-                    type="button"
+                  <SkCard
                     className="thumbnail"
-                    aria-label={`Link ${photoName(photo)}`}
-                    title={photoName(photo)}
+                    label={`Link ${photoName(photo)}`}
                     onClick={() => void link(photo)}
                   >
                     <img src={photosApi.thumbnailUrl(photo.id)} alt="" loading="lazy" />
-                  </button>
+                  </SkCard>
                 </li>
               ))}
             </ul>

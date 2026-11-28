@@ -68,6 +68,16 @@ const SCREENS = [
   },
 ];
 
+/**
+ * The piece page's 3D / Section switch: a sakuga-segmented's radio since #168 PR 7/2, a button on an older
+ * build (staging may run one).
+ */
+const viewSwitch = (p, name) =>
+  p
+    .getByRole('radio', { name, exact: true })
+    .or(p.getByRole('button', { name, exact: true }))
+    .first();
+
 async function smoke(out, homeId) {
   const base = process.env.SITE_BASE;
   const host = new URL(base).host;
@@ -673,7 +683,7 @@ async function smoke(out, homeId) {
         if (id.startsWith('window.') || id.startsWith('door.') || id.startsWith('gate.')) {
           if (!device.hasTouch && id === 'window.casement')
             await p.screenshot({ path: shot('window') });
-          await press(p.getByRole('button', { name: 'Section', exact: true }));
+          await press(viewSwitch(p, 'Section'));
           const svg = p.locator('svg.section');
           await svg.waitFor({ timeout: 10_000 }).catch(() => {});
           const roles = await svg
@@ -697,7 +707,7 @@ async function smoke(out, homeId) {
           if (!device.hasTouch && id === 'window.casement')
             await p.screenshot({ path: shot('window-section') });
           if (!device.hasTouch && id === 'door.french') {
-            await press(p.getByRole('button', { name: '3D', exact: true }));
+            await press(viewSwitch(p, '3D'));
             await p
               .locator('.dimension-label')
               .first()

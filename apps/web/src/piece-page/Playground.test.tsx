@@ -1,5 +1,5 @@
 import { catalog, effectiveParams, type CatalogType, type ParamValues } from '@my-home/shared';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 import { decodeOverrides, encodeOverrides, lengthInput, normalizeHex } from './playground';
@@ -24,6 +24,13 @@ function Harness({ type, initial = {} }: { type: CatalogType; initial?: ParamVal
   );
 }
 
+/** A sakuga-slider (its fallback here): set its value and say so, as a drag does. */
+const slide = (slider: HTMLElement, value: string) =>
+  act(() => {
+    (slider as HTMLElement & { value: string }).value = value;
+    fireEvent.input(slider);
+  });
+
 const overrides = () => JSON.parse(screen.getByTestId('overrides').textContent!) as ParamValues;
 const playground = () => within(screen.getByRole('region', { name: 'Playground' }));
 const design = () =>
@@ -44,9 +51,9 @@ describe('Playground controls, generated from the specs', () => {
           );
           controls += 2;
         } else if (spec.type === 'length') {
-          expect(playground().getByRole('slider', { name: `${spec.label}, slider` })).toHaveValue(
-            String(Math.round(spec.default * 100)),
-          );
+          expect(
+            playground().getByRole('slider', { name: `${spec.label}, slider` }),
+          ).toHaveAttribute('aria-valuenow', String(Math.round(spec.default * 100)));
           expect(playground().getByRole('textbox', { name: spec.label })).toHaveValue(
             (spec.default * 100).toFixed(1),
           );
@@ -64,7 +71,8 @@ describe('Playground controls, generated from the specs', () => {
           expect(more.hasAttribute('disabled')).toBe(spec.default === spec.max);
           controls += 2;
         } else if (spec.type === 'fraction') {
-          expect(playground().getByRole('slider', { name: spec.label })).toHaveValue(
+          expect(playground().getByRole('slider', { name: spec.label })).toHaveAttribute(
+            'aria-valuenow',
             String(Math.round(spec.default * 100)),
           );
           controls += 1;
@@ -77,7 +85,9 @@ describe('Playground controls, generated from the specs', () => {
       }
       // Every input of the playground is one of those (plus "Reset to defaults").
       expect(
-        document.querySelectorAll('.playground input, .playground button, .playground select'),
+        document.querySelectorAll(
+          '.playground input, .playground select, .playground sakuga-button, .playground sakuga-slider',
+        ),
       ).toHaveLength(controls + 1);
       const designSpecs = specs.filter((s) => s.tier === 'design');
       for (const spec of designSpecs) expect(design().getByText(spec.label)).toBeInTheDocument();
@@ -103,9 +113,9 @@ describe('choices and fractions', () => {
     });
     const closed = playground().getByRole('slider', { name: 'Shutter closed' });
     expect(closed).toHaveAttribute('step', '5');
-    fireEvent.change(closed, { target: { value: '40' } });
+    slide(closed, '40');
     expect(overrides()).toEqual({ shutter: 'outside', shutterClosed: 0.4 });
-    expect(closed).toHaveAttribute('aria-valuetext', '40 %');
+    expect(closed).toHaveAttribute('aria-valuetext', '40%');
     // Back to the default drops the override.
     fireEvent.change(playground().getByRole('combobox', { name: 'Roller shutter' }), {
       target: { value: 'none' },
@@ -154,10 +164,10 @@ describe('lengths in cm', () => {
     expect(slider).toHaveAttribute('step', '1');
     expect(slider).toHaveAttribute('min', '80');
     expect(slider).toHaveAttribute('max', '220');
-    fireEvent.change(slider, { target: { value: '181' } });
+    slide(slider, '181');
     expect(overrides()).toEqual({ width: 1.81 });
     expect(width()).toHaveValue('181.0');
-    fireEvent.change(slider, { target: { value: '160' } });
+    slide(slider, '160');
     expect(overrides()).toEqual({});
   });
 

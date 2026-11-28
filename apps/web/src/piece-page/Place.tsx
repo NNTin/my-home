@@ -7,6 +7,8 @@ import { toEditorItem } from '../placements/sync';
 import { useEditMode } from '../editMode/editMode';
 import { href, navigate } from '../routing';
 import type { HomeData } from './uses';
+import { SkButton } from '../hud/SkButton';
+import { SkField } from '../hud/SkField';
 
 /** The levels of a home that have rooms, in the model's order. */
 const levelsWithRooms = (model: HomeModel) =>
@@ -101,9 +103,9 @@ function PlaceForm({ type, homes, params, defaultHomeId }: PlaceProps) {
             Put a {type.name.toLowerCase()} with the playground's values into a room, then move and
             turn it in the viewer.
           </p>
-          <button type="button" className="button primary" onClick={() => setOpen(true)}>
+          <SkButton size="compact" onClick={() => setOpen(true)}>
             Place…
-          </button>
+          </SkButton>
         </>
       ) : (
         <form
@@ -116,36 +118,42 @@ function PlaceForm({ type, homes, params, defaultHomeId }: PlaceProps) {
         >
           <label className="field">
             Home
-            <select value={homeId} onChange={(e) => chooseHome(e.target.value)}>
-              {usable.map((h) => (
-                <option key={h.home.id} value={h.home.id}>
-                  {h.home.name}
-                </option>
-              ))}
-            </select>
+            <SkField size="compact">
+              <select value={homeId} onChange={(e) => chooseHome(e.target.value)}>
+                {usable.map((h) => (
+                  <option key={h.home.id} value={h.home.id}>
+                    {h.home.name}
+                  </option>
+                ))}
+              </select>
+            </SkField>
           </label>
           <label className="field">
             Level
-            <select value={levelId} onChange={(e) => chooseLevel(e.target.value)}>
-              {model &&
-                levelsWithRooms(model).map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.name}
-                  </option>
-                ))}
-            </select>
+            <SkField size="compact">
+              <select value={levelId} onChange={(e) => chooseLevel(e.target.value)}>
+                {model &&
+                  levelsWithRooms(model).map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+              </select>
+            </SkField>
           </label>
           <label className="field">
             Room
-            <select value={roomId} onChange={(e) => setRoomId(e.target.value)}>
-              {model?.rooms
-                .filter((r) => r.levelId === levelId)
-                .map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-            </select>
+            <SkField size="compact">
+              <select value={roomId} onChange={(e) => setRoomId(e.target.value)}>
+                {model?.rooms
+                  .filter((r) => r.levelId === levelId)
+                  .map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+              </select>
+            </SkField>
           </label>
           {error && (
             <p className="error" role="alert">
@@ -153,12 +161,12 @@ function PlaceForm({ type, homes, params, defaultHomeId }: PlaceProps) {
             </p>
           )}
           <div className="buttons">
-            <button type="submit" className="button primary" disabled={busy || levelId === ''}>
+            <SkButton size="compact" type="submit" disabled={busy || levelId === ''}>
               {busy ? 'Placing…' : 'Place and open in the viewer'}
-            </button>
-            <button type="button" className="button" onClick={() => setOpen(false)}>
+            </SkButton>
+            <SkButton size="compact" variant="secondary" onClick={() => setOpen(false)}>
               Cancel
-            </button>
+            </SkButton>
           </div>
         </form>
       )}

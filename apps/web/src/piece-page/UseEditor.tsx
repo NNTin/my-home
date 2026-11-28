@@ -11,6 +11,8 @@ import { useState, type Dispatch, type SetStateAction } from 'react';
 import { ApiRequestError, openingOverridesApi, placementsApi } from '../api';
 import { BasicControl } from './Playground';
 import { overrideSummary, contextOfUse } from './uses';
+import { SkButton } from '../hud/SkButton';
+import { SkField } from '../hud/SkField';
 
 /** The overrides the type still takes (ignored keys are dropped: saving them would be refused). */
 export function savableOverrides(type: CatalogType, overrides: ParamValues): ParamValues {
@@ -138,14 +140,15 @@ export function UseEditor({ type, homeId, use, model, draft, onDraft, onReload }
               {overridden ? (
                 <>
                   <span>Overridden</span>{' '}
-                  <button
-                    type="button"
+                  <SkButton
+                    size="compact"
+                    variant="secondary"
                     className="link-button"
                     aria-label={`Reset ${spec.label.toLowerCase()} to type default`}
                     onClick={() => reset(key)}
                   >
                     Reset to type default
-                  </button>
+                  </SkButton>
                 </>
               ) : (
                 <span>Type default</span>
@@ -171,9 +174,14 @@ export function UseEditor({ type, homeId, use, model, draft, onDraft, onReload }
       {failure?.kind === 'conflict' && (
         <div className="use-conflict" role="alert">
           <p>Changed elsewhere: this use was saved by someone else since it was loaded.</p>
-          <button type="button" className="button" disabled={busy} onClick={() => void reload()}>
+          <SkButton
+            size="compact"
+            variant="secondary"
+            disabled={busy}
+            onClick={() => void reload()}
+          >
             Reload (keeps your values)
-          </button>
+          </SkButton>
         </div>
       )}
       {failure?.kind === 'reloaded' && (
@@ -191,17 +199,12 @@ export function UseEditor({ type, homeId, use, model, draft, onDraft, onReload }
         </p>
       )}
       <div className="buttons">
-        <button
-          type="button"
-          className="button primary"
-          disabled={!dirty || busy}
-          onClick={() => void save()}
-        >
+        <SkButton size="compact" disabled={!dirty || busy} onClick={() => void save()}>
           Save
-        </button>
-        <button
-          type="button"
-          className="button"
+        </SkButton>
+        <SkButton
+          size="compact"
+          variant="secondary"
           disabled={!dirty || busy}
           onClick={() => {
             setFailure(undefined);
@@ -209,23 +212,25 @@ export function UseEditor({ type, homeId, use, model, draft, onDraft, onReload }
           }}
         >
           Discard changes
-        </button>
+        </SkButton>
       </div>
       {placed && (
         <div className="use-furniture">
           <label className="field">
             Name
-            <input
-              type="text"
-              value={name}
-              maxLength={200}
-              onChange={(e) => setName(e.target.value)}
-            />
+            <SkField size="compact">
+              <input
+                type="text"
+                value={name}
+                maxLength={200}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </SkField>
           </label>
           <div className="buttons">
-            <button
-              type="button"
-              className="button"
+            <SkButton
+              size="compact"
+              variant="secondary"
               disabled={busy || name.trim() === '' || name.trim() === use.name}
               onClick={() =>
                 void write(() =>
@@ -234,15 +239,15 @@ export function UseEditor({ type, homeId, use, model, draft, onDraft, onReload }
               }
             >
               Rename
-            </button>
-            <button
-              type="button"
-              className="button"
+            </SkButton>
+            <SkButton
+              size="compact"
+              variant="secondary"
               disabled={busy}
               onClick={() => void write(() => placementsApi.remove(homeId, use.id, use.version))}
             >
               Remove (to the trash)
-            </button>
+            </SkButton>
           </div>
         </div>
       )}
