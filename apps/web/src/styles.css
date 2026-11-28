@@ -1955,6 +1955,84 @@ body {
   font-size: 0.8125rem;
 }
 
+/* Tools → Keyboard shortcuts (HUD v2 #205): one row per action, its two keys, clear and reset. */
+.shortcuts h2 {
+  margin: 0.5rem 0 0.125rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--sk-dim);
+}
+
+.shortcut {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.125rem 0;
+  border-bottom: var(--hud-rule);
+}
+
+.shortcut > p {
+  flex-basis: 100%;
+}
+
+.shortcut-name {
+  flex: 1 1 8rem;
+  font-weight: 800;
+}
+
+.shortcut-slots {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.shortcut-slot {
+  display: inline-flex;
+  align-items: center;
+}
+
+.shortcuts .key {
+  min-width: 2.75rem;
+  min-height: 2rem;
+  padding: 0 0.375rem;
+  border: var(--hud-bw-compact) solid var(--sk-ink);
+  border-radius: var(--hud-r-compact);
+  background: var(--sk-card);
+  color: var(--sk-ink);
+  font: inherit;
+  font-size: 0.8125rem;
+}
+
+.shortcuts .key:focus-visible {
+  outline: 2px solid var(--hud-focus);
+}
+
+.shortcuts .link {
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0 0.25rem;
+  border: 0;
+  background: none;
+  color: var(--sk-dim);
+  font: inherit;
+  font-size: 0.75rem;
+  text-decoration: underline;
+}
+
+.shortcuts .note,
+.shortcuts .warning,
+.shortcuts .conflict {
+  margin: 0.25rem 0;
+  font-size: 0.8125rem;
+}
+
+.shortcuts .note {
+  color: var(--sk-dim);
+}
+
 /* First-run hints, over the foot of the 3D view until dismissed. */
 .hints {
   position: absolute;

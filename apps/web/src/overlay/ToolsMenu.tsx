@@ -8,6 +8,7 @@ import { href, keptQuery } from '../routing';
 import { SkToggle } from '../hud/SkToggle';
 import { EffectsSwitch } from './QualityControl';
 import { stageStatusText, type StageStatus } from './StageTools';
+import { KeyboardShortcuts } from './KeyboardShortcuts';
 import { ToolsHelp } from './ToolsHelp';
 
 export interface ToolsMenuProps {
@@ -23,7 +24,7 @@ export interface ToolsMenuProps {
   status: StageStatus;
   /** A touch screen: its gestures in the help. */
   touch: boolean;
-  /** How many times `?` asked for the keys: the help opens unfolded (#204). */
+  /** How many times `?` asked for the keys: the shortcuts open unfolded (#204, #205). */
   helpAsked?: number;
   className?: string;
 }
@@ -84,7 +85,9 @@ export function ToolsMenu({
         {said?.text ?? 'All changes saved'}
       </p>
       <EffectsSwitch />
-      <ToolsHelp key={helpAsked} touch={touch} open={helpAsked > 0} />
+      <ToolsHelp touch={touch} />
+      {/* The keys that apply, and their settings (#205); `?` opens it here. */}
+      <KeyboardShortcuts key={helpAsked} open={helpAsked > 0} />
       {/* Measure (#206) comes here, beside the diagnostics. */}
       <fieldset className="tools-diagnostics">
         <legend>Diagnostics</legend>

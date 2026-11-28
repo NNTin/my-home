@@ -18,7 +18,8 @@ import {
   type WalkInput,
 } from './figure';
 import { easeAngle, type FollowTarget } from './orientation';
-import { holdKeys } from '../keys/actions';
+import { chordOf, type ActionId } from '../keys/actions';
+import { heldAction } from '../keys/bindings';
 import type { WalkWorld } from './world';
 
 export interface Walk {
@@ -64,12 +65,15 @@ export function useFigure(walk: Pick<Walk, 'published' | 'subscribe'>): Figure {
 const MAX_FRAME_SECONDS = 0.25;
 /** How often the React copy of the figure is refreshed while it moves. */
 const PUBLISH_INTERVAL_MS = 100;
-/** The held movement keys, from the one action list (keys/actions.ts, HUD v2 #204). */
-const WALK_KEYS = new Set(
-  (['forward', 'back', 'strafe-left', 'strafe-right', 'turn-left', 'turn-right'] as const).flatMap(
-    holdKeys,
-  ),
-);
+/** A movement action as the figure's input reads it (figure.ts `inputFromKeys`): its default key. */
+const AXIS_KEY: Partial<Record<ActionId, string>> = {
+  forward: 'w',
+  back: 's',
+  'strafe-left': 'a',
+  'strafe-right': 'd',
+  'turn-left': 'q',
+  'turn-right': 'e',
+};
 
 const isTyping = (target: EventTarget | null) =>
   target instanceof HTMLElement &&
@@ -145,17 +149,30 @@ export function useWalk(world: WalkWorld, start: Figure, active: boolean): Walk 
     };
     frame = requestAnimationFrame(tick);
 
+    // The keys bound to the movement actions now (keys/bindings, HUD v2 #205): a held physical key stands for its
+    // action's axis until it comes up.
+    const pressed = new Map<string, string>();
     const down = (e: KeyboardEvent) => {
-      const key = e.key.toLowerCase();
-      if (!WALK_KEYS.has(key) || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
+      if (e.ctrlKey || e.metaKey || e.altKey || e.isComposing || e.defaultPrevented) return;
       if (isTyping(e.composedPath?.()[0] ?? e.target)) return;
-      keys.current.add(key);
-      tapped.current.add(key);
+      const chord = chordOf(e);
+      const action = chord && heldAction(chord);
+      const axis = action && AXIS_KEY[action];
+      if (!axis) return;
+      pressed.set(e.key.toLowerCase(), axis);
+      keys.current.add(axis);
+      tapped.current.add(axis);
       // Arrow keys would scroll the page or move a focused radio button.
       e.preventDefault();
     };
-    const up = (e: KeyboardEvent) => keys.current.delete(e.key.toLowerCase());
+    const up = (e: KeyboardEvent) => {
+      const axis = pressed.get(e.key.toLowerCase());
+      pressed.delete(e.key.toLowerCase());
+      // Another key may still hold the same axis.
+      if (axis && ![...pressed.values()].includes(axis)) keys.current.delete(axis);
+    };
     const release = () => {
+      pressed.clear();
       keys.current.clear();
       pad.current = NO_INPUT;
     };

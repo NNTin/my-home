@@ -55,7 +55,8 @@ import {
   type EditorSettings,
 } from './editor/operations';
 import { roomAt } from './editor/placement';
-import { actionFor, chordOf, keptByTarget, type ActionId } from './keys/actions';
+import { chordOf, keptByTarget, type ActionId } from './keys/actions';
+import { boundAction, hint, useBindings } from './keys/bindings';
 import { rotationFromDrag } from './editor/snapping';
 import { EditBadge } from './editMode/EditToggle';
 import { useEditMode } from './editMode/editMode';
@@ -253,6 +254,8 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
   const photos = usePhotos(model.id);
   const layout = useLayoutMode();
   const mobile = layout !== 'desktop';
+  // The keys' hints on the controls follow a change of a binding (#205).
+  useBindings();
   const [quality, setQuality] = useQuality(mobile);
   const [planColours, setPlanColours] = usePlanColours();
   useKeyboardViewport(mobile);
@@ -981,7 +984,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
       // A field, editable text, composition or a key the focused control took keep their keys.
       if (keptByTarget(e)) return;
       const chord = chordOf(e);
-      const action = chord && actionFor(chord, walking ? 'walk' : editing ? 'edit' : 'orbit');
+      const action = chord && boundAction(chord, walking ? 'walk' : editing ? 'edit' : 'orbit');
       if (action && run(action.id)) e.preventDefault();
     };
   });
@@ -1280,6 +1283,7 @@ export function Viewer({ model, homes, onSelectHome }: Props) {
               backing
               icon="map"
               label="Floor overview"
+              title={`Floor overview${hint('map')}`}
               pressed={overviewOpen}
               onClick={() =>
                 mobile ? (phoneMap ? closeOverview() : setPhoneMap(true)) : toggleSurface('map')

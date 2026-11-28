@@ -1,7 +1,6 @@
-import { ACTIONS, keyLabel } from '../keys/actions';
 import { SkFold } from '../hud/SkFold';
 
-/** What a hand does on this device, and the keys (HUD v2 #203: gesture help and shortcut discovery, in Tools). */
+/** What a hand does on this device (HUD v2 #203: gesture help, in Tools). */
 const TOUCH: [string, string][] = [
   ['One finger', 'turn the view'],
   ['Two fingers', 'pinch to zoom, drag to move'],
@@ -16,11 +15,6 @@ const POINTER: [string, string][] = [
   ['Click', 'select a room, an item, a window or a door'],
   ['In Edit: drag an item', 'move it; drag its ring to rotate it'],
 ];
-/** The keys, from the one action list (keys/actions.ts, #204): what the dispatcher does is what the help says. */
-const KEYS: [string, string][] = ACTIONS.map((a) => [
-  a.keys.map(keyLabel).join(' or '),
-  a.group === 'Viewer' ? a.name : `${a.name} (${a.group})`,
-]);
 
 const list = (rows: [string, string][]) => (
   <dl className="tools-help-list">
@@ -33,13 +27,12 @@ const list = (rows: [string, string][]) => (
   </dl>
 );
 
-/** Folded away until wanted: the hand's gestures for this device, then the keys (§ Utility, "Tools"). */
-export function ToolsHelp({ touch, open = false }: { touch: boolean; open?: boolean }) {
+/** Folded away until wanted: the hand's gestures for this device (§ Utility, "Tools"; touch instructions first). */
+export function ToolsHelp({ touch }: { touch: boolean }) {
+  // The keys are their own list beside it, with their settings (KeyboardShortcuts, #205).
   return (
-    <SkFold className="toggle-group" size="compact" title="Gestures and keys" defaultOpen={open}>
+    <SkFold className="toggle-group" size="compact" title="Gestures">
       {list(touch ? TOUCH : POINTER)}
-      {/* The keys for a keyboard; their settings come with #205 (Shortcut settings), next to this. */}
-      {list(KEYS)}
     </SkFold>
   );
 }

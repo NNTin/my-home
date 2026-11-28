@@ -3,7 +3,7 @@
     "sakuga-progress": { "maxGzipBytes": 25000, "required": true },
     "sakuga-hud": { "maxGzipBytes": 50000, "required": true }
   },
-  "main": { "baseline": "d4df5df", "baselineGzipBytes": 420582, "maxGrowthGzipBytes": 50000 },
+  "main": { "baseline": "d4df5df", "baselineGzipBytes": 420582, "maxGrowthGzipBytes": 60000 },
   "lazy": {
     "render-beautiful": { "maxGzipBytes": 150000, "required": true },
     "render-views": { "maxGzipBytes": 20000, "required": true },

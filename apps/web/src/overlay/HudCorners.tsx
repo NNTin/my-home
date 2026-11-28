@@ -4,6 +4,7 @@ import { EditToggle } from '../editMode/EditToggle';
 import { HudIcon } from '../hud/HudIcon';
 import { SkButton } from '../hud/SkButton';
 import { SkIconButton } from '../hud/SkIconButton';
+import { hint, useBindings } from '../keys/bindings';
 import { LevelControl } from './LevelControl';
 import { StatusBadge, type StageStatus } from './StageTools';
 
@@ -34,6 +35,8 @@ export function HudCorners({
   /** Loading and saving: the status badge beside the actions, as on a phone (#203). */
   status: StageStatus;
 }) {
+  // The current keys, on the controls' hints (#205): a change of a binding shows here at once.
+  useBindings();
   return (
     <>
       <div className="hud-corner hud-top-left" role="toolbar" aria-label="Mode and level">
@@ -43,6 +46,7 @@ export function HudCorners({
           size="compact"
           appearance="clear"
           aria-label="Walk and take photos"
+          title={`Walk and take photos${hint('walk')}`}
           onClick={onWalk}
         >
           <HudIcon name="walk" /> Walk
@@ -62,6 +66,7 @@ export function HudCorners({
           backing
           icon="view"
           label="Views"
+          title={`Views${hint('views')}`}
           pressed={surface === 'views'}
           onClick={() => onSurface('views')}
         />

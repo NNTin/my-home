@@ -1,6 +1,7 @@
 import { useThree } from '@react-three/fiber';
 import { createElement, useEffect, useMemo, useRef, type RefObject } from 'react';
 import { useHost } from '../hud/useElement';
+import { hint, useBindings } from '../keys/bindings';
 import { CanvasTexture, SRGBColorSpace, type Vector3 } from 'three';
 import type { Vec3 } from '../builder/buildHome';
 import { compassRotation, northUpPosition, type CompassMarker } from './compass';
@@ -20,6 +21,8 @@ export function CompassRose({
   /** A phone's: 60 px, the compact line. */
   compact?: boolean;
 }) {
+  // Its key on its hint, as it is now (#205).
+  useBindings();
   const latest = useRef(onNorthUp);
   useEffect(() => {
     latest.current = onNorthUp;
@@ -42,7 +45,7 @@ export function CompassRose({
     className: 'compass',
     size: compact ? 'compact' : undefined,
     label: 'Compass: turn the view north-up',
-    title: 'Turn the view north-up',
+    title: `Turn the view north-up${hint('north')}`,
   });
 }
 
