@@ -1,7 +1,7 @@
 import type { Photo, PhotoPose, PhotoRequest } from '@my-home/shared';
 import { useState } from 'react';
 import { photosApi } from '../api';
-import { PHOTO_TAGS } from '../walk/CaptureSheet';
+import { PHOTO_TAGS } from './tags';
 import {
   filterOptions,
   filterPhotos,

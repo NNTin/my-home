@@ -78,7 +78,7 @@ import { StageTools } from './overlay/StageTools';
 import { ToolsMenu } from './overlay/ToolsMenu';
 import { TopBar } from './overlay/TopBar';
 import { useKeyboardViewport } from './overlay/useKeyboardViewport';
-import { useLayoutMode } from './overlay/useLayoutMode';
+import { useLayoutMode } from './hud/useLayoutMode';
 import { ViewPanel } from './overlay/ViewPanel';
 import { backdropRequested, rigFor, type Backdrop } from './lighting/rig';
 import { filterPhotos, NO_FILTERS } from './photos/filters';

@@ -71,5 +71,5 @@ while orbiting and walking, and whether the Sakuga clock sleeps at rest on the p
   with "Save". Paste the table and attach the images where the issue asks.
 - **Measured on the owner's phone (2026-11-27): a pass** (design §10.2): 60 fps with and without effects,
   Sakuga about 1 ms a frame, asleep at rest.
-- A lazy chunk (`hud-measure`, `apps/web/src/hud/measure/`), loaded only on that address. Its numbers are never
+- A lazy chunk (`hud-measure`, `apps/web/src/hud-measure/`), loaded only on that address. Its numbers are never
   made on the agents' machine: there the view draws about one frame a second.

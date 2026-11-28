@@ -6,7 +6,6 @@ import {
   advance,
   combineInputs,
   facing,
-  horizontalFov,
   inputFromKeys,
   inputFromPad,
   look,
@@ -20,6 +19,7 @@ import {
   yawFromCompass,
   type Figure,
 } from './figure';
+import { horizontalFov } from '../photos/fieldOfView';
 import { buildWalkWorld, EYE_HEIGHT, FIGURE_RADIUS } from './world';
 
 // Mock home, souterrain (floor at -1.2): the hallway is x -0.5…1.5, z -4…4.

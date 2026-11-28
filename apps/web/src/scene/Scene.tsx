@@ -22,7 +22,7 @@ import type { FurnitureToolbarProps } from '../overlay/FurnitureToolbar';
 import { lampRooms, sceneEmitters } from '../lighting/lamps';
 import { rigFor, type Backdrop, type RigView } from '../lighting/rig';
 import { FrameGovernor } from '../quality/governor';
-import { hudMeasureRequested } from '../hud/measure/request';
+import { hudMeasureRequested } from '../routing/hudMeasureRequested';
 import { PerfReadout } from '../quality/PerfReadout';
 import { usePerfShown } from '../quality/perfSwitch';
 import { perfView } from '../quality/perfReport';
@@ -282,10 +282,10 @@ function FrameView({ frame }: { frame: (FrameRequest & { key: number }) | undefi
 
 /** `/?hud=measure` (docs/design/hud.md §10.2): its rig in the canvas and its page over it, one lazy chunk. */
 const HudMeasureRig = lazy(() =>
-  import('../hud/measure/hud-measure').then((m) => ({ default: m.MeasureRig })),
+  import('../hud-measure/hud-measure').then((m) => ({ default: m.MeasureRig })),
 );
 const HudMeasurePage = lazy(() =>
-  import('../hud/measure/hud-measure').then((m) => ({ default: m.MeasurePage })),
+  import('../hud-measure/hud-measure').then((m) => ({ default: m.MeasurePage })),
 );
 
 /** Full-size canvas; R3F resizes the renderer and camera with its container. */

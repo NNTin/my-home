@@ -11,7 +11,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { previewContext } from '../catalog-page/preview';
 import { pieces } from '../catalog/registry';
-import { useLayoutMode } from '../overlay/useLayoutMode';
+import { useLayoutMode } from '../hud/useLayoutMode';
 import { href, keptQuery, navigate, useDocumentTitle, useRestoredScroll } from '../routing';
 import { Inspector } from './Inspector';
 import { Notes } from './Notes';

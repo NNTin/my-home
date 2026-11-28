@@ -1167,7 +1167,7 @@ body {
 }
 
 /*
- * Phone layout (see overlay/useLayoutMode.ts): a top bar, the 3D view, and one sheet with the
+ * Phone layout (see hud/useLayoutMode.ts): a top bar, the 3D view, and one sheet with the
  * panels: at the bottom when the phone is held upright, at the side when it is held across.
  */
 .viewer.mobile {

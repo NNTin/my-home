@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { horizontalFov } from './figure';
+import { horizontalFov } from '../photos/fieldOfView';
 import { cameraJpeg, jpegHeader } from '../test/jpeg';
 import {
   focalLength35mm,

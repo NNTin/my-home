@@ -100,7 +100,7 @@ stored snapshot a build cannot read counts as none.
 ### Field of view
 
 `fovH` is the angle across the picture **as shown** (after its EXIF orientation), so an upright photo has the
-narrower one. The app derives it at capture (`horizontalFov` in `apps/web/src/walk/figure.ts`) from the camera's
+narrower one. The app derives it at capture (`horizontalFov` in `apps/web/src/photos/fieldOfView.ts`) from the camera's
 35 mm equivalent focal length `f` and the picture's width `w` and height `h`:
 
 ```

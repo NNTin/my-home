@@ -7,9 +7,7 @@ import { prepareImage, takenAtOf, type CameraHints, type PreparedImage } from '.
 import { SkButton } from '../hud/SkButton';
 import { SkCheckbox } from '../hud/SkCheckbox';
 import { SkField } from '../hud/SkField';
-
-/** Suggested tags; the api stores any short lower-case label. */
-export const PHOTO_TAGS = ['wall', 'window', 'door', 'floor', 'ceiling', 'furniture', 'outside'];
+import { PHOTO_TAGS } from '../photos/tags';
 
 /** One tap of a nudge button: 10 cm, or 5° of turning or tilting. */
 export const NUDGE_DISTANCE = 0.1;
