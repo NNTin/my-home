@@ -906,7 +906,7 @@ graph TD
 | 3   | Buttons                               | `sakuga-button` (compact, href, pressed), `sakuga-icon-button`, `sakuga-badge`, `sakuga-toast` (kind)                                                                                                            | M    |
 | 4   | Choices                               | `sakuga-segmented`, `sakuga-field`, compact checkbox, slider, input; `sakuga-toggle` (compact, lazy frames, the flip on the effects canvas), its two WebP assets and their budget; Edit moves to the stage tools | L    |
 | 5   | Containers (built in HUD v2 #200 1/2) | `sakuga-panel`, `sakuga-fold`, `sakuga-sheet`, `sakuga-card`                                                                                                                                                     | L    |
-| 6   | Walking (superseded by HUD v2 #202)   | `sakuga-pad`, `sakuga-shutter`, `sakuga-map`, `sakuga-compass`                                                                                                                                                   | L    |
+| 6   | Walking (built in HUD v2 #202)        | `sakuga-pad`, `sakuga-shutter`, `sakuga-map`, `sakuga-compass`                                                                                                                                                   | L    |
 | 7   | Photos, pages (after HUD v2 #206)     | none new; remove the old HUD CSS                                                                                                                                                                                 | M    |
 
 Edit stays the paper button of PR 2 until PR 4 turns it into the toggle and moves it on the phone (§5.13).

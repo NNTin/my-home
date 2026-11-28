@@ -72,6 +72,8 @@
 <script src="../sheet/sheet.js"></script>
 <script src="../compass/compass.js"></script>
 <script src="../map/map.js"></script>
+<script src="../pad/pad.js"></script>
+<script src="../shutter/shutter.js"></script>
 <script src="../icons/icons.js"></script>
 <script>
 // The gallery: every control live on one page, with its install line and a prompt that hands a coding agent the real file.
@@ -100,6 +102,8 @@ const ITEMS = [
   { id: 'card', name: 'Card (made here)', tag: 'sakuga-card', how: 'Press a card.', html: '<div style="display:flex;gap:10px"><sakuga-card label="Armchair" description="2 uses" selected="false" data-demo="card-a"><b>Armchair</b><br>2 uses</sakuga-card><sakuga-card label="Bed" href="#bed" data-demo="card-b"><b>Bed</b><br>a link</sakuga-card></div>' },
   { id: 'compass', name: 'Compass (made here)', tag: 'sakuga-compass', how: 'Press it: north-up.', html: '<sakuga-compass label="Compass: turn the view north-up" style="--rose: 120deg"></sakuga-compass>' },
   { id: 'map', name: 'Map (made here)', tag: 'sakuga-map', how: 'Press the map, then press it again.', html: '<div class="mapwrap" style="position:relative;width:100%;height:260px;overflow:hidden;border-radius:12px;background:linear-gradient(#dcebf7,#f6f3ea)"><sakuga-map style="position:absolute;right:12px;bottom:12px;width:96px;height:96px"><button type="button" style="display:block;width:100%;height:100%;border:0;background:none;cursor:pointer" aria-label="Map: tap to enlarge"><svg viewBox="0 0 100 100" style="width:100%;height:100%"><rect x="10" y="15" width="80" height="70" fill="#ecebff" stroke="#1d1a4a"/><circle cx="34" cy="62" r="5" fill="#ff5fa8"/></svg></button></sakuga-map><style>.mapwrap sakuga-map[large]{width:calc(100% - 24px)!important;height:220px!important}</style></div>', wide: true },
+  { id: 'pad', name: 'Pad (made here)', tag: 'sakuga-pad', how: 'Drag the knob; hit the rim fast.', html: '<sakuga-pad travel="44" style="touch-action:none"></sakuga-pad>' },
+  { id: 'shutter', name: 'Shutter (made here)', tag: 'sakuga-shutter', how: 'Press it.', html: '<button type="button" data-demo="shutter" aria-label="Take photo" style="width:72px;height:72px;padding:0;border:0;background:none"><sakuga-shutter></sakuga-shutter></button>' },
   { id: 'sheet', name: 'Sheet (made here)', tag: 'sakuga-sheet', how: 'Press Half, Full, then Collapsed.', html: '<sakuga-button variant="secondary" size="compact" data-demo="sheet-half">Half</sakuga-button> <sakuga-button variant="secondary" size="compact" data-demo="sheet-full">Full</sakuga-button> <sakuga-button variant="secondary" size="compact" data-demo="sheet-collapsed">Collapsed</sakuga-button><div class="sheetwrap" style="position:relative;height:240px;margin-top:12px;overflow:hidden;border-radius:12px;background:linear-gradient(#dcebf7,#f6f3ea)"><sakuga-sheet snap="collapsed" style="position:absolute;left:0;right:0;bottom:0;flex-direction:column"><div style="padding:12px;font-weight:700">View · Furniture · Photos</div><div style="padding:0 12px">The open panel.</div></sakuga-sheet></div><style>sakuga-sheet[snap=collapsed]{height:44px}sakuga-sheet[snap=half]{height:50%}sakuga-sheet[snap=full]{height:100%}</style>', wide: true },
 ];
 
@@ -152,6 +156,10 @@ const WIRE = {
     'Listen for click to turn your view north-up and set --rose to 0deg: the needle swings in with an overshoot. poor shows a dashed ring; size="compact" is 60 px.'],
   map: ['Wrap your map (an SVG, a canvas, a button around it) in <sakuga-map>; give it its size small, and with the large attribute in your CSS.',
     'Toggle large to enlarge or shrink it: the frame springs between the two boxes from its lower right corner. Call el.placed(x, y) (page coordinates) when something is put on the map.'],
+  pad: ['Put <sakuga-pad travel="44"></sakuga-pad> where your movement pad is; keep your own pointer handling and output on it or around it.',
+    'Call el.move(dx, dy, true) with the knob in px from the middle while a finger moves it, and el.move(0, 0, false) when it lets go. A fast hit at the rim throws dust.'],
+  shutter: ['Put <sakuga-shutter></sakuga-shutter> inside your camera control: a <label> around <input type="file" capture>, or a <button>. The control stays yours.',
+    'It draws the round button with the camera icon (load icons/icons.js) and reacts to the press; set busy while a photo is processed.'],
   tooltip: ['Use <sakuga-tooltip text="..." label="..."></sakuga-tooltip> next to the thing it explains. text is the hint; label is what a screen reader calls the button ("Help" by default).',
     'It opens on hover, focus and tap, and Escape closes it. Whatever is inside the element replaces the "?" on the button.'],
 };
@@ -195,6 +203,10 @@ for (const it of ITEMS) {
   else if (it.tag === 'sakuga-sheet') for (const snap of ['half', 'full', 'collapsed']) card.querySelector(`[data-demo=sheet-${snap}]`).addEventListener('click', () => { el.setAttribute('snap', snap); say(`snap: ${snap}`); });
   else if (it.tag === 'sakuga-compass') el.addEventListener('click', () => { el.style.setProperty('--rose', '0deg'); say('north-up'); });
   else if (it.tag === 'sakuga-map') el.querySelector('button').addEventListener('click', () => { el.toggleAttribute('large'); say(`large: ${el.hasAttribute('large')}`); });
+  else if (it.tag === 'sakuga-pad') { let id; const at = (e) => { const r = el.getBoundingClientRect(); let dx = e.clientX - r.left - r.width / 2, dy = e.clientY - r.top - r.height / 2; const d = Math.hypot(dx, dy); if (d > 44) { dx *= 44 / d; dy *= 44 / d; } return [dx, dy]; };
+    el.addEventListener('pointerdown', (e) => { id = e.pointerId; el.setPointerCapture(id); el.move(...at(e), true); }); el.addEventListener('pointermove', (e) => { if (e.pointerId === id) el.move(...at(e), true); });
+    const up = (e) => { if (e.pointerId !== id) return; id = undefined; el.move(0, 0, false); say('released'); }; el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); }
+  else if (it.tag === 'sakuga-shutter') card.querySelector('[data-demo=shutter]').addEventListener('click', () => say('Clicked: Take photo'));
   else if (it.tag === 'sakuga-toast') card.querySelector('[data-demo=save]').addEventListener('click', () => el.show('Saved successfully!'));
   else if (it.tag === 'sakuga-progress') el.addEventListener('sakuga:done', () => say('sakuga:done'));
   else if (it.tag === 'sakuga-tabs') el.addEventListener('change', (e) => say(`Tab: ${e.detail.label}`));

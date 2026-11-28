@@ -38,6 +38,8 @@ export const HUD_ELEMENTS = [
   'sheet',
   'compass',
   'map',
+  'pad',
+  'shutter',
 ] as const;
 
 const CORE_START = '// >>> sakuga core';

@@ -114,8 +114,7 @@ body {
  */
 .panel button:not(.link, .thumbnail),
 .panel .button,
-.walk-hud button,
-.walk-hud .shutter,
+.walk-hud button:not(.shutter),
 .walk-hud .chip,
 .walk-hud .camera-alt,
 .topbar button,
@@ -133,7 +132,7 @@ body {
 
 .panel button:not(.link, .thumbnail, .chip),
 .panel .button,
-.walk-hud button,
+.walk-hud button:not(.shutter),
 .walk-hud .camera-alt,
 .topbar button,
 .perf-readout button,
@@ -145,7 +144,7 @@ body {
 }
 
 .panel button:not(.link, .thumbnail):hover:not(:disabled),
-.walk-hud button:hover:not(:disabled),
+.walk-hud button:not(.shutter):hover:not(:disabled),
 .topbar button:hover,
 .piece-page button:not(.link-button, .thumbnail):hover:not(:disabled),
 .piece-page .button:not(.link-button):hover {
@@ -155,7 +154,7 @@ body {
 .panel button[aria-pressed='true'],
 .panel [role='tab'][aria-selected='true'],
 .panel .chip.on,
-.walk-hud button[aria-pressed='true'],
+.walk-hud button:not(.shutter)[aria-pressed='true'],
 .walk-hud .chip.on,
 .topbar button[aria-pressed='true'],
 .piece-page button[aria-pressed='true'] {
@@ -164,7 +163,7 @@ body {
 }
 
 .panel button:disabled,
-.walk-hud button:disabled,
+.walk-hud button:not(.shutter):disabled,
 .piece-page button:disabled {
   border-color: var(--sk-dim);
   box-shadow: none;
@@ -554,40 +553,36 @@ body {
   flex: none;
   width: 8.25rem;
   height: 8.25rem;
-  box-sizing: border-box;
-  border: var(--hud-line);
   border-radius: 50%;
-  background: var(--sk-card);
-  box-shadow: var(--sk-sh);
   touch-action: none;
   cursor: grab;
 }
 
-.joystick-knob {
+/* The pad's look and motion (sakuga-pad, §5.10, HUD v2 #202): the control is the .joystick around it. */
+.joystick > sakuga-pad {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 3.5rem;
-  height: 3.5rem;
-  box-sizing: border-box;
-  margin: -1.75rem 0 0 -1.75rem;
-  border: var(--hud-line);
-  border-radius: 50%;
-  background: var(--sk-card);
-  box-shadow: inset -4px -5px 0 var(--sk-soft);
+  inset: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
 }
 
 .walk-hud .shutter {
-  display: grid;
+  position: relative;
+  display: block;
   flex: none;
-  place-items: center;
   width: 4.5rem;
   height: 4.5rem;
-  border: var(--hud-line);
+  padding: 0;
+  border: 0;
   border-radius: 50%;
-  box-shadow: var(--sk-sh);
-  font-size: 1.75rem;
+  background: none;
+}
+
+/* The shutter's look and beats (sakuga-shutter, §5.11, HUD v2 #202): the control is the label or button around it. */
+.shutter > sakuga-shutter {
+  width: 100%;
+  height: 100%;
 }
 
 .shutter input,
@@ -2450,6 +2445,42 @@ sakuga-map[data-fallback] {
   border-radius: var(--hud-r-compact);
   background: var(--sk-card);
   box-shadow: var(--hud-sh-compact);
+}
+
+sakuga-shutter[data-fallback] {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  border: var(--hud-line);
+  border-radius: 50%;
+  background: var(--sk-card);
+  box-shadow: var(--sk-sh);
+  font-size: 1.75rem;
+}
+
+sakuga-shutter[data-fallback]::before {
+  content: '📷';
+}
+
+sakuga-pad[data-fallback] {
+  box-sizing: border-box;
+  border: var(--hud-line);
+  border-radius: 50%;
+  background: var(--sk-card);
+  box-shadow: var(--sk-sh);
+}
+
+sakuga-pad[data-fallback] > span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 42%;
+  height: 42%;
+  box-sizing: border-box;
+  margin: -21% 0 0 -21%;
+  border: var(--hud-line);
+  border-radius: 50%;
+  background: var(--sk-card);
 }
 
 sakuga-compass[data-fallback]::before {
