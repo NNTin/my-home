@@ -1,6 +1,6 @@
 import { catalog, HomeModel, modelUses, type Subject, type SubjectRef } from '@my-home/shared';
 import { eq } from 'drizzle-orm';
-import type { Db } from './client';
+import type { Db } from './types';
 import { homes } from './schema';
 import { placements } from './userdata-schema';
 

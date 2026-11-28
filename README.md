@@ -109,7 +109,7 @@ docker-compose.yml   postgres + api + web
 - API contracts are zod schemas in `packages/shared`. The api uses them for request validation and
   response serialization; the web app parses responses with them.
 - Routes live under `/api` so the web server can proxy one prefix.
-- Configuration comes from environment variables validated with zod (`apps/api/src/config.ts`).
+- Configuration comes from environment variables validated with zod (`apps/api/src/core/config.ts`).
 - Logs are structured JSON (pino); pretty-printed in an interactive dev terminal.
 - api tests must pass on both PGlite and Postgres; web tests never need WebGL.
 - Conventional commit messages. CI runs lint, format:check, typecheck, the tests, the build and the checks on

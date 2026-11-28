@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { loadConfig } from './config';
+import { loadConfig } from './core/config';
 import { createDatabase } from './db/client';
 import { seedHomes } from './db/seed';
 

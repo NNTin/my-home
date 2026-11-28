@@ -171,6 +171,9 @@ What reading CI has taught us:
 - **The worktree has no `node_modules`:** `pnpm install --frozen-lockfile --prefer-offline` takes seconds (the
   store is on the machine). The binaries are in the root's `node_modules/.bin` only: `pnpm --filter
 @my-home/web exec vitest run <files>`.
+- **A file that finds others from its own place breaks silently when it moves** (#225): `tsc` sees nothing in
+  `new URL('../…', import.meta.url)` (the fixtures of `packages/shared`'s tests) or in `import.meta.glob`.
+  `apps/api/src/paths.ts` must stay directly in `src`: the bundle in `dist/` resolves the same paths from there.
 
 ## Keeping this file useful
 

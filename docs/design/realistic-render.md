@@ -210,7 +210,7 @@ Paths are under `apps/web/src/` unless they start with `packages/`.
 | Part                | Path                                       | Chunk              | Does                                                                     |
 | ------------------- | ------------------------------------------ | ------------------ | ------------------------------------------------------------------------ |
 | Finish definitions  | `packages/shared/src/finishes/`            | (shared)           | Ids, names, tile sizes, licences; used by api, web and CI                |
-| Home model          | `packages/shared/src/home-model.ts`        | (shared)           | Gains `finishes` on rooms and exterior surfaces                          |
+| Home model          | `packages/shared/src/model/home-model.ts`  | (shared)           | Gains `finishes` on rooms and exterior surfaces                          |
 | Builder             | `builder/buildHome.ts`                     | main               | Unchanged role: descriptors. Gains finish ids, wall faces, UV frames     |
 | Draw list           | `builder/drawList.ts`                      | main               | Turns descriptors and piece parts into `DrawItem`s (§4.2)                |
 | Batching            | `scene/batches.ts`                         | main               | Merges draw items into few geometries, with UVs in metres                |

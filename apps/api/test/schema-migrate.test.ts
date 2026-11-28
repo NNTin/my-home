@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { loadConfig } from '../src/config';
+import { loadConfig } from '../src/core/config';
 import { createDatabase, type Database } from '../src/db/client';
 import { migrateMedia } from '../src/db/media-migrate';
 import { schemaMigration } from '../src/db/schema-migrate';

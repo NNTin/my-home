@@ -1,5 +1,5 @@
 import { mediaMigrationsFolder } from '../paths';
-import type { Db } from './client';
+import type { Db } from './types';
 import { MEDIA_SCHEMA } from './media-schema';
 import {
   migrateSchema,

@@ -8,9 +8,9 @@ import {
   UseParams,
 } from '@my-home/shared';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
-import { resolveActor } from '../actor';
-import type { Config } from '../config';
-import type { Db } from '../db/client';
+import { resolveActor } from '../core/actor';
+import type { Config } from '../core/config';
+import type { Db } from '../db/types';
 import { openingOverrideStore } from '../db/opening-overrides';
 
 /** Basic-parameter overrides of the openings, roof windows and gates that live in git. */

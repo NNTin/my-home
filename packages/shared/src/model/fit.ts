@@ -1,7 +1,7 @@
-import { distanceToOutline, insideOutline, type Polygon } from '../home-model';
-import { formatCm } from './format';
-import type { ParamValues } from './params';
-import type { CatalogType } from './types';
+import { distanceToOutline, insideOutline, type Polygon } from './home-model';
+import { formatCm } from '../catalog/format';
+import type { ParamValues } from '../catalog/params';
+import type { CatalogType } from '../catalog/types';
 
 const EPS = 1e-6;
 /** A corner on the room's outline (flush with a wall) still fits: 1 mm. */

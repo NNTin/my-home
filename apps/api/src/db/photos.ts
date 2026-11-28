@@ -19,10 +19,10 @@ import {
 } from '@my-home/shared';
 import { and, asc, count, desc, eq, gte, inArray, isNotNull, isNull, lt, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import type { ResolvedActor } from '../actor';
-import { problem } from '../errors';
+import type { ResolvedActor } from '../core/actor';
+import { problem } from '../core/errors';
 import type { ProcessedImage } from '../photos/image';
-import type { Db } from './client';
+import type { Db } from './types';
 import type { Tx } from './history';
 import {
   photoBlobs,

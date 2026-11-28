@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { sql } from 'drizzle-orm';
-import type { Db } from './client';
+import type { Db } from './types';
 
 export interface SchemaMigration {
   /** The file name without `.sql`; the key in the journal. */

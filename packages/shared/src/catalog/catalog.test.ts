@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { finishes } from '../finishes/library';
-import type { Polygon } from '../home-model';
+import type { Polygon } from '../model/home-model';
 import {
   basicOverridesSchema,
   catalog,

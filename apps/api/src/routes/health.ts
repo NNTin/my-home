@@ -1,6 +1,6 @@
 import { HealthResponse, LiveResponse } from '@my-home/shared';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
-import type { Config } from '../config';
+import type { Config } from '../core/config';
 import type { Database } from '../db/client';
 
 export const healthRoutes =

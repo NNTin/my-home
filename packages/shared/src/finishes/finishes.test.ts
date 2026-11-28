@@ -1,13 +1,19 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { HomeModel, OutbuildingKind, OutdoorAreaKind } from '../home-model';
+import { HomeModel, OutbuildingKind, OutdoorAreaKind } from '../model/home-model';
 import {
-  buildingFinishes,
   createFinishLibrary,
-  CUT_FINISH,
-  DEFAULT_FINISHES,
   deviceTextureFiles,
   finishes,
+  textureFiles,
+  type Finish,
+  type FinishSource,
+  type FinishSurface,
+} from './index';
+import {
+  buildingFinishes,
+  CUT_FINISH,
+  DEFAULT_FINISHES,
   interiorLevelId,
   outbuildingFinishes,
   outdoorAreaFinish,
@@ -16,13 +22,9 @@ import {
   SHELL_FINISHES,
   stairFinishes,
   TERRAIN_FINISH,
-  textureFiles,
   withoutFinishes,
-  type Finish,
-  type FinishSource,
-  type FinishSurface,
   type ResolvedFinish,
-} from './index';
+} from '../model/finish-defaults';
 import { createFinishListing, finishListing, joinAbout } from './listing';
 
 const readHome = (path: string) =>

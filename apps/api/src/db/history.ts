@@ -8,8 +8,8 @@ import {
   type UseState,
 } from '@my-home/shared';
 import { and, desc, eq } from 'drizzle-orm';
-import type { ResolvedActor } from '../actor';
-import type { Db } from './client';
+import type { ResolvedActor } from '../core/actor';
+import type { Db } from './types';
 import { history, type HistoryRow } from './userdata-schema';
 
 /**

@@ -1,7 +1,7 @@
 import { WhoAmIResponse } from '@my-home/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { resolveActor } from '../src/actor';
-import { loadConfig } from '../src/config';
+import { resolveActor } from '../src/core/actor';
+import { loadConfig } from '../src/core/config';
 import { createTestApp, injector } from './helpers';
 
 const config = { agentUsernames: ['nntin-bot', 'other-bot'] };

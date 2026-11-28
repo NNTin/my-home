@@ -12,14 +12,15 @@ import {
   type ValidationIssue,
   wallLength,
 } from './home-model';
-import { catalog, modelUses } from './catalog';
+import { catalog } from '../catalog';
+import { modelUses } from './uses';
 import { ListHomesQuery } from './homes';
 
 const readJson = (path: string): unknown =>
   JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8'));
 
-const mockHome = () => structuredClone(readJson('../test-fixtures/mock-home.json')) as HomeModel;
-const realHome = () => structuredClone(readJson('../../../data/homes/home.json')) as HomeModel;
+const mockHome = () => structuredClone(readJson('../../test-fixtures/mock-home.json')) as HomeModel;
+const realHome = () => structuredClone(readJson('../../../../data/homes/home.json')) as HomeModel;
 
 const d = (value: number) => ({ value, source: 'mock' as const });
 
@@ -1235,7 +1236,7 @@ describe('finishes', () => {
 
 describe('home model JSON Schema', () => {
   it('is committed and up to date (run `pnpm schema:generate`)', () => {
-    expect(readJson('../schema/home-model.schema.json')).toEqual(homeModelJsonSchema());
+    expect(readJson('../../schema/home-model.schema.json')).toEqual(homeModelJsonSchema());
   });
 });
 

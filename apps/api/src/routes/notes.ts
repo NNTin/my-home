@@ -9,9 +9,9 @@ import {
 } from '@my-home/shared';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { resolveActor } from '../actor';
-import type { Config } from '../config';
-import type { Db } from '../db/client';
+import { resolveActor } from '../core/actor';
+import type { Config } from '../core/config';
+import type { Db } from '../db/types';
 import { noteStore } from '../db/notes';
 
 /** Notes on catalogue types and on uses (docs/userdata.md § Notes); the actor is recorded. */

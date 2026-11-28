@@ -22,9 +22,9 @@ import {
 } from '@my-home/shared';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
-import { resolveActor } from '../actor';
-import type { Config } from '../config';
-import type { Db } from '../db/client';
+import { resolveActor } from '../core/actor';
+import type { Config } from '../core/config';
+import type { Db } from '../db/types';
 import { photoStore, type PurgeResult } from '../db/photos';
 import { processImage } from '../photos/image';
 

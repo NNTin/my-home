@@ -7,8 +7,8 @@ import type {
   OutdoorAreaKind,
   Room,
   Stair,
-} from '../home-model';
-import { finishes } from './library';
+} from './home-model';
+import { finishes } from '../finishes/library';
 
 /**
  * What a surface draws when the home names no finish for it (docs/design/realistic-render.md

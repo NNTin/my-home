@@ -5,9 +5,9 @@ import {
   type ZodTypeProvider,
 } from 'fastify-type-provider-zod';
 import type { Logger, LoggerOptions } from 'pino';
-import type { Config } from './config';
+import type { Config } from './core/config';
 import type { Database } from './db/client';
-import { errorHandler } from './errors';
+import { errorHandler } from './core/errors';
 import { catalogRoutes } from './routes/catalog';
 import { healthRoutes } from './routes/health';
 import { homeRoutes } from './routes/homes';

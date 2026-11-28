@@ -3,7 +3,7 @@ import { isAbsolute, join } from 'node:path';
 import type { HomeModel } from '@my-home/shared';
 import { asc, eq } from 'drizzle-orm';
 import { homesFolder } from '../paths';
-import type { Db } from './client';
+import type { Db } from './types';
 import { sameJson } from './history';
 import { homeStore } from './homes';
 import { homes } from './schema';

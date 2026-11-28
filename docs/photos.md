@@ -22,7 +22,7 @@ Everything is in the Postgres schema **`media`**, apart from the home model in `
 | `media.schema_migrations`  | the journal of this schema's own migrations                                                                 |
 
 Drizzle definitions: [`apps/api/src/db/media-schema.ts`](../apps/api/src/db/media-schema.ts). Request and response
-shapes: [`packages/shared/src/photos.ts`](../packages/shared/src/photos.ts).
+shapes: [`packages/shared/src/model/photos.ts`](../packages/shared/src/model/photos.ts).
 
 ### Soft references
 
@@ -44,7 +44,7 @@ silently drop such a constraint. A photo names its home, level, room and request
 
 A photo can be linked to catalogue **types** and **uses** (an opening of the home model, or a furniture placement),
 so a piece page can show "photos of this window" and agents can ask for "the bed-room east window". A subject is
-`{ kind: 'type' | 'use', id }` (`packages/shared/src/subjects.ts`), the same as for notes (`docs/userdata.md`).
+`{ kind: 'type' | 'use', id }` (`packages/shared/src/model/subjects.ts`), the same as for notes (`docs/userdata.md`).
 
 - `Photo.subjects` lists them, each resolved on read: `name` (the type's or use's current name) and `status`
   (`current`, or `missing` when the catalogue, the home's model or its active placements no longer have the id; a
@@ -278,7 +278,7 @@ on the same level), or in the room a request names, is offered as its answer; sa
 
 ## API
 
-All under `/api`; shapes in `packages/shared/src/photos.ts`.
+All under `/api`; shapes in `packages/shared/src/model/photos.ts`.
 
 | Method and path                                      | Purpose                                                                                   |
 | ---------------------------------------------------- | ----------------------------------------------------------------------------------------- |

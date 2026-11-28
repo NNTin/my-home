@@ -12,7 +12,7 @@ import {
   type SeedPlacement,
 } from './home-seed';
 
-const homesFolder = new URL('../../../data/homes/', import.meta.url);
+const homesFolder = new URL('../../../../data/homes/', import.meta.url);
 const read = (name: string) => readFileSync(new URL(name, homesFolder), 'utf8');
 const seedFiles = readdirSync(homesFolder).filter((name) => name.endsWith('.seed.json'));
 const realHome = () => HomeModel.parse(JSON.parse(read('home.json')));
