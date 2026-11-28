@@ -1,5 +1,6 @@
 import { useState, type KeyboardEvent } from 'react';
 import { SkButton } from '../hud/SkButton';
+import { SkIconButton } from '../hud/SkIconButton';
 import { SkFold } from '../hud/SkFold';
 import { SkInput } from '../hud/SkInput';
 import { ACTIONS, chordOf, keyLabel, type Action, type ActionId } from '../keys/actions';
@@ -77,35 +78,41 @@ export function KeyboardShortcuts({ open = false }: { open?: boolean }) {
             if (fixed) return i === 0 ? <kbd key={i}>{text}</kbd> : null;
             return (
               <span key={i} className="shortcut-slot">
-                <button
-                  type="button"
-                  className="key"
-                  aria-label={`${a.name}, key ${i + 1}: ${chord ? keyLabel(chord) : 'none'}. Change`}
-                  aria-pressed={listening}
-                  onClick={() => setCapture(listening ? undefined : { id: a.id, slot: i })}
+                {/* The slot records the next key: its keydown and its focus leaving reach this span from the
+                    button (sakuga-button) inside. */}
+                <span
+                  className="key-capture"
                   onKeyDown={(e) => record(e, a.id, i)}
                   onBlur={() => listening && setCapture(undefined)}
                 >
-                  {text}
-                </button>
-                {chord && (
-                  <button
-                    type="button"
-                    className="link"
-                    aria-label={`Clear ${a.name}, key ${i + 1}`}
-                    onClick={() => setSlot(a.id, i, null)}
+                  <SkButton
+                    className="key"
+                    size="compact"
+                    variant="secondary"
+                    aria-label={`${a.name}, key ${i + 1}: ${chord ? keyLabel(chord) : 'none'}. Change`}
+                    pressed={listening}
+                    onClick={() => setCapture(listening ? undefined : { id: a.id, slot: i })}
                   >
-                    ✕
-                  </button>
+                    {text}
+                  </SkButton>
+                </span>
+                {chord && (
+                  <SkIconButton
+                    size="compact"
+                    appearance="clear"
+                    icon="close"
+                    label={`Clear ${a.name}, key ${i + 1}`}
+                    onClick={() => setSlot(a.id, i, null)}
+                  />
                 )}
               </span>
             );
           })}
           {fixed && <span className="note">fixed</span>}
           {!fixed && customized(a.id) && (
-            <button
-              type="button"
-              className="link"
+            <SkButton
+              size="compact"
+              variant="secondary"
               aria-label={`Reset ${a.name}`}
               onClick={() => {
                 const other = resetAction(a.id);
@@ -113,7 +120,7 @@ export function KeyboardShortcuts({ open = false }: { open?: boolean }) {
               }}
             >
               Reset
-            </button>
+            </SkButton>
           )}
         </span>
         {capture?.id === a.id && 'refused' in capture && capture.refused && (
@@ -124,11 +131,16 @@ export function KeyboardShortcuts({ open = false }: { open?: boolean }) {
         {capture?.id === a.id && 'chord' in capture && (
           <p className="conflict" role="alert">
             {keyLabel(capture.chord)} is “{capture.other.name}” ({capture.other.group}).{' '}
-            <button type="button" onClick={() => setCapture({ id: a.id, slot: capture.slot })}>
+            <SkButton
+              size="compact"
+              variant="secondary"
+              onClick={() => setCapture({ id: a.id, slot: capture.slot })}
+            >
               Retry
-            </button>{' '}
-            <button
-              type="button"
+            </SkButton>{' '}
+            <SkButton
+              size="compact"
+              variant="secondary"
               onClick={() => {
                 // One change: the other action's slot is cleared as this one is written.
                 setSlot(a.id, capture.slot, capture.chord, capture.other.id);
@@ -136,14 +148,15 @@ export function KeyboardShortcuts({ open = false }: { open?: boolean }) {
               }}
             >
               Reassign
-            </button>
+            </SkButton>
           </p>
         )}
         {resetClash?.id === a.id && (
           <p className="conflict" role="alert">
             Its default is “{resetClash.other.name}”’s now.{' '}
-            <button
-              type="button"
+            <SkButton
+              size="compact"
+              variant="secondary"
               onClick={() => {
                 // Its defaults back, taken from the other action in the same change.
                 resetAction(a.id, true);
@@ -151,10 +164,10 @@ export function KeyboardShortcuts({ open = false }: { open?: boolean }) {
               }}
             >
               Reassign
-            </button>{' '}
-            <button type="button" onClick={() => setResetClash(undefined)}>
+            </SkButton>{' '}
+            <SkButton size="compact" variant="secondary" onClick={() => setResetClash(undefined)}>
               Keep
-            </button>
+            </SkButton>
           </p>
         )}
       </div>
@@ -192,21 +205,23 @@ export function KeyboardShortcuts({ open = false }: { open?: boolean }) {
       {confirmAll ? (
         <p className="conflict" role="alert">
           Restore every key to its default?{' '}
-          <button
-            type="button"
+          <SkButton
+            size="compact"
+            variant="secondary"
             onClick={() => {
               restoreAll();
               setConfirmAll(false);
             }}
           >
             Restore
-          </button>{' '}
-          <button type="button" onClick={() => setConfirmAll(false)}>
+          </SkButton>{' '}
+          <SkButton size="compact" variant="secondary" onClick={() => setConfirmAll(false)}>
             Keep mine
-          </button>
+          </SkButton>
         </p>
       ) : (
         <SkButton
+          className="shortcuts-restore"
           size="compact"
           variant="secondary"
           onClick={() => (anyCustomized() ? setConfirmAll(true) : restoreAll())}

@@ -2,6 +2,7 @@ import type { HomeSummary } from '@my-home/shared';
 import { HudIcon } from '../hud/HudIcon';
 import { SkBadge } from '../hud/SkBadge';
 import { SkButton } from '../hud/SkButton';
+import { SkField } from '../hud/SkField';
 import { SkPanel } from '../hud/SkPanel';
 import { setPerfShown, usePerfShown } from '../quality/perfSwitch';
 import { href, keptQuery } from '../routing';
@@ -59,13 +60,15 @@ export function ToolsMenu({
       {homes.length > 1 ? (
         <label className="field">
           Home{' '}
-          <select value={homeId} onChange={(e) => onSelectHome(e.target.value)}>
-            {homes.map((h) => (
-              <option key={h.id} value={h.id}>
-                {h.name}
-              </option>
-            ))}
-          </select>
+          <SkField size="compact">
+            <select value={homeId} onChange={(e) => onSelectHome(e.target.value)}>
+              {homes.map((h) => (
+                <option key={h.id} value={h.id}>
+                  {h.name}
+                </option>
+              ))}
+            </select>
+          </SkField>
         </label>
       ) : (
         <p className="home-name">{homes.find((h) => h.id === homeId)?.name}</p>

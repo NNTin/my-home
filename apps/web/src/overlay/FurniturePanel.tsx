@@ -7,6 +7,8 @@ import type { FurnitureCategory } from '../catalog/furniture';
 import type { SyncState, SyncStatus } from '../placements/sync';
 import { Link } from '../routing';
 import { SkPanel } from '../hud/SkPanel';
+import { SkButton } from '../hud/SkButton';
+import { SkCard } from '../hud/SkCard';
 
 export interface SelectedInfo {
   name: string;
@@ -237,16 +239,16 @@ export function FurniturePanel(props: Props) {
             <div key={c.name} className="catalog-group" role="group" aria-label={c.name}>
               <h2>{c.name}</h2>
               {c.types.map((t) => (
-                <button
+                <SkCard
                   key={t.id}
-                  type="button"
                   className="catalog-item"
-                  title={t.description}
+                  label={t.name}
+                  description={t.description}
                   onClick={() => props.onPlace(t.id)}
                   disabled={props.loading || props.error !== undefined}
                 >
                   <span aria-hidden="true">{t.icon}</span> {t.name}
-                </button>
+                </SkCard>
               ))}
             </div>
           ))}
@@ -257,17 +259,24 @@ export function FurniturePanel(props: Props) {
         <legend>{props.editing ? 'Edit' : 'Selection'}</legend>
         {props.editing && (
           <div className="buttons">
-            <button type="button" onClick={props.onUndo} disabled={!props.canUndo} title="Ctrl+Z">
+            <SkButton
+              size="compact"
+              variant="secondary"
+              onClick={props.onUndo}
+              disabled={!props.canUndo}
+              title="Ctrl+Z"
+            >
               Undo
-            </button>
-            <button
-              type="button"
+            </SkButton>
+            <SkButton
+              size="compact"
+              variant="secondary"
               onClick={props.onRedo}
               disabled={!props.canRedo}
               title="Ctrl+Shift+Z"
             >
               Redo
-            </button>
+            </SkButton>
           </div>
         )}
         {selected ? (
@@ -284,18 +293,38 @@ export function FurniturePanel(props: Props) {
             <div className="buttons">
               {props.editing && (
                 <>
-                  <button type="button" onClick={() => props.onRotate(1)} title="R">
+                  <SkButton
+                    size="compact"
+                    variant="secondary"
+                    onClick={() => props.onRotate(1)}
+                    title="R"
+                  >
                     Rotate ⟲
-                  </button>
-                  <button type="button" onClick={() => props.onRotate(-1)} title="Shift+R">
+                  </SkButton>
+                  <SkButton
+                    size="compact"
+                    variant="secondary"
+                    onClick={() => props.onRotate(-1)}
+                    title="Shift+R"
+                  >
                     Rotate ⟳
-                  </button>
-                  <button type="button" onClick={props.onDuplicate} title="Shift+D">
+                  </SkButton>
+                  <SkButton
+                    size="compact"
+                    variant="secondary"
+                    onClick={props.onDuplicate}
+                    title="Shift+D"
+                  >
                     Duplicate
-                  </button>
-                  <button type="button" onClick={props.onDelete} title="Delete">
+                  </SkButton>
+                  <SkButton
+                    size="compact"
+                    variant="secondary"
+                    onClick={props.onDelete}
+                    title="Delete"
+                  >
                     Delete
-                  </button>
+                  </SkButton>
                 </>
               )}
               <PieceLink href={selected.href} name={selected.name} />
@@ -320,9 +349,9 @@ export function FurniturePanel(props: Props) {
               {props.room.apartmentName ? ` · ${props.room.apartmentName}` : ''})
             </p>
             <div className="buttons">
-              <button type="button" onClick={props.room.onFocus}>
+              <SkButton size="compact" variant="secondary" onClick={props.room.onFocus}>
                 Focus room
-              </button>
+              </SkButton>
             </div>
           </div>
         ) : (
@@ -375,16 +404,25 @@ export function FurniturePanel(props: Props) {
           <ul className="flagged">
             {props.flagged.map((f) => (
               <li key={f.id}>
-                <button type="button" className="link" onClick={() => props.onSelectItem(f.id)}>
+                <SkButton
+                  size="compact"
+                  variant="secondary"
+                  className="link"
+                  onClick={() => props.onSelectItem(f.id)}
+                >
                   {f.label}
-                </button>
+                </SkButton>
                 : {f.problems.join(', ')}
                 {f.canRelocate && (
                   <>
                     {' '}
-                    <button type="button" onClick={() => props.onRelocate(f.id)}>
+                    <SkButton
+                      size="compact"
+                      variant="secondary"
+                      onClick={() => props.onRelocate(f.id)}
+                    >
                       Move to {props.levelName}
-                    </button>
+                    </SkButton>
                   </>
                 )}
               </li>

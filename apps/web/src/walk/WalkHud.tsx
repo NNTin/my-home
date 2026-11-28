@@ -390,6 +390,9 @@ export function WalkHud({
             onClick={(e) => {
               // A tap on the mode already shown is passed on too (chooseMode): the owner's choice wins over a quiet
               // permission answer still on its way. The element only says a change: its click names the option.
+              // This reads sakuga-segmented's internals: each option is a button with `data-value` (in its shadow root,
+              // and in the jsdom fallback). If the element changes that, the WalkHud test "stays in Manual when Manual
+              // is tapped before the quiet permission answer arrives" fails.
               const picked = e.nativeEvent
                 .composedPath()
                 .find(

@@ -6,6 +6,7 @@ import { NO_PROGRESS, Still, type StillProgress } from './still';
 import { SAMPLE_TARGET } from './tracer';
 import type { TraceInputs } from './traceScene';
 import './render-mode.css';
+import { SkButton } from '../hud/SkButton';
 
 /**
  * Render mode on screen (docs/design/realistic-render.md §9): the still over the viewer, a line
@@ -137,20 +138,21 @@ export function RenderStill({
       <div className="render-still-bar">
         <p role="status">{statusText(progress)}</p>
         {progress.running && (
-          <button type="button" onClick={() => still?.stop()}>
+          <SkButton size="compact" variant="secondary" onClick={() => still?.stop()}>
             Stop
-          </button>
+          </SkButton>
         )}
-        <button
-          type="button"
+        <SkButton
+          size="compact"
+          variant="secondary"
           onClick={save}
           disabled={saving || progress.samples < 1 || progress.settling}
         >
           {saving ? 'Saving…' : 'Save image'}
-        </button>
-        <button type="button" onClick={onClose}>
+        </SkButton>
+        <SkButton size="compact" variant="secondary" onClick={onClose}>
           Close
-        </button>
+        </SkButton>
       </div>
     </section>
   );
