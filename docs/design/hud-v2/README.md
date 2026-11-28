@@ -4,6 +4,8 @@ A minimal game HUD for the full-bleed 3D viewer. Use clear space between compact
 
 The [current HUD inventory](inventory.md) lists the mode shells, contextual surfaces, task overlays, and the gaps driving the next Walk, minimap, and Edit concepts.
 
+See the new [Walk, minimap, and Edit concepts](mocks/mode-study.md) for desktop and phone states.
+
 ## Today's HUD
 
 The desktop viewer has a View controls panel and a Furniture panel. The phone uses a compact top bar and a bottom sheet, with a side sheet in landscape. The desktop and phone both offer level cutaway, named views, visibility and quality settings, and routes to Photos and Catalogue. Edit mode exposes furniture placement, transforms, undo and redo. Selection can already show a piece link or a nearby edit toolbar. The orbit view has a north-up compass button. Walk has mode-specific controls, a minimap with an enlarged view, and separate camera and photo-capture controls.

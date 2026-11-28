@@ -40,6 +40,8 @@ The baseline is `origin/main` at `f9cba8e`, which includes the [HUD polish in #2
 
 The [Sakuga component inventory](../hud.md#4-inventory-and-mapping) covers the control families behind these surfaces. The [layer design](layers.md) and [hotkey design](hotkeys.md) describe shared behavior.
 
+The staging comparison covered desktop first-person Walk. The other modes and phone behavior were traced from the viewer and Walk components. The [mode concepts](mocks/mode-study.md) show the proposed desktop and phone states.
+
 ## Gaps to address in the next concepts
 
 - **Walk changes visual language.** Orbit uses clear, quiet corners. Walk puts exit, camera view, location, tilt, help and requests into one wrapping bar of paper controls, with a second orientation display and a separately framed map. Keep exit and the camera view choice easy to find and move occasional controls into their own disclosure.

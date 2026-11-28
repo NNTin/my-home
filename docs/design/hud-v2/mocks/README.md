@@ -2,6 +2,8 @@
 
 The current direction is a minimal game HUD. Both new mockups show the same fictional cutaway in Orbit with an armchair selected. The map is collapsed and the scene time is a placeholder. These are desktop studies. See the [visual design](../visual-design.md) for the interaction states and touch layout.
 
+The [Walk, minimap, and Edit concepts](mode-study.md) extend this layout to the other viewer modes.
+
 ## Corner clusters
 
 ![Compact mode and level controls at upper left, compass and clock at upper right, selected item at lower left and three action icons at lower right](corner-clusters.webp)
